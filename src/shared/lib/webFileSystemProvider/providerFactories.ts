@@ -16,7 +16,7 @@ export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
 
 type AccessRequiredHandler = (
   context: WebFileSystemProviderAccessRequiredContext,
-) => WebFileSystemAccessRequiredDetails;
+) => WebFileSystemAccessRequiredDetails | undefined;
 type UnavailableRootHandler = () => WebFileSystemUnavailableRootDetails | undefined;
 type DiagnosticStepHandler = (event: WebFileSystemDiagnosticStep) => void;
 

@@ -120,13 +120,24 @@ const setupFileSystemService = () => {
       const provider = createMountedWebFileSystemProvider({
         kind: record.kind,
         rootHandle: record.handle,
-        onAccessRequired: ({ handle, mode }) =>
-          registry.upsertRequest({
+        onAccessRequired: ({ handle, mode }) => {
+          // An operation started on this provider instance can still be pending when the
+          // provider is removed/replaced (see `addDeviceDirectory`/`removeDeviceDirectory`
+          // below, which delete this name's entry in `recoveryKeysByName`). A late callback must
+          // not create or overwrite a request already registered by the current same-name
+          // provider, so this currentness check runs synchronously before any registry mutation.
+          if (!isCurrentRecoveryTarget({ spaceName: record.name, recoveryKey })) {
+            return undefined;
+          }
+
+          return registry.upsertRequest({
             spaceName: record.name,
             handle,
             mode,
+            recoveryKey,
             refreshProvider: () => notifyHolder.fn(),
-          }),
+          });
+        },
         onUnavailableRoot: () => ({ spaceName: record.name, recoveryKey }),
         onDiagnosticStep: reportWebFileSystemDiagnosticStep,
       });

@@ -551,6 +551,7 @@ describe('useFileSystemService', () => {
         operation: 'read',
         spaceName: 'Projects',
         permissionState: 'granted',
+        recoveryKey: 'irrelevant-key',
       }),
     ).resolves.toEqual({ status: 'missing' });
   });
@@ -2383,10 +2384,20 @@ describe('useFileSystemService', () => {
       throw new Error('Expected DeviceDirectoryAccessRequiredError');
     }
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'denied',
+        recoveryKey: prepared.recoveryKey,
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
@@ -2436,10 +2447,20 @@ describe('useFileSystemService', () => {
       throw new Error('Expected DeviceDirectoryAccessRequiredError');
     }
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'prompt',
+        recoveryKey: prepared.recoveryKey,
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({
@@ -2531,10 +2552,20 @@ describe('useFileSystemService', () => {
 
     grantedHandle.queryPermissionMock?.mockResolvedValue('granted');
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'granted',
+        recoveryKey: prepared.recoveryKey,
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({ status: 'granted' });
@@ -2604,9 +2635,19 @@ describe('useFileSystemService', () => {
 
     promptHandle.queryPermissionMock?.mockResolvedValue('granted');
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await service.resolveFileSystemAccessRequest({
       operation: 'read',
       permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
       spaceName: error.spaceName,
     });
 
@@ -2643,10 +2684,20 @@ describe('useFileSystemService', () => {
       watchedEvents.push('refetched');
     });
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'granted',
+        recoveryKey: prepared.recoveryKey,
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({ status: 'granted' });
@@ -2683,10 +2734,20 @@ describe('useFileSystemService', () => {
     const handler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
     const unregister = service.registerWriteAccessRecoveryHandler(handler);
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'write',
         permissionState: 'granted',
+        recoveryKey: prepared.recoveryKey,
         spaceName: createError.spaceName,
       }),
     ).resolves.toEqual({ status: 'granted' });
@@ -2727,10 +2788,20 @@ describe('useFileSystemService', () => {
     const handler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
     const unregister = service.registerWriteAccessRecoveryHandler(handler);
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'write',
         permissionState: 'granted',
+        recoveryKey: prepared.recoveryKey,
         spaceName: createError.spaceName,
       }),
     ).resolves.toEqual({ status: 'grantedWithReplayFailures' });
@@ -2766,10 +2837,20 @@ describe('useFileSystemService', () => {
     const handler = vi.fn().mockResolvedValue({ status: 'failed' as const });
     const unregister = service.registerWriteAccessRecoveryHandler(handler);
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'write',
         permissionState: 'granted',
+        recoveryKey: prepared.recoveryKey,
         spaceName: createError.spaceName,
       }),
     ).resolves.toEqual({ status: 'grantedWithStorageFailures' });
@@ -2799,10 +2880,20 @@ describe('useFileSystemService', () => {
       throw new Error('Expected access error');
     }
 
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await expect(
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'denied',
+        recoveryKey: prepared.recoveryKey,
         spaceName: error.spaceName,
       }),
     ).resolves.toEqual({ status: 'denied' });
@@ -2815,9 +2906,274 @@ describe('useFileSystemService', () => {
       service.resolveFileSystemAccessRequest({
         operation: 'read',
         permissionState: 'granted',
+        recoveryKey: 'irrelevant-key',
         spaceName: 'Missing',
       }),
     ).resolves.toEqual({ status: 'missing' });
+  });
+
+  it('a deferred old-provider access check completing after same-name replacement cannot overwrite the current provider request', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: oldHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    // Hold the old provider's read permission check pending across the replacement below.
+    let releaseOldCheck: ((state: PermissionState) => void) | undefined;
+    const deferredPermission = new Promise<PermissionState>((resolve) => {
+      releaseOldCheck = resolve;
+    });
+    oldHandle.queryPermissionMock?.mockImplementation(() => deferredPermission);
+
+    const oldReadPromise = service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }]);
+    await service.addDeviceDirectory(replacementHandle);
+
+    // The current (replacement) provider registers its own request through an independent query
+    // so it does not share the still-pending `directoryContent$` subscription above.
+    const currentStatError = await service.fsNodeStat
+      .fetch({ path: '/Device Files/Work/child.txt' })
+      .catch((caughtError: unknown) => caughtError);
+
+    if (!isAccessErrorWithRecoveryKey(currentStatError)) {
+      throw new Error('Expected the replacement provider to require access');
+    }
+
+    const currentPrepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    if (!currentPrepared) {
+      throw new Error('Expected the current provider request to be registered');
+    }
+
+    expect(currentPrepared.handle).toBe(replacementHandle);
+
+    // Release the deferred old check; it resolves non-granted and its callback fires late.
+    releaseOldCheck?.('prompt');
+    const oldReadResult = await oldReadPromise;
+
+    // The stale provider declined actionable recovery instead of overwriting the current request.
+    expect(oldReadResult).toBeInstanceOf(Error);
+    expect(isAccessErrorWithRecoveryKey(oldReadResult)).toBe(false);
+
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({ operation: 'read', spaceName: 'Work' }),
+    ).resolves.toEqual(currentPrepared);
+  });
+
+  it('a deferred old-provider access check completing after removal with no replacement creates no actionable pending request', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    let releaseCheck: ((state: PermissionState) => void) | undefined;
+    const deferredPermission = new Promise<PermissionState>((resolve) => {
+      releaseCheck = resolve;
+    });
+    handle.queryPermissionMock?.mockImplementation(() => deferredPermission);
+
+    const readPromise = service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    await service.removeDeviceDirectory('Work');
+
+    releaseCheck?.('prompt');
+    const readResult = await readPromise;
+
+    expect(readResult).toBeInstanceOf(Error);
+    expect(isAccessErrorWithRecoveryKey(readResult)).toBe(false);
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Work' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('a stale-key resolve from an old provider prompt cannot resolve, refresh, or replay the current same-name provider request (read)', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: oldHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    // An old-provider request was prepared (its handle/key captured) before replacement, mirroring
+    // an already-started browser prompt.
+    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const oldPrepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    if (!oldPrepared) {
+      throw new Error('Expected the old provider request to be registered');
+    }
+    expect(oldPrepared.handle).toBe(oldHandle);
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }]);
+    await service.addDeviceDirectory(replacementHandle);
+
+    const currentError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(currentError)) {
+      throw new Error('Expected the replacement provider to require access');
+    }
+
+    const currentPrepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    if (!currentPrepared) {
+      throw new Error('Expected the current provider request to be registered');
+    }
+    expect(currentPrepared.handle).toBe(replacementHandle);
+    expect(currentPrepared.recoveryKey).not.toBe(oldPrepared.recoveryKey);
+
+    // The old prompt resolves late, correlated by its now-stale key.
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        recoveryKey: oldPrepared.recoveryKey,
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+
+    // The current request survives untouched.
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({ operation: 'read', spaceName: 'Work' }),
+    ).resolves.toEqual(currentPrepared);
+
+    // Its own later prepare/resolve cycle still succeeds normally, using its own key.
+    replacementHandle.queryPermissionMock?.mockResolvedValue('granted');
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        permissionState: 'granted',
+        recoveryKey: currentPrepared.recoveryKey,
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+  });
+
+  it('a stale-key resolve from an old provider prompt does not invoke write-recovery handlers for the current provider request (write)', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: oldHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const oldWriteError = await service
+      .createDirectory('/Device Files/Work/old-folder')
+      .catch((caughtError: unknown) => caughtError);
+
+    if (!isAccessErrorWithRecoveryKey(oldWriteError)) {
+      throw new Error('Expected the old provider to require write access');
+    }
+    const oldPrepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+
+    if (!oldPrepared) {
+      throw new Error('Expected the old provider write request to be registered');
+    }
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }]);
+    await service.addDeviceDirectory(replacementHandle);
+
+    const currentWriteError = await service
+      .createDirectory('/Device Files/Work/new-folder')
+      .catch((caughtError: unknown) => caughtError);
+
+    if (!isAccessErrorWithRecoveryKey(currentWriteError)) {
+      throw new Error('Expected the replacement provider to require write access');
+    }
+    const currentPrepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+
+    if (!currentPrepared) {
+      throw new Error('Expected the current provider write request to be registered');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+    const unregister = service.registerWriteAccessRecoveryHandler(handler);
+
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'write',
+        permissionState: 'granted',
+        recoveryKey: oldPrepared.recoveryKey,
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+    expect(handler).not.toHaveBeenCalled();
+
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({ operation: 'write', spaceName: 'Work' }),
+    ).resolves.toEqual(currentPrepared);
+
+    unregister();
   });
 
   it('getTemporaryFileSystemAccessHandle returns undefined for an unknown key', async () => {
@@ -2931,9 +3287,20 @@ describe('useFileSystemService', () => {
     noteHandle.queryPermissionMock?.mockImplementation((descriptor) =>
       Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
     );
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await service.resolveFileSystemAccessRequest({
       operation: 'read',
       permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
       spaceName: 'Work',
     });
 
@@ -2989,9 +3356,20 @@ describe('useFileSystemService', () => {
     promptHandle.queryPermissionMock?.mockImplementation((descriptor) =>
       Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
     );
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
     await service.resolveFileSystemAccessRequest({
       operation: 'read',
       permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
       spaceName: 'Work',
     });
 

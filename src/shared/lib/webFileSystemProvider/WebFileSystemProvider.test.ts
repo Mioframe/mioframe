@@ -151,6 +151,21 @@ describe('WebFileSystemProvider', () => {
     });
   });
 
+  it('falls back to a VfsError when the access-recovery callback declines actionable recovery', async () => {
+    const { rootHandle } = createRootHandle('prompt');
+    const onAccessRequired = vi.fn(() => undefined);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+    expect(onAccessRequired).toHaveBeenCalledWith({ handle: rootHandle, mode: 'read' });
+  });
+
   it('marks denied file handles as explicitly non-writable in stat capabilities', async () => {
     const { fileHandle, rootHandle } = createRootHandle('granted');
     const provider = WebFileSystemProvider(rootHandle, {

@@ -41,10 +41,15 @@ export interface WebFileSystemProviderAccessRequiredContext {
 export interface WebFileSystemProviderOptions {
   /** Access policy for the mounted root. */
   permissionPolicy: 'originPrivateStorage' | 'userSelectedDirectory';
-  /** Called when the provider needs browser permission before continuing. */
+  /**
+   * Called when the provider needs browser permission before continuing.
+   * May return `undefined` when the owning service declines actionable recovery — for example
+   * because the provider instance is no longer current for its mounted name. The provider then
+   * falls back to its existing non-actionable permission-error path.
+   */
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
-  ) => WebFileSystemAccessRequiredDetails;
+  ) => WebFileSystemAccessRequiredDetails | undefined;
   /**
    * Called when the mounted root can no longer be enumerated despite granted read permission.
    * Returns undefined details fall back to rethrowing the original enumeration failure.
