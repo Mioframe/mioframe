@@ -41,16 +41,16 @@ Recover remembered local Mioframe directories safely across asynchronous browser
 
 ## Boundaries and ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `webFileSystemProvider` | Browser handle operations, permission classification, unavailable-root detection, provider-local errors. |
-| `service/fileSystem` | Mounted-provider runtime identity, persisted mount records, provider lifecycle, pending access registry, topology serialization, reconnect/relocation, granted-resolution stability. |
-| `serviceClient/fileSystem` | One-shot temporary handle use and user-activation-bound `requestPermission()`; round-trip service-issued correlation only. |
-| `service/repositories` | Pending Automerge save and `repo.flush()` settlement behind the existing handler contract. |
-| `automergeAdapter` | Canonical marker inspection algorithm and VFS-backed storage adapter. |
-| `mountedDirectories` entity | Typed service facade. |
-| features | User action, picker/confirmation, loading/feedback, and any later ordinary retry command. No provider identity/source of truth. |
-| widget/page | Composition/navigation only. |
+| Owner                       | Responsibility                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `webFileSystemProvider`     | Browser handle operations, permission classification, unavailable-root detection, provider-local errors.                                                                             |
+| `service/fileSystem`        | Mounted-provider runtime identity, persisted mount records, provider lifecycle, pending access registry, topology serialization, reconnect/relocation, granted-resolution stability. |
+| `serviceClient/fileSystem`  | One-shot temporary handle use and user-activation-bound `requestPermission()`; round-trip service-issued correlation only.                                                           |
+| `service/repositories`      | Pending Automerge save and `repo.flush()` settlement behind the existing handler contract.                                                                                           |
+| `automergeAdapter`          | Canonical marker inspection algorithm and VFS-backed storage adapter.                                                                                                                |
+| `mountedDirectories` entity | Typed service facade.                                                                                                                                                                |
+| features                    | User action, picker/confirmation, loading/feedback, and any later ordinary retry command. No provider identity/source of truth.                                                      |
+| widget/page                 | Composition/navigation only.                                                                                                                                                         |
 
 ## Source of truth and state shape
 
