@@ -1,6 +1,6 @@
 # V3C visual proof ownership cleanup
 
-Status: architecture resolved; V3C-A Lists is architecturally accepted with a bounded legacy exception. Final exact-head verification and PR CI remain required before merge.
+Status: architecture resolved; V3C-A Lists is architecturally accepted with a bounded legacy exception. Exact-head PR CI remains required before merge.
 
 `docs/testing/architecture.md` remains the canonical project-wide testing policy. `docs/testing/storybook.md` defines Storybook ownership and placement. `docs/testing/migration-plan.md` records executable migration authorization. This document records the V3C architecture, the V3C-A result, and the exception boundary that applies only to the legacy Lists family.
 
@@ -133,9 +133,9 @@ Legacy implementation details such as the current StateLayer wiring, exact inter
 
 ## V3C-A completion boundary
 
-No further MDList test-architecture redesign is required for V3C-A.
+No further MDList test-architecture redesign or coding-agent work is required for V3C-A unless review or CI exposes a concrete code-owned regression.
 
-V3C-A is accepted when all of the following remain true on the final branch head:
+V3C-A is architecturally accepted when all of the following remain true on the published PR head:
 
 - the visual spec stays screenshot-only;
 - the broad legacy Material helper/table does not return;
@@ -143,8 +143,9 @@ V3C-A is accepted when all of the following remain true on the final branch head
 - no retries, sleeps, force-based interaction, timeout inflation, repeated action delivery, or weakened flaky acceptance are introduced;
 - production Lists behavior/API remains unchanged;
 - aggregate browser execution remains materially below the V3 baseline;
-- final automatic `pnpm verify` passes;
 - GitHub exact-head CI passes before merge.
+
+Do not send the coding agent back solely to run repository-wide verification or formatting after architect-owned documentation changes. CI owns the automatic repository gate. If CI exposes a concrete code-owned failure, route only that failure to the coding owner.
 
 Do not add more legacy proof merely to satisfy the normal ideal ownership model. If a concrete current product defect is discovered, fix and prove that defect; otherwise defer List-family proof redesign to the canonical Material migration.
 
@@ -173,8 +174,8 @@ The Lists legacy exception must not be copied to a durable owner merely to avoid
 - V3C-A ownership correction materially achieved: yes;
 - known V3C-A flake resolved: yes, based on the reported 580/580 bounded stability run;
 - additional legacy Lists proof redesign required: no;
+- additional coding-agent work required now: no;
 - production/API changes required: no;
 - verifier architecture changes required: no;
-- final automatic verification required on the latest branch head: yes;
 - exact-head GitHub CI required: yes;
-- architecture verdict: accepted with bounded legacy exception; proceed to final verification and PR gate.
+- architecture verdict: accepted with bounded legacy exception; proceed to PR/CI gate.
