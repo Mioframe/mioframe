@@ -138,6 +138,7 @@ const isAccessErrorWithRecoveryKey = (
   typeof error.toJSON === 'function';
 
 const isDomainErrorLike = (error: unknown): error is Error & { cause?: unknown; code?: string } =>
+  // oxlint-disable-next-line no-underscore-dangle -- `__isDomainError` is DomainError's own public duck-typing marker field name.
   error instanceof Error && '__isDomainError' in error && error.__isDomainError === true;
 
 describe('useFileSystemService', () => {
@@ -1524,7 +1525,7 @@ describe('useFileSystemService', () => {
       spaceName: 'Work',
     });
     expect(serialized).not.toHaveProperty('cause');
-    expect(JSON.stringify(serialized)).not.toContain('__sameEntryKey');
+    expect(JSON.stringify(serialized)).not.toContain('sameEntryKey');
 
     await expect(
       service.getFileSystemAccessRequest({

@@ -508,21 +508,47 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('preserves a committed alreadyMounted result even when its source recovery disappears because the relocation itself committed', async () => {
+  it('applies no navigation target and no stale feedback for a delayed alreadyMounted result whose source recovery disappeared', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     confirmMock.mockResolvedValueOnce(true);
-    const errors = errorsFor('Work');
+    const errors = errorsFor('Work', 'key-1');
 
     relocateRememberedDirectoryMock.mockImplementationOnce(() => {
+      // `alreadyMounted` is zero-mutation: recovery disappearing before the result is applied
+      // must not produce stale navigation or feedback.
       errors.value = [];
       return Promise.resolve({ status: 'alreadyMounted', name: 'Archive' });
     });
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    await expect(reconnectFolder()).resolves.toBe('Archive');
+    await expect(reconnectFolder()).resolves.toBeUndefined();
+    expect(reconnectMessage.value).not.toContain('Archive');
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('applies no navigation target and no stale feedback for a delayed alreadyMounted result after the same spaceName gets a different recoveryKey', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    confirmMock.mockResolvedValueOnce(true);
+    const errors = errorsFor('Work', 'key-1');
+
+    relocateRememberedDirectoryMock.mockImplementationOnce(() => {
+      // Same mounted name, but a different provider instance (a different recoveryKey) is a
+      // different target: the delayed alreadyMounted result must not overwrite its feedback.
+      errors.value = [
+        createSerializedUnavailableRootError({ spaceName: 'Work', recoveryKey: 'key-2' }),
+      ];
+      return Promise.resolve({ status: 'alreadyMounted', name: 'Archive' });
+    });
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
+
+    await expect(reconnectFolder()).resolves.toBeUndefined();
+    expect(reconnectMessage.value).not.toContain('Archive');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 

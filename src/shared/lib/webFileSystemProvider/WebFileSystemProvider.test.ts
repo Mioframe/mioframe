@@ -374,7 +374,7 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', {
       create: false,
     });
-    expect(fileHandle.__writtenContent).toEqual(['hello']);
+    expect(fileHandle.writtenContent).toEqual(['hello']);
   });
 
   it('uses the optimized create+overwrite write path without lookup, enumeration, or metadata reads', async () => {
@@ -1091,7 +1091,7 @@ describe('WebFileSystemProvider', () => {
     await expect(provider.move('/note.txt', '/note.txt')).resolves.toBeUndefined();
     expect(rootHandle.getFileHandleMock).not.toHaveBeenCalled();
     expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
-    expect(fileHandle.__writtenContent).toEqual(['hello']);
+    expect(fileHandle.writtenContent).toEqual(['hello']);
   });
 
   it('attempts removeEntry when canDelete capability is undefined', async () => {

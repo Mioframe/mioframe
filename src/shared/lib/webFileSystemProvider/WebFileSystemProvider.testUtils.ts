@@ -33,8 +33,8 @@ type BaseHandleOptions = {
 };
 
 type MockFileSystemFileHandle = FileSystemFileHandle & {
-  __sameEntryKey: string;
-  __writtenContent: BlobPart[];
+  sameEntryKey: string;
+  writtenContent: BlobPart[];
   getFileMock: ReturnType<typeof vi.fn<() => Promise<File>>>;
   queryPermissionMock?: ReturnType<
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
@@ -45,7 +45,7 @@ type MockFileSystemFileHandle = FileSystemFileHandle & {
 };
 
 export type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
-  __sameEntryKey: string;
+  sameEntryKey: string;
   entriesMock: ReturnType<
     typeof vi.fn<
       () => AsyncIterableIterator<[string, FileSystemFileHandle | FileSystemDirectoryHandle]>
@@ -74,7 +74,7 @@ export type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
     typeof vi.fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>
   >;
   isSameEntryMock: ReturnType<
-    typeof vi.fn<(other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>>
+    typeof vi.fn<(other: { sameEntryKey?: string; name?: string }) => Promise<boolean>>
   >;
 };
 
@@ -149,15 +149,15 @@ export const createFileHandleMock = ({
   const handle: MockFileSystemFileHandle = {
     kind: 'file',
     name,
-    __sameEntryKey: sameEntryKey,
-    __writtenContent: writtenContent,
+    sameEntryKey,
+    writtenContent,
     getFileMock,
     ...(queryPermissionMock === undefined ? {} : { queryPermission: queryPermissionMock }),
     ...(queryPermissionMock === undefined ? {} : { queryPermissionMock }),
     requestPermission: requestPermissionMock,
     requestPermissionMock,
     isSameEntry: vi.fn((other) =>
-      Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey),
+      Promise.resolve((other.sameEntryKey ?? other.name) === sameEntryKey),
     ),
     createWritable: vi.fn(() => Promise.resolve(writable)),
     getFile: getFileMock,
@@ -188,8 +188,8 @@ export const createDirectoryHandleMock = ({
     readPermissionState,
   );
   const isSameEntryMock = vi.fn<
-    (other: { __sameEntryKey?: string; name?: string }) => Promise<boolean>
-  >((other) => Promise.resolve((other.__sameEntryKey ?? other.name) === sameEntryKey));
+    (other: { sameEntryKey?: string; name?: string }) => Promise<boolean>
+  >((other) => Promise.resolve((other.sameEntryKey ?? other.name) === sameEntryKey));
   const entryMap = new Map(entries.map((entry) => [entry.name, entry]));
   const getDirectoryHandleMock = vi.fn(
     (directoryName: string, options?: FileSystemGetDirectoryOptions) => {
@@ -256,7 +256,7 @@ export const createDirectoryHandleMock = ({
   const handle: MockFileSystemDirectoryHandle = {
     kind: 'directory',
     name,
-    __sameEntryKey: sameEntryKey,
+    sameEntryKey,
     entriesMock,
     getDirectoryHandleMock,
     getFileHandleMock,

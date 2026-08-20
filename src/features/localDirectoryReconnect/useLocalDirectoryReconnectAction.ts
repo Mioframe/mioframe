@@ -255,9 +255,15 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
         return relocateResult.name;
       }
 
+      // `alreadyMounted` is a zero-mutation outcome, like `invalidCandidate`/`staleRecovery`/
+      // `missingRecord` below: it reports an existing mount rather than committing one, so its
+      // feedback/navigation apply only while this action's target is still current.
       if (relocateResult.status === 'alreadyMounted') {
-        reconnectMessageOverride.value = alreadyMountedMessage(relocateResult.name);
-        return relocateResult.name;
+        if (isCurrentTarget(currentRecovery)) {
+          reconnectMessageOverride.value = alreadyMountedMessage(relocateResult.name);
+          return relocateResult.name;
+        }
+        return undefined;
       }
 
       if (relocateResult.status === 'invalidCandidate') {
