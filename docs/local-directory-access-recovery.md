@@ -201,5 +201,6 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - Reconnect/relocation marker and mutation ordering: resolved.
 - Post-return feature retry semantics: explicitly ordinary current-path VFS behavior; no recovery lease.
 - Unresolved architecture blockers: none.
-- Current implementation gap: granted permission resolution is not yet routed through the existing topology queue for refresh/write settlement.
+- Architecture-defined implementation: complete on the reviewed PR head; granted permission resolution now uses the existing topology queue through refresh/write settlement.
+- Remaining acceptance gates: exact-head GitHub CI and final real Chrome/PWA operator proof, plus cleanup of any active review-only quality findings before merge.
 - Verdict: **ready**.
