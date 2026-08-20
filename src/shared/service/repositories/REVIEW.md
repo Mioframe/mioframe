@@ -4,7 +4,7 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Repository-state architecture, storage classification, public worker/query contract, terminal failures, entity adaptation, Repository Explorer behavior, DocumentService and Repo consumers.
+- Repository-state architecture, storage classification, public worker/query contract, failure semantics, entity adaptation, Repository Explorer behavior, DocumentService and Repo consumers.
 
 ## Blockers
 
@@ -12,29 +12,30 @@ None.
 
 ## Major issues
 
-### M1 — terminal repository derivation error contract is unresolved
+### M1 — a new terminal repository derivation error path is not justified by current failures
 
 Owner: `src/shared/service/repositories`
 
-Problem: [the architecture handoff](../../../../docs/directory-state-reactivity.md) requires a terminal repository derivation failure to become a repository-owned typed/code/cause error, but it does not define the stable public error code/message or its contract owner. The current repository facts error enum contains only the tolerated candidate-read diagnostic code, so implementation would have to invent a public error contract.
+Problem: [the architecture handoff](../../../../docs/directory-state-reactivity.md) adds a repository-owned terminal derivation failure that becomes `RepositoryState.error`, implying a new stable DomainError contract. Current accepted repository discovery has no confirmed expected terminal failure after a clean directory snapshot: candidate read failures are intentionally tolerated as skip + bounded diagnostic, malformed/invalid v3 wrappers decode to `undefined`, and filename/index classification is synchronous. The current repository facts error enum therefore contains only the tolerated diagnostic code. Adding a new terminal repository-domain error is stronger than current requirements.
 
 Evidence:
 
-- [Directory-state reactivity architecture](../../../../docs/directory-state-reactivity.md) — requires a repository-owned typed/code/cause terminal derivation error without naming its exact code/message contract.
-- [Current repository facts error codes](./repositoryFactsErrorCode.ts) — only `storageCandidateReadFailed` exists, and that path is explicitly tolerated rather than terminal.
-- [Current storage discovery](./repositoryStorageFiles.ts) — tolerated candidate read failures are captured once and skipped; unexpected derivation failures remain a distinct path.
+- [Directory-state reactivity architecture](../../../../docs/directory-state-reactivity.md) — requires a repository-owned terminal derivation error and sticky retry semantics for it.
+- [Current repository facts error codes](./repositoryFactsErrorCode.ts) — only `storageCandidateReadFailed` exists, for the tolerated diagnostic path.
+- [Current repository discovery](./repositoryStorageFiles.ts) — `getRepositoryFacts()` supplies a fixed listing to storage discovery and tolerates candidate read failures.
+- [Storage discovery policy](../../lib/automergeAdapter/storageFilePolicy.ts) and [v3 decoder](../../lib/automergeAdapter/v3StoragePolicy.ts) — bounded candidate reads return missing/invalid results rather than a domain failure; malformed wrappers are non-throwing invalid data.
 
 Basis:
 
-- [Source error rules](../../../AGENTS.md) — boundary failures must use a project-controlled safe message, stable enum code, and raw cause.
-- [Service contract rules](../AGENTS.md) — public service error contracts belong in contract-only modules.
-- [Architect handoff skill](../../../../.agents/skills/architect-handoff/SKILL.md) — public contracts and error behavior must be resolved before implementation.
+- [Root architecture rules](../../../../AGENTS.md) — additional error state/contracts and stronger recovery guarantees require a current requirement and the simpler complete design wins.
+- [Architect handoff skill](../../../../.agents/skills/architect-handoff/SKILL.md) — do not add stronger guarantees, recovery paths, or public contracts without a current scenario/invariant.
+- [Source error rules](../../../AGENTS.md) — expected boundary failures need stable DomainError contracts, while internal programmer/invariant failures are a distinct concern and do not justify inventing a domain failure scenario.
 
-Risk: implementations can invent incompatible codes/messages or reuse the tolerated diagnostic code for a terminal failure, leaving the public RepositoryState error contract unstable.
+Risk: implementation creates a new public error enum/message, recovery branch, and tests for a failure class that current storage policy deliberately eliminates, increasing state/API complexity and future compatibility surface without protecting a confirmed user scenario.
 
-Required final state: name one exact repository-owned terminal derivation `DomainError` contract in a contract-only repository module, including stable enum code, safe project-controlled message, and raw `cause` preservation. The existing tolerated candidate-read diagnostic remains non-terminal and is not reused as the terminal state error.
+Required final state: remove the repository-specific terminal derivation DomainError/retry path unless inspection identifies a concrete expected runtime failure that survives the accepted tolerant storage policy. `RepositoryState.error` may carry the canonical filesystem/directory failure already owned below. Unexpected programmer/invariant exceptions remain exceptional infrastructure failures rather than a newly invented recoverable repository domain state. If a real expected repository-boundary failure is identified during correction, then and only then define its exact contract.
 
-Verification: repository tests assert the exact terminal error code/message/cause and separately prove tolerated candidate failures still skip with bounded diagnostics.
+Verification: repository tests prove tolerated candidate failures remain skip + bounded diagnostic and directory failures map into RepositoryState error/recovery. No new repository terminal error contract/test is added without a concrete failure source.
 
 ### M2 — entity mapping can recreate split lifecycle or change refresh UI behavior
 
@@ -57,9 +58,9 @@ Basis:
 
 Risk: the new service state machine can be correct internally while upper layers recreate a second lifecycle or introduce loading flicker on every invalidation.
 
-Required final state: define the entity migration explicitly. Canonical initial repository `loading` is the only lifecycle state that selects the loading branch; `ready` and `refreshing` both expose their snapshot to content; `error` exposes one raw repository/recovery error fact; visibility is a synchronous projection. Remove obsolete split error aliases and entity `refetch` unless a confirmed consumer is found. Generic query transport state must not become a second repository refresh lifecycle.
+Required final state: define the entity migration explicitly. Canonical initial repository `loading` is the only lifecycle state that selects the loading branch; `ready` and `refreshing` both expose their snapshot to content; `error` exposes one raw canonical error/recovery fact plus only unavoidable query-transport failure handling; visibility is a synchronous projection. Remove obsolete split error aliases and entity `refetch` unless a confirmed consumer is found. Generic query transport state must not become a second repository refresh lifecycle.
 
-Verification: entity/widget tests cover initial loading, `ready -> refreshing -> ready`, sticky error retry, one raw recovery/error candidate, removal of legacy split aliases/refetch consumers, and no spinner/content regression during `refreshing`.
+Verification: entity/widget tests cover initial loading, `ready -> refreshing -> ready`, sticky directory-error retry, one canonical recovery/error candidate, removal of legacy split aliases/refetch consumers, and no spinner/content regression during `refreshing`.
 
 ### M3 — `automergeStorage` classification overstates a filename-only candidate fact
 
@@ -97,6 +98,7 @@ None.
 ## Items not required
 
 - Removing public `RepositoryState.refreshing` is not required: it is an independent service-owned lifecycle fact needed to distinguish a usable previous snapshot from a clean current snapshot without reconstructing lifecycle above the service.
+- A repository-specific terminal DomainError can be added later if a concrete expected derivation failure is introduced.
 
 ## Unresolved questions
 
