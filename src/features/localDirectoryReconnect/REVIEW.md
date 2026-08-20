@@ -4,7 +4,7 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete local-directory reconnect feature behavior and required browser proof for PR #211 after the final feature-state correction.
+- Final real-browser proof for PR #211 after the upstream fileSystem reconnect-contract correction.
 
 ## Blockers
 
@@ -12,21 +12,21 @@ Verdict: blocked
 
 Owner: `src/features/localDirectoryReconnect`
 
-Problem: mocked File System Access handles cannot prove the real browser behavior that motivated the fallback from strict `isSameEntry()` identity.
+Problem: mocked File System Access handles cannot prove the browser behavior that motivated the recovery flow. The operator proof must run only after the current `src/shared/service/fileSystem/REVIEW.md` blockers are corrected and the final implementation review is clean.
 
 Evidence:
 
-- [Reconnect action](useLocalDirectoryReconnectAction.ts) — the user flow depends on `showDirectoryPicker()`, real `FileSystemDirectoryHandle` identity behavior, marker inspection, and provider recovery.
-- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) — explicitly requires final real Chrome/PWA proof for the complete recovery matrix.
+- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) requires final real Chrome/PWA proof for the complete recovery matrix.
+- [File-system review](../../shared/service/fileSystem/REVIEW.md) owns the current code blockers that must be resolved before browser proof is meaningful.
 
 Basis:
 
-- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) — required but missing risk-specific proof blocks acceptance.
-- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) — real Chrome/PWA proof is part of the required proof for this feature.
+- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) treats required but missing risk-specific proof as blocking acceptance.
+- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) includes real Chrome/PWA verification in required proof.
 
-Risk: mocks cannot establish that persisted handles, root enumeration failures, `isSameEntry()`, picker behavior, and installed-PWA behavior match the scenario that caused the defect.
+Risk: mocks cannot establish persisted-handle behavior, real `isSameEntry()` behavior, granted-but-unavailable root handling, picker behavior, installed-PWA behavior, or the final stale-recovery contract.
 
-Required final state: verify the final head in real Chrome/PWA for permission loss, granted-but-unavailable remembered root, picker/confirmation cancellation, proven same-entry reconnect, locator-different confirmed relocation, invalid marker, already-mounted candidate, navigation, and same-entry settlement warning.
+Required final state: after code review is clean, verify the final head in real Chrome/PWA for permission loss, granted-but-unavailable remembered root, picker/confirmation cancellation, proven same-entry reconnect, locator-different confirmed relocation, invalid marker, already-mounted candidate, navigation, same-entry settlement warning, and same-name stale-action safety where practically reproducible.
 
 Verification: operator proof against the final implementation/head; any behavioral discrepancy becomes a new implementation or architecture finding.
 
@@ -44,7 +44,7 @@ None.
 
 ## Items not required
 
-- General directory loading/refresh state, stale-read serialization, and external filesystem/rclone observation remain separate architecture work.
+- General directory loading/refresh state, stale-read serialization, external filesystem/rclone observation, and general cross-runtime mounted-record synchronization remain separate architecture work.
 - Generic stale-Repo behavior for unrelated future reuse of the same textual VFS path remains outside PR #211.
 
 ## Unresolved questions
