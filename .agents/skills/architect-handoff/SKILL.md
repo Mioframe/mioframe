@@ -106,6 +106,7 @@ Stop before production edits when:
 - shared UI would change only to patch one feature without blast-radius review;
 - unrelated domains are combined without explicit pass order;
 - the design adds abstractions, extension points, compatibility paths, stronger guarantees, recovery mechanisms, optimizations, test infrastructure, or benchmark infrastructure without a current requirement, consumer, invariant, platform constraint, or measured need;
+- a public or persisted field, flag, discriminator, status, or metadata value is fully and losslessly derivable from an existing canonical state, type, or error contract and has no independent required consumer or ownership; derive it instead of creating a second fact that can drift;
 - a narrower contract or fewer concepts satisfy the same acceptance criteria;
 - implementation readiness is `not ready`;
 - a deterministic authoring workflow reports `blocked`.
