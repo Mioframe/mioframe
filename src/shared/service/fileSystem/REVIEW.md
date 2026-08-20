@@ -33,8 +33,8 @@ Required final state:
 
 - Keep the completed provider `recoveryKey` registration and prepare/prompt/resolve correlation unchanged.
 - Keep browser `requestPermission()` outside topology serialization.
-- Route only a matching `permissionState: 'granted'` service-side resolution through the existing fileSystem topology queue so request/key validation, request deletion, provider refresh, and registered write settlement complete within one topology-stable turn.
-- If a topology mutation is already queued first, it commits first and the later old-key resolve observes the resulting missing/stale request.
+- Every service-side resolution attempt with `permissionState: 'granted'` must enter the existing fileSystem topology queue before request lookup/key validation. The queued turn then delegates to the existing registry resolution so request/key validation, request deletion, provider refresh, and registered write settlement complete within one topology-stable turn. Do not pre-check request existence or `recoveryKey` outside the queue.
+- If a topology mutation is already queued first, it commits first and the later old-key resolve observes the resulting missing/stale request from inside its own queued turn.
 - If granted resolution enters first, queued add/remove/reconnect/relocation waits for refresh/settlement completion.
 - `denied`/`prompt` resolution remains outside the queue because it does not delete, refresh, settle, or mutate topology.
 - Queue failure handling remains unchanged: later turns must continue after flushed, non-flushed, or rejected resolution work.
