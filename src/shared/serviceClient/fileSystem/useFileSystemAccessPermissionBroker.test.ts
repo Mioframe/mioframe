@@ -78,6 +78,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       handle,
       operation: 'read',
       spaceName: 'Work',
+      recoveryKey: 'recovery-key',
     });
     resolveFileSystemAccessRequestMock.mockResolvedValue({
       status: 'granted',
@@ -102,6 +103,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
       operation: 'read',
       permissionState: 'granted',
+      recoveryKey: 'recovery-key',
       spaceName: 'Work',
     });
 
@@ -155,6 +157,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
       handle,
       operation: 'read',
       spaceName: 'Work',
+      recoveryKey: 'recovery-key',
     });
     resolveFileSystemAccessRequestMock.mockResolvedValue({
       status: 'granted',
@@ -179,6 +182,7 @@ describe('useFileSystemAccessPermissionBroker', () => {
     expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith({
       operation: 'read',
       permissionState: 'granted',
+      recoveryKey: 'recovery-key',
       spaceName: 'Work',
     });
 
@@ -366,6 +370,40 @@ describe('useFileSystemAccessPermissionBroker', () => {
     ).resolves.toEqual({
       status: 'grantedWithStorageFailures',
     });
+
+    scope.stop();
+  });
+
+  it('round-trips the service-issued recoveryKey to resolveFileSystemAccessRequest without exposing it in the public request/response contract', async () => {
+    const handle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    handle.requestPermissionMock.mockResolvedValue('granted');
+    getTemporaryFileSystemAccessHandleMock.mockResolvedValue({
+      handle,
+      operation: 'write',
+      spaceName: 'Work',
+      recoveryKey: 'provider-instance-key',
+    });
+    resolveFileSystemAccessRequestMock.mockResolvedValue({
+      status: 'granted',
+    });
+
+    const { broker, scope } = await mountBroker();
+
+    const result = await broker.requestAccess({
+      operation: 'write',
+      requestedMode: 'readwrite',
+      spaceName: 'Work',
+    });
+
+    expect(resolveFileSystemAccessRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ recoveryKey: 'provider-instance-key' }),
+    );
+    expect(result).not.toHaveProperty('recoveryKey');
+    expect(Object.keys(result)).toEqual(['status']);
 
     scope.stop();
   });

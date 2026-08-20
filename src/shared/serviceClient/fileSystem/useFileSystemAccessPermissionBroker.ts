@@ -36,6 +36,10 @@ export type FileSystemAccessPermissionRequest = FileSystemAccessRequestIdentity 
  * inside the explicit user action that requested recovery.
  * The blocked operation identifies the pending recovery request. `requestedMode` identifies the
  * browser permission mode chosen by the user for this attempt.
+ * Internally, the broker also round-trips the service-issued `recoveryKey` returned alongside the
+ * temporary handle back to `resolveFileSystemAccessRequest` for this one action. That key is a
+ * fileSystem-owned provider-instance correlation value only; it is never part of this broker's
+ * public request/response contract and is never exposed to feature/UI callers.
  * @returns One-shot access broker with no prepared-handle state.
  */
 export const useFileSystemAccessPermissionBroker = () => {
@@ -69,6 +73,9 @@ export const useFileSystemAccessPermissionBroker = () => {
       }
 
       let handle: FileSystemDirectoryHandle | undefined = request.handle;
+      // Ephemeral correlation value for this one explicit permission action only: round-tripped
+      // unchanged to `resolveFileSystemAccessRequest` below, never exposed to feature/UI callers.
+      const { recoveryKey } = request;
 
       try {
         addWriteAccessPermissionPromptStartBreadcrumb();
@@ -80,6 +87,7 @@ export const useFileSystemAccessPermissionBroker = () => {
         const result = await resolveFileSystemAccessRequest({
           operation: request.operation,
           permissionState,
+          recoveryKey,
           spaceName: request.spaceName,
         });
 

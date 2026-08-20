@@ -22,6 +22,8 @@ import type {
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
 import { createWebFileSystemWriteStartFailedError } from './WebFileSystemWriteStartFailedError';
+import type { WebFileSystemUnavailableRootDetails } from './WebFileSystemUnavailableRootError';
+import { WebFileSystemUnavailableRootError } from './WebFileSystemUnavailableRootError';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -39,10 +41,20 @@ export interface WebFileSystemProviderAccessRequiredContext {
 export interface WebFileSystemProviderOptions {
   /** Access policy for the mounted root. */
   permissionPolicy: 'originPrivateStorage' | 'userSelectedDirectory';
-  /** Called when the provider needs browser permission before continuing. */
+  /**
+   * Called when the provider needs browser permission before continuing.
+   * May return `undefined` when the owning service declines actionable recovery — for example
+   * because the provider instance is no longer current for its mounted name. The provider then
+   * falls back to its existing non-actionable permission-error path.
+   */
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
-  ) => WebFileSystemAccessRequiredDetails;
+  ) => WebFileSystemAccessRequiredDetails | undefined;
+  /**
+   * Called when the mounted root can no longer be enumerated despite granted read permission.
+   * Returns undefined details fall back to rethrowing the original enumeration failure.
+   */
+  onUnavailableRoot?: () => WebFileSystemUnavailableRootDetails | undefined;
   /** Called with safe write-side milestones for diagnostics. */
   onDiagnosticStep?: (event: WebFileSystemDiagnosticStep) => void;
 }
@@ -53,6 +65,8 @@ export interface WebFileSystemProviderOptions {
 export interface WebFileSystemDiagnosticStep {
   /** Raw error value when the milestone failed. The caller is responsible for sanitization. */
   error?: unknown;
+  /** Actual safe permission state observed at this milestone, when known. */
+  permission?: PermissionState;
   /** Technical milestone outcome. */
   result: 'failed' | 'missing' | 'started' | 'succeeded';
   /** Technical milestone name emitted by the provider. */
@@ -69,7 +83,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
 ): IFileSystemProvider & { notifyAccessChanged: () => Promise<void> } => {
-  const { onAccessRequired, onDiagnosticStep, permissionPolicy } = options;
+  const { onAccessRequired, onDiagnosticStep, onUnavailableRoot, permissionPolicy } = options;
   const events = new EventEmitter();
   const currentRootHandle = rootHandle;
 
@@ -483,16 +497,63 @@ export const WebFileSystemProvider = (
     writeOptions: WriteOptions,
   ): Promise<WriteFileResult> => writeFileImpl(path, content, writeOptions);
 
+  /**
+   * Recovers from a root-directory enumeration failure that occurred after a granted read
+   * pre-check. Re-queries root read permission once: a revoked permission produces the existing
+   * access-required error, while a still-granted permission produces the unavailable-root error.
+   * @param cause - Original enumeration failure caught while reading the mounted root.
+   * @returns Never resolves; always throws the recovered or original error.
+   */
+  const recoverFromRootReadFailure = async (cause: unknown): Promise<never> => {
+    const recheckedPermission = await queryModePermission(currentRootHandle, 'read');
+    reportDiagnosticStep({
+      step: 'rootReadPermissionRecheck',
+      result: recheckedPermission === 'granted' ? 'succeeded' : 'failed',
+      ...(recheckedPermission !== undefined ? { permission: recheckedPermission } : {}),
+    });
+
+    if (recheckedPermission !== 'granted') {
+      const accessRequiredDetails = onAccessRequired?.({
+        handle: currentRootHandle,
+        mode: 'read',
+      });
+
+      if (accessRequiredDetails) {
+        throw new WebFileSystemAccessRequiredError(accessRequiredDetails);
+      }
+
+      throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
+    }
+
+    const unavailableRootDetails = onUnavailableRoot?.();
+
+    if (unavailableRootDetails) {
+      throw new WebFileSystemUnavailableRootError({ ...unavailableRootDetails, cause });
+    }
+
+    throw cause;
+  };
+
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     await ensureAccess('read');
+    const isRootPath = PathUtils.normalize(path) === '/';
     const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
-    for await (const [name, childHandle] of directoryHandle.entries()) {
-      entries.push([
-        name,
-        { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
-      ]);
+    try {
+      for await (const [name, childHandle] of directoryHandle.entries()) {
+        entries.push([
+          name,
+          { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
+        ]);
+      }
+    } catch (error) {
+      if (!isRootPath || permissionPolicy !== 'userSelectedDirectory') {
+        throw error;
+      }
+
+      reportDiagnosticStep({ step: 'rootRead', result: 'failed', error });
+      return recoverFromRootReadFailure(error);
     }
 
     return entries;

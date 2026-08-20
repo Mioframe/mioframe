@@ -6,6 +6,10 @@ import { useRepositoriesService } from './repositories';
 
 export const serviceId = 'mainBackgroundService';
 
+/**
+ * Assembles the background worker's public service surface.
+ * @returns The service objects published to `useMainServiceClient()`.
+ */
 export const setupMainService = () => {
   return {
     databaseDocument: useDatabaseDocumentService(),

@@ -9,6 +9,8 @@ import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { useImportDocumentAction } from '@feature/importDocument';
+import { DEVICE_FILES_ROOT_NAME } from '@shared/service';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
 import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
@@ -48,9 +50,14 @@ const {
   grantReadOnlyAccess,
   hasGoogleDriveRecovery,
   hasLocalDirectoryRecovery,
+  hasUnavailableRootRecovery,
   isGrantLocalDirectoryAccessDisabled,
   isGrantLocalDirectoryAccessPending,
+  isReconnectDisabled,
+  isReconnectPending,
   localDirectoryRecoveryMessage,
+  reconnectFolder,
+  reconnectMessage,
 } = useRepositoryExplorerRecovery({
   directoryPath,
   directoryStatError,
@@ -83,6 +90,15 @@ const onClickGrantReadOnlyAccess = () => {
 
 const onClickGrantFullAccess = () => {
   void grantFullAccess();
+};
+
+const onClickReconnectFolder = async () => {
+  const initiatingDirectoryPath = directoryPath.value;
+  const mountedName = await reconnectFolder();
+
+  if (mountedName && directoryPath.value === initiatingDirectoryPath) {
+    onClickPath(PathUtils.join('/', DEVICE_FILES_ROOT_NAME, mountedName));
+  }
 };
 
 const onRetryAuthorizationClick = () => {
@@ -126,6 +142,29 @@ const onRetryAuthorizationClick = () => {
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
             @click="onClickGrantFullAccess"
+          />
+        </template>
+      </MDEmptyState>
+
+      <MDEmptyState
+        v-else-if="hasUnavailableRootRecovery"
+        class="repository-explorer-widget__recovery"
+        headline="Folder unavailable"
+        :supporting-text="reconnectMessage"
+        :supporting-text-status="isReconnectPending"
+      >
+        <template #icon>
+          <MDSymbol
+            name="folder_off"
+            class="repository-explorer-widget__local-directory-recovery-icon"
+          />
+        </template>
+
+        <template #actions>
+          <MDButton
+            label="Reconnect folder"
+            :disabled="isReconnectDisabled"
+            @click="onClickReconnectFolder"
           />
         </template>
       </MDEmptyState>

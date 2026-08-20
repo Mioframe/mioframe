@@ -20,8 +20,13 @@ export type {
 } from './repositories/repositoryZipContracts';
 export {
   DEVICE_FILES_ROOT_NAME,
+  FileSystemServiceErrorCode,
+  type DeviceDirectoryRecoveryTarget,
   type DeviceFileDisplayRecord,
+  type MioframeSpaceInspection,
   type ReadDirectoryOptions,
+  type ReconnectDeviceDirectoryResult,
+  type RelocateRememberedDeviceDirectoryResult,
 } from './fileSystem/fileSystemContracts';
 export {
   GOOGLE_DRIVE_ROOT_NAME,
