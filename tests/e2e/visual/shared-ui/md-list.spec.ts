@@ -7,6 +7,24 @@ import { openStory } from '../storybook';
 // - Vue/native/ARIA/component contracts: src/shared/ui/Lists/*.test.ts
 // - reusable real-browser behavior (keyboard, pointer, focus indicator, StateLayer,
 //   Material Expressive geometry/token contract): src/shared/ui/Lists/MDList.browser.spec.ts
+//
+// Baseline audit (V3C-A correction): every surviving baseline below protects one distinct
+// accepted visible invariant not already covered by another surviving baseline. Three
+// baselines were removed because their visible invariant duplicated a surviving one:
+// - the segmented "diagnostic" contrasting-wrapper screenshot (same segmented rows as the
+//   Material-parity "surface context segmented" screenshot, just a different background
+//   color to narrate the same already-tested transparent-gap fact — the transparency
+//   contract itself is proven precisely by a computed-style check in
+//   MDList.browser.spec.ts, not by this pixel);
+// - the "Repository Explorer" reproduction (a standard contiguous list of single/multi-action
+//   rows with a leading icon — the same visible pattern already captured by the "Repository:
+//   File and directory rows" section inside the consumer-patterns screenshot below, plus the
+//   plain standard-list appearance already in the surface-context-standard screenshot);
+// - the standalone "EntryAddSheet consumer rows" gallery (contiguous standalone single-action
+//   rows with a leading icon — the same row pattern already shown in the standalone basic
+//   gallery's "Single-action with leading icon" section; the row-stacking/overflow contract
+//   for this exact fixture stays proven by dedicated geometry checks in
+//   MDList.browser.spec.ts, which do not need a screenshot to justify their existence).
 test.describe('MDList / technical and consumer visual regression snapshots', () => {
   // Technical interaction/state-gallery regression — forced data-state fixtures, not a
   // Material doc-comparable example (see Material reference 'states' for that).
@@ -78,36 +96,6 @@ test.describe('MDList / technical and consumer visual regression snapshots', () 
     await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented.png');
   });
 
-  // Harness/debug regression: the explicit contrasting diagnostic wrapper around a
-  // segmented list, never a Material doc-comparable screenshot.
-  test('MDListItem segmented diagnostic surface context story does not regress', async ({
-    page,
-  }) => {
-    await openStory(
-      page,
-      'material-3-components-lists-mdlistitem--surface-context-segmented-diagnostic',
-    );
-
-    const surface = page.getByTestId('visual-md-list-surface-segmented-diagnostic');
-
-    await expect(surface).toHaveScreenshot('md-list-item-surface-context-segmented-diagnostic.png');
-  });
-
-  // Consumer regression: Repository Explorer's real document/folder usage, not a Material
-  // doc-comparable screenshot.
-  test('MDListItem surface context repository explorer story does not regress', async ({
-    page,
-  }) => {
-    await openStory(
-      page,
-      'material-3-components-lists-mdlistitem--surface-context-repository-explorer',
-    );
-
-    const surface = page.getByTestId('visual-md-list-surface-repository');
-
-    await expect(surface).toHaveScreenshot('md-list-item-surface-context-repository.png');
-  });
-
   // Consumer/product regression (Settings, Home actions, etc.), not a Material doc-comparable
   // screenshot.
   test('MDListItem consumer patterns story does not regress', async ({ page }) => {
@@ -126,16 +114,6 @@ test.describe('MDList / technical and consumer visual regression snapshots', () 
     const surface = page.getByTestId('visual-md-list-item-standalone-basic');
 
     await expect(surface).toHaveScreenshot('md-list-item-standalone-basic.png');
-  });
-
-  // Consumer/product regression: the EntryAddSheet rows reproduced outside their sheet, not
-  // a Material doc-comparable screenshot.
-  test('MDListItem standalone public API consumer rows do not regress', async ({ page }) => {
-    await openStory(page, 'material-3-components-lists-mdlistitem--standalone-public-api');
-
-    const surface = page.getByTestId('visual-md-list-item-standalone-consumer');
-
-    await expect(surface).toHaveScreenshot('md-list-item-standalone-consumer.png');
   });
 });
 

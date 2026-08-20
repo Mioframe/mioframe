@@ -118,7 +118,6 @@ export const SurfaceContextSegmentedDiagnostic: Story = {
 };
 
 export const SurfaceContextRepositoryExplorer: Story = {
-  tags: ['visual'],
   render: () => ({
     components: { MDListItemSurfaceRepositoryStory },
     template: '<MDListItemSurfaceRepositoryStory />',

@@ -34,12 +34,12 @@ V3C does not:
 
 Proof ownership follows the existing testing architecture:
 
-| Observable contract                                                                                                       | Primary proof owner                                                        |
-| ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Vue props/emits/slots, native owner, explicit attributes, ARIA and controlled semantic state                             | colocated component `*.test.ts`                                            |
-| Real focus, keyboard, pointer/touch, geometry, overflow, browser layout and browser-observable state transitions          | owner-local Storybook `*.browser.spec.ts`                                  |
-| Bounded accepted stable appearance                                                                                        | visual `*.visual.spec.ts` or current authorized central visual location    |
-| Complete product scenario crossing product/service/navigation/persistence boundaries                                     | application E2E                                                            |
+| Observable contract                                                                                              | Primary proof owner                                                     |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Vue props/emits/slots, native owner, explicit attributes, ARIA and controlled semantic state                     | colocated component `*.test.ts`                                         |
+| Real focus, keyboard, pointer/touch, geometry, overflow, browser layout and browser-observable state transitions | owner-local Storybook `*.browser.spec.ts`                               |
+| Bounded accepted stable appearance                                                                               | visual `*.visual.spec.ts` or current authorized central visual location |
+| Complete product scenario crossing product/service/navigation/persistence boundaries                             | application E2E                                                         |
 
 Private DOM/classes/custom properties and renderer internals are not independent contracts. They may remain in proof only when the repository explicitly owns that public boundary and the assertion is the lowest faithful way to prove it.
 
