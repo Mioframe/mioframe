@@ -108,6 +108,8 @@ Do not repeat the same algorithm matrix, browser behavior, foundation behavior, 
 
 Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept missing required state.
 
+A known intermittent failure is a defect and blocks acceptance until its cause is corrected and the required stability proof passes. Retries may collect diagnostics only when a retry-pass/flaky classification still fails the owning gate; a retry-pass is never accepted as green proof.
+
 ## Proof types
 
 | Proof type                | Owns                                                                                                                                                                              |
@@ -239,7 +241,7 @@ A focused related run with no matching tests must be reported explicitly; it is 
 
 ## Playwright impact model
 
-`storybook-behavior`, `e2e`, and `visual` remain independent. They may share only mechanical plan/validation helpers.
+`storybook-behavior`, `e2e`, and `visual` remain independent proof and impact lanes. They may share mechanical plan/validation helpers and deterministic build prerequisites/artifacts when reuse preserves each lane's selection, failure visibility, and proof ownership; a shared prerequisite must not become cross-lane impact inference.
 
 Each lane declares only what it needs from:
 
@@ -294,6 +296,8 @@ No cross-lane registry, production test annotations, or generic test DSL is allo
 The durable target uses owner-local colocated `*.browser.spec.ts` for ordinary component/family/module ownership, with explicit mappings only for truthful non-local or cross-cutting relations.
 
 Changing a story may independently affect Storybook behavior and visual lanes. One lane must not infer the other.
+
+When Storybook behavior and visual proof both consume an equivalent deterministic static Storybook build, verification may build that artifact once and reuse it across those consumers. The `storybook-build` check remains an independent verifier-owned build contract when its own impact plan selects it; reuse only removes duplicate compilation. An explicit prebuilt-artifact mode must fail closed when required output is missing, while standalone focused browser/visual commands remain self-contained when no prebuilt contract is supplied.
 
 Colocated browser discovery is implemented: one Storybook behavior Playwright configuration discovers both legacy central specs and owner-local `src/**/*.browser.spec.ts`, with filesystem-derived ownership that selects every applicable colocated spec for an owner path and fails closed to the full lane for unresolved add/remove/rename. `docs/testing/migration-plan.md` controls which owners are currently authorized to migrate; unmigrated owners remain in the current central location.
 

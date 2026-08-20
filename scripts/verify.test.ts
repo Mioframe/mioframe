@@ -681,6 +681,55 @@ describe('buildCommands storybook-behavior lane', () => {
   });
 });
 
+describe('buildCommands storybook-behavior repeat', () => {
+  it('appends exactly one Playwright repeat argument to a focused storybook-behavior command', () => {
+    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+      fullMode: false,
+      repeat: 10,
+    });
+    const entry = requireRunEntry(commands, 'storybook-behavior');
+
+    expect(entry.args).toEqual([
+      'test:storybook-behavior',
+      'tests/e2e/storybook/colorOwnership.spec.ts',
+      '--repeat-each',
+      '10',
+    ]);
+  });
+
+  it('leaves an ordinary storybook-behavior command without a repeat argument', () => {
+    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+      fullMode: false,
+      repeat: null,
+    });
+    const entry = requireRunEntry(commands, 'storybook-behavior');
+
+    expect(entry.args).toEqual([
+      'test:storybook-behavior',
+      'tests/e2e/storybook/colorOwnership.spec.ts',
+    ]);
+  });
+
+  it('does not add a repeat argument to a skipped storybook-behavior command', () => {
+    const commands = buildCommands(['src/app/main.ts'], { fullMode: false, repeat: 10 });
+    const entry = requireSkippedEntry(commands, 'storybook-behavior');
+
+    expect(entry.reason).toBe('empty storybook behavior scope');
+  });
+
+  it('does not leak the repeat argument to any other label', () => {
+    const commands = buildCommands([], { fullMode: true, repeat: 10 });
+
+    for (const entry of commands) {
+      if (entry.kind !== 'run' || entry.label === 'storybook-behavior') {
+        continue;
+      }
+
+      expect(entry.args).not.toContain('--repeat-each');
+    }
+  });
+});
+
 describe('buildCommands storybook-build lane', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();
@@ -694,11 +743,12 @@ describe('buildCommands storybook-build lane', () => {
     expect(entry.args).toEqual(['storybook:build']);
   });
 
-  it('runs after visual', () => {
+  it('runs before storybook-behavior and visual', () => {
     const commands = buildCommands([], { fullMode: true });
     const labels = commands.map((entry) => entry.label);
 
-    expect(labels.indexOf('visual')).toBeLessThan(labels.indexOf('storybook-build'));
+    expect(labels.indexOf('storybook-build')).toBeLessThan(labels.indexOf('storybook-behavior'));
+    expect(labels.indexOf('storybook-build')).toBeLessThan(labels.indexOf('visual'));
   });
 
   it('skips storybook-build for an unrelated focused scope', () => {
@@ -742,6 +792,226 @@ describe('buildCommands storybook-build lane', () => {
     const entry = requireRunEntry(commands, 'storybook-build');
 
     expect(entry.triggerReason).toContain('runtime-relevant package.json change');
+  });
+
+  it('selects storybook-build when only storybook-behavior requires it', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: {
+        mode: 'focused',
+        specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+        reasons: ['scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts'],
+      },
+      visualPlan: { mode: 'skip', specs: [], reasons: ['empty visual scope'] },
+    });
+
+    const entry = requireRunEntry(commands, 'storybook-build');
+
+    expect(entry.triggerReason).toContain(
+      'storybook-behavior lane requires a Storybook static build',
+    );
+  });
+
+  it('selects storybook-build when only visual requires it', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: {
+        mode: 'none',
+        specs: [],
+        reasons: ['empty storybook behavior scope'],
+      },
+      visualPlan: {
+        mode: 'focused',
+        specs: ['src/shared/ui/material/components/x/x.visual.spec.ts'],
+        reasons: ['changed colocated visual spec x -> x'],
+      },
+    });
+
+    const entry = requireRunEntry(commands, 'storybook-build');
+
+    expect(entry.triggerReason).toContain('visual lane requires a Storybook static build');
+  });
+
+  it('does not select storybook-build merely because storybook-behavior is invalid', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
+      visualPlan: { mode: 'skip', specs: [], reasons: ['empty visual scope'] },
+    });
+
+    requireSkippedEntry(commands, 'storybook-build');
+  });
+
+  it('does not select storybook-build merely because visual is invalid', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: {
+        mode: 'none',
+        specs: [],
+        reasons: ['empty storybook behavior scope'],
+      },
+      visualPlan: { mode: 'invalid', specs: [], reasons: ['broken visual impact metadata'] },
+    });
+
+    requireSkippedEntry(commands, 'storybook-build');
+  });
+});
+
+describe('buildCommands storybook-build CI fallback', () => {
+  const fallbackStorybookBuildPlan = {
+    mode: 'full' as const,
+    reasons: ['Storybook-relevant path .storybook/preview.ts -> storybook build'],
+  };
+  const skipStorybookBehaviorPlan = {
+    mode: 'none' as const,
+    specs: [],
+    reasons: ['empty storybook behavior scope'],
+  };
+  const skipVisualPlan = { mode: 'skip' as const, specs: [], reasons: ['empty visual scope'] };
+
+  it('builds when the ordinary plan requires it and neither browser lane will run', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildCiFallback: true,
+      storybookBuildPlan: fallbackStorybookBuildPlan,
+      storybookBehaviorPlan: skipStorybookBehaviorPlan,
+      visualPlan: skipVisualPlan,
+    });
+
+    const entry = requireRunEntry(commands, 'storybook-build');
+
+    expect(entry.args).toEqual(['storybook:build']);
+    expect(entry.triggerReason).toBe(fallbackStorybookBuildPlan.reasons.join('; '));
+  });
+
+  it('skips when storybook-behavior will run, even though the ordinary plan requires a build', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildCiFallback: true,
+      storybookBuildPlan: fallbackStorybookBuildPlan,
+      storybookBehaviorPlan: {
+        mode: 'focused',
+        specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+        reasons: ['scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts'],
+      },
+      visualPlan: skipVisualPlan,
+    });
+
+    const entry = requireSkippedEntry(commands, 'storybook-build');
+
+    expect(entry.reason).toBe(
+      'CI fallback: a self-contained Storybook browser lane already supplies the static build prerequisite',
+    );
+  });
+
+  it('skips when visual will run, even though the ordinary plan requires a build', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildCiFallback: true,
+      storybookBuildPlan: fallbackStorybookBuildPlan,
+      storybookBehaviorPlan: skipStorybookBehaviorPlan,
+      visualPlan: {
+        mode: 'full',
+        specs: [],
+        reasons: ['broad visual-relevant path -> full visual lane'],
+      },
+    });
+
+    const entry = requireSkippedEntry(commands, 'storybook-build');
+
+    expect(entry.reason).toBe(
+      'CI fallback: a self-contained Storybook browser lane already supplies the static build prerequisite',
+    );
+  });
+
+  it('skips with the ordinary reason when the build plan does not require a build', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildCiFallback: true,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: skipStorybookBehaviorPlan,
+      visualPlan: skipVisualPlan,
+    });
+
+    const entry = requireSkippedEntry(commands, 'storybook-build');
+
+    expect(entry.reason).toBe('no storybook-relevant changes');
+  });
+
+  it('ignores the fallback flag in full mode and still builds unconditionally', () => {
+    const commands = buildCommands([], {
+      fullMode: true,
+      storybookBuildCiFallback: true,
+      storybookBehaviorPlan: {
+        mode: 'focused',
+        specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+        reasons: ['scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts'],
+      },
+      visualPlan: {
+        mode: 'full',
+        specs: [],
+        reasons: ['broad visual-relevant path -> full visual lane'],
+      },
+    });
+
+    const entry = requireRunEntry(commands, 'storybook-build');
+
+    expect(entry.triggerReason).toBe('full-project release verification');
+  });
+
+  it('does not affect the ordinary (non-CI-fallback) reuse-aware trigger', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      storybookBuildCiFallback: false,
+      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+      storybookBehaviorPlan: {
+        mode: 'focused',
+        specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+        reasons: ['scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts'],
+      },
+      visualPlan: skipVisualPlan,
+    });
+
+    const entry = requireRunEntry(commands, 'storybook-build');
+
+    expect(entry.triggerReason).toContain(
+      'storybook-behavior lane requires a Storybook static build',
+    );
+  });
+
+  it('ignores STORYBOOK_BUILD_CI_FALLBACK in the process environment', () => {
+    vi.stubEnv('STORYBOOK_BUILD_CI_FALLBACK', '1');
+
+    try {
+      // storybook-build itself does not require a build, but storybook-behavior does; the
+      // ordinary (non-CI-fallback) reuse-aware trigger runs the build here. If the removed
+      // STORYBOOK_BUILD_CI_FALLBACK env var still had any effect, this would instead skip with
+      // the CI-fallback-specific reason since the flag defaults to false.
+      const commands = buildCommands([], {
+        fullMode: false,
+        storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+        storybookBehaviorPlan: {
+          mode: 'focused',
+          specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+          reasons: [
+            'scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts',
+          ],
+        },
+        visualPlan: skipVisualPlan,
+      });
+
+      const entry = requireRunEntry(commands, 'storybook-build');
+
+      expect(entry.triggerReason).toContain(
+        'storybook-behavior lane requires a Storybook static build',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
@@ -818,6 +1088,36 @@ describe('getExtraEnvForEntry', () => {
     });
     expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
       RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+  });
+
+  it('does not set STORYBOOK_STATIC_SKIP_BUILD for unrelated labels', () => {
+    expect(
+      getExtraEnvForEntry({ label: 'e2e' }, [{ label: 'storybook-build', status: 'passed' }]),
+    ).toEqual({});
+  });
+
+  it('does not set STORYBOOK_STATIC_SKIP_BUILD when storybook-build has not run yet', () => {
+    expect(getExtraEnvForEntry({ label: 'storybook-behavior' }, [])).toEqual({});
+    expect(getExtraEnvForEntry({ label: 'visual' }, [])).toEqual({});
+  });
+
+  it('does not set STORYBOOK_STATIC_SKIP_BUILD when storybook-build failed', () => {
+    expect(
+      getExtraEnvForEntry({ label: 'storybook-behavior' }, [
+        { label: 'storybook-build', status: 'failed' },
+      ]),
+    ).toEqual({});
+  });
+
+  it('sets STORYBOOK_STATIC_SKIP_BUILD once storybook-build has passed, for storybook-behavior and visual', () => {
+    const priorResults = [{ label: 'storybook-build', status: 'passed' }];
+
+    expect(getExtraEnvForEntry({ label: 'storybook-behavior' }, priorResults)).toEqual({
+      STORYBOOK_STATIC_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'visual' }, priorResults)).toEqual({
+      STORYBOOK_STATIC_SKIP_BUILD: '1',
     });
   });
 });

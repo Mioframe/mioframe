@@ -2,7 +2,11 @@ import path from 'node:path';
 
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from '../playwrightContainer.ts';
 
-export const VERIFY_INVOCATION_VERSION = 2;
+export const VERIFY_INVOCATION_VERSION = 4;
+
+/** Inclusive bounds for `--repeat`; keeps agent/CI stability reruns bounded. */
+export const MIN_STORYBOOK_BEHAVIOR_REPEAT = 2;
+export const MAX_STORYBOOK_BEHAVIOR_REPEAT = 20;
 
 export const VERIFY_LABELS: readonly string[] = [
   'agent-environment',
@@ -67,6 +71,23 @@ export interface VerifyInvocation {
   onlyLabel: string | null;
   verbose: boolean;
   fixMode: FixMode;
+  /**
+   * Narrow GitHub Actions fallback contract for the `storybook-build` label only (see
+   * `.github/workflows/verify.yml`): requests the build only when the ordinary
+   * `storybook-build` plan requires it and neither `storybook-behavior` nor `visual` will run.
+   * Valid only with `--only storybook-build` and outside `--full`.
+   */
+  storybookBuildCiFallback: boolean;
+  /**
+   * Narrow repeated-execution stability contract for the `storybook-behavior`
+   * label only: asks Playwright to repeat the selected tests this many times
+   * within one Storybook behavior invocation, for deterministic flake
+   * diagnosis. Valid only with `--only storybook-behavior`, `--files`, and
+   * outside `--full`; bounded to
+   * [{@link MIN_STORYBOOK_BEHAVIOR_REPEAT}, {@link MAX_STORYBOOK_BEHAVIOR_REPEAT}].
+   * `null` for an ordinary invocation.
+   */
+  repeat: number | null;
 }
 
 function isVerifyProfile(value: unknown): value is VerifyProfile {
@@ -103,8 +124,14 @@ function assertUniqueOption(seenOptions: Set<string>, flag: string): void {
 
 const VERIFY_PROFILES: ReadonlySet<string> = new Set(['local', 'github-actions']);
 const FIX_MODES: ReadonlySet<string> = new Set(['none', 'fix', 'fix-only']);
-const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['--verbose', '--fix', '--fix-only', '--full']);
-const VALUE_FLAGS: readonly string[] = ['--base', '--only', '--profile'];
+const BOOLEAN_FLAGS: ReadonlySet<string> = new Set([
+  '--verbose',
+  '--fix',
+  '--fix-only',
+  '--full',
+  '--storybook-build-ci-fallback',
+]);
+const VALUE_FLAGS: readonly string[] = ['--base', '--only', '--profile', '--repeat'];
 
 /**
  * Reject unknown, positional, or repeated verify arguments before any scope is resolved.
@@ -228,6 +255,42 @@ function getCliProfile(argv: readonly string[]): VerifyProfile | null {
 }
 
 /**
+ * Parse and range-validate `--repeat` from the verify CLI. Combination rules
+ * (requires `--only storybook-behavior`, requires `--files`, rejects `--full`)
+ * are enforced separately by {@link assertModeCombination}, since they depend
+ * on other resolved fields.
+ * @param argv Raw CLI arguments after the script name.
+ * @returns Parsed repeat count, or null when `--repeat` was not provided.
+ */
+function getCliRepeat(argv: readonly string[]): number | null {
+  const value = getCliOption(
+    argv,
+    '--repeat',
+    'Missing value for --repeat. Example: pnpm verify --only storybook-behavior --files <spec> --repeat 10',
+  );
+
+  if (value === null) {
+    return null;
+  }
+
+  if (!/^-?\d+$/.test(value)) {
+    throw new Error(
+      `Invalid value for --repeat: ${value}. Must be an integer between ${MIN_STORYBOOK_BEHAVIOR_REPEAT} and ${MAX_STORYBOOK_BEHAVIOR_REPEAT}.`,
+    );
+  }
+
+  const parsed = Number(value);
+
+  if (parsed < MIN_STORYBOOK_BEHAVIOR_REPEAT || parsed > MAX_STORYBOOK_BEHAVIOR_REPEAT) {
+    throw new Error(
+      `Invalid value for --repeat: ${value}. Must be an integer between ${MIN_STORYBOOK_BEHAVIOR_REPEAT} and ${MAX_STORYBOOK_BEHAVIOR_REPEAT}.`,
+    );
+  }
+
+  return parsed;
+}
+
+/**
  * Parse explicit file overrides from the verify CLI.
  * @param argv Raw CLI arguments after the script name.
  * @returns Explicit file list, or null when --files was not provided.
@@ -314,9 +377,17 @@ interface ModeCombinationInput {
   scope: VerifyInvocationScope;
   onlyLabel: string | null;
   fixMode: FixMode;
+  storybookBuildCiFallback: boolean;
+  repeat: number | null;
 }
 
-function assertModeCombination({ scope, onlyLabel, fixMode }: ModeCombinationInput): void {
+function assertModeCombination({
+  scope,
+  onlyLabel,
+  fixMode,
+  storybookBuildCiFallback,
+  repeat,
+}: ModeCombinationInput): void {
   if (!isInvocationScope(scope)) {
     throw new Error('Invalid verify scope.');
   }
@@ -346,6 +417,36 @@ function assertModeCombination({ scope, onlyLabel, fixMode }: ModeCombinationInp
       ].join(', ')}`,
     );
   }
+
+  if (storybookBuildCiFallback && (scope.kind === 'full' || onlyLabel !== 'storybook-build')) {
+    throw new Error(
+      '--storybook-build-ci-fallback requires --only storybook-build and cannot be combined with --full.',
+    );
+  }
+
+  if (repeat !== null) {
+    if (
+      !Number.isInteger(repeat) ||
+      repeat < MIN_STORYBOOK_BEHAVIOR_REPEAT ||
+      repeat > MAX_STORYBOOK_BEHAVIOR_REPEAT
+    ) {
+      throw new Error(
+        `Invalid --repeat: ${repeat}. Must be an integer between ${MIN_STORYBOOK_BEHAVIOR_REPEAT} and ${MAX_STORYBOOK_BEHAVIOR_REPEAT}.`,
+      );
+    }
+
+    if (scope.kind === 'full') {
+      throw new Error('--repeat cannot be combined with --full.');
+    }
+
+    if (onlyLabel !== 'storybook-behavior') {
+      throw new Error('--repeat requires --only storybook-behavior.');
+    }
+
+    if (scope.kind !== 'explicit-files') {
+      throw new Error('--repeat requires --files.');
+    }
+  }
 }
 
 /**
@@ -368,6 +469,8 @@ export function resolveVerifyInvocation(
   const hasFix = argv.includes('--fix');
   const hasFixOnly = argv.includes('--fix-only');
   const full = argv.includes('--full');
+  const storybookBuildCiFallback = argv.includes('--storybook-build-ci-fallback');
+  const repeat = getCliRepeat(argv);
 
   if (hasFix && hasFixOnly) {
     throw new Error('Use either --fix or --fix-only, not both.');
@@ -414,6 +517,8 @@ export function resolveVerifyInvocation(
     onlyLabel,
     verbose: argv.includes('--verbose'),
     fixMode: hasFix ? 'fix' : hasFixOnly ? 'fix-only' : 'none',
+    storybookBuildCiFallback,
+    repeat,
   };
   assertModeCombination(invocation);
   return invocation;
@@ -456,10 +561,24 @@ export function isResolvedVerifyInvocation(value: unknown): value is VerifyInvoc
     return false;
   }
 
+  if (typeof value.storybookBuildCiFallback !== 'boolean') {
+    return false;
+  }
+
+  if (value.repeat !== null && typeof value.repeat !== 'number') {
+    return false;
+  }
+
   const onlyLabel = value.onlyLabel === null ? null : value.onlyLabel;
 
   try {
-    assertModeCombination({ scope: value.scope, onlyLabel, fixMode: value.fixMode });
+    assertModeCombination({
+      scope: value.scope,
+      onlyLabel,
+      fixMode: value.fixMode,
+      storybookBuildCiFallback: value.storybookBuildCiFallback,
+      repeat: value.repeat,
+    });
     return true;
   } catch {
     return false;
@@ -544,6 +663,14 @@ export function formatVerifyInvocationCommand(
 
   if (candidate.onlyLabel !== null) {
     args.push('--only', candidate.onlyLabel);
+  }
+
+  if (candidate.repeat !== null) {
+    args.push('--repeat', String(candidate.repeat));
+  }
+
+  if (candidate.storybookBuildCiFallback) {
+    args.push('--storybook-build-ci-fallback');
   }
 
   return formatShellCommand('pnpm', ['verify', ...args]);

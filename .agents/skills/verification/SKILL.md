@@ -15,6 +15,8 @@ A skipped or empty local lane is not evidence that the proof type is unnecessary
 
 Mioframe's canonical verifier entry points are `pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`. Invoke these commands normally when required. They are the repository-owned verification boundary and own their execution environment and transitive tooling.
 
+Agent-facing verifier invocations must use those canonical commands directly. Do not prepend shell-level environment assignments such as `NAME=value pnpm verify ...` or `env NAME=value pnpm verify ...` to select verifier behavior. Any behavior a coding agent is expected to choose must be represented by a narrow verifier CLI option or resolved automatically by the verifier. Environment variables may remain internal verifier-to-child, CI-runtime, or host-context implementation details. If a required coding-agent verification mode can only be reached through an env prefix, treat that as a verifier interface gap and correct the verifier instead of asking for broader command approval.
+
 Do not preflight verifier internals or infer that a verifier command is unavailable from generic sandbox capabilities, tool availability visible inside the current shell, or knowledge of how a child check is implemented. Attempt the canonical verifier command first.
 
 Keep the coding-agent runtime's sandbox and permission system enabled. If the runtime itself rejects the verifier invocation, keep the command unchanged and use the runtime's normal command-scoped approval/escalation mechanism. Report an environment blocker only after an actual invocation still cannot run, using the exact visible failure.
@@ -22,6 +24,8 @@ Keep the coding-agent runtime's sandbox and permission system enabled. If the ru
 Never ask the operator to execute verifier commands, broaden approval to generic `pnpm`, `node`, shell interpreters or arbitrary package scripts, enable unrestricted/full-access execution, or replace a blocked verifier invocation with raw child commands.
 
 Do not diagnose repository or host-file corruption from sandbox-visible protected-path representations alone. Attribute a failure to the verifier only when verifier output or other direct evidence supports that conclusion.
+
+Known flaky behavior is failed proof, not an accepted warning. A retry-pass/flaky classification never counts as green evidence; retries may remain enabled only for diagnostics when the owning runner or gate still fails on flaky classification. Correct the root cause and rerun the required faithful proof instead of weakening assertions, timeouts, retry policy, or input fidelity.
 
 ## Local verification purpose
 
@@ -56,12 +60,15 @@ pnpm verify --only eslint --files <paths...>
 pnpm verify --only type-check
 pnpm verify --only unit-tests --files <paths...>
 pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only storybook-behavior --files <spec...> --repeat <2..20>
 pnpm verify --only e2e --files <paths...>
 pnpm verify --only visual --files <paths...>
 pnpm verify --only mutation --files <paths...>
 ```
 
 `--files` names readable existing paths. Removed, moved, or uncertain ownership must be handled by automatic status-aware planning or a full owning-lane fallback, not by passing nonexistent paths.
+
+`--repeat` is a bounded Storybook-behavior stability diagnostic. It requires `--only storybook-behavior` plus explicit `--files`, accepts only integer counts from 2 through 20, and repeats the selected behavior scope inside one verifier-managed Playwright invocation. It is not a routine final handoff checklist item, does not change automatic planning, and is not part of normal CI unless an implementation contract explicitly requires a risk-specific stability proof.
 
 Do not use `--only` to reconstruct the final verification plan manually. The automatic `pnpm verify` planner owns that decision for handoff.
 
@@ -75,6 +82,7 @@ Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutat
 - `pnpm verify --full` / `pnpm verify:release` is not the normal coding-agent handoff path unless the task explicitly requires release/full-project proof.
 - Release-only labels require `--full`.
 - Mutation is targeted and is not available as `--full --only mutation`.
+- `--repeat` is available only with `--only storybook-behavior --files ...` and is bounded to 2–20.
 - Fix modes are limited to checks that actually own safe automatic fixes.
 
 ## Automatic scope

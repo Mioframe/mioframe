@@ -183,11 +183,21 @@ jobs:
       - name: Verify unit tests
         run: pnpm verify --verbose --only unit-tests
 
-      - name: Verify storybook build
-        run: pnpm verify --verbose --only storybook-build
-
       - name: Verify mutation
         run: pnpm verify --verbose --only mutation
+
+      # Parallel-free fallback proof for the Storybook static build, running inside this
+      # already-provisioned job with no dependency on either browser lane. It exists so a
+      # storybook-build-relevant change is still proven buildable even when no browser lane
+      # happens to select Storybook. --storybook-build-ci-fallback requests the verifier's narrow
+      # CI-only fallback contract (see `storybookBuildCiFallback` in scripts/lib/verifyInvocation.ts
+      # and scripts/verify.ts): this step builds only when the ordinary storybook-build plan
+      # requires it AND neither the storybook-behavior nor the visual plan will run. When either
+      # browser lane is selected, that self-contained lane already builds the equivalent static
+      # Storybook output itself, so this step skips successfully instead of duplicating that work.
+      # No artifact is produced or uploaded here; nothing downstream consumes this step's output.
+      - name: Verify storybook build (CI fallback)
+        run: pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback
 
       - name: Upload static verify logs
         if: ${{ failure() || cancelled() }}
@@ -198,7 +208,60 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  verification-browser:
+  # E2E is an independent proof owner with no Storybook dependency: it must
+  # not wait on the storybook-build fallback step in verification-static above.
+  verification-browser-e2e:
+    needs:
+      - autofix
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    name: verification-browser (e2e)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify e2e
+        run: pnpm verify --verbose --only e2e
+
+      - name: Upload browser verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-e2e-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Storybook-owned browser proof: parallel, self-contained behavior/visual
+  # lanes that each build their own Storybook static output when selected,
+  # with no dependency on the storybook-build fallback step in
+  # verification-static. This keeps both lanes on the critical path directly
+  # behind autofix instead of behind a shared build producer.
+  verification-storybook-browser:
     needs:
       - autofix
     if: >-
@@ -206,10 +269,8 @@ jobs:
       (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
     strategy:
       fail-fast: false
-      max-parallel: 3
       matrix:
         lane:
-          - e2e
           - storybook-behavior
           - visual
     name: verification-browser (${{ matrix.lane }})
@@ -255,7 +316,8 @@ jobs:
   verification:
     needs:
       - verification-static
-      - verification-browser
+      - verification-browser-e2e
+      - verification-storybook-browser
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -264,7 +326,8 @@ jobs:
       - name: Require implementation verification lanes
         env:
           STATIC_RESULT: ${{ needs.verification-static.result }}
-          BROWSER_RESULT: ${{ needs.verification-browser.result }}
+          E2E_RESULT: ${{ needs.verification-browser-e2e.result }}
+          STORYBOOK_BROWSER_RESULT: ${{ needs.verification-storybook-browser.result }}
         run: |
           failed=0
 
@@ -273,8 +336,13 @@ jobs:
             failed=1
           fi
 
-          if [ "$BROWSER_RESULT" != "success" ]; then
-            echo "Browser verification result: $BROWSER_RESULT"
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "E2E verification result: $E2E_RESULT"
+            failed=1
+          fi
+
+          if [ "$STORYBOOK_BROWSER_RESULT" != "success" ]; then
+            echo "Storybook browser verification result: $STORYBOOK_BROWSER_RESULT"
             failed=1
           fi
 
