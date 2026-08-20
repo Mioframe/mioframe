@@ -110,35 +110,31 @@ For Material-specific worker roles, source authority, resume/correction routing,
 
 - Coding agents must not manually bump `package.json` `version` for ordinary `develop` PRs. The architect/reviewer owns the `version:patch|minor|major` PR release-intent label; CI materializes the exact expected version from it. `main` and release sync-back behavior follow `docs/release.md`.
 
-## Verification
+## Verification ownership
 
-- Run Mioframe's canonical verifier entry points (`pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`) normally when required; they are repository-approved coding-agent commands, and the verifier owns its execution environment and transitive tooling. Do not infer that a verifier command is unavailable from generic sandbox capabilities or internal implementation details. If the runtime actually rejects an invocation, use its normal command-scoped approval/escalation path without changing the command, and report the exact error if it still cannot run. Never ask the operator to run verifier commands, broaden approval to generic `pnpm`, `node`, or shell execution, or enable unrestricted/full-access execution.
-- Agent-facing verifier invocations must use the canonical `pnpm verify...` command directly, without shell-level environment prefixes such as `NAME=value pnpm verify ...` or `env NAME=value pnpm verify ...`. Agent-selectable verifier behavior must be represented by verifier CLI options or automatic planning. Environment variables may remain internal verifier/CI/child-process implementation details, but if a required coding-agent mode is reachable only through an env prefix, treat that as a verifier interface gap and fix the verifier instead of requesting broader execution permission.
-- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` for ordinary non-trivial implementation; deterministic Material implementation/migration skills own their narrower proof checklist directly.
-- During implementation or correction, coding agents may use `pnpm verify --only <label> --files ...` for the smallest useful verifier-managed feedback. Focused commands are optional iteration/diagnostic tools, not a mandatory final checklist.
-- The default final local coding-agent handoff check is `pnpm verify` without `--full`. It automatically resolves the changed workspace to the smallest supported verification plan and prints the aggregated `VERIFY RESULT`.
-- Do not confuse ordinary `pnpm verify` with full-project verification. Only `pnpm verify --full` / `pnpm verify:release` is unconditional full-project release scope, and coding agents do not run it merely to hand work back to the architect.
-- Do not mechanically run format, lint, type-check, unit, browser, visual, E2E, mutation, or other labels one-by-one and then repeat the same work through `pnpm verify`. If no focused feedback is needed, run the final automatic command directly. If a focused rerun is useful after a failure, rerun only that failed scope while correcting it, then run the automatic `pnpm verify` once after corrections are stable.
-- Use `pnpm verify --fix-only` only for safe automatic formatting, lint fixes, or instruction compatibility generation. Inspect resulting file changes before continuing; fix-only does not replace the final automatic `pnpm verify`.
-- Do not substitute raw underlying test, lint, visual, mutation, or browser commands for verifier-managed checks except for narrow diagnosis explicitly allowed by the verification skill.
-- Required contract proof must exist before handoff; the final automatic run and CI do not replace missing tests, architecture review, browser/visual evidence, or risk-specific verification.
-- If the final automatic `pnpm verify` cannot complete because of a concrete environment, unrelated repository, or external blocker, report the exact blocker and a partial local verification result; do not replace it with a manually assembled complete list of `--only` checks.
-- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns semantic review, CI review, roadmap status, and merge readiness.
-- If CI fails because of the PR, route the failure to the correct owner, fix it, use the smallest useful focused verifier-managed rerun if needed, then run the automatic `pnpm verify` once before handing the correction back. Do not rerun all unaffected labels individually.
-- Do not claim merge readiness while required exact-head CI is missing or failing.
+- Coding agents own code and the proof they need to implement or diagnose that code. They may run focused verifier-managed checks such as `pnpm verify --only <label> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
+- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, or a manually reconstructed full checklist solely because code is ready to hand back.
+- GitHub CI on the exact PR head is the authoritative automatic repository verification gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
+- A coding agent must not be asked to rerun checks that CI will perform automatically unless a concrete failing contract needs local diagnosis or a task-specific risk cannot be represented by the normal CI gate.
+- Required contract proof must still exist in code before handoff. CI does not replace missing tests, architecture review, browser/visual evidence, or a narrow implementation-specific proof explicitly required by the task.
+- Known flaky behavior is failed proof. Do not accept retry-pass/flaky classification, weaken assertions, inflate timeouts, or add sleeps/recovery loops to make a coding task appear green.
+- When a focused verifier command is useful, invoke the canonical `pnpm verify...` command directly without shell-level environment prefixes. Keep sandbox/permission handling inside the verifier/runtime boundary; never ask the operator to run commands or grant unrestricted shell access.
+- Use `pnpm verify --fix-only` only when the coding change itself needs safe automatic formatting/lint fixes. Architect-authored documentation or workflow files are not a reason to send a coding agent back merely to satisfy an automatic repository gate.
+- If CI exposes a PR-caused failure after handoff, the architect routes that concrete failure to the truthful coding owner. The coding agent fixes the code and may use the smallest useful focused verifier check for feedback; the architect then republishes the head and CI remains the final gate.
+- Stage-specific skills must not introduce a mandatory final automatic local verification run for coding-agent completion. Any older wording that requires such a handoff gate is superseded by this ownership rule and should be removed when that workflow is next edited.
 
-Final response after coding-agent edits must include:
+After coding-agent edits, report only implementation state and any focused verification actually used:
 
 ```text
 TASK RESULT
 status: complete | partial | blocked
 remaining: none | <remaining implementation/proof/blocker>
 
-LOCAL VERIFY RESULT
-commands: <final pnpm verify, plus only focused verifier-managed commands actually useful during implementation/diagnosis>
-status: passed | failed | partial | not run
-reason if partial/not run: <reason the final automatic pnpm verify could not complete>
+LOCAL FEEDBACK
+commands: none | <focused verifier-managed commands actually useful during implementation/diagnosis>
+status: not run | passed | failed | partial
+reason if failed/partial: <exact reason>
 
 CI GATE
-status: not owned by coding agent
+status: architect-owned
 ```
