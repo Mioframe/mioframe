@@ -1,252 +1,180 @@
 # V3C visual proof ownership cleanup
 
-Status: architecture resolved; V3C-A Lists implementation is in correction after first architecture review.
+Status: architecture resolved; V3C-A Lists is architecturally accepted with a bounded legacy exception. Final exact-head verification and PR CI remain required before merge.
 
-`docs/testing/architecture.md` remains the canonical project-wide testing policy. `docs/testing/storybook.md` defines Storybook ownership and placement. `docs/testing/migration-plan.md` records executable migration authorization. This document records the V3C architecture, current review state, and acceptance contract.
+`docs/testing/architecture.md` remains the canonical project-wide testing policy. `docs/testing/storybook.md` defines Storybook ownership and placement. `docs/testing/migration-plan.md` records executable migration authorization. This document records the V3C architecture, the V3C-A result, and the exception boundary that applies only to the legacy Lists family.
 
 ## Goal
 
-Reduce visual-lane cost by correcting proof ownership, not by weakening coverage.
+Reduce browser verification cost by correcting proof ownership before optimizing necessary tests or adding execution parallelism.
 
-For each audited legacy visual spec:
+For a normal durable owner, V3C should:
 
-1. identify every observable contract currently asserted;
-2. preserve each unique required contract under one primary proof owner;
-3. move reusable real-browser behavior to Storybook behavior;
+1. identify observable contracts in legacy visual proof;
+2. keep one primary proof owner for each required contract;
+3. move reusable real-browser behavior to owner-local Storybook behavior;
 4. move Vue/native/ARIA/component contracts to component tests;
-5. keep only bounded accepted appearance in visual regression;
-6. remove duplicate or implementation-detail assertions only after their required contract is either preserved elsewhere or shown not to be a public/observable contract;
-7. measure wall-clock and aggregate execution impact after cleanup.
+5. keep visual regression limited to bounded accepted appearance;
+6. remove duplicate and implementation-detail proof;
+7. measure wall-clock and aggregate browser execution impact.
+
+The goal is lower total proof cost, not merely moving assertions from the visual lane to another browser lane.
 
 ## Non-goals
 
 V3C does not:
 
 - change production behavior or public APIs;
-- redesign verifier resolver architecture;
-- add new verifier CLI modes, registries, generic test DSLs, or dependency graphs;
-- change application-E2E project applicability;
-- add workers, jobs, sharding, retries, sleeps, timeout inflation, or assertion weakening;
-- migrate unrelated visual owners in the same batch;
-- treat screenshot baseline acceptance as Material conformance proof.
+- redesign verifier/resolver architecture;
+- add verifier CLI modes, registries, dependency graphs, generic test DSLs, workers, jobs, sharding, retries, sleeps, timeout inflation, or weaker assertions;
+- migrate unrelated proof owners in the same batch;
+- treat screenshot acceptance as Material conformance proof.
 
-## Ownership
+## Normal proof ownership
 
-Proof ownership follows the existing testing architecture:
+| Observable contract | Primary proof owner |
+| --- | --- |
+| Vue props/emits/slots, native owner, attributes, ARIA and deterministic semantic state | colocated component `*.test.ts` |
+| Real focus, keyboard, pointer/touch, hit testing, browser layout/overflow and browser-observable state transitions | owner-local `*.browser.spec.ts` |
+| Bounded accepted stable appearance | visual proof in the currently authorized location |
+| Complete product scenario crossing product/service/navigation/persistence boundaries | application E2E |
 
-| Observable contract                                                                                              | Primary proof owner                                                     |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Vue props/emits/slots, native owner, explicit attributes, ARIA and controlled semantic state                     | colocated component `*.test.ts`                                         |
-| Real focus, keyboard, pointer/touch, geometry, overflow, browser layout and browser-observable state transitions | owner-local Storybook `*.browser.spec.ts`                               |
-| Bounded accepted stable appearance                                                                               | visual `*.visual.spec.ts` or current authorized central visual location |
-| Complete product scenario crossing product/service/navigation/persistence boundaries                             | application E2E                                                         |
+Private DOM/classes/custom properties and renderer internals are not independent contracts.
 
-Private DOM/classes/custom properties and renderer internals are not independent contracts. They may remain in proof only when the repository explicitly owns that public boundary and the assertion is the lowest faithful way to prove it.
+For a durable public CSS token contract, browser proof should set a distinctive non-default value through the public surface and assert the intended rendered effect. Declaration-only, resolved-value-only, or external-default-value checks are not the target architecture.
 
-Public CSS token proof follows `ui-browser-behavior`: when an active Mioframe public token is part of the accepted contract, set a distinctive non-default value through the public surface and assert its rendered effect. Declaration-only or resolved-value-only token checks are insufficient.
-
-## V3C-A — Lists
+## V3C-A — legacy Lists
 
 ### Scope
 
-Audit and decompose:
+V3C-A audited:
 
 - `tests/e2e/visual/shared-ui/md-list.spec.ts`;
 - `tests/e2e/visual/shared-ui/md-list-material-contract.ts`;
-- its active snapshot directory;
-- existing `src/shared/ui/Lists/*.test.ts` owners;
-- existing Lists stories and story fixtures required by surviving proof.
+- active List visual snapshots;
+- `src/shared/ui/Lists/*.test.ts`;
+- Lists stories/fixtures needed by surviving proof.
 
-Production `src/shared/ui/Lists` implementation is not a change target unless the audit exposes an actual production defect. A proof migration must not alter production behavior merely to simplify tests.
+The production `src/shared/ui/Lists` implementation is not a V3C change target.
 
-### Final proof shape
-
-Use the minimum complete set:
+### Resulting proof shape
 
 ```text
 src/shared/ui/Lists/*.test.ts
-  Vue/native/ARIA/component contracts
+  component-owned semantics
 
 src/shared/ui/Lists/MDList.browser.spec.ts
-  surviving Lists-owned real-browser contracts
+  reusable real-browser and compatibility proof
 
 tests/e2e/visual/shared-ui/md-list.spec.ts
-  surviving screenshot assertions only
+  screenshot assertions only
 ```
 
-`MDList.browser.spec.ts` is the cohesive Lists module/family browser owner. Do not split one browser spec per Vue file unless a later demonstrated ownership boundary requires it.
+Lists is authorized for owner-local browser proof. Surviving visual proof remains in the current central visual location until the canonical Material List migration changes the owner.
 
-Lists is authorized in V3C-A for owner-local browser proof. Do not add a central Storybook behavior mapping for it; filesystem-derived owner-local discovery is the ownership mechanism.
+### Implemented result
 
-Lists is **not** authorized by V3C-A for owner-local visual colocation. Surviving visual assertions and baselines remain in the current central visual location until a separate visual-migration authorization or canonical Material migration changes that owner.
+The implementation achieved the main V3C-A objectives:
 
-### Required classification
+- the legacy central visual spec is screenshot-only;
+- the broad `md-list-material-contract.ts` helper is removed;
+- the former large inline Material literal table was reduced substantially;
+- reusable browser proof is owner-local under `src/shared/ui/Lists/MDList.browser.spec.ts`;
+- `aria-multiselectable` semantics are component-owned in `MDList.test.ts`;
+- narrow MDStateLayer mounting/composition proof is component-owned in `MDListItem.test.ts`;
+- three duplicate visual baselines were removed;
+- the known focus-indicator intermittent failure was corrected through observable focus/indicator readiness rather than retry or timeout inflation;
+- the focused Lists behavior stability diagnostic completed 580/580 executions with no reported flaky result;
+- production Lists code, verifier architecture, CI topology, jobs, workers, retries, and Playwright configuration were not changed.
 
-Move or delete current assertions according to their actual contract:
+Measured browser proof cost changed from the V3 baseline to the corrected V3C-A result as follows:
 
-- screenshots of distinct accepted visual states/compositions -> keep in visual;
-- real Enter/Space/Tab behavior -> browser;
-- focus acquisition/order/global focus-indicator integration -> browser;
-- real pointer hover/press/click and primary/trailing action ownership -> browser;
-- browser geometry, hit-target size, overflow and rendered spacing required by a user-visible contract -> browser;
-- native tags/roles/ARIA/static DOM semantics that do not require a browser -> existing component tests;
-- selection semantic state that does not require real browser input -> component tests;
-- private `--md-private-*`, incidental classes, direct `transition-property` assertions, fixture implementation details, and declaration-only token checks -> remove unless a current public contract proves they are necessary;
-- Material/public token assertions -> keep only when the token is an active Mioframe public contract, and prove the rendered effect at the lowest faithful owner;
-- Storybook consumer reproductions named after Settings, Repository Explorer, EntryAddSheet, or Home -> do not classify as product E2E merely because they resemble product consumers; they remain isolated Lists fixtures unless they actually prove a complete product scenario.
+| Metric | V3 baseline | Corrected V3C-A |
+| --- | ---: | ---: |
+| Visual executions | 201 | 87 |
+| Storybook behavior executions | 76 | 134 |
+| Visual + behavior executions | 277 | 221 |
+| Visual local elapsed | about 8m21 verifier baseline | about 3.1m reported locally |
+| Storybook behavior local elapsed | about 4m+ baseline | about 3.1m reported locally |
 
-### Screenshot pruning
+This is a material reduction in both the previously dominant visual lane and aggregate browser executions.
 
-Do not preserve every current baseline mechanically.
+## V3C-A legacy exception
 
-A screenshot survives only when it protects a distinct accepted stable visual contract not already covered by another surviving baseline. Diagnostic wrappers, technical galleries, or consumer-like fixtures do not automatically deserve separate baselines.
+Lists is expected to be replaced by the canonical Material family implemented through the repository Material workflow and the private `@m3e/web` renderer boundary. The canonical family will own its own API, token and behavior contracts and must add proof from those contracts rather than preserve the internal proof structure of the legacy implementation.
 
-Before deleting a baseline:
+Because of that replacement path, V3C-A does **not** require another deep cleanup round solely to perfect the old Lists proof architecture.
 
-1. identify the visible invariant it was intended to protect;
-2. identify the surviving primary visual owner for that invariant, or establish that no stable public visual contract exists;
-3. inspect whether another surviving baseline already covers the same visible state;
-4. delete only after equivalent required coverage is confirmed.
+The current accepted legacy exceptions are:
 
-Intentional pixel changes are outside V3C-A unless a stale/duplicated baseline is removed. Production appearance is expected to remain unchanged.
+- `MDList.browser.spec.ts` may temporarily retain some legacy fixture/default-geometry/system-token checks that would not be accepted as the preferred proof shape for a new durable canonical family;
+- those checks must not be expanded, generalized, or used as precedent for later V3C owners;
+- V3C-A does not require converting legacy spacing/default-value checks into a new exhaustive public-token override suite before the canonical List migration;
+- V3C-A does not require further baseline pruning merely to prove that every remaining technical/Material-reference image is globally minimal before the family is replaced;
+- surviving Material-reference screenshots are temporary accepted-appearance/migration comparison evidence only and do not prove Material conformance;
+- remaining legacy-only proof may be deleted or replaced as part of the canonical List migration when the new family contracts identify the compatibility scenarios that actually survive.
 
-### Material contract helper
+This exception is justified only because the implementation owner itself is planned for replacement. It does not weaken `docs/testing/architecture.md`, `.agents/skills/ui-browser-behavior/SKILL.md`, or `.agents/skills/visual-regression-testing/SKILL.md` for durable owners.
 
-`md-list-material-contract.ts` belongs to the legacy visual suite only because that suite mixed proof types.
+## Compatibility proof worth carrying into the canonical List migration
 
-After classification:
+The future List migration should re-evaluate current proof from user-observable scenarios, with particular attention to:
 
-- delete it if no surviving owned contract requires literal constants;
-- otherwise move/split only the smallest values required by surviving component/browser proof to the truthful Lists test owner;
-- do not preserve a broad Material token/value table solely to keep legacy assertions alive.
+- native keyboard activation;
+- real focus order;
+- global focus-indicator integration;
+- primary versus trailing action ownership and hit testing;
+- selection through real pointer input;
+- disabled interaction behavior;
+- browser overflow/containment regressions that correspond to real reusable List behavior;
+- a small representative set of current accepted visual appearances.
 
-## First implementation review
+Legacy implementation details such as the current StateLayer wiring, exact internal token indirection, and old literal Material default matrices are not compatibility requirements by themselves.
 
-The first implementation correctly established the target file ownership shape, but it is **not accepted** yet.
+## V3C-A completion boundary
 
-Confirmed good changes:
+No further MDList test-architecture redesign is required for V3C-A.
 
-- the legacy central visual spec is now screenshot-only;
-- reusable browser proof is physically owner-local in `src/shared/ui/Lists/MDList.browser.spec.ts`;
-- `aria-multiselectable` component semantics moved to `MDList.test.ts`;
-- narrow MDStateLayer mounting/composition proof moved to `MDListItem.test.ts`;
-- verifier/resolver/CI architecture and production Lists code were not changed;
-- the visual full lane reduced from the V3 baseline of 201 executions to 90 executions and passed without pixel changes in the first implementation run.
+V3C-A is accepted when all of the following remain true on the final branch head:
 
-The following blockers must be corrected together before another architecture review.
+- the visual spec stays screenshot-only;
+- the broad legacy Material helper/table does not return;
+- the known focus-indicator flake remains resolved;
+- no retries, sleeps, force-based interaction, timeout inflation, repeated action delivery, or weakened flaky acceptance are introduced;
+- production Lists behavior/API remains unchanged;
+- aggregate browser execution remains materially below the V3 baseline;
+- final automatic `pnpm verify` passes;
+- GitHub exact-head CI passes before merge.
 
-### Blocker 1 — known focus-indicator flake
+Do not add more legacy proof merely to satisfy the normal ideal ownership model. If a concrete current product defect is discovered, fix and prove that defect; otherwise defer List-family proof redesign to the canonical Material migration.
 
-Two real-Tab/focus-indicator browser tests remain intermittently failing. This cannot be classified as an acceptable low-resource sandbox limitation.
+## Follow-up V3C owners
 
-Repository testing policy treats any known intermittent failure as failed proof. The correction must either remove a non-required duplicate/flaky assertion after ownership analysis or make the required browser contract deterministic through observable readiness/state. Do not rely on a stronger CI runner, retries, sleeps, timeout inflation, repeated action delivery, or weakened assertions.
+Later V3C owners should be audited independently. Existing candidates include:
 
-### Blocker 2 — legacy Material value table was moved rather than fully classified
+- `tests/e2e/visual/shared-ui/md-icon-button.spec.ts`;
+- `tests/e2e/visual/shared-ui.spec.ts` for MDCard/StateLayer;
+- `tests/e2e/visual/shared-ui/md-menu.spec.ts`;
+- `tests/e2e/visual/fab-container.spec.ts`.
 
-The current `MDList.browser.spec.ts` retains a broad inline `MD_LIST_MATERIAL_CONTRACT` and many literal Material geometry/default-token assertions.
-
-This is not the intended V3C result. Reclassify every such assertion independently:
-
-- keep geometry only when it protects a current observable Lists contract that genuinely requires a browser;
-- keep a public component-token contract only when `src/shared/ui/Lists/README.md` currently exposes that token to consumers;
-- for a public token, prove the public override through a distinctive non-default value and assert the intended rendered effect;
-- remove declaration-only/default-value checks, system-token table checks, external-Material literal conformance matrices, and fixture-only assertions that do not protect an independent Mioframe contract;
-- do not use the external Material source as a second automated source of truth for literal defaults inside browser tests.
-
-The goal is not to preserve the old assertion count. The goal is the minimum faithful browser proof for current Mioframe contracts.
-
-### Blocker 3 — screenshot pruning was not completed
-
-Keeping all 16 existing PNGs unchanged does not satisfy the pruning acceptance by itself.
-
-Audit each surviving screenshot and record one distinct accepted visible invariant. In particular, explicitly reconsider:
-
-- diagnostic wrapper screenshots;
-- technical surface-context galleries;
-- consumer reproductions such as Repository Explorer, Settings/Home patterns, and EntryAddSheet rows;
-- overlapping technical and Material-reference galleries.
-
-Delete a baseline when its visible invariant is already protected by another surviving baseline or when it is only a diagnostic/fixture artifact rather than a stable visual contract. Keep a consumer-like screenshot only when the isolated Lists composition itself has distinct stable visual regression value; naming a product consumer is not sufficient.
-
-### Blocker 4 — final verification and performance evidence
-
-The first implementation did not produce a green final automatic `pnpm verify` because:
-
-- Storybook behavior still had known intermittent failures;
-- formatter failures existed in architecture docs prepared before the coding session.
-
-The correction round may apply **mechanical formatter-only changes** to the V3C documentation already changed on this branch when required by `pnpm verify`. It must not redesign or rewrite the architecture documents.
-
-After correction, record comparable full-lane measurements for visual and Storybook behavior and report aggregate browser execution/compute impact. A visual-lane improvement is not sufficient if unnecessary proof was merely moved to Storybook behavior.
-
-## Acceptance
-
-V3C-A is complete only when:
-
-- `md-list.spec.ts` contains screenshot preparation/assertions only and no behavioral success criteria, DOM/ARIA contract assertions, token/computed-style matrices, or geometry matrices;
-- every unique required Lists contract removed from visual has a correct primary owner or is explicitly shown to be implementation detail/duplicate/non-contract proof;
-- reusable Lists browser behavior is owner-local under `src/shared/ui/Lists/MDList.browser.spec.ts` with no duplicate central mapping;
-- component-level semantics are covered by existing colocated Lists tests without duplicating the same contract in browser proof;
-- broad external-Material/default-token conformance tables are not retained as Storybook behavior proof;
-- any surviving public token browser proof uses the public override surface and an observable rendered effect;
-- surviving visual baselines are a minimal set of distinct accepted appearances with an explicit invariant for each retained baseline;
-- production behavior, story addresses, and unrelated owners remain unchanged;
-- no known intermittent browser failure remains;
-- no retries, sleeps, force-based interaction, timeout inflation, repeated action delivery, or weakened assertions are introduced;
-- focused proof passes for every changed owner and final `pnpm verify` passes before coding-agent handoff;
-- before/after visual and Storybook behavior counts/timings plus aggregate browser execution impact are recorded;
-- GitHub exact-head CI remains the architect-owned merge gate.
-
-## Performance evidence
-
-Use final CI run #3881 from PR #212 as the repository baseline for the full lanes:
-
-- visual: 201 Playwright executions, about 7.1 minutes Playwright / 8m21 verifier;
-- Storybook behavior: 76 tests, about 4+ minutes;
-- application E2E: 65 executions, about 6.3 minutes Playwright / 7m15 verifier.
-
-First implementation evidence:
-
-- visual: 90/90 passed, about 3m07 locally;
-- Storybook behavior: 141/144 passed in the reported full-lane run; two Lists focus-indicator tests remained intermittently failing;
-- first implementation therefore has no accepted final Storybook behavior timing/performance result.
-
-For the correction record after the suite is stable:
-
-- visual test/execution count;
-- visual Playwright elapsed time;
-- visual verifier elapsed time;
-- Storybook behavior test/execution count and elapsed time;
-- aggregate browser executions and approximate aggregate browser compute.
-
-Success is not defined as moving the same unnecessary assertions from visual to behavior. Aggregate proof must become simpler or cheaper while preserving required contracts. A behavior-lane increase is acceptable only for faithful browser contracts that were previously misowned in visual.
-
-## Follow-up batches
-
-After V3C-A, audit the next owners independently. Confirmed candidates include:
-
-- `tests/e2e/visual/shared-ui/md-icon-button.spec.ts` — screenshots mixed with geometry/token/computed-style proof;
-- `tests/e2e/visual/shared-ui.spec.ts` — MDCard/StateLayer screenshots mixed with component/browser behavior;
-- `tests/e2e/visual/shared-ui/md-menu.spec.ts` — browser behavior with no screenshot regression ownership;
-- `tests/e2e/visual/fab-container.spec.ts` — browser geometry/anchoring behavior with no screenshot regression ownership.
-
-Do not combine these owners into V3C-A.
+The Lists legacy exception must not be copied to a durable owner merely to avoid cleanup. For each next owner, first check whether that implementation is itself scheduled for near-term canonical Material replacement. If it is, prefer the same bounded strategy: remove expensive/misowned proof that has immediate value, preserve compatibility scenarios needed by migration, and avoid polishing implementation-specific tests that the replacement will delete.
 
 ## After V3C
 
-- V3D: remeasure and optimize expensive **necessary** tests only after misowned/duplicated proof is removed.
-- V3E: consider more workers/jobs/sharding only for irreducible work and only when measured wall-clock benefit justifies aggregate compute and complexity.
+- V3D: optimize expensive necessary tests after misowned/duplicated proof is removed.
+- V3E: consider more workers/jobs/sharding only for irreducible work and only when measurement justifies added compute and complexity.
 - V4A: automatic release-impact planning.
 - V4B: durable unit-test impact.
 - V4C: persistent mutation targets.
 
-## Implementation readiness
+## Current readiness
 
 - architecture decisions resolved: yes;
-- owner and source of truth resolved: yes;
-- test ownership rules resolved: yes;
+- V3C-A ownership correction materially achieved: yes;
+- known V3C-A flake resolved: yes, based on the reported 580/580 bounded stability run;
+- additional legacy Lists proof redesign required: no;
 - production/API changes required: no;
 - verifier architecture changes required: no;
-- correction blockers resolved: no;
-- current implementation accepted: no;
-- verdict: ready for correction, not ready for merge.
+- final automatic verification required on the latest branch head: yes;
+- exact-head GitHub CI required: yes;
+- architecture verdict: accepted with bounded legacy exception; proceed to final verification and PR gate.
