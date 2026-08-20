@@ -59,7 +59,7 @@
 - Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, `DialogForm`, and Material `MDSwitch` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete, and later Material migrations (such as `MDSwitch`) may establish local browser ownership independently of the original S2 groups. The legacy `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` this S2-A entry originally migrated no longer exists: the `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`) removed the legacy component and its owner-local proof. The Material `checkbox` family's own owner-local browser spec (`src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts`) independently satisfies the general S2 owner-local convention for a new Material family; it was never itself an S2 migration target.
 - Loading Indicator, Chips, MarkdownContent, MDSwitch, the canonical Material `checkbox` family, and (formerly) legacy MDCheckbox use the owner-local visual convention (Stage S3 complete; Stage S4-A through S4-D complete; Stage S4-B complete, now historical — see S4-B below). The canonical Material `checkbox` family established its own owner-local visual ownership (`src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts`, colocated `MDCheckbox.visual.spec.ts-snapshots/`) directly through its own Material family migration workflow, mirroring the Stage S4-D (MDSwitch) precedent, not through a separate S4 group. All other visual specs/baselines still use the current central visual execution structure until later S4 groups or their canonical Material migration establishes final ownership directly.
 - App E2E uses centralized scenario mappings and remains centralized by design.
-- Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
+- Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere. V3C/S5 cleans these owner-by-owner without requiring unrelated S4 visual-colocation groups to finish first.
 - Persistent mutation and release-impact migration remain separate work.
 
 The current mixed browser location is executable: migrated owners use colocated `src/**/*.browser.spec.ts`, while unmigrated owners retain the legacy central location. Agents must follow the stage authorization below rather than migrating additional specs merely because the generic discovery mechanism can execute them. A canonical Material family migration is an explicit authorization path for that family once owner-local discovery is executable and must not defer surviving family proof to a separate later S4 ownership-only move.
@@ -415,16 +415,58 @@ Acceptance before removing legacy visual discovery:
 
 ### Stage S5 — proof ownership cleanup
 
-Only after browser and visual ownership are stable:
+Status: **in progress; V3C-A Lists is the current authorized group**.
+
+Proof cleanup may proceed owner-by-owner once the proof types needed by that owner are executable and ownership can be represented truthfully. Completion of unrelated S4 visual-colocation groups is not a prerequisite. This does not authorize opportunistic visual colocation: an owner without explicit S4/Material visual migration authorization keeps surviving visual proof in the current central visual location.
+
+For each authorized owner:
 
 - move reusable browser interaction out of visual specs;
 - move deterministic/component contracts to the lowest faithful Vitest owner;
 - move complete product outcomes to application E2E only when product composition owns them;
 - remove proven duplicate assertions;
-- consolidate generic foundation behavior at foundation owners;
-- make browser helpers strict rather than recovery-oriented.
+- consolidate generic foundation behavior at foundation owners when the contract is actually foundation-owned;
+- make browser helpers strict rather than recovery-oriented;
+- keep surviving visual assertions as screenshot-only proof in the owner's currently authorized visual location.
 
 This stage changes proof ownership, not resolver architecture.
+
+#### V3C-A — Lists proof ownership cleanup (authorized)
+
+Architecture: `docs/testing/v3c-visual-proof-ownership.md`.
+
+Scope:
+
+- `tests/e2e/visual/shared-ui/md-list.spec.ts`;
+- `tests/e2e/visual/shared-ui/md-list-material-contract.ts`;
+- active `md-list.spec.ts-snapshots`;
+- existing `src/shared/ui/Lists/*.test.ts` owners;
+- Lists stories/fixtures required by surviving proof.
+
+Final ownership:
+
+- reusable real-browser Lists behavior -> `src/shared/ui/Lists/MDList.browser.spec.ts` using existing filesystem-derived owner-local Storybook behavior discovery, with no explicit central mapping;
+- Vue/native/ARIA/component contracts -> existing colocated Lists component tests;
+- distinct accepted stable appearance -> surviving screenshot assertions in the current central `tests/e2e/visual/shared-ui/md-list.spec.ts` location;
+- complete product scenarios -> application E2E only when a real cross-product scenario is actually being proved; Storybook fixtures that resemble Settings, Repository Explorer, EntryAddSheet, or Home are not product proof by naming alone.
+
+Constraints:
+
+- production behavior and public APIs do not change for proof migration;
+- do not move Lists visual proof to `src/**/*.visual.spec.ts` in V3C-A;
+- do not add verifier/resolver modes, registries, mappings, jobs, workers, retries, sleeps, timeout inflation, or weaker assertions;
+- do not preserve private implementation assertions or Material value tables merely to retain legacy test volume;
+- do not delete a unique required contract until its correct primary owner exists and passes;
+- do not include `md-icon-button`, MDCard/StateLayer, MDMenu, FabContainer, or other V3C candidates in the Lists batch.
+
+Acceptance:
+
+- the remaining Lists visual spec contains only deterministic screenshot preparation and screenshot assertions;
+- every surviving non-visual Lists contract has one correct primary component/browser/product owner;
+- no duplicate central mapping is introduced for `MDList.browser.spec.ts`;
+- surviving baselines are the minimal distinct accepted visual set after explicit duplicate review;
+- required focused unit, Storybook behavior, and visual proof passes, followed by final automatic `pnpm verify`;
+- before/after visual and Storybook behavior counts/timings plus aggregate browser execution impact are recorded against the V3 baseline.
 
 ### Stage S6 — Storybook catalogue normalization
 
