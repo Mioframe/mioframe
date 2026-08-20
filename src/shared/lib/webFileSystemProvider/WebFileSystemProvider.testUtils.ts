@@ -44,7 +44,7 @@ type MockFileSystemFileHandle = FileSystemFileHandle & {
   >;
 };
 
-export type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
+type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
   sameEntryKey: string;
   entriesMock: ReturnType<
     typeof vi.fn<
