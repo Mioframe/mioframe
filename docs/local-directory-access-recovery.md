@@ -115,6 +115,7 @@ Recover remembered local Mioframe directories safely across asynchronous browser
 - `addDeviceDirectory`, `removeDeviceDirectory`, same-entry reconnect commit/settlement, confirmed relocation, and granted permission resolution share the same topology queue.
 - No second queue, lease, generation, or provider-lifecycle manager is introduced.
 - Normal VFS reads/writes are not globally serialized by this queue.
+- Once `requestAccess()`/service resolution has returned, feature-owned retries such as create/import are not part of the recovery critical section. They execute as ordinary VFS/repository calls against whatever topology is current when they start. This preserves the pre-existing VFS contract and avoids inventing a provider lease spanning main-thread feature work.
 
 ## Simplest viable alternative comparison
 
@@ -152,6 +153,7 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - Relocation -> current duplicate/unique decision and final marker preflight under one topology turn; persistence precedes runtime relocation.
 - Picker/confirmation/browser-prompt cancel -> zero topology mutation.
 - No `recoveryKey` in persistence, ordinary display DTOs, UI copy, or diagnostics.
+- A feature retry that starts after successful recovery is not claimed to preserve historical provider identity; it follows current VFS topology exactly like the same command started without recovery.
 
 ## Risk matrix
 
