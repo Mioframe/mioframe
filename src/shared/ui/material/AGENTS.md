@@ -8,7 +8,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 - `.agents/skills/material-component/SKILL.md` owns executable sequencing, resume, correction routing, and coding-agent completion.
 - `docs/component-workflow.md` explains workflow architecture only.
 - `docs/component-contract.md`, `docs/component-adapter.md`, and `docs/component-tokens.md` own stable contract/adapter/token design rules.
-- `.agents/skills/verification/SKILL.md` owns verifier execution mechanics and the final coding-agent handoff gate.
+- `.agents/skills/verification/SKILL.md` owns verifier execution mechanics; exact-head CI remains architect-owned.
 - `docs/m3e-defects.md` owns stable renderer-defect records.
 - `docs/roadmap.md` is architect-maintained program status.
 
@@ -62,6 +62,6 @@ Source wiring is not rendered proof. Use the lowest faithful observable proof fo
 
 When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
-Follow the repository `verification` skill. Focused verifier commands are optional feedback during implementation/correction; the final local coding-agent handoff uses the repository-required automatic `pnpm verify` gate. Verifier execution policy is owned only by that skill; do not add Material-specific environment handling or ask the operator to run verifier commands.
+Follow the repository `verification` skill. Focused verifier commands are optional feedback during implementation/correction or narrow task-specific proof. Do not add a Material-specific mandatory final local verification gate and do not ask the operator to run verifier commands. GitHub exact-head CI is the architect-owned automatic repository gate.
 
-Coding work ends only after contracts, standalone implementation/proof, and required migration are complete, deterministic routing is clean, required local verification is satisfied, and no semantic correction remains. Final semantic review, roadmap status, PR/CI handling, and merge readiness are architect-owned.
+Coding work ends when contracts, standalone implementation/proof, and required migration are complete, deterministic routing is clean, and no semantic coding correction remains. Final semantic review, roadmap status, PR/CI handling, and merge readiness are architect-owned.
