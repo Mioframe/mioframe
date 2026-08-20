@@ -4,58 +4,37 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete PR #211 fileSystem recovery architecture and implementation, including provider classification/transport, recovery identity, mounted-directory mutation serialization, same-entry write settlement, provider recovery lifecycle, relocation, repository settlement integration, and downstream feature/widget contracts.
+- Complete PR #211 fileSystem recovery architecture and implementation after the settlement/topology and provider-recovery lifecycle correction, including queue boundaries, provider replacement semantics, pending access-request lifecycle, recovery identity, focused tests, repository settlement integration, and downstream contracts.
 
 ## Blockers
 
-### B1 — same-entry settlement runs after topology protection is released
+### B1 — provider-recovery lifecycle correction is not fully proven
 
 Owner: `src/shared/service/fileSystem`
 
-Problem: `reconnectDeviceDirectory()` commits the proven same-entry persist/remount inside `enqueueMutation()`, then releases the fileSystem topology queue before running registered write-recovery settlement. Cached repositories are not bound to that provider instance: their VFS storage adapter resolves the provider currently mounted at the textual repository path for each IO. A same-runtime remove/add sequence can therefore reuse the same mounted path while pending repository writes are still being settled.
+Problem: the implementation now contains the required provider-recovery cleanup logic, but the focused regression proof does not cover all branch conditions that define whether an `addDeviceDirectory()` call replaces the mounted provider. The new successful-cleanup test exercises only the rename branch. The same-name/new-handle branch (`existingRecord.handle !== nextRecord.handle`) is not directly proven, and the failed-persistence test says recovery identity is preserved but only checks the pending request and mounted display state; it does not prove that the existing `recoveryKey` remains current. The true non-replacement branch (same mounted name and same handle reference) is likewise not proven to preserve its still-valid pending request.
 
 Evidence:
 
-- [File-system service](useFileSystemService.ts) — the same-entry `enqueueMutation()` returns immediately after `persistAndRemountSameEntry()`, and `registry.runWriteRecoveryHandlers()` executes afterward, outside the serialized mutation turn.
-- [Repository service](../repositories/repositoriesService.ts) — the registered write-recovery handler settles already-cached repositories and calls `repo.flush()` for the recovered mount path.
-- [VFS Automerge adapter](../../lib/automergeAdapter/createVFSAdapter.ts) — repository storage operations call `vfs.readFile`, `vfs.writeFile`, and `vfs.delete` using the textual repository path on every IO.
-- [Virtual file system](../../lib/virtualFileSystem/VirtualFileSystem.ts) — each write resolves the provider currently mounted for the path when that write starts; mount identity is not retained by the adapter.
+- [File-system service](useFileSystemService.ts) — `isProviderReplacement` has two independent conditions: name change or handle-reference change; cleanup runs only when that predicate is true.
+- [File-system service tests](useFileSystemService.test.ts) — the new pending-request cleanup proof uses `Projects` -> `Archive`, so the name-change condition alone makes the branch true; there is no equivalent pending-request proof for a same-name/new-handle provider replacement.
+- [File-system service tests](useFileSystemService.test.ts) — `failed persistence during addDeviceDirectory() preserves the current provider pending request and recovery identity` verifies the request and display record after rejection but never captures or re-validates the pre-existing `recoveryKey`.
 
 Basis:
 
-- [Local-directory recovery handoff](../../../../docs/local-directory-access-recovery.md) — same-entry reconnect must keep the existing same-runtime topology mutation turn active through registered write-recovery settlement so the recovered mounted path cannot be reassigned while cached writes are being flushed.
-- [File-system service rules](AGENTS.md) — fileSystem owns mounted-provider lifecycle and recovery state, and changes here must keep provider, VFS, persisted handles, and recovery lifecycle aligned.
+- [Local-directory recovery handoff](../../../../docs/local-directory-access-recovery.md) — committed provider replacement must invalidate provider-owned recovery state, failed persistence must preserve the still-current provider state, and the provider-recovery lifecycle is part of the required acceptance proof.
+- [Root project rules](../../../../AGENTS.md) — required contract proof must exist before handoff; green verification does not replace missing risk-specific verification.
+- [Project review workflow](../../../../.agents/skills/project-review/SKILL.md) — missing required risk-specific proof is a review finding even when automated checks are green.
 
-Risk: after the reconnect has remounted the proven-identical folder but before settlement finishes, another same-runtime action can remove that mount and add a different physical directory under the same name. Remaining queued/in-memory Automerge writes can then resolve through VFS to the replacement provider, writing user data to the wrong physical folder.
+Risk: a regression in the handle-reference half of `isProviderReplacement`, or premature `recoveryKey` invalidation on persistence failure, could pass the current focused tests while violating the provider-lifecycle contract that this correction was intended to protect.
 
-Required final state: the existing fileSystem mutation queue remains the only same-runtime topology serialization mechanism, but the same-entry reconnect mutation turn must remain active from final recovery-target validation through persist/remount and completion of registered write-recovery settlement. Repository code continues to own settlement through the existing handler contract. The queue releases after settlement completes with either `flushed` or a non-flushed result; reconnect remains committed on settlement failure. Do not introduce provider generations, leases, VFS route identity, or repository lifecycle changes.
+Required final state: keep the current production architecture unless a focused test exposes a defect, and add faithful regression proof that (1) same mounted name + physically same entry represented by a different handle object replaces the provider and clears the old pending request, (2) a true non-replacement using the same handle reference preserves its still-valid pending request, and (3) failed persistence preserves the pre-existing recovery identity as well as the pending request/runtime mount.
 
-Verification: add deterministic service proof with a deferred write-recovery handler showing that remove/add/replace topology operations queued after a same-entry reconnect cannot begin until settlement resolves, and that they proceed after both flushed and non-flushed settlement completion. Preserve existing persist-before-settlement ordering, committed-warning behavior, queue-failure release, and repository `repo.flush()` rejection proof.
+Verification: focused fileSystem service tests for those three cases, followed by the canonical final `pnpm verify`.
 
 ## Major issues
 
-### M1 — `addDeviceDirectory()` can leave pending permission recovery owned by a removed provider
-
-Owner: `src/shared/service/fileSystem`
-
-Problem: when `addDeviceDirectory()` successfully renames or replaces an already mounted provider, it updates persistence and provider topology and invalidates the old `recoveryKey`, but it does not clear pending access requests registered by the removed/replaced provider. Those registry entries retain the old directory handle and `refreshProvider` callback.
-
-Evidence:
-
-- [File-system service](useFileSystemService.ts) — the successful existing-record rename/replacement path removes/replaces the provider and deletes the old recovery key without calling `registry.clearForSpace()` for the removed/replaced provider identity.
-- [Access request registry](fileSystemAccessRequestRegistry.ts) — pending requests store `FileSystemDirectoryHandle` plus the provider refresh callback and remain addressable by `{ spaceName, mode }` until explicitly resolved, cancelled, or cleared.
-- [File-system service tests](useFileSystemService.test.ts) — rename/replacement tests prove mounted-name and recovery-key cleanup, but do not prove cleanup of provider-owned pending access requests on the same lifecycle path.
-
-Basis:
-
-- [File-system service rules](AGENTS.md) — service-owned provider recovery state must be deduplicated and cleaned up, with lifecycle defined for stale and provider-removed requests.
-- [Local-directory recovery handoff](../../../../docs/local-directory-access-recovery.md) — a committed provider removal/replacement invalidates provider-owned runtime recovery state, including pending permission requests and runtime recovery identity.
-
-Risk: a completed provider replacement can leave a stale permission-recovery entry pointing at an orphaned handle/provider callback. A later permission action can prepare or resolve recovery for a provider that is no longer mounted, and stale recovery state can accumulate for renamed mounted names.
-
-Required final state: after persistence succeeds, every `addDeviceDirectory()` path that removes or replaces an existing mounted provider invalidates the pending access requests owned by that removed/replaced provider together with its old recovery identity. A failed persistence attempt must leave the still-current provider and its recovery state intact. A true no-replacement/reuse path must not discard still-valid requests merely for convenience.
-
-Verification: add focused service tests that create pending provider access recovery, perform the relevant successful rename/replacement through `addDeviceDirectory()`, and prove the old request can no longer be fetched/prepared/resolved while the new mount remains correct. Preserve existing remove/reconnect/relocation request cleanup and recovery-key lifecycle tests.
+None.
 
 ## Minor issues
 
@@ -67,8 +46,10 @@ None.
 
 ## Items not required
 
+- The B1 data-integrity defect from the previous review is resolved: same-entry repository settlement now completes inside the existing fileSystem topology mutation turn, and deterministic tests prove queued remove/add operations cannot begin until flushed or non-flushed settlement completes.
+- The M1 implementation defect from the previous review is resolved: committed `addDeviceDirectory()` provider replacement clears pending access requests together with the old runtime recovery identity after persistence succeeds.
 - General directory loading/refresh state, external filesystem/rclone observation, persistent mounted-record IDs, VFS route identity, repository generations/retirement, hierarchical or cross-runtime locking, and generic cross-runtime mounted-record synchronization remain outside PR #211.
-- The implementation-preflight read-only Git discipline added during this PR is a deliberate repository workflow improvement prompted by a repeated agent failure mode; it is not part of the storage runtime architecture and does not require removal from this PR.
+- `.env.example`, `.gitconfig`, and `.gitmodules` are not part of the current PR changed-file set; any local workspace artifacts reported by the coding agent are not present on the reviewed GitHub head.
 
 ## Unresolved questions
 
