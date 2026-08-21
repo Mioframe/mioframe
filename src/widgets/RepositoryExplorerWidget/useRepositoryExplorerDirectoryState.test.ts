@@ -47,8 +47,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
         ['Document 1.mio', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
         ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
       ]),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
+      error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
@@ -74,63 +73,47 @@ describe('useRepositoryExplorerDirectoryState', () => {
       documentIds: ref(undefined),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref(undefined),
-      repositoryFactsError: ref(new Error('/private/repository path leaked')),
-      repositoryVisibleEntriesError: ref(undefined),
+      error: ref(new Error('/private/repository path leaked')),
       errorMessage: ref('Could not load the Mioframe documents in this folder'),
       isLoading: ref(false),
     });
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(state.repositoryErrorMessage.value).toBe(
-      'Could not load the Mioframe documents in this folder',
-    );
     expect(state.errorMessage.value).toBe('Could not load the Mioframe documents in this folder');
 
     scope.stop();
   });
 
-  it('keeps directory errors ahead of repository errors', async () => {
-    const repositoryFactsError = new DomainError('Repository is unavailable', {
+  it('exposes the one effective repository error as the single recovery error candidate', async () => {
+    const repositoryError = new DomainError('Repository is unavailable', {
       code: 'repositoryUnavailable',
-    });
-    const repositoryVisibleEntriesError = new DomainError('Could not read this folder', {
-      code: 'folderReadFailed',
     });
 
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref(undefined),
-      repositoryFactsError: ref(repositoryFactsError),
-      repositoryVisibleEntriesError: ref(repositoryVisibleEntriesError),
+      error: ref(repositoryError),
       errorMessage: ref('Repository is unavailable'),
       isLoading: ref(false),
     });
 
     const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
 
-    expect(state.directoryError.value).toBe(repositoryVisibleEntriesError);
-    expect(state.repositoryError.value).toBe(repositoryFactsError);
-    expect(state.directoryErrorMessage.value).toBe('Could not read this folder');
-    expect(state.errorMessage.value).toBe('Could not read this folder');
-    expect(state.recoveryErrors.value).toEqual([
-      repositoryVisibleEntriesError,
-      repositoryFactsError,
-    ]);
+    expect(state.repositoryError.value).toBe(repositoryError);
+    expect(state.errorMessage.value).toBe('Repository is unavailable');
+    expect(state.recoveryErrors.value).toEqual([repositoryError]);
 
     scope.stop();
   });
 
-  it('stays loading until both directory and repository reads are ready', async () => {
+  it('reflects the repository entity isLoading directly, without inferring loading from missing payloads', async () => {
     useRepositoryMock.mockReturnValue({
       documentIds: ref(undefined),
       isInitialized: ref(false),
-      repositoryVisibleEntries: ref([
-        ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
-      ]),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
+      repositoryVisibleEntries: ref(undefined),
+      error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(true),
     });
@@ -142,31 +125,12 @@ describe('useRepositoryExplorerDirectoryState', () => {
     scope.stop();
   });
 
-  it('stays loading while visible entries are missing even after document ids arrive', async () => {
-    useRepositoryMock.mockReturnValue({
-      documentIds: ref(['doc-1']),
-      isInitialized: ref(false),
-      repositoryVisibleEntries: ref(undefined),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
-      errorMessage: ref(undefined),
-      isLoading: ref(false),
-    });
-
-    const { scope, state } = await mountUseRepositoryExplorerDirectoryState();
-
-    expect(state.isLoading.value).toBe(true);
-
-    scope.stop();
-  });
-
-  it('stops loading only after both entries and document ids are available', async () => {
+  it('is not loading once the repository entity reports ready, even with empty entries/ids', async () => {
     useRepositoryMock.mockReturnValue({
       documentIds: ref([]),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref([]),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
+      error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
@@ -188,8 +152,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
       documentIds: ref(undefined),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref(undefined),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(accessError),
+      error: ref(accessError),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
@@ -206,8 +169,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
       documentIds: ref([]),
       isInitialized: ref(false),
       repositoryVisibleEntries: ref([]),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
+      error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });
@@ -230,8 +192,7 @@ describe('useRepositoryExplorerDirectoryState', () => {
       repositoryVisibleEntries: ref([
         ['notes.txt', { type: FSNodeType.File, capabilities: {}, description: 'file' }],
       ]),
-      repositoryFactsError: ref(undefined),
-      repositoryVisibleEntriesError: ref(undefined),
+      error: ref(undefined),
       errorMessage: ref(undefined),
       isLoading: ref(false),
     });

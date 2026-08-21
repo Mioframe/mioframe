@@ -1,6 +1,10 @@
 export { useMainServiceClient } from './useService';
 export { RepositoryImportErrorCode } from './repositories/repositoryContracts';
-export type { RepositoryDirectoryEntry } from './repositories/repositoryContracts';
+export type {
+  RepositoryEntry,
+  RepositorySnapshot,
+  RepositoryState,
+} from './repositories/repositoryContracts';
 export {
   getZipImportPartialFailureDetails,
   RepositoryZipErrorCode,
@@ -23,8 +27,9 @@ export {
   FileSystemServiceErrorCode,
   type DeviceDirectoryRecoveryTarget,
   type DeviceFileDisplayRecord,
+  type DirectoryEntries,
+  type DirectoryEntry,
   type MioframeSpaceInspection,
-  type ReadDirectoryOptions,
   type ReconnectDeviceDirectoryResult,
   type RelocateRememberedDeviceDirectoryResult,
 } from './fileSystem/fileSystemContracts';

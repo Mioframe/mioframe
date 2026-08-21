@@ -85,12 +85,12 @@ describe('Google Drive directory refresh integration', () => {
 
     const emissions: [string, { type: FSNodeType }][][] = [];
     const subscription = service
-      .directoryContent$({
+      .directoryState$({
         path: '/Google Drive/user@example.com/App Data',
       })
-      .subscribe((value) => {
-        if (!(value instanceof Error)) {
-          emissions.push(value.map(([name, stat]) => [name, { type: stat.type }]));
+      .subscribe((state) => {
+        if (state.status === 'ready') {
+          emissions.push(state.entries.map(([name, stat]) => [name, { type: stat.type }]));
         }
       });
 

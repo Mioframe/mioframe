@@ -1,8 +1,6 @@
 import { createGlobalState } from '@vueuse/core';
 import { useMainServiceClient } from '@shared/service';
-import { computed, toValue } from 'vue';
-import { isUndefined } from 'es-toolkit';
-import { useObservableQuery } from '@shared/lib/useObservableQuery';
+import { computed } from 'vue';
 import {
   DEVICE_FILES_ROOT_NAME,
   type DeviceFileDisplayRecord,
@@ -43,7 +41,6 @@ const setupFileSystem = () => {
       createDirectory,
       move,
       remove,
-      directoryContent,
       addDeviceDirectory,
       removeDeviceDirectory,
       reconnectDeviceDirectory,
@@ -52,33 +49,6 @@ const setupFileSystem = () => {
       deviceFiles,
     },
   } = useMainServiceClient();
-
-  const rootPath = '/';
-
-  const {
-    data: rootDirectory,
-    error,
-    isLoading,
-  } = useObservableQuery(
-    directoryContent,
-    computed(() => ({
-      path: rootPath,
-    })),
-  );
-
-  const errorMessage = computed(() => {
-    const e = toValue(error);
-
-    if (isUndefined(e)) {
-      return undefined;
-    }
-
-    if (e instanceof Error) {
-      return e.message;
-    }
-
-    return 'Error reading directory';
-  });
 
   const { data: activeDeviceFiles } = useObservable(deviceFiles);
   const mountedDirectories = computed(() =>
@@ -108,10 +78,7 @@ const setupFileSystem = () => {
   ): Promise<MioframeSpaceInspection> => inspectMioframeSpaceCandidate(handle);
 
   return {
-    rootDirectory,
     deviceFiles: mountedDirectories,
-    errorMessage,
-    isLoading,
 
     addDeviceDirectory,
     createDirectory,

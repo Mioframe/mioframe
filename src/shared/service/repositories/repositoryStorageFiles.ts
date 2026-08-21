@@ -16,7 +16,8 @@ import {
   type VirtualFileSystem,
   VfsError,
 } from '@shared/lib/virtualFileSystem';
-import type { RepositoryDirectoryEntry } from './repositoryContracts';
+import type { DirectoryEntry, DirectoryEntries } from '../fileSystem/fileSystemContracts';
+import type { RepositoryEntry } from './repositoryContracts';
 import { RepositoryFactsErrorCode } from './repositoryFactsErrorCode';
 
 /** Low-level repository facts derived from one directory listing. */
@@ -60,7 +61,7 @@ export const getDocumentStorageFiles = async (
 const removeResolvedDocumentStorageFiles = async (
   vfs: VirtualFileSystem,
   path: string,
-  documentStorageFiles: readonly RepositoryDirectoryEntry[],
+  documentStorageFiles: DirectoryEntries,
 ) => {
   const limitDelete = pLimit(DOCUMENT_STORAGE_DELETE_CONCURRENCY_LIMIT);
 
@@ -99,26 +100,28 @@ export const isRepositoryStorageCandidateFileName = (name: string) =>
   isPlausibleStorageCandidateFileName(name);
 
 /**
- * Returns whether a repository storage file should stay hidden in the file list.
- * @param name - File name to classify.
- * @param hideAutomergeFiles - Whether Automerge document files should stay hidden.
- * @returns Whether the repository storage file should stay hidden in the file list.
+ * Classifies one directory snapshot's non-marker entries for the repository derivation
+ * coordinator. The repository storage marker is excluded entirely: it contributes only to
+ * {@link getRepositoryFacts}'s `isInitialized`, never to the returned entries.
+ *
+ * Classification is filename-only: `automergeStorageCandidate` marks a plausible Automerge
+ * storage filename, not a confirmed decoded v3 wrapper.
+ * @param directoryEntries - Directory entries from one accepted directory snapshot.
+ * @returns Classified non-marker entries in the same order as `directoryEntries`.
  */
-export const shouldHideRepositoryStorageFile = (name: string, hideAutomergeFiles: boolean) =>
-  isRepositoryMarkerFileName(name) ||
-  (hideAutomergeFiles && isRepositoryStorageCandidateFileName(name));
-
-/**
- * Returns directory entries visible to the user after repository storage files are filtered out.
- * @param directoryEntries - Directory entries in the current folder.
- * @param hideAutomergeFiles - Whether Automerge document files should stay hidden.
- * @returns Directory entries visible to the user.
- */
-export const getRegularDirectoryEntries = (
-  directoryEntries: readonly RepositoryDirectoryEntry[],
-  hideAutomergeFiles = true,
-): readonly RepositoryDirectoryEntry[] =>
-  directoryEntries.filter(([name]) => !shouldHideRepositoryStorageFile(name, hideAutomergeFiles));
+export const classifyDirectoryEntries = (
+  directoryEntries: DirectoryEntries,
+): readonly RepositoryEntry[] =>
+  directoryEntries
+    .filter(([name]) => !isRepositoryMarkerFileName(name))
+    .map(
+      (entry: DirectoryEntry): RepositoryEntry => ({
+        entry,
+        classification: isRepositoryStorageCandidateFileName(entry[0])
+          ? 'automergeStorageCandidate'
+          : 'regular',
+      }),
+    );
 
 /**
  * Derives low-level repository facts for one repository directory.
@@ -130,7 +133,7 @@ export const getRegularDirectoryEntries = (
 export const getRepositoryFacts = async (
   vfs: VirtualFileSystem,
   path: string,
-  directoryEntries?: readonly RepositoryDirectoryEntry[],
+  directoryEntries?: DirectoryEntries,
 ): Promise<RepositoryFacts> => {
   const entries = directoryEntries ?? (await vfs.readDirectory(path));
   const fileEntries = entries.filter(([, stat]) => stat.type === FSNodeType.File);
@@ -184,7 +187,7 @@ const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(res
 const createRepositoryStorageIo = (
   vfs: VirtualFileSystem,
   path: string,
-  entries: readonly RepositoryDirectoryEntry[],
+  entries: DirectoryEntries,
   options?: { tolerateCandidateReadFailures?: boolean },
 ): ReadOnlyStorageFilePolicyIo => {
   const fileNames = entries

@@ -19,14 +19,13 @@ import {
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { RepositoryFactsErrorCode } from './repositoryFactsErrorCode';
 import {
+  classifyDirectoryEntries,
   cleanupDeletedDocumentStorageFiles,
   getDocumentStorageFiles,
-  getRegularDirectoryEntries,
   getRepositoryFacts,
   isRepositoryStorageCandidateFileName,
   isRepositoryMarkerFileName,
   removeDocumentStorageFiles,
-  shouldHideRepositoryStorageFile,
 } from './repositoryStorageFiles';
 import type { ChunkStorageKey } from '@shared/lib/automergeAdapter';
 
@@ -461,35 +460,23 @@ describe('getRepositoryFacts', () => {
   });
 });
 
-describe('getRegularDirectoryEntries', () => {
-  it('hides repository storage files by default', () => {
+describe('classifyDirectoryEntries', () => {
+  it('excludes the repository marker, classifies a storage candidate, and leaves other entries regular, preserving order', () => {
     const { fileName } = createDocumentStorageFileName();
 
-    const result = getRegularDirectoryEntries(
-      [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        [fileName, createStat(FSNodeType.File)],
-        ['plain.json', createStat(FSNodeType.File)],
-      ],
-      true,
-    );
+    const result = classifyDirectoryEntries([
+      [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+      [fileName, createStat(FSNodeType.File)],
+      ['plain.json', createStat(FSNodeType.File)],
+    ]);
 
-    expect(result.map(([name]) => name)).toEqual(['plain.json']);
-  });
-
-  it('keeps Automerge document files visible when hiding is disabled', () => {
-    const { fileName } = createDocumentStorageFileName();
-
-    const result = getRegularDirectoryEntries(
-      [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        [fileName, createStat(FSNodeType.File)],
-        ['plain.json', createStat(FSNodeType.File)],
-      ],
-      false,
-    );
-
-    expect(result.map(([name]) => name)).toEqual([fileName, 'plain.json']);
+    expect(result).toEqual([
+      {
+        entry: [fileName, createStat(FSNodeType.File)],
+        classification: 'automergeStorageCandidate',
+      },
+      { entry: ['plain.json', createStat(FSNodeType.File)], classification: 'regular' },
+    ]);
   });
 });
 
@@ -502,15 +489,6 @@ describe('repository storage file classifiers', () => {
     expect(isRepositoryStorageCandidateFileName(fileName)).toBe(true);
     expect(isRepositoryStorageCandidateFileName('plain.json')).toBe(false);
   });
-
-  it('hides only the storage files requested by the current visibility setting', () => {
-    const { fileName } = createDocumentStorageFileName();
-
-    expect(shouldHideRepositoryStorageFile(storageAdapterMarkerFileName, true)).toBe(true);
-    expect(shouldHideRepositoryStorageFile(fileName, true)).toBe(true);
-    expect(shouldHideRepositoryStorageFile(fileName, false)).toBe(false);
-    expect(shouldHideRepositoryStorageFile('plain.json', true)).toBe(false);
-  });
 });
 
 describe('v2 compact .am filename filtering', () => {
@@ -520,39 +498,29 @@ describe('v2 compact .am filename filtering', () => {
     expect(isRepositoryStorageCandidateFileName(fileName)).toBe(true);
   });
 
-  it('hides v2 .am storage files when hideAutomergeFiles is true', () => {
-    const { fileName } = createV2DocumentStorageFileName();
-
-    expect(shouldHideRepositoryStorageFile(fileName, true)).toBe(true);
-  });
-
-  it('keeps v2 .am storage files visible when hideAutomergeFiles is false', () => {
-    const { fileName } = createV2DocumentStorageFileName();
-
-    expect(shouldHideRepositoryStorageFile(fileName, false)).toBe(false);
-  });
-
   it('does not classify unrelated .am files as Automerge storage', () => {
     expect(isRepositoryStorageCandidateFileName('notes.am')).toBe(false);
     expect(isRepositoryStorageCandidateFileName('attachment.am')).toBe(false);
   });
 
-  it('filters out both legacy and v2 storage files from visible entries', () => {
+  it('classifies both legacy and v2 storage files as candidates, excludes the marker, and keeps unrelated .am files regular', () => {
     const { fileName: legacyFileName } = createDocumentStorageFileName();
     const { fileName: v2FileName } = createV2DocumentStorageFileName();
 
-    const result = getRegularDirectoryEntries(
-      [
-        [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
-        [legacyFileName, createStat(FSNodeType.File)],
-        [v2FileName, createStat(FSNodeType.File)],
-        ['notes.txt', createStat(FSNodeType.File)],
-        ['attachment.am', createStat(FSNodeType.File)],
-      ],
-      true,
-    );
+    const result = classifyDirectoryEntries([
+      [storageAdapterMarkerFileName, createStat(FSNodeType.File)],
+      [legacyFileName, createStat(FSNodeType.File)],
+      [v2FileName, createStat(FSNodeType.File)],
+      ['notes.txt', createStat(FSNodeType.File)],
+      ['attachment.am', createStat(FSNodeType.File)],
+    ]);
 
-    expect(result.map(([name]) => name)).toEqual(['notes.txt', 'attachment.am']);
+    expect(result.map(({ entry: [name], classification }) => [name, classification])).toEqual([
+      [legacyFileName, 'automergeStorageCandidate'],
+      [v2FileName, 'automergeStorageCandidate'],
+      ['notes.txt', 'regular'],
+      ['attachment.am', 'regular'],
+    ]);
   });
 
   it('extracts document ids from v2 storage filenames for repository facts', async () => {

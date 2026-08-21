@@ -1,16 +1,26 @@
+import type { FSNodeStat } from '@shared/lib/virtualFileSystem';
+
 export {
   DEVICE_FILES_ROOT_NAME,
   type DeviceFileDisplayRecord,
 } from '@shared/lib/deviceFileSystemProvider';
 export type { MioframeSpaceInspection } from '@shared/lib/automergeAdapter';
 
+/** Canonical name+stat tuple for one directory entry as read by the shared file-system service. */
+export type DirectoryEntry = readonly [name: string, stat: FSNodeStat];
+
+/** Canonical name-sorted directory listing as read by the shared file-system service. */
+export type DirectoryEntries = readonly DirectoryEntry[];
+
 /**
- * UI-facing options for reading directory content through the shared file-system service.
+ * Internal reactive directory read state owned by the file-system directory coordinator
+ * (`directoryState.ts`). Not a public UI lifecycle contract — do not export this type beyond the
+ * `shared/service` layer.
  */
-export interface ReadDirectoryOptions {
-  /** Hides Automerge sidecar files from the returned listing. */
-  hideAutomergeFiles?: boolean;
-}
+export type DirectoryState =
+  | { status: 'reading' }
+  | { status: 'ready'; entries: DirectoryEntries }
+  | { status: 'error'; error: Error };
 
 /**
  * Identifies a specific unavailable-root recovery target for reconnect/relocation calls.
