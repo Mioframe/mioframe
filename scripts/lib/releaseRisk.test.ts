@@ -65,6 +65,50 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // this handoff (see scripts/lib/REVIEW.md B2). Do not weaken these
 // assertions to make the current unfixed module pass.
 //
+// M1 correction (scripts/lib/REVIEW.md M1), established by this suite's own
+// independent audit during test authoring:
+// - `find src/shared/service/appUpdate -type f` lists ~55 files: production
+//   runtime `.ts` sources, ordinary Vitest `*.test.ts` files, and three
+//   `*.testUtils.ts` test-support files (`fakeCacheStorage.testUtils.ts`,
+//   `fakeMessageChannel.testUtils.ts`, `releaseWireContract.testUtils.ts`).
+//   `grep -rl` for all three `.testUtils.ts` basenames across the repository
+//   confirms every importer is itself an ordinary `*.test.ts`/`*.test.mjs`
+//   Vitest file (predecessorProbe.test.ts, releaseWireContract.test.ts,
+//   contracts.test.ts, releasePreparation.test.ts, workerFetch.test.ts,
+//   workerInstall.test.ts, scripts/pages/lib/releaseArtifact.test.mjs,
+//   scripts/pages/lib/retainedReleaseTree.test.mjs) -- none is a
+//   `tests/e2e/release/**` spec or a `.mjs` release orchestrator script, so
+//   none is a real release-check input. The current
+//   `isAppUpdateRuntimePath` directory-wide rule wrongly gives every
+//   `*.test.ts`/`*.testUtils.ts` under this directory `managed-updates`
+//   anyway, solely from the path prefix -- the confirmed M1 bug.
+// - Direct read of `scripts/release/buildArtifact.test.mjs` confirms it only
+//   imports the three pure functions `resolveArtifactBasePath`,
+//   `resolveArtifactDistDir`, `runBuildArtifact` from `buildArtifact.mjs` and
+//   always passes an injected `deps` object (`runLocalCommand`,
+//   `runGuardedExpensiveLocalCommand`, `applyProcessResult`, all `vi.fn()`
+//   mocks) -- it never invokes the real release build pipeline, so changing
+//   only this test file cannot change release build behavior. The current
+//   `NARROW_EXACT_MAPPINGS` entry that copies `buildArtifact.mjs`'s full
+//   `['artifact', 'build', 'managed-updates', 'release-smoke']` consumer set
+//   onto this unit-only test is the confirmed M1 bug; the simplest correct
+//   fix is removing this path from `NARROW_EXACT_MAPPINGS` entirely (no other
+//   rule -- narrow mapping, managed-update spec pattern, appUpdate prefix, or
+//   unmapped-fixture fallback -- matches `scripts/release/
+//   buildArtifact.test.mjs`, so removal alone correctly yields `skip`).
+// - Required final behavior: ordinary unit `*.test.ts`/test-support files
+//   under `src/shared/service/appUpdate/` must not select `managed-updates`
+//   solely from the directory prefix; `buildArtifact.test.mjs` must not
+//   inherit `buildArtifact.mjs`'s release consumer set; every other
+//   currently-passing narrow-mapping/full-lane-trigger assertion in this
+//   suite is preserved unchanged, including the real appUpdate production
+//   boundary files (`controllerState.ts`, `updateReconciliation.ts`,
+//   `releaseWireContract.ts`, `src/sw.ts`) and the real release E2E/
+//   orchestrator inputs (`productionArtifactSmoke.spec.ts`,
+//   `managedUpdatesProof.mjs`, the `managedUpdates*.spec.ts` family), which
+//   this suite must keep proving are still correctly selected so the M1
+//   correction does not become a blanket appUpdate/test exclusion.
+//
 // One correction to the task handoff, established by direct file read
 // during test authoring: `scripts/release/publisherWireContractImportProof.
 // test.mjs` does NOT exist on disk (only the `.mjs` source does). The doc's
@@ -138,7 +182,10 @@ describe('resolveReleasePlan registry self-consistency (invalid mode)', () => {
     'scripts/release/validateReleaseConfig.mjs',
     'scripts/release/validateReleaseConfig.test.mjs',
     'scripts/release/buildArtifact.mjs',
-    'scripts/release/buildArtifact.test.mjs',
+    // scripts/release/buildArtifact.test.mjs is deliberately NOT in this
+    // list: the M1 correction removes it from NARROW_EXACT_MAPPINGS
+    // entirely (unit-only proof, not a real release-check input -- see file
+    // header), so it must no longer be a registered narrow-mapped path.
     'scripts/release/publisherWireContractImportProof.mjs',
     'scripts/release/managedUpdatesProof.mjs',
     'scripts/release/managedUpdatesProof.test.mjs',
@@ -260,11 +307,11 @@ describe('resolveReleasePlan narrow mappings (real end-to-end proof, no options 
     expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
   });
 
-  it('selects artifact, build, managed-updates, and release-smoke for buildArtifact.test.mjs', () => {
+  it("selects nothing for buildArtifact.test.mjs (M1: unit-only proof that mocks every dependency and never invokes the real build pipeline; must not inherit buildArtifact.mjs's release consumer set)", () => {
     const plan = resolveReleasePlan(['scripts/release/buildArtifact.test.mjs']);
 
-    expect(plan.mode).toBe('focused');
-    expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
+    expect(plan.mode).toBe('skip');
+    expect(plan.checks).toEqual([]);
   });
 
   it('selects only publisher-node-import for publisherWireContractImportProof.mjs', () => {
@@ -420,6 +467,68 @@ describe('resolveReleasePlan narrow mappings (real end-to-end proof, no options 
     'src/shared/service/appUpdate/updateReconciliation.ts',
   ])('selects only managed-updates for the real appUpdate boundary file %s', (filePath) => {
     const plan = resolveReleasePlan([filePath]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.checks).toEqual(['managed-updates']);
+  });
+});
+
+describe('resolveReleasePlan excludes unit-only appUpdate proof from the directory-wide managed-updates rule (M1, Must reject)', () => {
+  // M1 Must reject: src/shared/service/appUpdate/<unit>.test.ts must not
+  // select managed-updates solely from the directory prefix. Every importer
+  // of these files is itself an ordinary Vitest unit test (confirmed by
+  // repository-wide grep during test authoring -- see file header); none is
+  // a tests/e2e/release/** spec or a .mjs release orchestrator script.
+  it.each([
+    'src/shared/service/appUpdate/controllerState.test.ts',
+    'src/shared/service/appUpdate/updateReconciliation.test.ts',
+    'src/shared/service/appUpdate/releaseWireContract.test.ts',
+  ])('selects nothing for the ordinary unit test %s', (filePath) => {
+    const plan = resolveReleasePlan([filePath]);
+
+    expect(plan.mode).toBe('skip');
+    expect(plan.checks).toEqual([]);
+  });
+
+  it.each([
+    'src/shared/service/appUpdate/fakeCacheStorage.testUtils.ts',
+    'src/shared/service/appUpdate/fakeMessageChannel.testUtils.ts',
+    'src/shared/service/appUpdate/releaseWireContract.testUtils.ts',
+  ])(
+    'selects nothing for the test-support file %s (every real importer is itself an ordinary Vitest test, never a release E2E spec or .mjs orchestrator)',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('skip');
+      expect(plan.checks).toEqual([]);
+    },
+  );
+
+  it('still selects managed-updates for the real production appUpdate boundary alongside an ordinary unit test in the same changeset (the correction does not become a blanket appUpdate exclusion)', () => {
+    const plan = resolveReleasePlan([
+      'src/shared/service/appUpdate/controllerState.ts',
+      'src/shared/service/appUpdate/controllerState.test.ts',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.checks).toEqual(['managed-updates']);
+  });
+
+  it('still selects artifact for a real release E2E input in the same changeset as an excluded appUpdate unit test (the correction does not hide real release inputs)', () => {
+    const plan = resolveReleasePlan([
+      'src/shared/service/appUpdate/controllerState.test.ts',
+      'tests/e2e/release/productionArtifactSmoke.spec.ts',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.checks).toEqual(['artifact']);
+  });
+
+  it('still selects managed-updates for the real managed-updates orchestrator script in the same changeset as an excluded appUpdate unit test', () => {
+    const plan = resolveReleasePlan([
+      'src/shared/service/appUpdate/controllerState.test.ts',
+      'scripts/release/managedUpdatesProof.mjs',
+    ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.checks).toEqual(['managed-updates']);

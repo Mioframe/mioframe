@@ -52,6 +52,65 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
       'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
     ],
   },
+  // Root files, outside src/config/scripts, so isOrdinaryUnitSourcePath never
+  // passes them to Vitest related regardless of any real import edge.
+  {
+    source: '.gitignore',
+    tests: ['scripts/agentEnvironment.test.mjs'],
+  },
+  {
+    source: 'vite.config.ts',
+    tests: ['config/viteConfigFixtureImport.test.ts', 'scripts/release/viteBuildDate.test.mjs'],
+  },
+  // CSS read directly (readFileSync) by these tests, never imported by them.
+  {
+    source: 'src/shared/lib/md/index.css',
+    tests: [
+      'config/postcss.config.test.ts',
+      'src/shared/lib/md/index.test.ts',
+      'src/shared/ui/material/foundation/tokens.test.ts',
+    ],
+  },
+  {
+    source: 'src/shared/ui/material/foundation/tokens.css',
+    tests: ['config/postcss.config.test.ts', 'src/shared/ui/material/foundation/tokens.test.ts'],
+  },
+  {
+    source: 'src/shared/ui/material/foundation/theme.css',
+    tests: [
+      'config/postcss.config.test.ts',
+      'src/shared/ui/material/foundation/theme.test.ts',
+      'src/shared/ui/material/foundation/tokens.test.ts',
+    ],
+  },
+  {
+    source: 'src/shared/ui/material/foundation/index.css',
+    tests: ['src/shared/ui/material/foundation/tokens.test.ts'],
+  },
+  {
+    source: 'src/app/styles/styles.css',
+    tests: ['src/shared/ui/material/foundation/tokens.test.ts'],
+  },
+  {
+    source: 'src/app/styles/base.css',
+    tests: ['src/shared/ui/material/foundation/tokens.test.ts'],
+  },
+  // Read directly by MDStateLayer.test.ts's cross-file opacity-alias
+  // assertions; none is imported by that test. MDCard.vue is additionally
+  // real ordinary .vue unit source (see isOrdinaryUnitSourcePath below),
+  // so its own colocated test still reaches it through pass-through.
+  {
+    source: 'src/shared/ui/Card/MDCard.vue',
+    tests: ['src/shared/ui/State/MDStateLayer.test.ts'],
+  },
+  {
+    source: 'src/shared/ui/Lists/listItemAnatomy.css',
+    tests: ['src/shared/ui/State/MDStateLayer.test.ts'],
+  },
+  {
+    source: 'src/shared/ui/State/ripple.css',
+    tests: ['src/shared/ui/State/MDStateLayer.test.ts'],
+  },
 ];
 
 /** Resolved unit-impact plan, discriminated by `mode`. */
@@ -95,7 +154,7 @@ const FULL_UNIT_EXACT_FILES = new Set([
 ]);
 
 const UNIT_RELEVANT_PREFIXES = ['src/', 'config/', 'scripts/'];
-const ORDINARY_SOURCE_EXTENSIONS = ['.ts', '.vue', '.mjs', '.js', '.json'];
+const ORDINARY_SOURCE_EXTENSIONS = ['.ts', '.vue', '.mjs', '.js', '.json', '.css'];
 const PACKAGE_JSON_PATH = 'package.json';
 const ROOT_PLAYWRIGHT_TEST_PATTERN = /^playwright\.[^/]+\.test\.ts$/;
 
@@ -289,7 +348,6 @@ export function resolveUnitPlan(
       }
 
       focusedReasons.push(`file-as-data relation ${change.path} -> ${mapping.tests.join(', ')}`);
-      continue;
     }
 
     if (isTestShapedPath(change.path) && fileExists(change.path)) {
@@ -298,7 +356,17 @@ export function resolveUnitPlan(
       continue;
     }
 
-    if (isOrdinaryUnitSourcePath(change.path)) {
+    // A CSS path already covered by an explicit file-as-data mapping is
+    // consumed as data outside the import graph by definition (that is why
+    // it needed a mapping); also passing it through as ordinary source would
+    // add no discoverable relation and would wrongly surface it in
+    // relatedInputs alongside its real mapped owners. A mapped path with
+    // another extension (e.g. MDCard.vue) is genuinely both a file-as-data
+    // source and real ordinary unit source, so the mapping stays additive
+    // there rather than suppressing its own colocated-test relation.
+    const isMappedCssSource = mapping !== undefined && change.path.endsWith('.css');
+
+    if (!isMappedCssSource && isOrdinaryUnitSourcePath(change.path)) {
       relatedInputs.add(change.path);
       focusedReasons.push(`unit-relevant source ${change.path} -> Vitest related resolution`);
     }

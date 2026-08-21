@@ -42,10 +42,12 @@ const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
     path: 'scripts/release/buildArtifact.mjs',
     checks: ['artifact', 'build', 'managed-updates', 'release-smoke'],
   },
-  {
-    path: 'scripts/release/buildArtifact.test.mjs',
-    checks: ['artifact', 'build', 'managed-updates', 'release-smoke'],
-  },
+  // buildArtifact.test.mjs is deliberately NOT mapped here (M1): it only
+  // imports buildArtifact.mjs's pure functions and injects mocked deps,
+  // never invoking the real build pipeline, so it does not inherit
+  // buildArtifact.mjs's release consumer set -- see isAppUpdateRuntimePath's
+  // sibling exclusion below for the same "unit proof is not a release input"
+  // principle.
   {
     path: 'scripts/release/publisherWireContractImportProof.mjs',
     checks: ['publisher-node-import'],
@@ -163,10 +165,25 @@ function isUnmappedReleaseFixturePath(filePath: string): boolean {
   return filePath.startsWith('tests/e2e/release/fixtures/');
 }
 
+// Ordinary Vitest unit proof/test-support shape, never a real release-check
+// input by itself (M1). Confirmed by repository-wide grep: every importer of
+// every src/shared/service/appUpdate/*.testUtils.ts file is itself an
+// ordinary *.test.ts/*.test.mjs Vitest file, never a tests/e2e/release/**
+// spec or a .mjs release orchestrator script.
+function isUnitProofOnlyPath(filePath: string): boolean {
+  return (
+    filePath.endsWith('.test.ts') ||
+    filePath.endsWith('.test.mjs') ||
+    filePath.endsWith('.testUtils.ts')
+  );
+}
+
 // Managed-update runtime boundary per docs/managed-pinned-updates.md;
-// directory-wide, not individually existence-validated.
+// directory-wide, not individually existence-validated. Ordinary unit
+// test/test-support files under this directory are excluded (M1): they do
+// not select managed-updates solely from the directory prefix.
 function isAppUpdateRuntimePath(filePath: string): boolean {
-  return filePath.startsWith('src/shared/service/appUpdate/');
+  return filePath.startsWith('src/shared/service/appUpdate/') && !isUnitProofOnlyPath(filePath);
 }
 
 /** Resolved source-impact release plan, discriminated by `mode`. `full` means all six {@link RELEASE_IMPACT_CHECKS}, never `release-version`. */
