@@ -29,11 +29,11 @@ Resolve the upstream technical contract first.
 
 ## Source-resolution discipline
 
-- Resolve implementation details from the ready handoff, current workspace, applicable rules, project history available in the repository, code, tests, and documented project commands before asking the operator anything.
-- Read-only repository inspection is ordinary source reading and does not require operator confirmation merely because it uses Git. Use narrow read-only commands such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git merge-base`, and `git ls-files` when they are the simplest way to establish the current or pre-change source state.
-- Read-only inspection must not modify refs, index, working tree, configuration, hooks, remotes, or repository state. Repository-mutating Git operations remain outside this rule and require the task/workflow to authorize them.
-- Do not ask the operator to choose between implementation options, provide a baseline, or confirm a repository fact when authoritative workspace evidence can resolve it.
-- Ask only when a required product/architecture decision or external input is genuinely unavailable from the accepted contract and readable sources. If an execution environment actually rejects a read-only inspection command, use another available read mechanism where practical and report the concrete blocker rather than asking for speculative permission.
+- Resolve implementation details from the ready handoff, current workspace, applicable rules, project history already represented in readable repository sources, code, tests, and documented project commands before asking the operator anything.
+- Coding and test-author contexts follow root `AGENTS.md` Git ownership: do not run direct `git ...` commands, including read-only status/diff/log/show/branch/worktree inspection. Git/GitHub state and baseline comparison that require direct Git are architect/integration-owner responsibilities.
+- Project-owned commands may use Git internally as an implementation detail. That does not transfer Git ownership to the coding/test context.
+- Do not ask the operator to choose between implementation options, provide a baseline, or confirm a repository fact when authoritative readable workspace evidence or an assigned architect-provided baseline already resolves it.
+- Ask only when a required product/architecture decision or external input is genuinely unavailable from the accepted contract and readable sources. If a required baseline cannot be established without architect-owned Git access, report that exact remaining validation instead of substituting a guess.
 
 ## Required preflight record
 
@@ -53,6 +53,15 @@ Record compactly:
 - final verification.
 
 Do not repeat workspace-wide policy or the complete upstream definition.
+
+When the accepted task requires a bounded audit, the preflight must additionally record:
+
+- the closed audit population: exact roots/file classes/searchable relation being inspected;
+- the completion criterion that proves that population was exhausted;
+- representative known examples as examples only, never as the audit boundary;
+- what evidence distinguishes “needs explicit ownership/mapping” from “already represented by an existing project mechanism”.
+
+Do not begin the implementation pass if “audit the relevant files” is still open-ended.
 
 ## TEST IMPACT
 
@@ -93,6 +102,8 @@ Resolve:
 - applicable browser/mobile/accessibility/visual/release/data-safety/performance risks;
 - task-specific measurements that cannot be automated yet;
 - exact metric/budget and representative environment when making a performance claim.
+
+For a bounded audit, `Must reject` must include at least one omission outside the initial example set when that is a realistic failure mode. Proof should demonstrate that completion follows the declared population/ownership rule rather than from matching a hand-written list of examples.
 
 The `Must reject` item is a proof-sensitivity check, not an instruction to enumerate every theoretical error. It exists because a coding agent can otherwise make implementation and test agree while both encode the same mistake.
 
@@ -142,4 +153,4 @@ Use `test-first` whenever automated behavioral proof is added or materially chan
 
 ## Output
 
-Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how proof is authored independently, what plausible wrong outcome it must reject, and when to stop.
+Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how proof is authored independently, what plausible wrong outcome it must reject, and when to stop. For bounded audits, it must also make the audit population and completion criterion explicit enough that examples cannot be mistaken for the complete scope.
