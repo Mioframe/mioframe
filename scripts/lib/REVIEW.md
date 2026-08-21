@@ -4,114 +4,86 @@ Verdict: blocked
 
 ## Scope reviewed
 
-Complete verifier-modernization finish implementation on `refactor/verify-modernization-finish`, including the latest unit/release correction and the `visualRisk.test.ts` baseline question.
-
-## Resolved findings
-
-### B2 — release false-negative consumer ownership
-
-Resolved for the previously identified false-negative cases:
-
-- `src/shared/service/appUpdate/releaseWireContract.ts` selects `managed-updates` + `publisher-node-import`;
-- `scripts/release/buildArtifact.mjs` selects all confirmed release-browser consumers plus `build`;
-- `tests/e2e/release/fixtures/**` no longer defaults to managed-updates; current fixtures have exact ownership and an unknown future fixture fails closed to full.
-
-### `visualRisk.test.ts` baseline question
-
-Resolved as pre-existing stale test state on `develop`, not a finish-branch regression. `develop` already contains `src/shared/ui/material/components/button/MDButton.visual.spec.ts`, while the existing `visualRisk.test.ts` cases still describe MDButton as having no colocated visual owner and expect `full`. The resolver discovers colocated `*.visual.spec.ts` files recursively and therefore resolves MDButton owner changes as `focused`.
-
-Do not fix this stale baseline inside the current correction unless separately assigned.
+- Complete verifier-modernization finish implementation on `refactor/verify-modernization-finish`, with full re-review of Pass C unit impact and the previously reported visual planner failures after two correction rounds.
 
 ## Blockers
 
-### B1 — complete the bounded direct repository-file reader audit
+### B1 — Pass C unit-input boundary must be redesigned, not patched again
 
 Owner: `scripts/lib/unitRisk.ts`
 
-The target architecture requires one bounded audit of current Vitest-owned tests that directly consume concrete repository files outside the normal module/import relation. The audit is not complete when only previously listed examples are fixed.
+Problem: `UNIT_RELEVANT_PREFIXES = ['src/', 'config/', 'scripts/']` incorrectly treats test-location/source-directory prefixes as the universe of inputs that Vitest can own. Two correction rounds have already expanded exact mappings and added CSS-specific behavior, but real unit owners are still silently missed. Per root `AGENTS.md`, repeated ownership errors after two correction rounds require returning to architecture instead of adding more workaround mappings.
 
-Required audit population:
+Evidence:
 
-- current Vitest-owned `*.test.ts` / `*.test.mjs` files under the repository's unit-test locations;
-- direct fixed-path repository reads such as `readFileSync`, `fs.readFileSync`, `readFile`, `new URL(<repo path>, import.meta.url)`, and equivalent literal file-as-data consumption;
-- direct text/CSS/config/workflow reads are in scope;
-- ordinary imported modules are not file-as-data merely because a test also imports them.
+- `config/postcss.config.test.ts` imports root `postcss.config.js`, but a root production/config module is neither an ordinary unit source nor an exact mapping, so a `postcss.config.js`-only change can skip its real Vitest owner.
+- `playwright.lanes.test.ts` imports root `playwright.config.ts`, `playwright.release.config.ts`, `playwright.storybook.config.ts`, and `playwright.visual.config.ts`; those root modules are outside `UNIT_RELEVANT_PREFIXES`, so their real unit owner is omitted by unit planning.
+- `tests/e2e/release/fixtures/managedReleaseFixture.test.mjs` imports sibling `managedReleaseFixture.mjs`, but source/support under `tests/e2e/**` is outside `UNIT_RELEVANT_PREFIXES`; supporting a direct `tests/e2e/**/*.test.mjs` test without supporting its imported source is internally inconsistent.
+- `.gitignore -> scripts/agentEnvironment.test.mjs` is not a truthful file-as-data relation to the repository file: that test constructs temporary `.gitignore` fixtures. The real root `.gitignore` is instead consumed by `eslint.config.mjs`, while `eslint.config.test.ts` exercises the ESLint config through ESLint runtime discovery; that external relation is not represented.
+- mapped CSS is currently made mapping-exclusive (`isMappedCssSource`), suppressing normal Vitest-related resolution for the same existing source. Exact external-input ownership must be additive; a mapping must not hide a real import relation.
 
-For every confirmed direct reader/source pair:
+Basis:
 
-1. establish whether Vitest's supported `related` resolution already selects that exact owning test through a real module relation;
-2. if yes, keep the relation implicit and prove the representative case without adding a mapping;
-3. if no, add the smallest exact `UNIT_FILE_AS_DATA_MAPPINGS` relation;
-4. do not add prefixes, extension-wide rules, a generated registry, or a second dependency graph.
-
-Known cases that must be included in the audit, but are not the audit boundary:
-
-- `.github/workflows/verify.yml` -> all confirmed direct readers including `scripts/ciAutofix.test.ts`;
-- root `vite.config.ts` -> `config/viteConfigFixtureImport.test.ts` unless supported related resolution already reaches it;
-- `src/shared/lib/md/index.css` -> direct-reading unit owners including `src/shared/lib/md/index.test.ts` and `config/postcss.config.test.ts` unless related resolution already reaches each exact owner;
-- `src/shared/ui/material/foundation/tokens.css` and `theme.css` -> `config/postcss.config.test.ts` unless already related;
-- the cross-file source/CSS reads in `src/shared/ui/State/MDStateLayer.test.ts` -> map only those owners that related resolution would otherwise miss.
+- `docs/testing/verify-target-architecture.md`: ordinary source/test-support inputs use supported Vitest related resolution; exact file-as-data mappings exist only for repository inputs that cannot be represented by the import relation.
+- `docs/testing/architecture.md`: one truthful proof owner, smallest reliable proof, no second dependency graph.
+- root `AGENTS.md`: after two correction rounds still reveal ownership errors or workaround logic, return to architecture.
 
 Required final state:
 
-- the bounded audit reaches the complete current population above;
-- no known direct file-as-data unit owner is silently omitted;
-- exact mappings contain only relations Vitest cannot already represent faithfully;
-- representative root-config, workflow, CSS/text, and already-related cases are covered independently;
-- `UNIT_FILE_AS_DATA_MAPPINGS` remains a small unit-specific exception map, not general dependency infrastructure.
+1. Remove the directory-prefix model as the definition of the ordinary unit dependency universe.
+2. Keep direct Vitest-test recognition aligned with the actual `vitest.config.ts` include set.
+3. For added/modified current-tree code/config/style/test-support inputs, let Vitest `related` own import/dependency resolution across their actual repository locations, including root modules and non-Playwright support under `tests/e2e/**`.
+4. Keep explicit full-unit triggers only for actual Vitest-global execution/configuration risk and status-unsafe deletion/rename cases.
+5. Keep exact external-input mappings only for confirmed non-import relations (literal file-as-data reads, runtime-discovered config inputs, etc.). They are additive to ordinary related input, never a replacement for it.
+6. Remove false mappings that do not consume the real repository source.
+7. Do not introduce a generated dependency graph, prefix registry, or another cross-lane classifier.
 
-Basis: `docs/testing/verify-target-architecture.md` unit file-as-data contract and `docs/testing/architecture.md` smallest truthful proof / fail-closed ownership.
+Simplest viable architecture:
+
+```text
+changed current-tree input
+  -> direct Vitest test? select itself
+  -> explicit Vitest-global infrastructure? full
+  -> eligible code/config/style/support source? pass source to `vitest related`
+  -> exact confirmed external-input relation? also pass owning test(s)
+  -> otherwise skip unit
+
+deleted / unsafe moved unit-capable input
+  -> full
+```
+
+The ordinary related-input decision must not depend on the source living specifically under `src/`, `config/`, or `scripts/`. Known non-runtime metadata and Playwright-owned `*.spec.ts`/browser/visual proof remain outside unit ownership.
+
+Verification:
+
+- fresh test-author proof must reject the current prefix-limited implementation using at minimum root `postcss.config.js`, root Playwright config ownership, and a `tests/e2e/**` Vitest fixture source;
+- prove exact external-input mappings remain necessary only where related resolution cannot represent the owner;
+- prove mapping + real import ownership composes additively;
+- preserve deletion/rename fail-closed behavior.
+
+### B2 — stale `visualRisk.test.ts` cases must be made deterministic before PR CI
+
+Owner: `scripts/lib/visualRisk.test.ts`
+
+Problem: two existing cases still use MDButton as an "unmigrated" real-filesystem fixture and expect `full`, while `develop` already contains `MDButton.visual.spec.ts`. The resolver therefore correctly finds a colocated owner and returns `focused`. The failures are pre-existing, but this finish branch changes `visualRisk.test.ts`, so focused exact-head unit CI will select the file and fail.
+
+Evidence:
+
+- `develop` contains `src/shared/ui/material/components/button/MDButton.visual.spec.ts`.
+- the stale cases under `resolveVisualPlan unmigrated visual owners` still expect MDButton source/story changes to have no resolvable colocated owner.
+
+Required final state: preserve the intended unmigrated/fail-closed contract with a deterministic fixture that explicitly has no colocated visual owner (for example an injected synthetic owner set), rather than relying on the current migration state of a real Material component.
+
+Verification: the two cases prove the same planner contract and remain stable when real components later gain/lose migration state.
 
 ## Major issues
 
-### M1 — exclude unit-only proof from release source-impact without hiding real release inputs
+None active in `scripts/lib` beyond the blockers above.
 
-Owner: `scripts/lib/releaseRisk.ts`
+## Resolved findings
 
-Current release source-impact still over-selects expensive proof for known unit-only files:
-
-- the broad `src/shared/service/appUpdate/` runtime prefix currently includes ordinary unit `*.test.ts` and test-support files;
-- `scripts/release/buildArtifact.test.mjs` inherits the production `buildArtifact.mjs` consumer set even though changing the unit test does not change the release build path.
-
-Required final state:
-
-- source-impact planning distinguishes production/runtime inputs from unit-only proof before broad runtime-prefix fallback;
-- ordinary unit `*.test.ts`, `*.test.mjs`, and test-support files do not inherit release checks merely because they sit beside production release/runtime code;
-- exact/direct release proof files (release E2E specs, release orchestrators, release fixtures/helpers that are actual release-check inputs) keep their existing release ownership;
-- if a test-shaped/test-support file is itself a real input to a release check, represent that real ownership explicitly rather than hiding it behind a blanket proof-only exclusion;
-- `scripts/release/buildArtifact.test.mjs` does not copy the production source's release consumer set;
-- do not introduce a generic proof-path classifier shared across lanes.
-
-The simplest viable design is a narrow release-local proof-only exclusion applied after exact release mappings but before broad runtime-prefix fallback, with explicit exceptions only when current repository evidence proves the file is itself a release-check input.
-
-## Required proof
-
-Use a fresh test-author context before changing behavioral planner assertions.
-
-B1 proof must reject at least:
-
-- a direct file reader silently omitted from focused unit planning;
-- adding an unnecessary exact mapping where Vitest related already reaches the owner;
-- broad extension/prefix file-as-data inference.
-
-M1 proof must reject at least:
-
-- `src/shared/service/appUpdate/<unit>.test.ts -> managed-updates` solely from the directory prefix;
-- `scripts/release/buildArtifact.test.mjs` inheriting production release checks;
-- a proof-only exclusion that accidentally suppresses a real release E2E/orchestrator/fixture input.
-
-## Validation required before review can close
-
-- corrected B1 audit and planner proof are green;
-- M1 proof-only changes select no unnecessary source-impact release checks while real release inputs remain selected;
-- focused verifier commands for the corrected unit/release planners are green;
-- rerun the representative benchmark cases invalidated by B1/M1 and report selected/skipped checks;
-- no broad final verification ritual is required from the coding agent;
-- exact-head CI and CI critical-path evidence remain architect-owned after PR publication.
-
-## Major issues not blocking implementation handoff
-
-None beyond M1 above.
+- Previous B2 release false-negative consumer ownership is resolved: `releaseWireContract.ts`, `buildArtifact.mjs`, and release fixtures now follow confirmed consumer ownership/fail-closed behavior.
+- Previous M1 release over-selection is resolved: unit-only appUpdate proof and `buildArtifact.test.mjs` no longer inherit production release impact merely by location/name.
 
 ## Minor issues
 
@@ -120,3 +92,7 @@ None.
 ## Accepted risks
 
 None.
+
+## Items not required
+
+- Do not expand mutation/release/classification architecture while correcting Pass C.
