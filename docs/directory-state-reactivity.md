@@ -2,7 +2,7 @@
 
 Status: **architecture ready; implementation semantic review blocked by active repository lifecycle drift; exact-head GitHub CI is not an acceptance gate until that blocker is closed**.
 
-This document is the architecture source of truth for the directory-state-reactivity refactor. The implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The completed final-review correction is recorded in `docs/directory-state-reactivity-final-review-correction.md`. The currently active repository lifecycle implementation finding is tracked in `src/shared/service/repositories/REVIEW.md`.
+This document is the architecture source of truth for the directory-state-reactivity refactor. The implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The completed final-review correction is recorded in `docs/directory-state-reactivity-final-review-correction.md`. The currently active repository lifecycle implementation finding is tracked in `src/shared/service/repositories/REVIEW.md`; its narrow coding handoff is `docs/directory-state-reactivity-sticky-error-correction.md`.
 
 ## Goal
 
