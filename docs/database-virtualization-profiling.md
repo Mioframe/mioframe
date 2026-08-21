@@ -2,30 +2,47 @@
 
 Status: **research plan; baseline not yet captured**.
 
-This document defines the controlled investigation required before `docs/database-virtualization.md` can become implementation-ready.
+This document defines the controlled investigation required before `docs/database-virtualization.md` can become implementation-ready. The same working branch will contain research, the final architecture update, virtualization, any measured follow-up optimizations, and their proof.
 
 ## Purpose
 
-Determine where large database view-switch cost actually occurs, prove the minimum virtualization capabilities Mioframe needs, and decide whether any optimization beyond bounded rendering is required.
+Determine where large database view-switch latency occurs, establish reproducible performance evidence, prove the minimum virtualization capabilities Mioframe needs, and decide whether any optimization beyond bounded rendering is required.
 
-The investigation must be reproducible from tests. Live-device measurements may be informative later, but they are not the source of truth for this architecture decision.
+Performance analysis must be reproducible from automated tests. Physical-device observations may later provide supplemental confidence, but they are not the source of truth for architecture or acceptance.
+
+## Core measurement model
+
+Do not reduce the defect to one end-to-end stopwatch value. The investigation has three separate proof layers:
+
+1. **Structural scalability** — prove how mounted work grows with logical rows and columns.
+2. **Responsiveness** — measure how long the browser main thread is unavailable after the real view-switch interaction.
+3. **Attribution** — only when needed, identify whether time is spent in worker computation, main-thread script/reactivity, DOM work, style/layout, paint, or dynamic measurement.
+
+Structural scalability is the strongest persistent contract because it is substantially less hardware-sensitive than wall-clock timing.
+
+The intended final rendering invariant remains:
+
+> For a fixed viewport and overscan policy, mounted UI work is bounded independently of the total logical row and column count.
 
 ## Principles
 
 - Measure the current implementation before changing production rendering.
-- Use deterministic generated data and record the exact scale/content shape for every result.
-- Separate row scale, column scale, combined scale, dynamic sizing, worker computation, and UI rendering instead of treating one total duration as the answer.
-- Prefer structural invariants over absolute timing when they directly prove scalability.
-- Use a real browser for layout, scrolling, resizing, long-task, and responsiveness evidence.
-- Keep profiling instrumentation test-owned unless a durable product diagnostic requirement is independently established.
-- Do not optimize a layer until measurements show that layer remains material after the minimum bounded-rendering design.
+- Use deterministic generated data and record the exact data shape for every result.
+- Use a real browser for layout, scrolling, resizing, long-task, paint, and responsiveness evidence.
+- Keep data setup outside the measured action window.
+- Measure browser time from inside the page, not from Playwright/Node command round-trip time.
+- Do not run expensive tracing during ordinary timing samples.
+- Do not optimize a layer until measurements show that layer is material.
+- Do not promote timing numbers to CI budgets until variance is understood.
+- Never hide a slow sample with retries, sleeps, timeout inflation, or sample deletion.
+- Stop a pre-virtualization scale run before it creates an unsafe renderer/DOM footprint; scale-to-failure is evidence, not a reason to OOM the browser.
 
 ## Existing path under test
 
-Current flow to profile:
+Current flow:
 
 ```text
-view selection
+real view-selection interaction
     ↓
 DatabaseViewWidget / DatabaseViewLayout
     ↓
@@ -33,9 +50,11 @@ useDatabaseData
     ↓
 worker filteredIdList
     ↓
-filter + sort + ordered item IDs
+filter + sort + complete ordered item IDs
     ↓
-main-thread reactive update
+worker/main delivery
+    ↓
+Vue reactive update
     ↓
 DatabaseDataTable
     ↓
@@ -48,48 +67,81 @@ DOM insertion
 style + layout + paint
 ```
 
-The investigation must distinguish at least:
+The analysis must be able to distinguish, when relevant:
 
 1. worker query computation;
-2. worker-to-main result delivery;
+2. worker-to-main delivery;
 3. Vue/component/reactive setup;
 4. DOM creation/insertion;
-5. style/layout/paint;
-6. dynamic measurement cost in the candidate virtualized path.
+5. style recalculation/layout;
+6. paint/composite;
+7. candidate virtualizer measurement/reflow work.
 
-## Controlled environment
+## Controlled browser environment
 
-Use the existing application browser-test infrastructure and a production-equivalent built/previewed app path where possible. The exact command, browser build, OS/container image, viewport sizes, worker count, and whether CPU throttling is used must be recorded with results before any absolute budget is promoted to a persistent regression gate.
+Use the existing Playwright application path and production-equivalent built/previewed app. Current application E2E already builds and previews Vite output and runs Chromium desktop and mobile-sized projects with shared-origin OPFS isolation and non-parallel files.
 
-Required baseline browser coverage for the investigation:
+For performance research runs, keep a narrower deterministic execution mode:
 
-- Chromium desktop viewport;
-- Chromium mobile-sized viewport using the repository's existing application E2E project/applicability model.
+- Chromium only for timing and CDP attribution;
+- one worker;
+- retries disabled;
+- Playwright trace/video/screenshots disabled during measured successful runs;
+- one documented browser build, OS/container image, viewport, and command per comparison series;
+- new browser context/page for each independent dataset case;
+- cold first switch reported separately from warmed repeated switches.
 
-Do not infer mobile-device performance from viewport size alone. The mobile viewport is used here to reproduce layout/interaction constraints under controlled execution, not as a substitute for a physical-device benchmark.
+Normal product correctness remains covered by the repository's desktop/mobile project model. A mobile viewport is a layout/interaction constraint, not a claim that desktop Chromium timing equals a physical mobile CPU.
 
-If CPU throttling is used to increase sensitivity, use one fixed documented factor for comparison runs and report unthrottled results separately. Do not tune the factor to make a candidate pass.
+### Optional CPU sensitivity run
 
-## Deterministic dataset builder
+A fixed Chromium CPU-throttling factor may be used as a **comparative sensitivity run** after the unthrottled baseline is captured.
 
-Large setup must not create tens of thousands of rows through user UI actions.
+Rules:
 
-Use the lowest existing test boundary capable of establishing a valid database document/state while preserving production schema and migration invariants. The product action under test — switching views — must still be performed through the real UI.
+- one fixed factor for baseline and candidate;
+- report throttled and unthrottled results separately;
+- never tune the factor to make a threshold pass;
+- do not treat throttling as a physical-device simulation.
+
+## Deterministic large-document setup
+
+Do not create tens of thousands of rows or hundreds of properties through UI loops.
+
+Preferred setup direction:
+
+1. generate a current-schema Mioframe database JSON document from deterministic test data;
+2. validate the generated document through current production schema/builders before use;
+3. import it through the existing document-import boundary, or use the narrowest existing repository test boundary that establishes the same valid persisted state without shipping a debug API;
+4. open the imported document in a **small filtered default view**;
+5. perform the action under measurement — switching to the full view — through the real user UI.
+
+The existing JSON import feature is preferable to inventing a new production seeding API because it already accepts validated Mioframe JSON and delegates persistence to the repository service.
+
+The fixture must include both views before the application opens the database:
+
+- a short filtered view with approximately 20 rows, used as the initial stable state;
+- a full view over the same dataset, used as the measured target.
+
+This prevents fixture setup and initial full-table materialization from contaminating the switch measurement.
 
 Dataset generation requirements:
 
-- deterministic stable seed/IDs/content;
-- no current-time/random-content dependency unless seeded;
-- explicit row count, property count, property types, density, relation fan-out, filter, and sorting recorded per profile;
-- sentinel values at beginning, middle, and end so ordering/deep scrolling can be validated;
-- sparse/default-valued cases separated from dense stored-value cases;
-- setup time measured separately and excluded from the view-switch responsiveness metric.
+- deterministic IDs/content/seed;
+- explicit row count and property count;
+- explicit property-type mix;
+- explicit sparse/dense ratio;
+- explicit relation fan-out where used;
+- explicit filter and sort definitions;
+- sentinel values/IDs near start, middle, and end;
+- short and long content for dynamic-size cases;
+- setup/import time recorded separately and excluded from responsiveness metrics.
 
-Do not add a production debug/data-generation API solely for tests.
+Do not add a production debug/data-generation API solely for performance tests.
 
 ## Dataset matrix
 
-The exact final numbers may be adjusted only when the first run shows that setup itself dominates or a case cannot isolate its intended dimension. Record any adjustment and reason.
+Use staged growth. Do not jump directly to the largest logical grid on the unvirtualized implementation.
 
 ### Control
 
@@ -97,327 +149,413 @@ The exact final numbers may be adjusted only when the first run shows that setup
 | --- | ---: | ---: | --- | --- |
 | S0 | 100 | 8 | representative | sanity/control |
 
-### Row-scale series
+### Row scale
 
-Keep column shape stable while increasing row count.
-
-| Case | Rows | Columns | Purpose |
-| --- | ---: | ---: | --- |
-| R1 | 300 | 8 | small baseline |
-| R2 | 3,000 | 8 | medium growth |
-| R3 | 30,000 | 8 | required product baseline |
-| R4 | 100,000 | 8 | optional stress case; not a product guarantee |
-
-R3 must include variable-height representative content in selected rows without making every row artificially expensive.
-
-### Column-scale series
-
-Keep row count low enough to isolate horizontal scale.
+Keep the column shape stable.
 
 | Case | Rows | Columns | Purpose |
 | --- | ---: | ---: | --- |
-| C1 | 100 | 10 | small baseline |
-| C2 | 100 | 100 | medium growth |
-| C3 | 100 | 1,000 | high-column stress |
+| R1 | 1,000 | 8 | small growth |
+| R2 | 3,000 | 8 | reproduce material growth |
+| R3 | 10,000 | 8 | large pre-virtualization step |
+| R4 | 30,000 | 8 | required target scale |
+| R5 | 100,000 | 8 | post-fix stress only unless prior evidence shows it is safe/useful |
 
-Column width requirements must vary. Include short and long headers/content so fixed-size assumptions cannot accidentally pass.
+R4 is required for the final solution. The current implementation may hit a stop condition before R4; that itself is a baseline finding.
 
-### Combined logical-grid case
+### Column scale
+
+Keep row count low enough to isolate horizontal growth.
+
+| Case | Rows | Columns | Purpose |
+| --- | ---: | ---: | --- |
+| C1 | 100 | 10 | control |
+| C2 | 100 | 50 | horizontal growth |
+| C3 | 100 | 100 | large-column baseline |
+| C4 | 100 | 300 | target-like high column count |
+| C5 | 100 | 1,000 | post-fix stress / candidate capability |
+
+Column content must vary in intrinsic size so fixed-width assumptions cannot accidentally pass.
+
+### Combined logical grid
+
+Final mandatory candidate case:
 
 | Case | Rows | Columns | Density | Purpose |
 | --- | ---: | ---: | --- | --- |
-| G1 | 30,000 | 300 | sparse/default-heavy | prove UI behavior on a very large logical grid without conflating it with 9 million persisted cell values |
+| G1 | 30,000 | 300 | sparse/default-heavy | prove bounded UI on 9,000,000 logical intersections |
 
-G1 represents 9,000,000 logical row/column intersections. It is intentionally not fully dense because dense storage/CRDT scalability is a separate concern from rendering the logical grid.
+Do **not** require the current unvirtualized implementation to complete G1. Before virtualization, use an increasing combined series only until the scale trend is established or a stop condition is reached. G1 becomes mandatory once bounded rendering exists.
 
-### Dense data cases
+Optional later stress case, only if useful after G1 is healthy:
 
-Use smaller dense datasets to identify whether effective/stored-value reads and worker data traversal become independent bottlenecks.
+- 100,000 rows × 1,000 columns, sparse logical grid.
 
-Candidate cases:
+This is not a product guarantee; it probes whether hidden O(N) or O(N×P) UI work remains.
 
-- 30,000 rows × 8 properties with representative stored values;
-- 3,000 rows × 100 properties with representative stored values.
+### Dense storage cases
 
-Do not add a denser/larger case unless the prior result shows it answers a concrete unresolved question.
+Rendering a sparse logical grid and storing millions of values are different concerns.
 
-### Relation/dynamic-content case
+Use separate dense cases to detect worker/data-read bottlenecks without conflating them with 2D rendering:
 
-Keep this separate from the base scale matrix.
+- 30,000 rows × 8 representative stored properties;
+- 3,000 rows × 100 representative stored properties.
 
-Include:
+Do not create 9,000,000 persisted values unless a later measurement establishes that CRDT/storage density is itself in scope.
 
+### Dynamic-content case
+
+Keep variable geometry separate from raw scale:
+
+- variable-height string content;
 - at least one relation property;
-- rows with materially different rendered heights;
-- content that changes height after an edit or expansion path currently supported by the product;
-- a deep row so resize/scroll-anchor behavior is tested away from the top of the collection.
+- a deep row away from the top;
+- content that changes height after edit/expansion;
+- columns whose measured content widths differ materially;
+- a deep horizontal column.
 
-The goal is to test dynamic geometry, not maximize relation fan-out.
+## Pre-virtualization stop conditions
 
-## Baseline measurements on current implementation
+The current implementation has nested full row/property rendering, so some scale combinations can produce an unsafe DOM footprint. Research must fail safely.
 
-Capture before production rendering changes.
+Stop increasing a baseline series when any of these is observed:
 
-### Structural measurements
+- renderer crash/OOM or browser becomes unable to complete the test cleanly;
+- one measured switch-associated main-thread block exceeds 5 seconds;
+- rendered cell count reaches a predeclared research safety ceiling where the O(N×P) trend is already unambiguous;
+- the browser cannot process the measurement sentinel or test control channel within the research timeout;
+- memory growth makes the next scale step unsafe.
 
-For each scale case record:
+Record the last completed case and first failed/aborted case. Do not weaken the stop condition merely to obtain a nominal 30k/300-column baseline on an architecture already proven unbounded.
 
-- logical row count;
-- logical property count;
-- rendered `<tr>` count;
-- rendered data-cell count;
-- relevant Vue/component count if obtainable without invasive production instrumentation;
-- active database value/property query/subscription counts only if a test seam can measure them without shipping diagnostic state.
+## Lightweight responsiveness harness
 
-The current implementation is expected to show rendered work growing with total rows and columns. The measurement should demonstrate that behavior rather than merely assert it from source inspection.
+Ordinary samples must use a lightweight in-page harness installed before the measured interaction.
 
-### Responsiveness measurements
+### Measurement start
 
-Use browser-owned timing APIs from the test harness:
+Attach a one-shot capture-phase listener to the exact view-selection element immediately before the switch. The listener records `performance.now()` in the browser at the start of the real click event.
 
-- `PerformanceObserver` `longtask` entries during the switch window;
-- maximum switch-associated long-task duration;
-- count and total duration of long tasks;
-- elapsed time from the real switch action until the browser can run a sentinel callback/frame;
-- elapsed time until the target view is observably usable.
+Do not use Playwright-side `Date.now()` or the duration of `locator.click()` as the primary metric; those include automation/protocol scheduling outside the page.
 
-The switch measurement window must be explicitly bounded so unrelated startup/background tasks are not attributed to the action.
+### Event-loop yield
 
-Do not use arbitrary sleeps to define completion.
+At interaction start, schedule a `MessageChannel` callback (or equivalent same-purpose next-task primitive). Record how long it takes to execute.
 
-### Browser trace attribution
+`eventLoopYieldMs` measures how long the current click task plus its microtasks keep the main thread unavailable before the browser can process another task.
 
-When total timing is insufficient to identify the layer, collect a Chromium/Playwright trace or equivalent controlled browser profile for selected cases, especially R3, C3, and G1.
+This is the primary responsiveness metric for the freeze defect.
 
-Use the trace to distinguish:
+### Frame opportunity
 
-- scripting/component setup;
-- DOM work;
+Also schedule `requestAnimationFrame` markers:
+
+- time to first frame opportunity after the switch;
+- optionally a second animation frame as a stable post-paint-adjacent observation point.
+
+Do not label rAF time as exact paint completion; use it to detect whether the application permits rendering opportunities during work.
+
+### Long tasks
+
+Install a `PerformanceObserver` for `longtask` before the action and collect only entries whose timestamps overlap the bounded switch measurement window.
+
+Record:
+
+- maximum long-task duration;
+- long-task count;
+- total long-task duration.
+
+Mioframe already treats >50 ms as a long task in `usePerformanceMetrics`; research should use the same browser concept rather than inventing another threshold.
+
+### Viewport usable marker
+
+Define a browser-observable target-view readiness condition without arbitrary sleeps. Candidate examples, finalized after the fixture shape is known:
+
+- selected full view state reflected;
+- expected first viewport row/cell exists and is actionable;
+- scroll container geometry for the target view is established.
+
+Record `switchToUsableMs` separately from `eventLoopYieldMs`.
+
+A solution may take longer to finish background/worker preparation while still being acceptable if the main thread remains responsive and the visible viewport is usable.
+
+## Structural measurements
+
+For each relevant case record:
+
+- logical rows;
+- logical columns;
+- mounted/rendered row count;
+- mounted/rendered data-cell count;
+- mounted header/property count;
+- total DOM node count delta when useful;
+- visible/overscan range sizes once virtualization exists.
+
+After virtualization, permanent browser proof should establish that, for a fixed viewport and dataset geometry class:
+
+- increasing rows by orders of magnitude does not proportionally increase mounted rows;
+- increasing columns by orders of magnitude does not proportionally increase mounted columns/cells;
+- combined logical grid size does not materialize the complete matrix.
+
+Prefer this structural proof over brittle assertions on internal virtualizer methods or exact render counts.
+
+## Attribution: CDP metrics and tracing
+
+Use Chromium CDP only for selected diagnostic runs, not every timing sample.
+
+Playwright supports raw CDP sessions for Chromium. Chrome exposes Performance and Tracing domains. This makes it possible to capture a narrow profile around the real interaction without adding production diagnostics.
+
+### Low-overhead CDP metric deltas
+
+For selected runs, collect available `Performance.getMetrics` values immediately before and after the switch window and store the full returned metric map.
+
+Where the browser exposes them, compare deltas for script/task/layout/style-related metrics and heap/node counts. Treat metric names as diagnostic browser data, not as a stable Mioframe public contract.
+
+### DevTools performance trace
+
+When attribution is still unclear, start a CDP `Tracing` recording immediately before the interaction and stop it immediately after the bounded target window.
+
+Use it to classify renderer and worker work such as:
+
+- long renderer tasks / event dispatch;
+- JavaScript execution;
 - style recalculation;
 - layout;
 - paint/composite;
-- idle/wait time.
+- worker-thread execution when represented in the trace.
 
-Trace collection is diagnostic evidence; it should not automatically become a permanent CI artifact.
+Aggregate trace categories/events into a small result summary and retain the raw trace only as task-specific diagnostic evidence.
 
-## Worker/service measurements
+Do not create a permanent test that asserts Chromium trace-event names unless a later stable tooling contract is intentionally adopted.
 
-Measure filtering/sorting separately from browser rendering so worker cost is not hidden inside UI timing.
+### Playwright trace is not the performance profiler
 
-For representative row datasets record:
+The normal Playwright trace is useful for test debugging, actions, DOM snapshots, network, and failure diagnosis, but trace capture itself adds overhead and is not the source for CPU/layout attribution.
 
-- `queryIdList`/equivalent service computation duration;
-- filter-only, sort-only, and filter+sort cases if the current API allows clean isolation;
-- output ID count;
-- effect of property defaults and representative property types where relevant.
+Measured performance runs therefore keep Playwright tracing off. A separate non-measured reproduction may enable it when debugging a failing scenario.
 
-Then measure end-to-end worker query round-trip in the browser/application boundary for R3 to estimate serialization/proxy/delivery overhead relative to pure computation.
+## Worker/service analysis
 
 Do not redesign the worker API during baseline collection.
 
-## Candidate virtualization capability experiment
+Measure the data-query side separately from UI rendering:
 
-Before accepting an external engine and shared adapter, prove only the capabilities required by the architecture.
+1. deterministic service-level scaling for filter-only, sort-only, and filter+sort where cleanly separable;
+2. output ID count and ordering checksum/sentinels;
+3. browser end-to-end view-switch profile to see whether worker activity is material relative to main-thread rendering;
+4. if worker work is material, use selected CDP traces and/or narrowly scoped temporary research instrumentation before proposing a new contract.
 
-The current candidate is `@tanstack/vue-virtual`. The experiment must run in the Vue/browser environment used by Mioframe and must not depend on fixed sizes.
+Absolute Node/Vitest timing must not be treated as equivalent to browser Worker timing. Service-level tests are primarily useful for algorithmic scaling and relative comparisons.
 
-### 1D dynamic axis proof
+Only consider worker indexes, batching, range protocols, or paging after evidence shows the current complete-result contract is a meaningful remaining bottleneck.
 
-Demonstrate:
+## Candidate virtualization capability research
 
-- large item count without full DOM materialization;
-- different initial item sizes;
-- post-mount size change observed through actual DOM measurement;
-- deep `scrollToIndex`/equivalent navigation;
-- stable scroll position when an item before the viewport changes measured size;
+The current external-engine candidate is `@tanstack/vue-virtual`; this is not yet a final dependency decision.
+
+The capability experiment must prove dynamic sizing rather than fixed dimensions.
+
+### Dynamic vertical axis
+
+Prove:
+
+- very large logical count with bounded DOM;
+- different initial item heights;
+- actual DOM measurement after mount;
+- size changes after mount;
+- deep scroll/navigation;
+- stable viewport when an item before the viewport changes size;
 - bounded overscan.
 
-### Horizontal dynamic axis proof
+### Dynamic horizontal axis
 
-Demonstrate the same properties with variable widths and horizontal scrolling.
+Prove the same properties for variable widths.
 
-### Two-axis composition proof
+### Two-axis composition
 
-Demonstrate one shared scroll container with independent vertical and horizontal virtual ranges:
+Prove with one shared scroll container:
 
+- independent vertical and horizontal ranges;
 - deep row and deep column reachable;
-- mounted cell count bounded to viewport-area scale;
-- row height changes after column-width/content changes are remeasured correctly;
-- no requirement to render the complete grid for measurement.
+- mounted cells bounded by viewport area rather than logical grid area;
+- column-size changes cause required visible-row remeasurement;
+- row-size changes update vertical geometry;
+- no hidden full-grid render for measurement;
+- scroll anchoring remains acceptable during measurement correction.
 
-This is a capability experiment, not the final database UI implementation.
+Reject the candidate if Mioframe must implement a substantial custom offset tree, hidden full-content measurement, or parallel virtualizer engine around it.
 
-### Adapter decision rule
+## Dynamic column-sizing research
 
-Accept a shared Mioframe adapter only when the experiment shows that a thin API can expose the required dynamic-axis capabilities without duplicating the external engine.
+Horizontal virtualization cannot know the intrinsic width requirement of cells that have never rendered. The architecture must therefore define explicit semantics rather than pretending to reproduce native full-table auto layout.
 
-Reject or reconsider the candidate if Mioframe must implement substantial custom offset trees, measurement scheduling, scroll correction, or hidden full-content measurement around it.
+Prototype the minimum policy:
 
-## Column-sizing experiment
+1. unseen column starts from a provisional estimate;
+2. header and rendered cells report actual requirements;
+3. discovered width updates the column's ephemeral measurement state;
+4. hidden rows/columns are never mounted just for sizing;
+5. width changes reflow and remeasure visible rows;
+6. deep horizontal/vertical scroll remains anchored;
+7. repeated scrolling does not cause destructive width oscillation.
 
-Horizontal virtualization cannot know intrinsic width requirements of cells that have never rendered. This must be treated as an explicit presentation decision, not hidden by a heuristic.
+Current hypothesis: discovered widths are grow-only within a clearly defined view/session lifetime, subject to explicit min/max policy. The experiment must decide:
 
-Prototype and compare the minimum candidate behavior:
+- whether grow-only is visually acceptable;
+- reset boundary for measurements;
+- whether property identity carries measurement across sort/filter changes;
+- header/content min/max policy;
+- behavior when content shrinks;
+- behavior across viewport resize.
 
-1. unseen column uses provisional estimate;
-2. mounted header/cells report actual width requirement;
-3. current width updates from discovered requirements;
-4. hidden rows/columns are not rendered only for sizing;
-5. width changes trigger required visible-row remeasurement;
-6. deep horizontal/vertical scroll remains stable.
+Do not persist widths without a separate product requirement.
 
-Current architecture hypothesis: progressively discovered intrinsic width, likely grow-only within a view/session to prevent repeated width oscillation.
+## Cell reactive/subscription analysis
 
-The experiment must answer:
+Source inspection already shows multiple observable reads can be created per editable cell. Do not optimize this merely because it exists.
 
-- whether grow-only sizing is visually stable enough;
-- whether/when widths should be allowed to shrink after data/view changes;
-- whether measurement should be keyed per property across sorting/filtering changes;
-- what resets measurement state: document, view, property schema change, viewport class, or another confirmed boundary;
-- whether headers or cell content establish a minimum/max width policy.
+After bounded rendering exists, measure the visible-range cost:
 
-Do not persist column widths unless a separate product requirement is established.
-
-## Cell reactive-cost analysis
-
-Source inspection indicates repeated reactive reads can occur inside one editable cell. Do not optimize this before bounded rendering is measured.
-
-After the virtualization prototype, record for the same viewport:
-
-- mounted cell count;
-- value/property query/subscription count if measurable;
-- scripting time during initial visible-range creation;
-- scripting time while scrolling into a fresh range;
-- edit responsiveness.
+- mounted cells;
+- scripting time to create a fresh visible range;
+- scripting time while scrolling into unseen rows/columns;
+- edit responsiveness;
+- query/subscription counts only if a non-invasive test seam can observe them.
 
 Decision:
 
-- if visible-range cost is acceptable, leave read contracts unchanged;
-- if visible-range setup remains a material bottleneck, identify the narrowest owner-correct read optimization and update the architecture before implementation tasking.
+- acceptable visible-range cost → keep existing read contracts;
+- material visible-range cost → design the narrowest owner-correct read optimization;
+- do not introduce a generic batch API solely to reduce call count.
 
-Do not introduce a generic batch API merely to reduce call count without measured evidence.
+## Repetition and statistics
 
-## Decision tree after measurements
+For each timing comparison:
 
-### A. Current main-thread DOM/component materialization dominates
+- one new context/page per dataset case;
+- report the first/cold switch separately;
+- perform a small fixed pilot of warmed switches to estimate variance;
+- then use one fixed repetition count for baseline and candidate comparison;
+- report median and worst observed sample at minimum; include percentile statistics only when sample count makes them meaningful;
+- keep browser build, environment, viewport, dataset, and throttling identical;
+- never discard a slow sample unless an unrelated cause is independently demonstrated and recorded.
 
-Proceed with two-axis dynamic virtualization as the minimum implementation.
+The research result must store raw per-run values in addition to summaries.
+
+## Result artifact
+
+Each profiling run should emit machine-readable JSON through the test result/artifact mechanism rather than only console prose.
+
+Record at least:
+
+```text
+commit/ref
+environment/browser
+viewport/project
+CPU throttling
+case ID
+rows/columns/density/property mix/filter/sort
+cold or warm run
+
+eventLoopYieldMs
+firstFrameOpportunityMs
+switchToUsableMs
+maxLongTaskMs
+longTaskCount
+longTaskTotalMs
+mountedRows
+mountedColumns
+mountedCells
+available CDP metric deltas
+memory/heap data when available
+trace artifact reference when collected
+```
+
+A small summarizer may aggregate raw artifacts into a table for architecture review. Do not make the summarizer a generic benchmark framework.
+
+## Candidate comparison discipline
+
+Evaluate one material change at a time where practical:
+
+1. current baseline;
+2. bounded virtualization candidate;
+3. remeasure identical cases;
+4. only then profile cell subscription/read cost;
+5. only then profile worker/query/transfer changes if still material.
+
+This avoids accepting a bundle of optimizations without knowing which complexity is necessary.
+
+## Decision tree
+
+### A. Unbounded DOM/component materialization dominates
+
+Implement two-axis dynamic virtualization as the minimum required fix.
 
 ### B. Virtualized visible-range setup remains expensive
 
-Profile cell reactive/read fan-out and reduce only the measured duplicate/unnecessary work.
+Profile and reduce measured duplicate/unnecessary cell reads only.
 
-### C. Worker filter/sort dominates at 30,000 rows
+### C. Worker filter/sort becomes the dominant 30k cost
 
-Design a worker-owned query optimization separately while preserving UI virtualization. Prefer improving the existing complete-result contract before introducing paging/range protocols.
+Design a worker-owned query optimization while preserving UI virtualization. Prefer improving the existing complete-result contract before introducing range/paging protocols.
 
-### D. Worker-to-main transfer dominates
+### D. Worker-to-main delivery is material
 
-Quantify the transfer threshold first. Only then consider a range/query protocol or another contract change; update source-of-truth and cancellation semantics before coding.
+Quantify it before changing the public query contract. Any range protocol must explicitly resolve source of truth, ordering, invalidation, and cancellation.
 
-### E. Dynamic measurement/layout dominates
+### E. Dynamic measurement/layout becomes dominant
 
-Simplify the table sizing policy or adapter usage before adding more caching/state. Do not hide measurement cost with fixed dimensions that violate product requirements.
+Simplify the sizing policy or adapter integration before adding caches/state. Fixed dimensions are not an allowed escape hatch.
 
-Several branches may apply, but each additional optimization must have its own measured evidence.
+Several branches can ultimately apply, but each additional optimization needs separate measured evidence.
 
-## Result recording template
+## Initial responsiveness targets
 
-Record each meaningful run in this document or a follow-up findings section with:
+Use these as research targets, not yet as permanent CI budgets:
 
-```text
-commit/ref:
-environment:
-browser:
-viewport/project:
-cpu throttling:
-dataset case:
-rows:
-columns:
-density/property mix/filter/sort:
-runs:
+- no switch-associated main-thread block above **100 ms** in the controlled acceptance environment;
+- preferred individual main-thread slices at or below the browser long-task threshold of **50 ms**;
+- mounted rows independent of total row count for a fixed viewport/geometry class;
+- mounted columns/cells independent of total column count for a fixed viewport/geometry class.
 
-worker compute:
-worker round-trip:
-switch-to-sentinel:
-switch-to-usable:
-max long task:
-long-task count/total:
-rendered rows:
-rendered columns/cells:
-layout/style/paint notes:
-memory (if available):
-trace/artifact reference:
+A wall-clock metric becomes a persistent regression gate only when repeated runs show that the controlled environment provides enough signal with low enough variance. Structural bounded-rendering contracts should become persistent browser assertions regardless of whether absolute timing is promoted.
 
-conclusion:
-next decision unlocked:
-```
+## Correctness around the performance scenario
 
-Do not record a conclusion without enough run metadata to reproduce it.
-
-## Repetition and comparison
-
-For timing comparisons:
-
-- separate first/cold run from warmed repeated switches;
-- run enough repetitions to expose variance before treating a difference as material;
-- report median and worst observed value at minimum;
-- keep browser build/environment/dataset identical between baseline and candidate comparisons;
-- do not discard slow runs without an independently identified unrelated cause.
-
-The exact repetition count is chosen after the first pilot based on observed variance. Do not hard-code an arbitrary large repetition count into permanent CI before stability is known.
-
-## Initial budgets and promotion criteria
-
-Architecture target to validate:
-
-- no switch-associated main-thread task above **100 ms** in the controlled acceptance environment;
-- preferred main-thread work slices at or below **50 ms**;
-- mounted row count independent of total row count for fixed viewport/overscan;
-- mounted column/cell count independent of total column count for fixed viewport/overscan.
-
-The 50 ms threshold is also the browser long-task threshold already used by Mioframe's performance metrics implementation.
-
-A timing metric becomes a persistent automated regression gate only if:
-
-1. the owning scenario/contract is durable;
-2. the environment is controlled enough that the budget is stable;
-3. repeated baseline/candidate runs show useful signal above normal variance;
-4. the budget is not merely an implementation detail;
-5. the test fails closed without retries/sleeps/time inflation.
-
-Structural bounded-rendering contracts should become persistent browser assertions because they directly protect the chosen scalability architecture and are much less hardware-sensitive.
-
-## Required correctness checks around the performance scenario
-
-Performance improvement is invalid unless the same scenario still proves:
+A faster result is invalid unless the same product flow still proves:
 
 - exact filtered membership;
 - exact sorted order;
-- switch to full view and back;
+- short → full → short switching;
+- no stale rows/cells from the previous view;
 - deep vertical scrolling;
-- deep horizontal scrolling when many properties exist;
-- sentinel rows/columns reached correctly;
-- editing a visible deep item and observing the correct value;
-- dynamic-height content remains visible/correct after resize;
-- no stale cells from the previous view after fast view switching.
+- deep horizontal scrolling;
+- sentinel row/column correctness;
+- editing a visible deep item;
+- dynamic-height/width changes remain correct after remeasurement;
+- scroll position remains stable enough during size correction;
+- focus/edit lifecycle follows the final architecture contract.
 
-Accessibility/focus expectations for elements leaving the virtual range must be defined before the final implementation handoff and then proved at the lowest faithful browser layer.
+Accessibility/focus behavior for virtualized elements must be resolved before the final implementation handoff and then proved in a real browser.
 
 ## Research exit criteria
 
 Do not mark `docs/database-virtualization.md` ready until all are true:
 
-- current 30,000-row baseline is captured and decomposed;
-- high-column and combined logical-grid baselines are captured;
-- the candidate engine passes dynamic vertical, horizontal, two-axis, resize, and scroll-anchor capability experiments, or another engine/design is selected with equivalent evidence;
-- final dynamic column-sizing semantics are chosen;
-- final focus/edit lifecycle semantics are chosen;
-- worker compute and transfer are classified as sufficient or assigned a measured architecture change;
-- cell read/subscription cost is classified after bounded rendering;
-- performance budgets are finalized with environment/ownership;
-- persistent vs task-specific performance proof is decided;
-- exact product E2E/reusable-browser/deterministic proof owners are selected in implementation preflight;
-- architecture document is updated to remove resolved alternatives and its readiness verdict becomes `ready`.
+- current row-scale baseline or scale-to-failure boundary is recorded;
+- current column-scale baseline or scale-to-failure boundary is recorded;
+- main-thread freeze is quantified with in-page responsiveness metrics;
+- selected cases have enough attribution to distinguish worker vs main-thread script vs layout/paint;
+- the candidate engine passes dynamic vertical, horizontal, two-axis, resize, and scroll-anchor experiments, or another design is chosen;
+- full `30,000 × 300` sparse logical grid succeeds on the bounded-rendering candidate;
+- dynamic column-sizing semantics are chosen;
+- focus/edit lifecycle semantics are chosen;
+- worker compute/delivery are classified as sufficient or assigned a measured architecture change;
+- visible-range cell read/subscription cost is classified after virtualization;
+- final performance budgets and environment ownership are selected;
+- persistent structural proof vs task-specific timing/trace evidence is decided;
+- exact test owners/paths are selected during implementation preflight;
+- the architecture document is updated to remove resolved alternatives and becomes `ready`.
 
-Until then, production implementation remains blocked by design.
+Until then, production architecture beyond the confirmed virtualization invariant remains intentionally open.
