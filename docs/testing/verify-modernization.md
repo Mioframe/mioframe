@@ -1,12 +1,12 @@
 # Verify modernization
 
-Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. The active finish line is: change-classification precision, expensive-check impact completion (unit / mutation / release), representative benchmark, then stop unless the benchmark proves another bottleneck.
+Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. The active finish line is: bounded agent-facing verifier output, change-classification precision, expensive-check impact completion (unit / mutation / release), representative benchmark, then stop unless the benchmark proves another bottleneck.
 
-`docs/testing/architecture.md` remains the canonical testing policy. `docs/testing/verify-target-architecture.md` is the resolved implementation target for all remaining verifier work. This document records progress, implementation order, and the stop criterion rather than duplicating the complete target design.
+`docs/testing/architecture.md` remains the canonical testing policy. `docs/testing/verify-target-architecture.md` is the resolved impact/planning implementation target for the remaining verifier work. `docs/testing/verify-agent-output.md` is the scoped implementation contract for verifier progress and agent-facing diagnostics. This document records progress, implementation order, and the stop criterion rather than duplicating those target designs.
 
 ## Goal
 
-Make `pnpm verify` fast without reducing verification quality.
+Make `pnpm verify` fast without reducing verification quality or wasting coding-agent context.
 
 Automatic verification must run only checks justified by changed-workspace impact while preserving fail-closed behavior:
 
@@ -26,6 +26,8 @@ explicit full/release request
 
 The same risk-based planning semantics must serve local coding-agent feedback and exact-head GitHub CI. Coding agents own code and required proof; the architect owns PR review, exact-head CI, and merge readiness.
 
+Default local verifier presentation must remain bounded: progress/liveness and actionable failure information are pushed to the agent, while detailed child-process diagnostics remain pull-based through `.verify/logs/**` or explicit `--verbose` escalation.
+
 For CI performance, optimize the parallel **critical path / merge latency** first. Aggregate compute is secondary: do not serialize independent proof owners merely to reuse one provisioned runner or build artifact.
 
 Modernization is not a goal by itself. Stop infrastructure work when the exit criterion below is satisfied.
@@ -34,12 +36,13 @@ Modernization is not a goal by itself. Stop infrastructure work when the exit cr
 
 - `AGENTS.md` and `.agents/skills/verification/SKILL.md`: verification workflow and ownership rules;
 - `docs/testing/architecture.md`: canonical proof ownership and project-wide testing policy;
-- `docs/testing/verify-target-architecture.md`: complete target architecture for the remaining verifier work;
+- `docs/testing/verify-target-architecture.md`: impact/planning target architecture for the remaining verifier work;
+- `docs/testing/verify-agent-output.md`: default agent-facing progress, bounded diagnostics, detailed-log, and verbose-presentation contract;
 - `docs/testing/verify-change-classification.md`: implementation contract for finish PR 1;
 - `docs/testing/storybook.md`: Storybook ownership and authoring policy;
 - `docs/testing/migration-plan.md`: currently executable migration/discovery state;
-- `scripts/verify.ts` and verifier-owned `scripts/lib/*.ts`: planning, execution, locking, and reporting implementation;
-- verifier-owned tests: compatibility and planner regression proof;
+- `scripts/verify.ts` and verifier-owned `scripts/lib/*.ts`: planning, execution, locking, progress, and reporting implementation;
+- verifier-owned tests: compatibility, presentation, and planner regression proof;
 - exact-head GitHub CI: authoritative automatic repository merge gate.
 
 Repository verification tooling owns planning and execution. Product proof ownership stays with the product/test owners described by testing architecture.
@@ -56,7 +59,7 @@ pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-Focused local commands are implementation/diagnostic tools, not a mandatory final coding-agent handoff gate.
+Focused local commands are implementation/diagnostic tools, not a mandatory final coding-agent handoff gate. Default coding-agent runs are non-verbose; `--verbose` is deliberate diagnostic escalation, not the normal interface.
 
 ## Completed foundations
 
@@ -122,11 +125,47 @@ Current develop CI also deliberately starts `verification-static`, application E
 
 ## Active finish plan
 
-The complete expected end state and ownership are already resolved in `verify-target-architecture.md`. The slices below are implementation boundaries for coding agents, not separate architecture explorations.
+The expected end state and ownership are resolved by `verify-target-architecture.md` for impact/planning and `verify-agent-output.md` for agent-facing presentation. The slices below are implementation boundaries for coding agents, not separate architecture explorations.
+
+### PR 0 — bounded agent-facing verifier output
+
+Status: **next**.
+
+Contract: `docs/testing/verify-agent-output.md`.
+
+Goal: keep verifier execution observable to coding agents without streaming or repeating diagnostics that consume model context.
+
+Required shape:
+
+```text
+normal mode
+→ compact runnable-check progress
+→ bounded long-running heartbeat
+→ compact completion lines
+→ bounded actionable failure summary
+→ exact detailed log path + focused rerun
+
+explicit --verbose
+→ raw/detailed diagnostics when deliberately requested
+```
+
+Key constraints:
+
+- ordinary child stdout/stderr remains captured in `.verify/logs/**`, not streamed by default;
+- the current normal heartbeat must stop echoing arbitrary child `last line` output;
+- heartbeat reports verifier-owned liveness only: active check, runnable index/total where known, elapsed time, owned timeout, and log path;
+- no fake percentages or time-to-completion estimates;
+- normal success summary does not enumerate routine skipped lanes, complete trigger reasons, changed files, or environment metadata;
+- normal failure output contains only the failed owner, bounded actionable reason/excerpt, exact log path, and canonical focused rerun needed for the next correction;
+- `--verbose` changes presentation only, never planning, execution, timeout, or exit semantics;
+- existing command lock, `verify:status`, `verify:resume`, and detailed log ownership remain intact;
+- implement through current `verify.ts` execution/reporting seams; do not introduce a logging framework, progress database, or second status model.
+
+Implement this first so the subsequent verifier coding PRs use the bounded feedback surface themselves.
 
 ### PR 1 — verifier change-classification precision
 
-Status: **next**.
+Status: **after PR 0**.
 
 Contract: `docs/testing/verify-change-classification.md`.
 
@@ -274,6 +313,8 @@ For every benchmark record:
 - critical-path / merge latency;
 - aggregate expensive compute.
 
+Also confirm the presentation contract on representative local runs: default output stays bounded, long checks remain visibly alive, failures point to exact detailed logs, and verbose mode remains available without changing semantics.
+
 Use critical-path time as the primary CI performance metric. Aggregate compute is a secondary cost metric and must not be reduced by making previously independent lanes serial without a measured wall-clock benefit.
 
 ## Exit criterion
@@ -290,10 +331,13 @@ Verifier modernization is complete when all of these are true:
 8. mutation ownership is explicit high-risk opt-in rather than adjacency;
 9. release-sensitive develop diffs automatically select existing release contracts while release-version stays independent;
 10. coding agents have a fast focused feedback surface;
-11. exact-head CI uses the same planner semantics;
-12. source-impact release proof runs as its own parallel implementation lane rather than extending unrelated static/E2E/Storybook lanes;
-13. known flakes are absent;
-14. further test-suite/CI optimization is required only when the representative benchmark identifies a real remaining bottleneck.
+11. default coding-agent output is bounded and does not stream/repeat routine child diagnostics;
+12. long-running checks expose bounded liveness/progress without echoing arbitrary child output;
+13. failures expose a concise actionable summary, exact detailed log path, and focused rerun command;
+14. exact-head CI uses the same planner semantics;
+15. source-impact release proof runs as its own parallel implementation lane rather than extending unrelated static/E2E/Storybook lanes;
+16. known flakes are absent;
+17. further test-suite/CI optimization is required only when the representative benchmark identifies a real remaining bottleneck.
 
 Once these are satisfied, **stop verifier infrastructure modernization**.
 
@@ -329,6 +373,9 @@ The new `verification-release` job is not speculative V3E-style parallelism: it 
 - appending release checks to `verification-browser-e2e` or `verification-static`: rejected because it serializes newly required proof behind independent existing lanes and can increase merge latency.
 - workflow `paths` filters for release relevance: rejected because they duplicate `releaseRisk.ts` and can drift.
 - continuing component-by-component legacy proof cleanup before measuring the post-planning bottleneck: rejected because it no longer serves the primary goal directly.
+- streaming child command output by default: rejected because it consumes coding-agent context without improving the normal next decision; detailed logs remain pull-based.
+- echoing the child process's latest line in periodic heartbeats: rejected because arbitrary diagnostic payload is not verifier progress and can repeatedly pollute context.
+- introducing a generic logging/progress framework: rejected; current execution/log/lock/status mechanisms are sufficient.
 
 ## Forbidden
 
@@ -341,5 +388,8 @@ The new `verification-release` job is not speculative V3E-style parallelism: it 
 - Do not infer PATCH/MINOR/MAJOR from source paths.
 - Do not duplicate release impact classification in workflow YAML.
 - Do not serialize release-impact behind static/application E2E merely to reuse setup or build work.
+- Do not stream raw child stdout/stderr to coding agents by default or repeat it through heartbeat/status lines.
+- Do not hide long-running verifier activity until child exit; bounded liveness reporting is required.
+- Do not discard detailed logs merely to reduce terminal output.
 - Do not claim performance improvement without before/after measurement.
 - Do not require coding agents to reproduce the architect-owned exact-head repository gate locally solely for handoff.
