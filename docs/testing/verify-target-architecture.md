@@ -6,7 +6,7 @@ Status: target architecture resolved for the remaining verifier modernization wo
 
 ## Goal
 
-Make ordinary `pnpm verify` select the smallest **reliable** proof for the current repository change while preserving the full release gate and fail-closed behavior.
+Make ordinary `pnpm verify` select the smallest **reliable** proof for the current repository change while preserving the full release gate, fail-closed behavior, and the existing parallel CI critical path.
 
 Target semantics:
 
@@ -26,6 +26,8 @@ local focused feedback + exact-head CI using the same plan
 
 The desired end state is not a generic test planner. It is a small set of specialized resolvers whose ownership matches the proof they select.
 
+For CI, optimize **wall-clock merge latency / critical path** before aggregate compute. Reuse is valuable only when it does not introduce a dependency between independent proof owners that currently execute in parallel.
+
 ## Non-goals
 
 The finish work does not introduce:
@@ -34,10 +36,12 @@ The finish work does not introduce:
 - a generic verification DSL or universal `PathKind` taxonomy;
 - a cross-lane source-to-test registry;
 - a second source of truth for test ownership already expressed by imports or owner-local placement;
-- new workers, sharding, retries, timeout inflation, or CI artifact plumbing for performance reasons;
+- new workers, sharding, retries, timeout inflation, or cross-job artifact plumbing for performance reasons;
 - broad legacy test-suite cleanup without benchmark evidence;
 - automatic release-version intent inference from source changes;
 - mutation coverage for every source that merely has an adjacent test.
+
+One dedicated release-impact CI lane is part of the required correctness architecture, not an optional parallelism optimization: newly required release proof must not be serialized behind existing independent static/E2E/Storybook proof owners.
 
 ## Current gaps
 
@@ -48,6 +52,7 @@ The existing verifier already has durable specialized planning for application E
 3. **Mutation:** `getMutationScope()` and `stryker.config.mjs` infer mutation applicability from source/test adjacency. Repository verification policy explicitly requires mutation to be opt-in for high-risk targets instead.
 4. **Release:** source-impact release checks exist only inside full mode. Ordinary `pnpm verify` therefore cannot automatically run a release contract when a develop-bound change affects production artifact/update semantics.
 5. **Status loss:** `scripts/lib/changedPaths.ts` already preserves added/modified/deleted/renamed identity, but current lane planners consume its transitional flat path projection. New planning that depends on removals must consume status-aware input instead of rebuilding Git semantics elsewhere.
+6. **Release CI placement:** current develop verification intentionally starts static, application E2E, Storybook behavior, and visual proof in parallel after `autofix`. Appending new release proof to one of those existing jobs would lengthen that independent lane and can increase the overall critical path even when it saves some aggregate build compute.
 
 ## End-state ownership
 
@@ -63,9 +68,12 @@ The existing verifier already has durable specialized planning for application E
 | `scripts/lib/mutationTargets.ts` + mutation resolver | explicit high-risk mutation ownership only |
 | `scripts/lib/releaseRisk.ts` | source-impact selection among existing release contracts |
 | `scripts/verify.ts` | invocation orchestration, command construction, prerequisite/reuse handling, execution/reporting |
+| `.github/workflows/verify.yml` | CI execution placement only; preserve independent parallel proof lanes and aggregate their results |
 | exact-head GitHub CI | authoritative automatic repository merge gate |
 
 `verify.ts` must stop being the place where unit/mutation ownership is inferred inline. It may compose already-resolved plans and reuse prerequisites, but ownership belongs to the specialized resolver.
+
+Workflow YAML must not become a second impact planner. It decides where a verifier-selected lane executes, never whether a source path is unit/E2E/release relevant.
 
 ## Plan model
 
@@ -119,7 +127,9 @@ isNonRuntimeRepositoryMetadataPath(filePath: string): boolean
 
 It is **not** the root of all verifier relevance. It exists only to prevent confirmed repository metadata from inheriting runtime/browser ownership by directory location.
 
-Runtime-content precedence is mandatory:
+The classifier is deliberately narrower than a Markdown/document classifier: arbitrary source-adjacent `README.md`, `ARCHITECTURE.md`, `DESIGN.md`, or `REVIEW.md` files are not excluded merely by basename. Only stable confirmed metadata paths/roots are safe exclusions; unknown source-adjacent Markdown remains fail-closed.
+
+Known runtime content is explicitly outside metadata semantics:
 
 - `docs/user/**` is runtime Help content;
 - `PRIVACY.md` is runtime privacy content;
@@ -292,7 +302,7 @@ No change required.
 
 The current planner already selects only explicit Storybook/build infrastructure, `.storybook/**`, story files, and runtime-relevant `package.json`. It does not suffer from the broad metadata inheritance defect.
 
-Local static-build reuse across selected Storybook browser lanes remains valid. GitHub behavior and visual jobs remain self-contained; no shared Storybook artifact is introduced unless the post-finish benchmark proves a critical-path need.
+Local static-build reuse across selected Storybook browser lanes remains valid. GitHub behavior and visual jobs remain self-contained and parallel; no shared Storybook artifact is introduced unless the post-finish benchmark proves a critical-path need.
 
 # Visual architecture
 
@@ -520,15 +530,26 @@ Rules:
 - `pnpm verify:release` / `pnpm verify --full` continue to run the complete full-project/release sequence exactly as the deliberate release gate;
 - ordinary `pnpm verify` may append only source-impact release checks selected by `releaseRisk.ts`;
 - a standalone focused release check remains self-contained, matching current behavior;
-- when one ordinary verifier invocation selects both `artifact` and `release-smoke`, `verify.ts` may schedule one `build` prerequisite first and reuse the fresh artifact through the existing `RELEASE_ARTIFACT_SKIP_BUILD` mechanism instead of rebuilding it twice;
+- the dedicated CI release-impact entry executes all selected source-impact release checks in **one verifier invocation**, so `build` can be scheduled once and the existing `RELEASE_ARTIFACT_SKIP_BUILD` mechanism can reuse that artifact for `artifact` / `release-smoke` when applicable;
 - `managed-updates` keeps its existing fixed fresh-container grouping and is not forced through production-artifact reuse that it does not currently own;
+- do not move release-impact behind application E2E or static verification merely to reuse an existing job: that trades aggregate compute for a longer critical path;
 - do not add cross-job artifact transfer merely to eliminate occasional duplicate CI builds.
+
+The release-impact invocation may remain internally sequential initially. In particular, managed-update release groups keep their intentional fixed ordering/isolation. If the representative benchmark later proves the dedicated release lane itself is the critical-path bottleneck, splitting artifact-oriented and managed-update release execution into separate parallel jobs may be reconsidered then.
 
 ## CLI contract
 
 `release-version` remains a full/policy-only label.
 
-The six source-impact release labels must become valid non-full focused labels so the same planner can serve coding feedback and CI:
+Add one specialized automatic orchestration label:
+
+```bash
+pnpm verify --only release-impact
+```
+
+`release-impact` means: resolve `releaseRisk.ts` against the ordinary changed-path scope and execute only the selected source-impact release contracts in one invocation. It is an execution grouping, not a new proof owner and not a second source-impact registry.
+
+The six individual source-impact release labels remain available as focused implementation/diagnostic entry points and become valid outside `--full`:
 
 ```bash
 pnpm verify --only release-config --files <paths...>
@@ -539,53 +560,84 @@ pnpm verify --only release-smoke --files <paths...>
 pnpm verify --only managed-updates --files <paths...>
 ```
 
-`--files` remains optional in ordinary CI/base-diff operation. Do not add a second release-specific CLI.
+`--files` remains optional in ordinary CI/base-diff operation. Do not add a second release-specific changed-path syntax.
 
 # CI parity
 
 ## Principle
 
-Exact-head GitHub CI must execute the same resolvers as local `pnpm verify`; workflow YAML decides only **where** a selected label runs, not whether changed paths are release/unit/mutation relevant.
+Exact-head GitHub CI must execute the same resolvers as local `pnpm verify`; workflow YAML decides only **where** a selected lane runs, not whether changed paths are release/unit/mutation relevant.
 
-## Minimum CI topology
+The existing develop CI intentionally preserves independent parallel proof after `autofix`:
 
-Do not add a new optimization job before the representative benchmark.
+```text
+autofix
+   ├─ verification-static
+   ├─ verification-browser-e2e
+   ├─ verification-storybook-browser / storybook-behavior
+   ├─ verification-storybook-browser / visual
+   └─ release-version (PR policy, independent)
+```
 
-Use existing jobs:
+Release-impact must preserve this shape rather than lengthening one existing branch of the graph.
 
-### `verification-static`
+## Required CI topology
 
-Keep current static/unit/mutation checks and invoke the non-browser release labels through the verifier:
+Add one dedicated implementation-proof lane:
 
-- `release-config`;
-- `build`;
-- `publisher-node-import`.
+```text
+autofix
+   ├─ verification-static
+   ├─ verification-browser-e2e
+   ├─ verification-storybook-browser / storybook-behavior
+   ├─ verification-storybook-browser / visual
+   ├─ verification-release
+   └─ release-version
+```
 
-Each invocation skips quickly when its release plan does not select that check.
+`verification-release` starts directly after `autofix` under the same exact-head/base-ref rules as the other implementation lanes and runs:
 
-### `verification-browser-e2e`
+```bash
+pnpm verify --verbose --only release-impact
+```
 
-After application E2E, invoke the release browser labels through the verifier:
+For an ordinary non-release-sensitive diff the release planner returns `skip`; the job may still pay checkout/setup/install cost, but it runs in parallel and should not extend wall-clock merge latency while the longer existing browser lanes are active. Do not duplicate release relevance with GitHub Actions `paths` filters merely to avoid this setup cost.
 
-- `artifact`;
-- `release-smoke`;
-- `managed-updates`.
+For a release-sensitive diff the lane owns the required source-impact release execution and contributes independently to the CI critical path.
 
-These checks are expected to be selected only for release-sensitive diffs. Serializing them in the existing browser job avoids adding CI topology before measurement. If the post-finish benchmark later proves this creates a material critical-path bottleneck, job separation can be reconsidered then.
+### Existing lanes remain unchanged in ownership
 
-### Storybook browser jobs
+`verification-static` keeps static/unit/mutation and Storybook-build fallback ownership. Do not append source-impact release checks there.
 
-No change for release planning.
+`verification-browser-e2e` keeps application product E2E ownership. Do not append release browser proof after E2E.
 
-### `release-version`
+Storybook behavior and visual remain self-contained parallel matrix lanes. Do not make them depend on release build output.
 
-Remain independent exactly as defined by `docs/release.md`.
+`release-version` remains independent exactly as defined by `docs/release.md` and is not folded into `verification-release`.
 
-## CI duplication policy
+### Aggregation
 
-A release artifact may be rebuilt in separate CI jobs because no cross-job artifact is introduced. That duplication is accepted until benchmark data shows it is a critical-path problem worth extra infrastructure.
+The existing `verification` aggregator must additionally require `verification-release == success`. `deploy-preview` continues to depend on aggregate implementation verification, so a selected failing release contract blocks the preview/merge implementation gate exactly like another required proof lane.
 
-Correct impact selection is required now; cross-job compute optimization is not.
+## CI latency and duplication policy
+
+Primary metric:
+
+```text
+merge latency ≈ max(duration of required parallel proof lanes)
+```
+
+not the sum of all CI compute.
+
+Therefore:
+
+- keep independent proof lanes parallel even when that duplicates setup/build compute;
+- reuse deterministic artifacts **within one lane/invocation** when it reduces work without creating a new dependency;
+- do not create a shared producer job that all browser/release lanes must wait for solely to eliminate duplicate builds;
+- do not serialize release proof behind E2E/static solely to reuse their provisioned runner;
+- evaluate aggregate compute as a secondary benchmark metric after correctness and critical-path latency.
+
+The dedicated release lane is the only new job required by this target. Further job splitting/parallelism remains deferred until measurement.
 
 # `verify.ts` target role
 
@@ -611,7 +663,7 @@ Contract: `docs/testing/verify-change-classification.md`.
 
 Implement only:
 
-- repository metadata helper;
+- repository metadata helper with stable confirmed metadata paths/roots only;
 - E2E metadata exclusion + Help runtime mapping;
 - Storybook behavior metadata exclusion;
 - visual removal of blanket `.md` exclusion + metadata exclusion;
@@ -648,16 +700,27 @@ Implement:
 
 - `releaseRisk.ts`;
 - source-impact release plan in ordinary `verify`;
-- focused non-full release labels except `release-version`;
+- specialized `release-impact` orchestration label;
+- focused non-full individual release labels except `release-version`;
 - same-invocation artifact reuse where applicable;
-- minimal existing-job CI invocations for selected release labels;
+- one dedicated `verification-release` CI job starting in parallel after `autofix`;
+- aggregate verification dependency on the new release lane;
 - release planner/command/workflow tests.
+
+Do not append release checks to static or application-E2E jobs. Do not add workflow path filters that duplicate `releaseRisk.ts`.
 
 The three PR 2 slices implement one already-resolved architecture; they are not invitations to redesign the approach independently.
 
 ## Benchmark — then stop
 
 After PR 2C, benchmark representative real change classes from `verify-modernization.md`.
+
+For CI, record both:
+
+- critical-path / merge latency;
+- aggregate expensive compute.
+
+Optimize critical path first; lower aggregate compute only when it does not make independent proof serial.
 
 Stop verifier infrastructure work when the exit criterion passes. Only measured remaining bottlenecks may reopen test-cost/parallelism work.
 
@@ -666,6 +729,7 @@ Stop verifier infrastructure work when the exit criterion passes. Only measured 
 | Change class | Expected expensive proof |
 | --- | --- |
 | `AGENTS.md` / repository testing docs | no browser/release/mutation proof solely from metadata |
+| arbitrary source-adjacent Markdown outside confirmed metadata roots | preserve fail-closed owning-lane behavior; no basename-wide skip |
 | ordinary source with unit imports | Vitest related unit proof |
 | source with no unit owner | no fabricated unit work; other owning lanes remain independent |
 | external unit file-as-data input | exact mapped unit owner |
@@ -677,7 +741,7 @@ Stop verifier infrastructure work when the exit criterion passes. Only measured 
 | Storybook build config/story | static Storybook build according to existing planner |
 | registered high-risk mutation source/test | exact mutation target |
 | unregistered source with adjacent tests | no mutation |
-| release build/PWA/publisher/update source | exact release contract(s), full source-impact release fallback when ownership unknown |
+| release build/PWA/publisher/update source | exact release contract(s), full source-impact release fallback when ownership unknown; execute in parallel CI release lane |
 | version-only `package.json` | no runtime/release expansion from version field alone; independent release-version policy still applies |
 | runtime dependency / lockfile change | conservative affected expensive lanes including release impact |
 | explicit `pnpm verify:release` | complete full project/release gate; mutation excluded as today |
@@ -687,7 +751,7 @@ Stop verifier infrastructure work when the exit criterion passes. Only measured 
 Verifier modernization is complete when:
 
 1. repository metadata no longer produces known browser false positives;
-2. runtime Markdown/assets are not hidden by extension-wide rules;
+2. runtime Markdown/assets are not hidden by extension-wide or generic-basename rules;
 3. unit selection uses supported related resolution plus only necessary exact external-input mappings;
 4. deleted/moved unit-relevant inputs fail closed where previous ownership cannot be resolved;
 5. mutation is selected only from an explicit validated high-risk registry;
@@ -695,15 +759,17 @@ Verifier modernization is complete when:
 7. release-version remains independent product/release policy;
 8. every expensive lane has inspectable skip/focused/full/invalid behavior appropriate to its ownership;
 9. exact-head CI uses the same resolver semantics;
-10. no known required proof is silently missed and no known false-positive full run remains;
-11. known flakes are absent;
-12. representative benchmark shows no remaining critical-path problem that justifies more verifier infrastructure.
+10. required implementation proof remains parallel after `autofix`; new release proof is not serialized behind unrelated static/E2E/Storybook lanes;
+11. no known required proof is silently missed and no known false-positive full run remains;
+12. known flakes are absent;
+13. representative benchmark shows no remaining critical-path problem that justifies more verifier infrastructure.
 
 Then **stop**.
 
 # Deferred unless benchmark proves need
 
-- additional CI jobs for performance;
+- additional CI jobs beyond the one required `verification-release` lane;
+- splitting the release lane into separate artifact/managed-update parallel jobs;
 - shared Storybook or release artifacts across jobs;
 - more Playwright workers;
 - sharding;
@@ -715,6 +781,7 @@ Then **stop**.
 # Forbidden
 
 - Do not use `*.md = irrelevant` or another extension-wide runtime skip.
+- Do not classify arbitrary source-adjacent Markdown as metadata merely by basename.
 - Do not turn `repositoryMetadata.ts` into a universal path taxonomy.
 - Do not build a custom persistent unit dependency graph.
 - Do not treat zero Vitest-related tests as proof that other lanes can skip.
@@ -724,7 +791,9 @@ Then **stop**.
 - Do not make version-policy files trigger the whole source-impact release suite solely because they live under `scripts/release/**`.
 - Do not weaken unknown-significant fallback to make verification faster.
 - Do not add retries/timeouts/flaky acceptance as performance work.
-- Do not add CI topology or artifact-transfer complexity before the benchmark demonstrates need.
+- Do not append release-impact after E2E/static or otherwise serialize independent CI proof merely to save runner/setup/build compute.
+- Do not duplicate `releaseRisk.ts` with workflow `paths` filters.
+- Do not add cross-job artifact-transfer complexity before the benchmark demonstrates need.
 
 # Readiness
 
@@ -733,5 +802,5 @@ Then **stop**.
 - unit architecture: resolved;
 - mutation architecture: resolved; exact initial high-risk target **data** requires a bounded audit before PR 2B implementation and must not be guessed;
 - release-impact architecture: resolved;
-- CI parity architecture: resolved without a new job;
+- CI parity architecture: resolved with one dedicated release-impact job preserving existing parallel critical-path behavior;
 - unresolved architecture blockers: none.
