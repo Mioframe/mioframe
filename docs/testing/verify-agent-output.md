@@ -102,6 +102,8 @@ The progress denominator counts checks that are actually runnable in this invoca
 
 If a running check has not completed within the heartbeat interval, print a compact liveness update even when its child process is producing no terminal-visible output.
 
+Preserve the current 60-second heartbeat cadence for the initial implementation. The immediate `running` line plus one bounded liveness line per minute is sufficient unless later measured agent/runtime behavior proves that cadence inadequate.
+
 The heartbeat must contain only verifier-owned control information, for example:
 
 ```text
@@ -120,7 +122,7 @@ The heartbeat must **not** echo the child's latest output line by default. Arbit
 
 A heartbeat is liveness information, not proof progress. Do not invent percentages or estimated completion when the underlying tool does not expose trustworthy progress.
 
-A fixed bounded interval is sufficient. Do not emit high-frequency spinner/tick output that consumes agent context without adding state.
+Do not emit high-frequency spinner/tick output that consumes agent context without adding state.
 
 ### Lock/wait progress
 
@@ -194,7 +196,7 @@ Implementation must prove at minimum:
 - default mode does not stream ordinary child stdout/stderr;
 - very large child output does not grow normal terminal output proportionally;
 - a multi-check run reports runnable check index/total and completion;
-- a long quiet check emits bounded heartbeat/liveness output;
+- a long quiet check emits bounded heartbeat/liveness output at the preserved 60-second cadence;
 - default heartbeat does not echo the child's last output line;
 - heartbeat includes the owning log path and verifier-owned timeout when applicable;
 - a failed check prints a bounded actionable summary, exact detailed log path, and focused rerun command;
@@ -213,6 +215,7 @@ Tests should assert the verifier presentation contract through deterministic cap
 - Printing unbounded output tails, stack traces, changed-file lists, skipped-lane lists, or trigger-reason lists in normal mode.
 - Treating `--verbose` as the normal coding-agent command.
 - Hiding all progress until a long command exits.
+- Changing the 60-second heartbeat cadence without measured evidence that the current cadence is inadequate.
 - Fake percentages or completion estimates not supplied by the owning tool.
 - High-frequency progress chatter.
 - A second logging/progress framework beside the current verifier execution/log/lock mechanisms.
