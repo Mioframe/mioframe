@@ -465,7 +465,7 @@ Acceptance:
 - every surviving non-visual Lists contract has one correct primary component/browser/product owner;
 - no duplicate central mapping is introduced for `MDList.browser.spec.ts`;
 - surviving baselines are the minimal distinct accepted visual set after explicit duplicate review;
-- required focused unit, Storybook behavior, and visual proof passes, followed by final automatic `pnpm verify`;
+- required task-specific component, Storybook behavior, and visual proof is present and any risk-specific focused verification required by the V3C-A architecture passes; exact-head GitHub CI is the final automatic repository gate;
 - before/after visual and Storybook behavior counts/timings plus aggregate browser execution impact are recorded against the V3 baseline.
 
 ### Stage S6 — Storybook catalogue normalization
