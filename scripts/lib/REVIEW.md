@@ -4,47 +4,38 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete verifier-modernization finish implementation on `refactor/verify-modernization-finish`, with full re-review of Pass C unit impact and the stale visual-planner proof.
+- Complete verifier-modernization finish implementation on `refactor/verify-modernization-finish`, with re-review of Pass C after the accepted unit-impact architecture correction.
 
 ## Blockers
 
-### B1 — Pass C implementation must conform to the corrected unit-impact architecture
+### B1 — external Vitest ownership is still not represented truthfully
 
 Owner: `scripts/lib/unitRisk.ts`
 
-Architecture is now resolved by [`docs/testing/verify-unit-impact-correction.md`](../../docs/testing/verify-unit-impact-correction.md). Do not continue the previous prefix/mapping patching approach.
-
-Problem: current `unitRisk.ts` still uses `UNIT_RELEVANT_PREFIXES = ['src/', 'config/', 'scripts/']` as the allowed ordinary Vitest dependency-input universe and makes mapped CSS exclusive. That creates false negatives for real cross-root import owners and conflates test discovery with dependency-input eligibility.
+Problem: the repository-wide ordinary `vitest related` pass-through now fixes the previous prefix-based misses, but the exact external-input exceptions are still inconsistent with the accepted architecture: one real runtime-discovered unit owner is omitted, while one import-reachable owner is redundantly encoded as an external mapping.
 
 Evidence:
 
-- `config/postcss.config.test.ts` imports root `postcss.config.js`, but the root module is outside the current ordinary-source prefixes;
-- `playwright.lanes.test.ts` imports root Playwright config modules, which are also outside those prefixes;
-- `tests/e2e/release/fixtures/managedReleaseFixture.test.mjs` imports adjacent fixture source under `tests/e2e/**`, but that source root is excluded from ordinary unit inputs;
-- `.gitignore -> scripts/agentEnvironment.test.mjs` is not a truthful relation to the real repository `.gitignore`: the test constructs temporary `.gitignore` fixtures;
-- `isMappedCssSource` suppresses ordinary related resolution for mapped CSS, although an external mapping must be additive when a real import relation also exists.
+- [`../../eslint.config.test.ts`](../../eslint.config.test.ts) constructs `new ESLint({ cwd: import.meta.dirname })` and exercises the repository ESLint configuration through ESLint runtime discovery. It does not import `eslint.config.mjs`; therefore `vitest related eslint.config.mjs` cannot discover this owning test from Vitest's module relation alone.
+- [`../../eslint.config.mjs`](../../eslint.config.mjs) is an ordinary root `.mjs` input. `unitRisk.ts` currently passes it only as a normal related input and has no exact external relation to `eslint.config.test.ts`, so an `eslint.config.mjs`-only change can execute zero related unit tests and silently miss the test that owns its rule contract.
+- `UNIT_FILE_AS_DATA_MAPPINGS` maps `vite.config.ts` to both `config/viteConfigFixtureImport.test.ts` and `scripts/release/viteBuildDate.test.mjs`, while `scripts/release/viteBuildDate.test.mjs` imports `vite.config.ts` normally. The corrected repository-wide related-input model can already discover that owner through Vitest; keeping it in the external map duplicates ownership and contradicts the exception-only contract.
+
+Basis:
+
+- [`../../docs/testing/verify-unit-impact-correction.md`](../../docs/testing/verify-unit-impact-correction.md): ordinary import/dependency ownership belongs to Vitest related resolution; exact mappings are additive exceptions only for external/runtime-discovered relations Vitest cannot represent.
+- [`../../docs/testing/verify-target-architecture.md`](../../docs/testing/verify-target-architecture.md): the verifier must not reconstruct or duplicate ordinary module ownership, while confirmed external file/config consumers require exact ownership.
+
+Risk: a change to `eslint.config.mjs` can pass the focused unit planner while omitting `eslint.config.test.ts`; redundant import-reachable mappings also reintroduce the duplicated ownership the Pass C redesign was intended to remove.
 
 Required final state:
 
-- direct Vitest test recognition follows the actual `vitest.config.ts` include contract;
-- ordinary added/modified current-tree module/style/support inputs are eligible for `vitest related` across repository locations, not only `src/config/scripts`;
-- Playwright-only proof remains outside Vitest ownership;
-- exact external-input mappings contain only verified non-import repository-source ownership and compose additively with ordinary related inputs;
-- false mappings based on temporary fixtures are removed;
-- deletion/rename and actual Vitest-global infrastructure continue to fail closed as defined by the accepted architecture;
-- no generated/persisted dependency graph, generic prefix registry, or cross-lane classifier is introduced.
+- add the smallest exact external relation for `eslint.config.mjs -> eslint.config.test.ts` unless current executable proof demonstrates Vitest related already selects that test;
+- remove `scripts/release/viteBuildDate.test.mjs` from the `vite.config.ts` external mapping if the normal import relation selects it, keeping only owners the related graph cannot reach;
+- re-check the current exact mapping table for the same distinction: every mapped owner must be external to the ordinary Vitest relation; ordinary import-reachable owners stay implicit;
+- preserve repository-wide ordinary related inputs, additive external mappings, Playwright exclusions, package handling, and deletion/rename fail-closed behavior;
+- do not add another graph, broad runtime-discovery classifier, or generic registry.
 
-Verification: use a fresh test-author context and the required proof cases in `verify-unit-impact-correction.md`. The proof must reject root imported modules being skipped, `tests/e2e/**` Vitest helper/source misses, mapped CSS suppressing an import consumer, and temporary-fixture false ownership.
-
-### B2 — stale `visualRisk.test.ts` cases must be made deterministic before PR CI
-
-Owner: `scripts/lib/visualRisk.test.ts`
-
-Problem: two existing cases still use MDButton as an "unmigrated" real-filesystem fixture and expect `full`, while `develop` already contains `MDButton.visual.spec.ts`. The resolver therefore correctly finds a colocated owner and returns `focused`. The failures are pre-existing, but this finish branch changes `visualRisk.test.ts`, so focused exact-head unit CI will select the file and fail.
-
-Required final state: preserve the intended unmigrated/fail-closed planner contract with a deterministic synthetic/injected fixture that explicitly has no colocated visual owner. Do not change `visualRisk.ts` behavior merely to satisfy stale real-component state.
-
-Verification: the corrected test must prove the same unmigrated-owner contract without depending on MDButton's current migration state.
+Verification: fresh independent planner proof must demonstrate both sides of the boundary: a runtime-discovered config owner that would otherwise be missed is selected exactly, and a normal import-reachable owner remains selected without being duplicated in the external mapping.
 
 ## Major issues
 
@@ -52,9 +43,11 @@ None.
 
 ## Resolved findings
 
-- Previous release false-negative consumer ownership is resolved.
-- Previous release proof-only over-selection is resolved.
-- The Pass C architecture decision is resolved; only implementation/proof remains blocked.
+- Repository-wide ordinary unit dependency inputs now replace the old `src/config/scripts` dependency boundary.
+- Mapped CSS/external ownership is additive rather than suppressing ordinary related resolution.
+- Root imported modules and `tests/e2e/**` Vitest helpers are eligible for ordinary related resolution.
+- The stale visual-owner proof now uses a deterministic synthetic owner and is resolved.
+- Previous release false-negative ownership and release proof-only over-selection remain resolved.
 
 ## Minor issues
 
@@ -66,4 +59,4 @@ None.
 
 ## Items not required
 
-- Do not expand mutation/release/classification architecture while correcting Pass C.
+- Do not expand mutation/release/classification architecture while correcting the remaining unit external-ownership boundary.
