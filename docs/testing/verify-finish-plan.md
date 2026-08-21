@@ -13,7 +13,7 @@ Authoritative contracts remain:
 - `.agents/skills/verification/SKILL.md` — coding-agent verification workflow;
 - `.agents/skills/test-first/SKILL.md` and `.agents/skills/test-authoring/SKILL.md` — independent proof-authoring workflow.
 
-Any older `PR 0`, `PR 1`, `PR 2A`, `PR 2B`, or `PR 2C` wording in verifier design documents names a logical implementation slice. Those slices are no longer separate merge units. The remaining modernization is implemented in **one branch and one pull request** using the bounded passes below.
+Any older `PR 0`, `PR 1`, `PR 2A`, or `PR 2C` wording in verifier design documents names a logical implementation slice. Those slices are no longer separate merge units. The remaining modernization is implemented in **one branch and one pull request** using the bounded passes below.
 
 ## Goal
 
@@ -235,6 +235,21 @@ Before moving from one pass to the next:
 
 A later pass may fix an integration defect exposed by the combined implementation, but it must not reopen an already resolved ownership decision without concrete contradictory repository evidence.
 
+## Correction gate
+
+When full-project review records active findings in an owner-local `REVIEW.md`, those findings override any earlier pass-complete or benchmark-complete claim until they are resolved.
+
+For a correction round:
+
+- fix only the active findings and directly affected proof;
+- preserve the accepted architecture unless current repository evidence contradicts it;
+- use a fresh test-author context when behavioral proof must change;
+- rerun only the benchmark cases invalidated by the correction, then update the finish conclusion;
+- do not treat a previously recorded “no false negatives” benchmark conclusion as valid after review discovers a silent under-selection;
+- do not accept a claimed pre-existing failure without exact baseline evidence when the finish PR changes the same owner/test area.
+
+The current correction source of truth is `scripts/lib/REVIEW.md`.
+
 ## Final review boundary
 
 The architect reviews the **complete resulting PR**, including all passes together.
@@ -255,7 +270,8 @@ Green focused checks or green CI do not replace semantic review of:
 The one finish PR is implementation-complete only when:
 
 - Passes A–F are complete;
-- Pass G benchmark is recorded;
+- Pass G benchmark is recorded and remains valid after the latest correction/review round;
+- no active blocker remains in `scripts/lib/REVIEW.md`;
 - no known required proof can silently be missed;
 - default agent output remains bounded and progress-visible;
 - unit impact no longer relies on sibling-basename guesses;
