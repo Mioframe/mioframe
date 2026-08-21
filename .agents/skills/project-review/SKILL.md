@@ -227,7 +227,7 @@ Verification: <faithful proof>
 
 ## Items not required
 
-- <separate non-required improvement>, or `None.`>
+- <separate non-required improvement>, or `None.`
 
 ## Unresolved questions
 
