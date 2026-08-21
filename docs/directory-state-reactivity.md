@@ -1,8 +1,8 @@
 # Directory state reactivity
 
-Status: **architecture ready; implementation present; final semantic acceptance blocked by active owner-local review findings**.
+Status: **architecture ready; implementation semantic review ready; exact-head GitHub CI pending**.
 
-This document is the architecture source of truth for the directory-state-reactivity refactor. The current implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The active final-review correction handoff is recorded in `docs/directory-state-reactivity-final-review-correction.md`.
+This document is the architecture source of truth for the directory-state-reactivity refactor. The implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The completed final-review correction is recorded in `docs/directory-state-reactivity-final-review-correction.md`.
 
 ## Goal
 
@@ -327,5 +327,5 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Req
 - proof ownership and unchanged scope: resolved;
 - unresolved architecture blockers: none;
 - architecture verdict: **ready**;
-- implementation semantic review: **blocked by active owner-local PR findings**; correction scope is fixed in `docs/directory-state-reactivity-final-review-correction.md` and the architecture itself remains unchanged;
-- final automatic acceptance gate: exact-head GitHub CI, architect-owned after those findings are closed.
+- implementation semantic review: **ready**; all owner-local findings from the full PR re-review and its correction passes are closed;
+- final automatic acceptance gate: exact-head GitHub CI, architect-owned.
