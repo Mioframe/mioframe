@@ -502,7 +502,8 @@ const setupRepositoriesService = () => {
     repositoryState$,
     /**
      * Internal document-id projection of `repositoryState$`, shared by `DocumentService` and Repo
-     * gating. Not a UI-facing query; consume `repositoryState`/`repositoryState$` from UI layers.
+     * gating. `documentIds$` and `repositoryState$` are both same-worker service internals; UI-facing
+     * consumers must use only the public `repositoryState` query.
      */
     documentIds$,
     getRepo$: repo$,

@@ -201,6 +201,34 @@ describe('useRepository', () => {
     scope.stop();
   });
 
+  it('reprojects the same retained snapshot synchronously when hideAutomergeFiles toggles on a mounted options ref, without creating a second repositoryState query', async () => {
+    mockQueryReturn({ status: 'ready', snapshot: snapshotFixture() });
+
+    const { useRepository } = await import('./useRepository');
+    const path = ref('/repo');
+    const options = ref<{ hideAutomergeFiles?: boolean }>({ hideAutomergeFiles: true });
+    const scope = effectScope();
+    let state!: ReturnType<typeof useRepository>;
+
+    scope.run(() => {
+      state = useRepository(path, options);
+    });
+
+    expect(state.repositoryVisibleEntries.value).toEqual([['notes.txt', fileStat]]);
+
+    options.value = { hideAutomergeFiles: false };
+
+    expect(state.repositoryVisibleEntries.value).toEqual([
+      ['notes.txt', fileStat],
+      ['storage.automerge', fileStat],
+    ]);
+
+    expect(useObservableQueryMock).toHaveBeenCalledTimes(1);
+    expect(useObservableQueryMock.mock.calls[0]?.[1]?.value).toEqual({ path: '/repo' });
+
+    scope.stop();
+  });
+
   it('delegates repository mutations through the current folder path', async () => {
     mockQueryReturn({ status: 'ready', snapshot: snapshotFixture() });
     createDocumentMock.mockResolvedValue(undefined);
