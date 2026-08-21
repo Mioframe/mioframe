@@ -60,7 +60,7 @@ Vitest determines import-reachable tests.
 
 Do not duplicate an owner in external metadata when a real static/dynamic module relation already lets `vitest related <source>` select it.
 
-### 4. Exact external ownership is additive
+### 4. Exact external ownership is additive and status-aware
 
 An exact external relation is justified only when a current Vitest test consumes that exact repository input outside the import graph, for example:
 
@@ -69,6 +69,15 @@ An exact external relation is justified only when a current Vitest test consumes
 - exact existence/absence assertion.
 
 Exact external ownership adds the owning test path to the focused related inputs. If the same source also has ordinary import consumers, the source itself is still passed to Vitest related. External ownership never suppresses the ordinary relation.
+
+Exact external ownership is a property of the repository path contract, not of current file existence. Apply a deterministic exact relation to every status that can affect that contract:
+
+- `added` and `modified` select the exact owner as usual;
+- `deleted` still selects the surviving exact owner when that owner observes the fixed path or its existence/absence;
+- `renamed` evaluates both old and new paths, preserving any exact owner attached to either side;
+- current-tree existence is not required merely to recognize a known fixed-path external owner.
+
+If an old/deleted relation cannot be represented safely from deterministic path ownership, use the existing fail-closed full-unit fallback instead of skipping.
 
 A mapping is not valid merely because a test creates or reads a temporary fixture with the same basename. Do not modify an otherwise unrelated test solely to manufacture an ownership relation that justifies planner metadata.
 
@@ -93,6 +102,8 @@ Do **not** solve this by:
 
 Represent each confirmed current scan with the smallest local rule that mirrors the test's actual bounded scan predicate and adds that exact owning test. A simple local helper/conditions in `unitRisk.ts` is sufficient; do not generalize this into a cross-lane registry framework.
 
+A scan-owner predicate must match the owning test's actual enumerated population, not a broader neighboring category. For each scan rule, prove one representative positive path and one nearby negative path just outside the real population.
+
 Confirmed current scan owners that must be audited and represented:
 
 1. `src/readRecoveryImportBoundary.test.ts`
@@ -104,7 +115,10 @@ Confirmed current scan owners that must be audited and represented:
 4. `src/shared/ui/material/foundation/tokens.test.ts`
    - scans existing `src/shared/ui/material/components/*/tokens.css` in addition to its fixed-path inputs;
 5. root `playwright.lanes.test.ts`
-   - scans the current Playwright spec populations it enumerates: root application specs under `tests/e2e`, Storybook/visual/release spec subtrees, and colocated `src/**/*.browser.spec.ts` / `src/**/*.visual.spec.ts`.
+   - scans root application `tests/e2e/*.spec.ts` non-recursively;
+   - scans `tests/e2e/storybook/**/*.spec.ts`, `tests/e2e/visual/**/*.spec.ts`, and `tests/e2e/release/**/*.spec.ts` recursively;
+   - scans colocated `src/**/*.browser.spec.ts` and `src/**/*.visual.spec.ts` recursively;
+   - does **not** own an arbitrary nested `tests/e2e/<other-subtree>/**/*.spec.ts` unless the test itself is changed to enumerate that population.
 
 These rules are additive to ordinary related resolution. If an input is both import-reachable and scanned by a boundary test, keep both owners.
 
@@ -157,11 +171,12 @@ The final Pass C implementation must satisfy every mechanism below before it is 
 | Cross-root ordinary import | `vite.config.ts -> scripts/release/viteBuildDate.test.mjs` | source only; no external duplicate | real `vitest related` selects owner |
 | `tests/e2e/**` ordinary helper | `managedReleaseFixture.mjs -> managedReleaseFixture.test.mjs` | pass helper to `vitest related` | real `vitest related` selects owner |
 | Exact direct repository read | `.github/workflows/verify.yml -> workflow tests` | add exact owning test(s) | planner + focused invocation select owners |
+| Exact external deletion/rename | deleted/renamed `.github/workflows/verify.yml`, `PRIVACY.md`, or `.gitignore` | preserve deterministic exact owner(s) for the affected old/new path; never silent skip | status-aware planner proof |
 | Runtime/tool discovery | `eslint.config.mjs -> eslint.config.test.ts` | add exact owning test | source alone is insufficient; planner-added owner executes |
 | Exact absence/existence contract | forbidden legacy repository path asserted by a test | add exact owning test when that changed path is relevant | focused invocation executes owner |
 | Bounded source scan | `src/**` import-boundary tests | add exact scan-owner test according to the scan predicate | representative scanned-file change executes boundary test |
 | Bounded Material token scan | `components/*/tokens.css -> foundation/tokens.test.ts` | add token scan owner | representative component token change executes owner |
-| Playwright spec inventory scan | spec path -> `playwright.lanes.test.ts` | Playwright spec is not an ordinary unit input, but scan owner is selected | representative spec add/change/delete executes lane test |
+| Playwright spec inventory scan | root app spec / explicit storybook, visual, release subtree / colocated browser or visual spec -> `playwright.lanes.test.ts` | Playwright spec is not an ordinary unit input, but exact scan owner is selected only inside the test's real population | representative add/change/delete executes lane test; nearby outside-population nested spec does not select it |
 | Unit-global infrastructure | `vitest.config.ts`, setup/config-global inputs | full unit | planner proof |
 | Version-only `package.json` | version field only | no full unit | package-impact proof |
 | Runtime/unknown `package.json` | scripts/dependencies/runtime change | full unit | package-impact proof |
@@ -180,6 +195,8 @@ For each materially distinct ownership mechanism changed in this correction, the
 - prove a bounded scan owner through a representative changed path and the final focused unit invocation;
 - prove that removing an external duplicate does not remove an import-reachable owner.
 
+Status-only deletion/rename classification can be proven at the planner boundary when executing the real repository after deleting/renaming the canonical input would be destructive or would intentionally make the owning test fail. The important contract is that the surviving owner is still selected rather than silently skipped.
+
 Do not build permanent probe infrastructure solely for this correction. Focused commands and deterministic planner tests are sufficient when together they prove both planner output and delegated resolver behavior.
 
 ## Simplest viable alternative
@@ -196,7 +213,7 @@ ordinary source/support change anywhere in repository
 → pass source path to Vitest related
 
 confirmed exact non-import external input
-→ add exact owner test(s)
+→ add exact owner test(s), status-aware for path existence/rename changes
 
 confirmed bounded repository scan
 → add exact scan-owner test from its narrow real predicate
@@ -218,7 +235,9 @@ Fresh test-author proof must reject at least:
 - a mapped source suppressing its normal import consumers;
 - a temporary fixture being mistaken for ownership of the real repository file;
 - a repository-scan boundary test being omitted for a file in its scanned population;
-- a Playwright spec inventory change omitting `playwright.lanes.test.ts`;
+- a bounded scan owner being selected for a nearby path outside its real scanned population;
+- a Playwright spec inventory change omitting `playwright.lanes.test.ts` inside the actual lane-test population;
+- a deleted/renamed non-ordinary exact external input losing its surviving owner;
 - an exact absence/existence contract being invisible to impact planning;
 - Playwright-only proof entering ordinary Vitest ownership;
 - an unrelated ordinary source with zero unit owners forcing full unit proof.
