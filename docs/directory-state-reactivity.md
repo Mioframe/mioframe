@@ -1,6 +1,6 @@
 # Directory state reactivity architecture
 
-Status: architecture ready; PR #211 is merged into `develop` at `b264c816fda35205459a24840d9dcf8412cd121f`, the affected contracts were re-checked against that result, and implementation may proceed through `implementation-preflight`.
+Status: architecture ready on current `develop`; PR #211 is merged at `b264c816fda35205459a24840d9dcf8412cd121f`, the affected filesystem/repository/document/recovery consumers were re-checked, and implementation may proceed through `implementation-preflight`.
 
 ## Goal
 
@@ -8,108 +8,106 @@ Provide one reliable reactive flow for directory-backed repository state that re
 
 Requirements:
 
-- one canonical state owner per concern;
+- one canonical reactive state owner per concern;
 - no stale-result races or mixed repository snapshots;
-- no subscriber-multiplied or unbounded filesystem I/O;
+- no subscriber-multiplied or unbounded reactive filesystem I/O;
 - explicit repository loading/refreshing/error semantics;
 - narrow worker-safe public contracts with no duplicated facts.
 
-## Confirmed current behavior and evidence
+## Confirmed current behavior
 
-- `shared/service/fileSystem` starts a new `vfs.readDirectory()` for each matching VFS event; Promise-backed reads may overlap and are not physically cancelled by RxJS unsubscribe.
-- current directory publication sorts entries by name before exposing them.
-- generic observable-query loading/fetch semantics describe subscription startup/replay, not completion of a new physical revalidation.
+- `shared/service/fileSystem` currently starts a new `vfs.readDirectory()` for each matching VFS event; Promise-backed reads may overlap and are not physically cancelled by RxJS unsubscribe.
+- current directory publication sorts entries by name.
+- generic observable-query loading/fetch semantics describe transport subscription/replay, not completion of a new physical revalidation.
 - repository facts and repository-visible entries currently use separate lifecycles and are recombined above the service layer.
-- v3 document discovery may read storage-candidate files after the listing; existing storage policy limits that I/O to 4 concurrent reads.
-- repository candidate failures already classified as tolerable are skipped with bounded diagnostics rather than failing the whole repository read.
-- `DocumentService` and internal Repo gating consume repository document-id state, so replacing split repository queries must preserve document availability/error behavior and the existing Repo cache lifecycle.
-- merged PR #211 identifies unavailable-root recovery with transfer-safe `{ spaceName, recoveryKey }`; `recoveryKey` identifies the mounted provider instance and must not disappear merely because a reread starts.
-- PR #211 also introduced the existing fileSystem topology mutation queue. It serializes topology-sensitive mutations/settlement, not general directory reads.
-- Google Drive may return a stale listing immediately after mutation; serialization cannot guarantee provider convergence.
+- repository v3 discovery may read candidate files after listing; the storage policy bounds this I/O to 4 concurrent reads.
+- expected candidate failures are already tolerant: unreadable candidates are skipped with bounded diagnostics, `FileNotFound` races are skipped, and malformed wrappers decode to no fact rather than a recoverable repository error.
+- `DocumentService` and internal Repo gating consume repository document-id state; the existing Repo cache/reuse/60-second idle lifecycle must remain unchanged.
+- merged PR #211 identifies unavailable-root recovery with transfer-safe `{ spaceName, recoveryKey }`; retry must not transiently erase that recovery target merely because a reread starts.
+- #211's fileSystem topology mutation queue serializes topology-sensitive mutation/settlement, not general reads.
 - provider `watch()` is an invalidation channel, not reliable observation of arbitrary external OS/rclone changes.
-- `exampleDocumentsCreate` uses `directoryContent.fetch()` to choose the first free `Examples` directory and therefore requires a true fresh-read command.
-- after #211, `entities/directory/useDirectory` and the root-directory read state exposed from `entities/mountedDirectories` still have no confirmed production consumer.
+- Google Drive may return a stale listing immediately after mutation; generic serialization cannot guarantee provider convergence.
+- `exampleDocumentsCreate` uses directory pre-inspection only as a best-effort optimization before authoritative `createDirectory`/`FileExists` handling.
+- after #211, `entities/directory/useDirectory` and mounted root-directory read state still have no confirmed production consumer.
 
 ## Non-goals
 
-- redesigning PR #211 recovery, `recoveryKey`, or the fileSystem topology queue;
+- redesigning #211 recovery, `recoveryKey`, or the topology mutation queue;
 - Automerge `Repo` identity/cache/lifecycle changes;
 - `fsNodeStat` lifecycle/concurrency redesign;
-- polling, arbitrary sleeps, unconditional double reads, or mandatory experimental observation;
-- global VFS scheduling/serialization;
-- provider-specific convergence or new large-directory cache/index infrastructure.
+- global same-path VFS read serialization across unrelated operations;
+- polling, arbitrary sleeps, unconditional double reads, or provider-convergence infrastructure;
+- a generic reactive-resource manager, scheduler, generation protocol, or new repository recovery-error taxonomy.
 
-## Affected user scenarios
+## Affected scenarios
 
 - initial repository-backed directory open across OPFS, Web File System Access, SAF/device, and Google Drive;
-- provider/VFS invalidation and invalidation bursts during slow I/O;
-- refresh failure with later recovery;
-- #211 permission/unavailable-root recovery while revalidation runs;
+- VFS/provider invalidation and invalidation bursts during slow reactive reads;
+- filesystem read failure with later recovery;
+- #211 permission/unavailable-root recovery while reread work runs;
 - coherent Repository Explorer document/init/file facts;
-- reactive document availability and Repo gating based on repository document IDs;
-- explicit fresh listing for imperative callers;
-- starter-example first-free-name selection with existing `FileExists` race fallback.
+- reactive document availability and Repo gating from repository document IDs;
+- starter-example first-free-name pre-inspection with existing `FileExists` race fallback.
 
-## Boundaries
+## Boundaries and ownership
 
 Changes:
 
-- one internal per-path directory lifecycle plus one public fresh-read command;
-- one coherent repository lifecycle derived from canonical directory state;
+- one internal per-path reactive directory coordinator;
+- one independent public one-shot fresh directory read for imperative callers;
+- one coherent repository coordinator derived from canonical reactive directory state;
 - one proxy-safe public repository query;
-- service-owned repository entry classification with zero-I/O visibility projection;
-- migration/removal of old split/replay-based consumer paths and confirmed dead directory-read surfaces.
+- service-owned repository visibility classification;
+- removal of replaced split/replay-based APIs and confirmed dead directory-read surfaces.
 
-Must remain unchanged: #211 recovery/identity/topology-queue behavior, `fsNodeStat`, Automerge Repo cache/identity/lifecycle, document mutation semantics, persistence semantics, Repository Explorer interaction hierarchy, and provider convergence guarantees.
-
-## Ownership matrix
+Must remain unchanged: #211 recovery/identity/topology behavior, `fsNodeStat`, Automerge Repo lifecycle, document mutation/persistence semantics, Repository Explorer interaction hierarchy, provider convergence guarantees, and operation-specific storage reads used by delete/export/import.
 
 | Owner | Responsibility |
 | --- | --- |
-| feature | `exampleDocumentsCreate` owns the create-example action, naming loop, action loading/error, and `FileExists` race fallback; it only consumes a fresh listing |
-| entity | `repository` adapts the public repository query and applies presentation-safe synchronous projections; no storage classification, I/O, scans, or lifecycle reconstruction |
-| widget | declarative recovery > error > loading > content composition only |
+| feature | `exampleDocumentsCreate` owns naming, best-effort pre-inspection, `FileExists` retry, action loading/error |
+| entity | `repository` adapts one public `RepositoryState` and applies synchronous presentation-safe projection only |
+| widget | recovery > error > initial loading > content branch composition; no repository lifecycle reconstruction |
 | page/pane | routing/navigation/layout only |
-| shared | existing VFS/provider/storage-policy primitives; no generic reactive-resource manager |
-| service/worker | filesystem service owns canonical directory ordering/lifecycle/refresh; repository service owns storage classification and repository derivation/lifecycle; document service consumes the repository document-id projection without owning it |
+| shared | existing VFS/provider/storage-policy primitives; no new generic manager |
+| service/worker | filesystem owns reactive directory ordering/lifecycle; repositories own storage visibility classification and atomic repository derivation/lifecycle; document service consumes repository document-id projection |
 
 ## Source of truth
 
-- directory contents: latest clean, name-sorted snapshot committed by `shared/service/fileSystem` after `vfs.readDirectory(normalizedPath)`;
-- repository state: latest complete derivation from one accepted directory snapshot plus required candidate reads;
+- reactive directory contents: latest clean name-sorted snapshot committed by the filesystem coordinator after `vfs.readDirectory(normalizedPath)`;
+- one-shot imperative listing: the result of that one requested physical read, sorted identically, but not a second reactive cache and not a coordinator state transition;
+- repository state: latest complete derivation from one accepted reactive directory snapshot plus required candidate reads;
 - concrete documents: Automerge `Repo` / document service.
 
 No upper layer owns a second directory/repository cache or lifecycle.
 
 ## Contracts and state shape
 
-Public DTOs belong in contract-only `shared/service` modules. Do not define public DTO aliases in `use*Service` implementation files.
+Public DTOs belong in contract-only `shared/service` modules, not `use*Service` implementation files.
 
-Use one canonical physical directory-entry contract:
+Use one physical directory-entry contract:
 
 ```ts
 type DirectoryEntry = readonly [name: string, stat: FSNodeStat];
 type DirectoryEntries = readonly DirectoryEntry[];
 ```
 
-Filesystem lifecycle is service-internal:
+Filesystem lifecycle is service-internal and intentionally minimal:
 
 ```ts
 type DirectoryState =
-  | { status: 'loading' }
+  | { status: 'reading' }
   | { status: 'ready'; entries: DirectoryEntries }
-  | { status: 'refreshing' }
   | { status: 'error'; error: Error };
 ```
 
-The filesystem coordinator privately retains the latest successful entries only while needed. Do not duplicate that payload into `refreshing` or `error`.
+`reading` means a clean reactive snapshot is not currently authoritative. The coordinator may privately retain its previous successful entries for internal bookkeeping, but does not publish them as a second state fact.
 
 Repository public contracts:
 
 ```ts
 type RepositoryEntry = {
   entry: DirectoryEntry;
-  kind: 'regular' | 'automergeStorage';
+  classification: 'regular' | 'automergeStorageCandidate';
 };
 
 type RepositorySnapshot = {
@@ -125,18 +123,18 @@ type RepositoryState =
   | { status: 'error'; error: Error };
 ```
 
-Repository marker files are protocol facts and are never published as `RepositoryEntry`. Automerge storage files are classified by the repository service; entity/widget code must not infer that classification from filenames.
+`automergeStorageCandidate` is a visibility classification, not proof that a v3 candidate decoded to a valid Automerge storage key. It preserves the current filename-policy behavior needed to hide plausible storage candidates without leaking filename parsing upward. Marker files are protocol facts and are never published as `RepositoryEntry`.
 
-Semantics:
+Repository semantics:
 
-- `loading`: no successful repository payload exists and required work is active/needed;
-- `refreshing`: the previous successful repository snapshot remains usable while newer work is active/queued;
-- `ready`: latest accepted work is complete with no newer known invalidation;
-- `error`: latest required work failed; any previous successful payload may remain private for a later `refreshing` transition but is not duplicated into the error contract.
+- `loading`: no successful repository snapshot exists while required directory/derivation work is pending;
+- `refreshing`: a previous successful repository snapshot remains usable while newer directory/derivation work is pending;
+- `ready`: the latest accepted derivation completed;
+- `error`: the canonical directory source is in error; previous repository data may remain private but is not duplicated into the error contract.
 
-An existing error stays authoritative while retry/revalidation runs. Starting new I/O does not replace `error` with `loading`/`refreshing`; state changes only when the retry reaches a new terminal success or error. This preserves #211 recovery target continuity while rereads are in progress.
+No new expected terminal repository-derivation error contract is introduced. Current repository discovery is tolerant for its expected candidate failures; malformed/unreadable candidates remain skip + bounded diagnostic/no fact. `RepositoryState.error` preserves the underlying filesystem/recovery error from `DirectoryState.error`. Unexpected programmer/invariant failures are defects, not a new recoverable public repository lifecycle invented by this work.
 
-Error ownership stays in existing typed/code/cause contracts. Do not add a parallel error-source discriminator or public synchronization metadata.
+An existing repository error stays authoritative while filesystem retry/revalidation runs and while the first successful replacement repository snapshot is being derived. It changes only when that replacement snapshot becomes `ready` or a new directory terminal error replaces it. This preserves #211 recovery-target continuity without adding error-source metadata.
 
 ## Internal and public entry points
 
@@ -150,173 +148,191 @@ repositoryState$({ path }: { path: string }): Observable<RepositoryState>;
 Worker-facing contracts:
 
 ```ts
-refreshDirectory(path: string): Promise<DirectoryEntries>;
+readDirectoryFresh(path: string): Promise<DirectoryEntries>;
 repositoryState: QueryDefinition<RepositoryState, { path: string }>;
 ```
 
 Rules:
 
-- raw `$` observables remain service-internal implementation capabilities; do not introduce an RPC method whose return value is a raw RxJS `Observable`;
-- the existing worker proxy pattern may continue to keep internal properties on service implementation objects, as it already does for `directoryContent$`, `fsNodeStat$`, and `vfs`; no `setupMainService` projection redesign is required by this work;
-- public `repositoryState` uses the existing proxy-safe `defineObservableQuery(repositoryState$)` shape; no Observable transport abstraction is added;
-- `refreshDirectory()` always requests canonical revalidation, resolves with the name-sorted clean entries satisfying that request, and rejects with the canonical filesystem error on terminal failure;
-- replayed current state alone can never satisfy `refreshDirectory()`;
-- refresh callers share the same coordinator/physical work and do not wait for repository derivation;
-- repository visibility changes are synchronous projection of service-classified entries and cause no filesystem or repository-derivation work;
-- remove generic filesystem `hideAutomergeFiles` and replaced split repository query APIs after consumers migrate;
+- raw `$` observables remain service-internal; do not introduce an RPC method returning a raw RxJS `Observable`;
+- existing worker-proxy wiring may continue to keep internal service properties such as `$` streams and `vfs`; no `setupMainService` redesign is required;
+- public `repositoryState` uses the existing proxy-safe `defineObservableQuery(repositoryState$)` shape;
+- `readDirectoryFresh()` performs one requested `vfs.readDirectory(normalizedPath)`, applies the same canonical name sort, and resolves/rejects from that physical read;
+- `readDirectoryFresh()` is not coordinator demand, does not replay/advance reactive `DirectoryState`, does not wait for repository derivation, and is not globally serialized with reactive or operation-specific reads;
+- repository visibility changes are synchronous projection of service-classified entries and cause 0 filesystem reads and 0 repository derivations;
+- remove generic filesystem `hideAutomergeFiles` and replaced split repository query APIs after migration;
 - remove `entities/directory/useDirectory` and unused mounted-directory root read state rather than migrating them;
 - `fsNodeStat` keeps its existing separate contract.
 
 ## Minimum sufficient design
 
-### Filesystem directory coordinator
+### Filesystem reactive directory coordinator
 
 One coordinator per active normalized path owns only:
 
-- latest successful sorted entries;
-- current lifecycle/error;
+- current `DirectoryState`;
 - one `dirty` bit;
-- one in-flight `readDirectory()`;
-- one VFS watcher while work can still publish;
-- subscriber and refresh-waiter bookkeeping.
+- at most one coordinator-owned in-flight `readDirectory()`;
+- one VFS watcher while in-flight work can still publish;
+- subscriber bookkeeping.
 
-Demand means at least one directory-state subscriber or unresolved `refreshDirectory()` waiter.
+Reactive demand means at least one `directoryState$` subscriber.
 
-Algorithm:
+Transition/algorithm contract:
 
-1. normalize the path and attach the watcher before the first physical read can publish;
-2. initial demand, invalidation, or explicit refresh sets `dirty = true`;
-3. if demand exists and no read is active, clear `dirty` immediately before starting one `readDirectory()`;
-4. sort a successful provider result once before it can become canonical;
-5. invalidations during the read only set `dirty = true`;
-6. a read that settles while dirty cannot publish authoritative `ready`; when demand remains, run one trailing read;
-7. publish `ready` only when a successful read settles with `dirty === false`;
-8. if a read fails while dirty and demand remains, continue with the trailing read; otherwise publish terminal `error` and reject affected refresh waiters;
-9. while current state is `error`, later retry work runs internally without clearing that error; publish only the next terminal `ready` or `error`;
-10. refresh waiters resolve only from the clean committed snapshot satisfying their request.
+1. normalize the path and attach the watcher before the initial physical read can publish;
+2. first demand publishes `reading` and starts one read;
+3. from `ready`, any matching invalidation synchronously publishes `reading` before starting/queuing the corresponding physical reread;
+4. invalidation during an active read sets `dirty = true`; state remains `reading`;
+5. clear `dirty` immediately before each coordinator-owned physical read;
+6. sort a successful result once before commit;
+7. a read settling with `dirty === true` cannot publish `ready`; if demand remains, start one trailing read and remain `reading`;
+8. a clean successful settle publishes `ready(sortedEntries)`;
+9. a failure settling while dirty and demand remains is superseded by the required trailing read and does not publish a terminal error;
+10. a clean failure publishes `error(error)`;
+11. from `error`, a later invalidation/retry starts physical work internally but keeps the current error published; a clean success transitions directly to `ready`, while a clean failure replaces it with the new terminal error.
 
 Lifetime:
 
-- same-path subscribers/callers share one coordinator and physical work;
-- uncancellable in-flight work keeps the coordinator and watcher until settlement even after the last subscriber leaves, so a quick resubscribe cannot lose invalidation knowledge;
+- same normalized path reactive subscribers share one coordinator and coordinator-owned physical work;
+- coordinator-owned `readDirectory()` concurrency for one normalized path is `<= 1`;
+- this is not a global same-path VFS guarantee: `readDirectoryFresh()` and delete/export/import/storage operations may independently read the same path;
+- uncancellable in-flight reactive work keeps the coordinator and watcher until settlement after the last subscriber leaves so a quick resubscribe cannot lose invalidation knowledge;
 - if demand returns before settlement, it reuses that coordinator;
-- if no demand remains at settlement, do not publish the result or start trailing work; release coordinator, watcher, and retained snapshot;
+- if no demand remains at settlement, discard the result, do not start trailing work, and release coordinator/watcher/state;
 - inactive settled paths perform no background reads;
-- different paths are not globally serialized.
+- different paths are never globally serialized.
 
-The coordinator does not acquire or extend #211's topology mutation queue. Topology mutations remain serialized by that queue; their VFS/provider events only invalidate this coordinator. Slow directory revalidation must never keep the topology queue held.
+The coordinator never acquires or extends #211's topology mutation queue. Topology changes invalidate through existing VFS/provider events; slow rereads never hold the topology queue.
+
+### One-shot fresh directory read
+
+`readDirectoryFresh()` is deliberately not a third stateful mechanism:
+
+1. normalize path;
+2. perform exactly one physical `vfs.readDirectory()` for the call;
+3. sort using the same directory-entry ordering rule;
+4. resolve entries or reject with the underlying canonical filesystem error.
+
+It has no cache, watcher, dirty bit, waiter registry, retry loop, or repository coupling.
 
 ### Repository derivation coordinator
 
 One coordinator per active normalized repository path owns only:
 
-- latest complete snapshot;
-- current lifecycle/error;
+- latest complete repository snapshot;
+- current repository lifecycle/error;
 - at most one active derivation;
-- latest pending accepted directory snapshot;
+- latest pending accepted `ready` directory snapshot;
 - subscription bookkeeping.
 
-Repository demand means an active public repository-state subscription or a service-internal consumer such as the document-id/Repo projection.
+Repository demand means an active public repository-state subscription or a service-internal consumer such as document-id/Repo projection.
 
 Rules:
 
-1. consume internal `directoryState$`; canonical repository-state derivation performs no second `readDirectory()`;
-2. only directory `ready` may start candidate discovery;
-3. classify marker/Automerge-storage/regular entries in the repository service from that same accepted directory snapshot;
-4. marker files contribute to initialization but are not published as entries;
-5. derive document IDs and keep candidate-read concurrency at the existing limit `4`;
-6. candidate failures already treated as tolerable remain skip + bounded diagnostic and do not become `RepositoryState.error`;
-7. only a real terminal repository-boundary derivation failure produces a repository-owned typed/code/cause error;
-8. at most one derivation is physically active per normalized path;
-9. any newer directory `refreshing`, `error`, or `ready` state makes an older active derivation non-publishable;
-10. retain at most the newest pending accepted `ready` snapshot and derive it after active work settles;
-11. while repository state is `error`, retry derivation does not clear that error until the next terminal success/error;
-12. publish only complete atomic repository snapshots.
+1. consume internal `directoryState$`; canonical reactive repository derivation performs no second `readDirectory()`;
+2. any directory `reading` or `error` immediately makes an older active repository derivation non-publishable;
+3. only directory `ready(entries)` may start candidate discovery;
+4. classify marker / storage-candidate / regular entries in repository service from that same accepted directory snapshot;
+5. marker files contribute to initialization but are not published as entries;
+6. derive document IDs using existing storage policy and keep candidate-read concurrency at `<= 4`;
+7. current tolerated candidate failures remain skip + bounded diagnostic/no fact and do not create a repository error;
+8. at most one derivation is physically active per normalized repository path;
+9. retain at most the newest pending accepted `ready` snapshot while work is active;
+10. stale/abandoned completions never publish;
+11. publish only complete atomic repository snapshots.
+
+Lifecycle mapping:
+
+| Directory/input | RepositoryState |
+| --- | --- |
+| `reading`, no previous snapshot | `loading` |
+| `reading`, previous snapshot | `refreshing(previous)` |
+| `ready(A)`, no previous snapshot | derive A while staying `loading` |
+| `ready(A)`, previous snapshot | derive A while staying `refreshing(previous)` |
+| `error(E)` | invalidate active derivation; `error(E)` |
+| `ready(A)` after repository error | derive A while keeping existing error until success |
+| current accepted derivation succeeds | `ready(result)` |
+| demand reaches zero during derivation | suppress completion and release upstream demand |
+
+Structurally equal listings do not skip required candidate discovery: identical names/stats do not prove identical candidate bytes across supported providers.
 
 Lifetime:
 
 - while demand exists, subscribe to canonical `directoryState$`;
-- when demand reaches zero during an active derivation, mark that derivation non-publishable, release upstream directory demand, and retain only ownership of the uncancellable physical work until settlement;
-- a consumer returning before settlement reattaches to canonical directory state and queues only the latest accepted `ready` input; it does not revive the abandoned derivation or start a second one;
-- when the abandoned derivation settles, discard it and derive the latest queued accepted input only if demand still exists;
-- with zero demand after settlement, discard pending input/state and release the coordinator.
+- when demand reaches zero during active derivation, mark it non-publishable and release upstream directory demand while retaining ownership of the uncancellable physical derivation until settlement;
+- a consumer returning before settlement reattaches to `directoryState$`, keeps only the latest accepted `ready` input, and waits for the old physical derivation to settle before starting another;
+- the abandoned completion is discarded; no second same-path derivation overlaps;
+- with zero demand after settlement, discard pending state and release the coordinator.
 
-This reuses private stale-result suppression already required for invalidated inputs; it adds no public generation, token, lease, or lifecycle metadata.
+This uses private stale-result suppression only; no public generation/token/lease metadata is added.
 
-Lifecycle mapping:
+## Repository projections and consumer mapping
 
-| Input | RepositoryState |
-| --- | --- |
-| directory `loading`, no previous snapshot | `loading` |
-| directory `ready(A)`, no active repository error | derive A; `loading` without previous payload, otherwise `refreshing(previous)` |
-| directory `refreshing`, no active repository error | invalidate active derivation; `refreshing(previous)` or `loading` if none exists |
-| directory `error(E)` | invalidate active derivation; `error(E)` preserving filesystem error semantics |
-| current repository derivation succeeds | `ready(result)` |
-| current repository derivation fails terminally | `error(repositoryError)` |
-| repository/directory error retry starts | keep existing `error` until next terminal success/error |
-| demand reaches zero during derivation | suppress completion and release upstream demand |
-
-Structurally equal listings are not a trustworthy cross-provider identity for candidate contents, so equality alone does not skip required repository discovery.
-
-### Repository projections and consumers
-
-Service-owned storage classification must not leak into entity code. The repository entity may only project already-classified entries:
+Visibility remains entity-side synchronous projection over a service-owned classification:
 
 ```ts
 visibleEntries = snapshot.entries
-  .filter(({ kind }) => showAutomergeFiles || kind === 'regular')
+  .filter(({ classification }) => showAutomergeFiles || classification === 'regular')
   .map(({ entry }) => entry);
 ```
 
-This projection owns no lifecycle and performs zero I/O.
+The entity does not parse filenames or own lifecycle.
 
-`DocumentService` and internal Repo gating consume a service-internal document-id projection of `repositoryState$`:
+Public/entity mapping is explicit:
+
+- before the first `RepositoryState` arrives, generic query transport pending may select the initial loading branch only;
+- once state exists, repository lifecycle comes only from `RepositoryState`, not generic query `isLoading`;
+- `loading` selects the spinner/loading branch;
+- `ready(snapshot)` and `refreshing(snapshot)` both expose snapshot content; `refreshing` must not replace content with the spinner;
+- `error(error)` exposes one repository raw error fact for safe message/recovery parsing;
+- remove obsolete split `repositoryFactsError` / `repositoryVisibleEntriesError` and entity `refetch` unless implementation preflight finds a real current consumer;
+- `fsNodeStat`/`directoryStatError` remains a separate unchanged contract and may still participate in widget recovery composition.
+
+`DocumentService` and internal Repo gating consume an internal document-id projection:
 
 - `ready(snapshot)` and `refreshing(snapshot)` expose `snapshot.documentIds`;
-- `error(error)` exposes the error through the existing internal error path;
-- `loading` emits no document-list value yet.
-
-Preserve existing behavior:
-
+- `error(error)` exposes the existing error path;
+- `loading` emits no document-list value yet;
+- reactive Repo access continues to wait through transient errors rather than destroying the stream;
 - zero document IDs do not instantiate a Repo solely for discovery;
-- a transient filesystem/repository error does not destroy the reactive Repo stream;
 - documents appearing later can make Repo/document access available without remounting;
-- existing Repo instance reuse and 60-second idle cache lifecycle remain unchanged;
-- concrete document reads/changes remain owned by Repo/document service.
+- Repo instance reuse and the existing 60-second idle cache lifecycle remain unchanged.
 
-Delete/export/import and other operation-specific storage flows may still perform their own required directory reads. The no-duplicate-listing invariant applies only to canonical reactive repository-state derivation.
+Delete/export/import and other operation-specific storage flows may keep their own required listings. Only canonical reactive repository-state derivation is forbidden from doing a duplicate directory listing.
 
-### Consumer migration/removal
+## Consumer migration/removal
 
-- `shared/service/repositories`: consume internal `directoryState$`; expose one public `repositoryState` query and internal projections required by Repo/document service.
-- `shared/service/document`: migrate from the split document-id query to the repository-state document-id projection while preserving document availability/error behavior.
-- `features/exampleDocumentsCreate`: replace `directoryContent.fetch()` with `refreshDirectory()`; preserve naming/race/action behavior.
-- `entities/repository` and Repository Explorer: consume one repository lifecycle; entity applies only the service-classified visibility projection.
-- remove old `repositoryFacts`, `repositoryVisibleEntries`, and generic filesystem Automerge-visibility resource identity after all consumers migrate.
-- remove `entities/directory/useDirectory` and its barrel export; remove unused mounted-directory `rootDirectory`/root-read `errorMessage`/`isLoading` state while preserving the separate `deviceFiles` facade and #211 recovery APIs.
+- `shared/service/fileSystem`: add internal `directoryState$` coordinator and simple public `readDirectoryFresh`; remove replaced generic directory-content query only after all consumers migrate; leave `fsNodeStat` and topology/recovery APIs unchanged.
+- `shared/service/repositories`: consume internal `directoryState$`; expose one public `repositoryState` query and internal document-id/Repo projections; remove split facts/visibility queries after migration.
+- `shared/service/document`: migrate from split document-id query to the repository-state document-id projection while preserving availability/error behavior.
+- `features/exampleDocumentsCreate`: use `readDirectoryFresh()` only for best-effort name pre-inspection. If it rejects, fall back to an empty known-name set and continue the existing bounded `createDirectory`/`FileExists` loop.
+- `entities/repository` and Repository Explorer: consume one repository lifecycle using the mapping above; visibility is the synchronous candidate-classification projection.
+- remove `entities/directory/useDirectory` and barrel export; remove unused mounted-directory `rootDirectory` / root-read `errorMessage` / `isLoading` while preserving `deviceFiles` and #211 recovery APIs.
 
 ## Minimum-complexity check
 
-Exactly two new stateful coordination points are necessary:
+Exactly two new stateful coordination points are required:
 
-1. directory coordinator because Promise-backed reads cannot be cancelled reliably;
-2. repository coordinator because candidate discovery is a separate async phase whose stale completion must be suppressed.
+1. directory coordinator: prevents overlapping/stale **reactive** Promise-backed rereads and coalesces invalidations;
+2. repository coordinator: prevents stale/overlapping async candidate derivations.
 
-No third coordinator, generation protocol, topology integration, global manager, route identity, or Observable transport abstraction is required.
+`readDirectoryFresh()` is a stateless command, not a coordinator.
 
 Rejected alternatives:
 
-- `switchMap(readDirectory())`: still permits physical overlap;
-- public `DirectoryState`: no confirmed UI consumer and unnecessarily widens the client contract;
-- UI/entity `isRefreshing`: duplicates service lifecycle;
-- `Promise<ready|error>` refresh result: duplicates Promise success/failure;
-- combined filesystem/repository coordinator: mixes ownership;
-- entity filename classification: leaks repository storage protocol upward;
-- separate visibility query: recreates split lifecycle/state;
-- keeping upstream directory demand alive only to protect an abandoned repository derivation: creates unnecessary background I/O;
-- extending #211 topology locking across directory reads: couples independent concerns and can hold topology mutation behind slow provider I/O;
-- directory+stat state or `fsNodeStat` coordinator: unrelated scope;
-- generic manager/global scheduler/equal-listing cache/polling: broader or less reliable than required.
+- `switchMap(readDirectory())`: unsubscribe does not physically cancel the Promise read;
+- global/same-path VFS scheduler: broader than reactive correctness and conflicts with unrelated operation-specific reads;
+- sharing imperative fresh reads through coordinator waiters: adds demand/waiter semantics for one best-effort consumer without improving its authoritative `FileExists` correctness;
+- public `DirectoryState`: no confirmed UI consumer;
+- combined filesystem/repository coordinator: mixes ownership and async phases;
+- entity filename parsing: leaks storage protocol upward;
+- confirmed-storage classification for v3 candidates: stronger than the current visibility fact and can change malformed/unreadable candidate behavior;
+- separate visibility query: recreates split lifecycle;
+- new terminal repository DomainError: no current expected derivation failure requires a new recoverable public contract;
+- keeping upstream directory demand alive solely for an abandoned repository derivation: unnecessary background I/O;
+- extending #211 topology locking across reads: couples independent concerns and can block topology mutation behind slow provider I/O;
+- `fsNodeStat` coordinator, generic manager, polling, equal-listing cache, route identity/generation: unsupported extra scope.
 
 ## Shared UI blast radius
 
@@ -326,37 +342,23 @@ None. No Material/shared UI contract changes. Existing Repository Explorer inter
 
 | Contract | Required outcome |
 | --- | --- |
-| initial directory work | one canonical sorted read; no stale completion publishes |
-| refresh | cannot complete from replay alone; resolves/rejects from the satisfying canonical revalidation |
-| error retry | existing error remains observable while retry runs; changes only on terminal success/new error |
-| #211 recovery | retry does not transiently erase current `{ spaceName, recoveryKey }`; topology queue behavior is unchanged and never waits for directory revalidation |
-| same-path FS concurrency | physical `readDirectory()` concurrency `<= 1`; burst collapses to one dirty/trailing read |
-| FS lifetime | watcher exists before first publish; unsubscribe/resubscribe cannot lose invalidation or create overlap |
-| cleanup | zero-demand settled paths retain no coordinator/watch/snapshot and perform no background reads |
-| repository coherence | IDs, initialization, and classified entry facts publish atomically from one directory snapshot |
-| repository concurrency | active derivations per normalized path `<= 1`; stale/abandoned completion suppressed; latest pending wins |
-| repository zero-demand | last unsubscribe abandons publication and releases upstream demand; resubscribe cannot overlap or revive old work |
-| visibility | setting changes cause `0` FS reads and `0` repository derivations; entity never parses storage filenames |
-| candidate failures | existing tolerable failures remain skip + bounded diagnostic; real terminal failures use repository-owned errors |
-| documents/Repo | document availability/error behavior and existing Repo reuse/idle lifecycle remain unchanged |
-| ordering | provider order is normalized to existing name-sorted canonical order before publication/refresh return |
-| starter examples | fresh listing selects first free name; `FileExists` fallback remains |
-| unchanged scope | `fsNodeStat`, Repo identity/cache policy, provider convergence, topology queue, and unrelated storage operations remain unchanged |
-
-## Risk matrix
-
-| Risk | Treatment |
-| --- | --- |
-| slow/cloud/SAF I/O | per-path serialization, dirty coalescing, bounded candidate concurrency |
-| stale completion | commit suppression at both async boundaries; filesystem watcher retained while in-flight work can still publish |
-| zero-demand derivation gap | abandoned derivation becomes non-publishable while physical ownership prevents overlap |
-| recovery target flicker | sticky terminal error until new terminal outcome |
-| topology coupling | coordinator consumes invalidation only; never holds #211 topology queue |
-| worker boundary drift | only existing query/command shapes are public; no raw-Observable RPC |
-| protocol leakage | repository service classifies storage entries before publication |
-| document regression | explicit DocumentService/Repo projection and preservation proof |
-| provider eventual consistency | explicitly unsolved; no generic retry/polling |
-| stale imperative listing | `refreshDirectory()` replaces replay-based fetch where freshness is required |
+| initial reactive directory work | one coordinator-owned sorted read; no stale completion publishes |
+| invalidation | `ready -> reading` synchronously; burst coalesces into at most one required trailing reactive read |
+| reactive same-path concurrency | coordinator-owned physical `readDirectory()` concurrency `<= 1`; no claim about unrelated one-shot/operation reads |
+| directory error retry | existing error remains observable while retry runs; changes only on clean success/new terminal error |
+| #211 recovery | retry never transiently erases current `{ spaceName, recoveryKey }`; topology queue never waits for reread |
+| FS lifetime | watcher attached before first publish; unsubscribe/resubscribe cannot lose invalidation or overlap reactive work |
+| cleanup | zero-demand settled paths retain no coordinator/watch/state and perform no background reads |
+| fresh imperative listing | one independent sorted physical read; no replay/cache/waiter semantics |
+| repository coherence | IDs, initialization, and visibility classification publish atomically from one accepted directory snapshot |
+| repository concurrency | active derivations per normalized path `<= 1`; stale/abandoned completion suppressed; latest pending ready input wins |
+| repository lifecycle | directory `reading` maps to loading/refreshing from repository-owned previous snapshot; directory error stays sticky through successful replacement derivation |
+| visibility | setting changes cause 0 FS reads and 0 derivations; entity never parses storage filenames |
+| candidate semantics | plausible storage candidates preserve current hide/show behavior; malformed/unreadable v3 candidates add no document/init fact and use existing tolerant diagnostics |
+| documents/Repo | document availability/error behavior and existing Repo reuse/idle lifecycle unchanged |
+| ordering | reactive and one-shot listings use existing name-sort semantics |
+| starter examples | fresh pre-inspection failure is best-effort; `createDirectory`/`FileExists` loop remains authoritative |
+| unchanged scope | `fsNodeStat`, Repo identity/cache, provider convergence, topology queue, delete/export/import listings unchanged |
 
 ## Required test proof
 
@@ -365,70 +367,74 @@ Primary proof: deterministic service/unit tests.
 Filesystem:
 
 - canonical name ordering from unsorted provider input;
-- same-path physical read concurrency `<= 1`;
-- burst coalescing and subscriber/refresh sharing;
-- watcher active before first result may publish;
-- explicit refresh cannot resolve from replay and returns the satisfying clean sorted snapshot or canonical terminal error;
-- normalized-equivalent paths share one coordinator;
-- unsubscribe/resubscribe during uncancellable read cannot overlap, lose invalidation, or publish stale completion;
+- first demand and synchronous `ready -> reading` on invalidation;
+- coordinator-owned same-path read concurrency `<= 1`;
+- invalidation burst/trailing-read coalescing;
+- watcher active before first result can publish;
+- normalized-equivalent paths share one reactive coordinator;
+- unsubscribe/resubscribe during uncancellable reactive read cannot overlap, lose invalidation, or publish stale completion;
 - zero-demand settlement starts no trailing background read;
-- error stays published through retry until terminal result;
-- #211 provider/topology invalidations cause revalidation without extending topology queue ownership;
-- inactive cleanup.
+- error remains published through retry until terminal result;
+- #211 provider/topology invalidations trigger reactive reread without extending topology queue ownership;
+- `readDirectoryFresh()` performs one independent sorted physical read, resolves/rejects directly, and is not served from reactive replay.
 
 Repository:
 
-- complete directory-to-repository transition matrix including sticky error retry;
-- canonical repository derivation performs zero additional `readDirectory()` calls;
+- complete `DirectoryState -> RepositoryState` transition matrix;
+- canonical reactive repository derivation performs 0 additional `readDirectory()` calls;
 - normalized-equivalent paths share one derivation coordinator;
 - active derivation `<= 1`, stale suppression, latest-pending coalescing;
-- zero-demand abandonment/resubscribe behavior and no-overlap;
-- marker initialization and Automerge-storage classification are service-owned and atomic;
-- visibility changes produce no filesystem I/O or repository derivation;
-- candidate concurrency bound remains `<= 4`;
-- existing tolerable candidate-read failure/diagnostic behavior is preserved;
-- filesystem/repository errors remain recoverable/distinguishable through existing error contracts without source metadata.
+- zero-demand abandonment/resubscribe/no-overlap;
+- marker initialization and storage-candidate visibility classification are service-owned and atomic;
+- malformed/unreadable plausible v3 candidates preserve current hide/show behavior while adding no document/init fact unless independently established;
+- visibility changes produce 0 filesystem I/O and 0 repository derivation;
+- candidate concurrency remains `<= 4`;
+- tolerated candidate failures preserve existing skip + bounded diagnostic behavior;
+- directory/recovery error remains the single expected repository lifecycle error source.
 
 Consumer/integration:
 
-- `DocumentService` preserves document-id absent/present/error transitions and later recovery through the new internal projection;
-- repositories preserve zero-doc Repo gating, transient-error survival, later document appearance, instance reuse, and idle cleanup;
-- `exampleDocumentsCreate` preserves first-free-name, `FileExists` race, loading, and error behavior;
-- repository entity/widget tests prove single-state adaptation, visibility projection, and declarative branch wiring only;
-- obsolete `useDirectory` and mounted root-read surfaces are removed with no production consumer left;
-- existing Google Drive stale-listing test remains evidence that convergence is provider-specific.
+- `DocumentService` preserves document-id absent/present/error transitions and later recovery;
+- Repo gating preserves zero-doc wait, transient-error survival, later document appearance, instance reuse, and idle cleanup;
+- entity/widget prove initial loading only, `ready -> refreshing -> ready` without spinner flicker, sticky recovery/error, one repository error fact, and visibility projection;
+- `exampleDocumentsCreate` proves successful fresh pre-inspection, rejected fresh read followed by successful creation, `FileExists` race, safety limit, loading, and final-error behavior;
+- obsolete directory/split repository surfaces are removed with no production consumer left;
+- existing Google Drive stale-listing proof remains provider-specific evidence and is not duplicated.
 
-Browser/visual proof is required only if implementation changes actual interaction or appearance. #211 recovery proof is already owned by #211 and is not duplicated here.
+Browser/visual proof is required only if implementation changes actual interaction or appearance. #211 recovery proof remains owned by #211 and is not duplicated here.
 
 ## Required verification
 
-Implementation preflight must resolve exact test/spec paths, impact metadata, and any task-specific measurement from the contracts above. Coding handoff uses normal `pnpm verify`; exact-head GitHub CI is the final repository execution gate.
+Implementation preflight must resolve exact test/spec paths, impact metadata, and task-specific measurements from these contracts. Coding handoff uses normal `pnpm verify`; exact-head GitHub CI is the final repository execution gate.
 
 ## Forbidden
 
-- an RPC/public method returning a raw RxJS `Observable`;
+- public/RPC raw RxJS `Observable` return values;
 - public directory lifecycle without a confirmed consumer;
 - lifecycle reconstruction outside service owners;
-- repository storage classification or filename parsing in entity/widget/feature code;
-- filesystem refresh waiting for repository derivation;
-- parallel same-path directory reads or repository derivations;
-- canonical repository-state derivation performing a second `readDirectory()`;
+- repository filename parsing/classification in entity/widget/feature code;
+- global same-path read serialization or a new VFS scheduler;
+- coordinator refresh-waiter machinery for the one-shot fresh-listing scenario;
+- canonical reactive repository derivation performing a second `readDirectory()`;
 - generic query fetch/refetch as a freshness guarantee;
 - clearing terminal recovery/error merely because retry work started;
-- duplicate refresh/error-source state, duplicate physical-entry aliases, or public synchronization metadata;
+- duplicate refresh/error-source/public synchronization state;
+- treating a plausible v3 filename candidate as confirmed decoded storage identity;
+- a new recoverable repository derivation error contract without a confirmed failure scenario;
 - separate visibility lifecycle/query;
-- reviving a zero-demand-abandoned repository derivation or keeping upstream directory demand alive solely for it;
-- extending #211 topology locking around directory revalidation;
+- reviving a zero-demand-abandoned derivation or retaining upstream demand solely for it;
+- extending #211 topology locking around directory reads;
 - migrating confirmed dead directory-read surfaces instead of removing them;
-- `fsNodeStat` redesign, polling, global scheduler, increased candidate concurrency, provider convergence policy, or Repo identity/cache/lifecycle changes in this scope.
+- `fsNodeStat` redesign, polling, increased candidate concurrency, provider convergence policy, or Repo identity/cache/lifecycle changes.
 
 ## Implementation readiness
 
-- #211 dependency: resolved and merged into `develop` at `b264c816fda35205459a24840d9dcf8412cd121f`;
+- #211 dependency: resolved and merged at `b264c816fda35205459a24840d9dcf8412cd121f`;
 - post-#211 filesystem/repository/document/recovery consumers and dead-surface assumptions: re-checked;
-- goal, scenarios, boundaries, ownership, source of truth, state/API contracts, retry/lifetime transitions, worker boundary, topology interaction, service classification, document/Repo consumers, I/O budgets, and proof ownership: resolved;
-- exactly two stateful coordinators are required; no additional architecture mechanism is unresolved;
-- `fsNodeStat` and provider convergence: explicitly out of scope;
+- reactive and one-shot directory read responsibilities are separated; no global read-serialization guarantee remains;
+- directory lifecycle, sticky error retry, repository lifecycle mapping, visibility classification, entity mapping, DocumentService/Repo preservation, starter-example failure behavior, worker boundary, topology interaction, I/O budgets, and proof ownership are resolved;
+- exactly two stateful coordinators are required; the fresh imperative listing is stateless;
+- `fsNodeStat`, provider convergence, Repo lifecycle, and operation-specific storage listings are explicitly out of scope;
 - unresolved architecture blockers: none;
 - architecture verdict: `ready`;
 - implementation verdict: `ready for implementation-preflight`.
