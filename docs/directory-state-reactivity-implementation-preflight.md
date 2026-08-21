@@ -1,13 +1,13 @@
 # Directory state reactivity — implementation preflight
 
-Status: **ready for implementation**.
+Status: **completed; implementation is under semantic review**.
 
-Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record fixes implementation scope, pass order, removals, and proof ownership only.
+Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture or active review findings.
 
 ## Source and readiness
 
 - Ready handoff: `docs/directory-state-reactivity.md`.
-- Baseline: merged PR #211 at `b264c816fda35205459a24840d9dcf8412cd121f`.
+- Current synchronized `develop` baseline: `9427fa4aea0b4fea0c72ea4ef4dd8d94711d6121`; PR #211 remains the foundational recovery/topology baseline at `b264c816fda35205459a24840d9dcf8412cd121f`.
 - Applicable workflows: `implementation-preflight`, `crdt-storage`, `test-first`, `unit-testing`, `docs/testing/architecture.md`.
 - Branch is ahead of and not behind `develop`.
 - Existing RPC uses recursive SuperJSON serialization with registered error transformers, so nested `RepositoryState.error` needs no new transport DTO or proxy change.
@@ -143,7 +143,7 @@ After repository search confirms no consumer remains, remove:
 - split entity errors/refetch;
 - dead directory/root-read imports, exports, tests, comments.
 
-Then run focused type-check/oxlint for the public contract migration and final canonical verification.
+Then run focused type-check/oxlint only when useful to validate the public contract migration.
 
 ## TEST IMPACT
 
@@ -187,9 +187,9 @@ Type-check/import graph plus repository search must show no remaining production
 
 ## Verification
 
-Use focused verifier-managed tests between risky passes. Once public exports/consumers are migrated, run focused type-check and oxlint as useful contract checks.
+Required contract proof must exist in the repository. During implementation or correction, use focused verifier-managed checks only when they materially help diagnose or prove the changed risk; focused type-check/oxlint are appropriate when public contracts are touched.
 
-Final coding-agent gate: run canonical `pnpm verify` once. Exact-head GitHub CI and final semantic/project review are architect-owned.
+Do not require a broad final local `pnpm verify` solely for coding-agent handoff. Exact-head GitHub CI is the architect-owned final automatic repository gate, followed by semantic/project review for merge readiness.
 
 ## Forbidden
 
@@ -209,6 +209,6 @@ Final coding-agent gate: run canonical `pnpm verify` once. Exact-head GitHub CI 
 - obsolete compatibility APIs without a confirmed current consumer;
 - cleanup outside the replaced surfaces.
 
-## Verdict
+## Result
 
-Implementation blockers: **none**. Implementation may begin.
+Preflight: **completed**. The initial implementation is present on `refactor/directory-state-reactivity`. Remaining acceptance/correction work is owned by the active owner-local `REVIEW.md` findings; those corrections must preserve this implementation contract unless new evidence proves a runtime defect.
