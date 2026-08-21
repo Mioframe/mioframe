@@ -55,7 +55,7 @@ When the contract itself is unresolved, stop and return to the owning architectu
 
 ## Proof intent
 
-Before production edits for a behavior-changing task, or before finalizing a tests-only proof change, establish compactly:
+When `implementation-preflight` already recorded these fields in `TEST IMPACT`, use that record; do not create a duplicate. A deterministic workflow that does not use the generic preflight must establish the equivalent compact proof intent before production edits for a behavior-changing task, or before finalizing a tests-only proof change:
 
 ```text
 PROOF INTENT
