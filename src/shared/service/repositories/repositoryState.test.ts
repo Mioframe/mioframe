@@ -460,4 +460,59 @@ describe('createRepositoryStateCoordinator', () => {
       expect(last.snapshot.documentIds).toEqual([secondDocId]);
     });
   });
+
+  it('preserves a sticky error through a directory reading transition during a pending replacement derivation, until a later derivation succeeds', async () => {
+    const source = createDirectorySource();
+    const facts = createControllableFacts();
+    const { repositoryState$ } = createRepositoryStateCoordinator(vfsStub, source.directoryState$);
+
+    const { states } = collectStates(repositoryState$({ path: '/A' }));
+
+    // 1. Produce an accepted repository snapshot.
+    source.emit('/A', { status: 'ready', entries: entries('a.txt') });
+    const firstDocId = documentId();
+    facts.resolveNext({ documentIds: [firstDocId], isInitialized: true });
+    await vi.waitFor(() => {
+      expect(states.at(-1)?.status).toBe('ready');
+    });
+
+    // 2. Publish directory error(E).
+    const directoryError = new Error('read failed');
+    source.emit('/A', { status: 'error', error: directoryError });
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // 3. Publish replacement ready(entries): a replacement derivation starts while error(E)
+    // remains current.
+    source.emit('/A', { status: 'ready', entries: entries('a.txt', 'b.txt') });
+    expect(facts.callCount()).toBe(2);
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // 4. Before that derivation settles, directory publishes reading.
+    source.emit('/A', { status: 'reading' });
+
+    // 5. The same error(E) remains current, not loading or refreshing.
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // 6. Settle the now-stale derivation: it must not clear the error.
+    facts.resolveNext({ documentIds: [firstDocId], isInitialized: true });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // 7. Publish a newer ready(entries).
+    source.emit('/A', { status: 'ready', entries: entries('a.txt', 'b.txt', 'c.txt') });
+    expect(facts.callCount()).toBe(3);
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // 8-9. Resolve its derivation successfully: the repository reaches ready(snapshot).
+    const recoveredDocId = documentId();
+    facts.resolveNext({ documentIds: [recoveredDocId], isInitialized: true });
+
+    await vi.waitFor(() => {
+      const last = states.at(-1);
+      if (last?.status !== 'ready') throw new Error('not ready yet');
+      expect(last.snapshot.documentIds).toEqual([recoveredDocId]);
+      expect(last.snapshot.entries).toHaveLength(3);
+    });
+  });
 });

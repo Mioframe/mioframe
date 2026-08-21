@@ -126,7 +126,9 @@ export const createRepositoryStateCoordinator = (
         entry.derivationNonPublishable = true;
       }
       entry.pendingReadyEntries = undefined;
-      publishLoadingLike(entry);
+      if (entry.subject.value.status !== 'error') {
+        publishLoadingLike(entry);
+      }
       return;
     }
 
