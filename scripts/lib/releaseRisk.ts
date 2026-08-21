@@ -31,8 +31,21 @@ interface NarrowReleaseMapping {
 const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
   { path: 'scripts/release/validateReleaseConfig.mjs', checks: ['release-config'] },
   { path: 'scripts/release/validateReleaseConfig.test.mjs', checks: ['release-config'] },
-  { path: 'scripts/release/buildArtifact.mjs', checks: ['build', 'artifact'] },
-  { path: 'scripts/release/buildArtifact.test.mjs', checks: ['build', 'artifact'] },
+  // Invoked by playwright.release.config.ts's webServer.command for every
+  // release Playwright spec that boots through that config: artifact,
+  // release-smoke, and managed-updates (managed-updates is never in
+  // ARTIFACT_REUSE_LABELS in scripts/verify.ts, so it always re-invokes this
+  // script itself rather than reusing a prebuilt artifact). release-config
+  // and publisher-node-import run as plain `node` invocations and never
+  // touch this build path.
+  {
+    path: 'scripts/release/buildArtifact.mjs',
+    checks: ['artifact', 'build', 'managed-updates', 'release-smoke'],
+  },
+  {
+    path: 'scripts/release/buildArtifact.test.mjs',
+    checks: ['artifact', 'build', 'managed-updates', 'release-smoke'],
+  },
   {
     path: 'scripts/release/publisherWireContractImportProof.mjs',
     checks: ['publisher-node-import'],
@@ -52,6 +65,47 @@ const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
   // Artifact-facing worker: affects both the built controller artifact
   // contract and managed-update runtime lifecycle.
   { path: 'src/sw.ts', checks: ['artifact', 'managed-updates'] },
+  // Terminates both the proven plain-Node publisher import chain
+  // (publisherWireContractImportProof.mjs -> releasePublish.mjs ->
+  // releaseDescriptor.mjs -> this file) and the runtime managed-update
+  // boundary (imported by src/shared/service/appUpdate/contracts.ts).
+  {
+    path: 'src/shared/service/appUpdate/releaseWireContract.ts',
+    checks: ['managed-updates', 'publisher-node-import'],
+  },
+  // Exact per-file release-fixture ownership, traced against real spec
+  // importers -- deliberately not a blanket tests/e2e/release/fixtures/**
+  // directory rule (see isUnmappedReleaseFixturePath below).
+  {
+    path: 'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.mjs',
+    checks: ['managed-updates'],
+  },
+  {
+    path: 'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.d.mts',
+    checks: ['managed-updates'],
+  },
+  { path: 'tests/e2e/release/fixtures/managedReleaseFixture.mjs', checks: ['managed-updates'] },
+  { path: 'tests/e2e/release/fixtures/managedReleaseFixture.d.mts', checks: ['managed-updates'] },
+  {
+    path: 'tests/e2e/release/fixtures/managedReleaseFixture.test.mjs',
+    checks: ['managed-updates'],
+  },
+  // Dynamically imported only by vite.config.ts when
+  // RELEASE_TEST_LEGACY_PWA_FIXTURE=1, which only managedReleaseFixture.mjs
+  // (a managed-updates-only consumer) ever sets. productionArtifactSmoke's
+  // one reference to this name is a literal string asserting its absence
+  // from ordinary builds, not a content dependency.
+  {
+    path: 'tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts',
+    checks: ['managed-updates'],
+  },
+  // Imported only by productionArtifactSmoke.spec.ts, never by any
+  // managed-updates spec.
+  { path: 'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.mjs', checks: ['artifact'] },
+  {
+    path: 'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.d.mts',
+    checks: ['artifact'],
+  },
 ];
 
 // Broad release-sensitive infrastructure whose narrower per-consumer
@@ -101,7 +155,11 @@ function isManagedUpdatesReleaseSpecPath(filePath: string): boolean {
   return filePath.startsWith('tests/e2e/release/managedUpdates') && filePath.endsWith('.spec.ts');
 }
 
-function isManagedUpdatesReleaseFixturePath(filePath: string): boolean {
+// Every currently confirmed tests/e2e/release/fixtures/** file has its own
+// exact narrow mapping above. A path under this directory that reaches this
+// check matched none of them: its real consumer is not safely bounded, so it
+// must fail closed to full rather than default to managed-updates or skip.
+function isUnmappedReleaseFixturePath(filePath: string): boolean {
   return filePath.startsWith('tests/e2e/release/fixtures/');
 }
 
@@ -201,11 +259,14 @@ export function resolveReleasePlan(
       continue;
     }
 
-    if (
-      isManagedUpdatesReleaseSpecPath(filePath) ||
-      isManagedUpdatesReleaseFixturePath(filePath) ||
-      isAppUpdateRuntimePath(filePath)
-    ) {
+    if (isUnmappedReleaseFixturePath(filePath)) {
+      fullReasons.push(
+        `unmapped release fixture path ${filePath} -> full source-impact release proof`,
+      );
+      continue;
+    }
+
+    if (isManagedUpdatesReleaseSpecPath(filePath) || isAppUpdateRuntimePath(filePath)) {
       focusedChecks.add('managed-updates');
       focusedReasons.push(`managed-update release-relevant path ${filePath} -> managed-updates`);
     }

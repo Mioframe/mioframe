@@ -13,9 +13,18 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // Oracle: docs/testing/verify-target-architecture.md "Unit impact architecture"
 // (Goal through "Unit acceptance") plus the task's verified experimental facts
 // (`vitest related` behavior for PRIVACY.md / config/tooling.json /
-// .github/workflows/verify.yml) and the bounded readFileSync audit of
-// scripts/release/*Workflow.test.mjs. resolveUnitPlan does not exist yet;
-// this whole suite is expected to fail at import time (valid new-API red).
+// .github/workflows/verify.yml) and a bounded readFileSync audit of every
+// repository reference to `.github/workflows/verify.yml`,
+// `.github/workflows/release.yml`, and `.github/workflows/deploy-branch.yml`
+// across scripts/, src/, and tests/. That audit confirms FOUR direct Vitest
+// readers of `.github/workflows/verify.yml`: the three
+// scripts/release/*Workflow.test.mjs files already mapped, plus
+// `scripts/ciAutofix.test.ts` (two `fs.readFileSync(...'.github/workflows/
+// verify.yml'...)` call sites asserting on the autofix-commit step's exact
+// content), which was previously missing from the registry -- a confirmed
+// unit-ownership under-selection bug (see scripts/lib/REVIEW.md B1), not a
+// spec this suite preserves. resolveUnitPlan does not exist yet; this whole
+// suite is expected to fail at import time (valid new-API red).
 
 function added(filePath: string): ChangedPath {
   return { status: 'added', path: filePath };
@@ -307,11 +316,12 @@ describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA
     ]);
   });
 
-  it('selects all three workflow test owners for .github/workflows/verify.yml', () => {
+  it('selects all four confirmed workflow test owners for .github/workflows/verify.yml, including the direct ciAutofix.test.ts reader', () => {
     const plan = resolveUnitPlan([modified('.github/workflows/verify.yml')]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
+      'scripts/ciAutofix.test.ts',
       'scripts/release/buildDateWorkflow.test.mjs',
       'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
       'scripts/release/materializePrVersionWorkflow.test.mjs',
@@ -328,7 +338,7 @@ describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA
     ]);
   });
 
-  it('dedupes the shared workflow test owners when release.yml and verify.yml change together', () => {
+  it('dedupes the shared workflow test owners when release.yml and verify.yml change together, still including ciAutofix.test.ts from verify.yml', () => {
     const plan = resolveUnitPlan([
       modified('.github/workflows/release.yml'),
       modified('.github/workflows/verify.yml'),
@@ -336,6 +346,7 @@ describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
+      'scripts/ciAutofix.test.ts',
       'scripts/release/buildDateWorkflow.test.mjs',
       'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
       'scripts/release/materializePrVersionWorkflow.test.mjs',

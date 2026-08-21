@@ -39,6 +39,7 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
   {
     source: '.github/workflows/verify.yml',
     tests: [
+      'scripts/ciAutofix.test.ts',
       'scripts/release/buildDateWorkflow.test.mjs',
       'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
       'scripts/release/materializePrVersionWorkflow.test.mjs',

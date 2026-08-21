@@ -11,10 +11,59 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 
 // Oracle: docs/testing/verify-target-architecture.md "# Release-impact
 // architecture" (Goal through "CLI contract") plus the "End-state acceptance
-// matrix" release row, plus the architect's verified file-existence/import
-// facts recorded in the task handoff. `scripts/lib/releaseRisk.ts` does not
-// exist yet; this whole suite is expected to fail at import time (valid
-// new-API red).
+// matrix" release row, plus this suite's own independently re-traced current
+// consumer graph (see scripts/lib/REVIEW.md B2) established by direct file
+// reads during test authoring:
+//
+// - `src/shared/service/appUpdate/releaseWireContract.ts` terminates BOTH the
+//   proven plain-Node publisher import chain
+//   (`scripts/release/publisherWireContractImportProof.mjs` ->
+//   `scripts/pages/lib/releasePublish.mjs` ->
+//   `scripts/pages/lib/releaseDescriptor.mjs` -> `releaseWireContract.ts`,
+//   confirmed by that script's own docstring/imports) AND the runtime
+//   managed-update boundary (imported by
+//   `src/shared/service/appUpdate/contracts.ts`). It must select both
+//   `publisher-node-import` and `managed-updates`.
+// - `scripts/release/buildArtifact.mjs` (and its test) is invoked by
+//   `playwright.release.config.ts`'s `webServer.command` (confirmed by direct
+//   read of that config, lines ~46-61) for every release Playwright spec that
+//   boots through it: `artifact` (`productionArtifactSmoke.spec.ts`),
+//   `release-smoke` (`firstUserAndReturningUserSmoke.spec.ts`), and
+//   `managed-updates` (`managedUpdatesProof.mjs` ->
+//   `scripts/e2eReleaseContainer.mjs --config playwright.release.config.ts`,
+//   confirmed by direct read). `scripts/verify.ts`'s `ARTIFACT_REUSE_LABELS`
+//   is confirmed to be exactly `Set(['artifact', 'release-smoke'])`, so
+//   `managed-updates` never reuses a prebuilt artifact and always
+//   re-invokes `buildArtifact.mjs` itself. `release-config` and
+//   `publisher-node-import` run as plain `node` invocations
+//   (`RELEASE_CHECK_COMMANDS` in `scripts/verify.ts`), never through
+//   `playwright.release.config.ts`, so they are correctly excluded from
+//   `buildArtifact.mjs`'s consumer set.
+// - `tests/e2e/release/fixtures/**` is NOT blanket-owned by `managed-updates`
+//   by directory; each fixture's real importer(s) were traced individually
+//   (grepped across every `tests/e2e/release/*.spec.ts`):
+//   `controllerArtifactIdentityFixture.{mjs,d.mts}` and
+//   `managedReleaseFixture.{mjs,d.mts,test.mjs}` are consumed only by
+//   managed-updates-owned specs -> `managed-updates`;
+//   `legacyGeneratedWorkboxPwaConfig.ts` is dynamically imported only by
+//   `vite.config.ts` when `RELEASE_TEST_LEGACY_PWA_FIXTURE=1`, which only
+//   `managedReleaseFixture.mjs` sets -> `managed-updates` (its one literal
+//   string reference in `productionArtifactSmoke.spec.ts` asserts its
+//   *absence* from ordinary builds, not a content dependency);
+//   `ordinaryBranchArtifactFixture.{mjs,d.mts}` is imported ONLY by
+//   `productionArtifactSmoke.spec.ts` -> `artifact` only. This last one is
+//   the confirmed bug: the old blanket directory rule gave it
+//   `managed-updates` (wrong check) while silently missing its true owner
+//   `artifact` (a genuine false negative), and no prior test in this suite
+//   ever covered this specific file. Any other/future fixture path not
+//   exactly one of these must fail closed to `full`, not silently default to
+//   `managed-updates` or `skip`.
+//
+// `scripts/lib/releaseRisk.ts` does not yet encode this corrected consumer
+// graph; this whole suite is expected to fail (red) against the current
+// unfixed production module -- that is the intended and correct state for
+// this handoff (see scripts/lib/REVIEW.md B2). Do not weaken these
+// assertions to make the current unfixed module pass.
 //
 // One correction to the task handoff, established by direct file read
 // during test authoring: `scripts/release/publisherWireContractImportProof.
@@ -41,8 +90,9 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // - "package.json version-only alone -> skip" / "runtime-relevant or unresolvable -> full" -> `package.json impact`.
 // - "pnpm-lock.yaml alone -> full ... does NOT depend on the package.json check being called at all" (Must reject #5) -> `pnpm-lock.yaml unconditional full`.
 // - "Combining two different narrow mappings ... merges" / "Full dominates focused" / "irrelevant path ... does not erase" -> `composition and non-erasure`.
-// - "Unknown significant change inside a confirmed release-sensitive boundary -> full, not skip" (Must reject #3) -> `full-lane triggers` (scripts/pages/lib/** unmapped file, vite.config.ts).
+// - "Unknown significant change inside a confirmed release-sensitive boundary -> full, not skip" (Must reject #3) -> `full-lane triggers` (scripts/pages/lib/** unmapped file, vite.config.ts) and the unmapped-fixture case in `narrow mappings`.
 // - a resolver that silently drops a mapped check instead of `invalid` (Must reject #6) -> `registry self-consistency`.
+// - a resolver that under-selects `buildArtifact.mjs`'s real Playwright-webServer consumer set, or blanket-classifies `tests/e2e/release/fixtures/**` by directory instead of by real importer (B2 false negatives) -> `narrow mappings`.
 //
 // Must reject #4 (inferring PATCH/MINOR/MAJOR release-version intent from
 // changed files) has no corresponding test: there is no such concept in this
@@ -97,6 +147,21 @@ describe('resolveReleasePlan registry self-consistency (invalid mode)', () => {
     'tests/e2e/release/productionArtifactSmoke.spec.ts',
     'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     'src/sw.ts',
+    // Added by the B2 correction: releaseWireContract.ts now has its own
+    // exact narrow mapping (publisher-node-import + managed-updates) rather
+    // than relying only on the generic appUpdate/ directory rule.
+    'src/shared/service/appUpdate/releaseWireContract.ts',
+    // Added by the B2 correction: individual real fixture files now have
+    // exact per-file ownership instead of a blanket
+    // tests/e2e/release/fixtures/** directory rule.
+    'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.mjs',
+    'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.d.mts',
+    'tests/e2e/release/fixtures/managedReleaseFixture.mjs',
+    'tests/e2e/release/fixtures/managedReleaseFixture.d.mts',
+    'tests/e2e/release/fixtures/managedReleaseFixture.test.mjs',
+    'tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts',
+    'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.mjs',
+    'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.d.mts',
   ])(
     'fails invalid (not skip/focused) when the real narrow-mapped path %s is reported missing',
     (missingPath) => {
@@ -180,18 +245,26 @@ describe('resolveReleasePlan narrow mappings (real end-to-end proof, no options 
     expect(plan.checks).toEqual(['release-config']);
   });
 
-  it('selects exactly artifact and build for buildArtifact.mjs (never the other four)', () => {
+  it('selects artifact, build, managed-updates, and release-smoke for buildArtifact.mjs (every real playwright.release.config.ts webServer consumer, never release-config/publisher-node-import)', () => {
+    // B2 correction: buildArtifact.mjs is invoked by
+    // playwright.release.config.ts's webServer.command for every release
+    // Playwright spec that boots through that config -- artifact,
+    // release-smoke, and managed-updates (managed-updates is not in
+    // scripts/verify.ts's ARTIFACT_REUSE_LABELS, so it always re-invokes
+    // buildArtifact.mjs itself rather than reusing a prebuilt artifact).
+    // release-config and publisher-node-import run as plain `node`
+    // invocations and never touch this build path.
     const plan = resolveReleasePlan(['scripts/release/buildArtifact.mjs']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.checks).toEqual(['artifact', 'build']);
+    expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
   });
 
-  it('selects exactly artifact and build for buildArtifact.test.mjs', () => {
+  it('selects artifact, build, managed-updates, and release-smoke for buildArtifact.test.mjs', () => {
     const plan = resolveReleasePlan(['scripts/release/buildArtifact.test.mjs']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.checks).toEqual(['artifact', 'build']);
+    expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
   });
 
   it('selects only publisher-node-import for publisherWireContractImportProof.mjs', () => {
@@ -270,13 +343,69 @@ describe('resolveReleasePlan narrow mappings (real end-to-end proof, no options 
 
   it.each([
     'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.mjs',
+    'tests/e2e/release/fixtures/controllerArtifactIdentityFixture.d.mts',
     'tests/e2e/release/fixtures/managedReleaseFixture.mjs',
+    'tests/e2e/release/fixtures/managedReleaseFixture.d.mts',
     'tests/e2e/release/fixtures/managedReleaseFixture.test.mjs',
-  ])('selects only managed-updates for the real fixture path %s', (filePath) => {
-    const plan = resolveReleasePlan([filePath]);
+    // Dynamically imported only by vite.config.ts when
+    // RELEASE_TEST_LEGACY_PWA_FIXTURE=1, which only managedReleaseFixture.mjs
+    // (a managed-updates-only consumer) ever sets. Its one reference from
+    // productionArtifactSmoke.spec.ts is a literal string asserting this
+    // file's ABSENCE from ordinary builds, not a content dependency.
+    'tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts',
+  ])(
+    'selects only managed-updates for the real managed-update-owned fixture path %s',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('focused');
+      expect(plan.checks).toEqual(['managed-updates']);
+    },
+  );
+
+  it.each([
+    'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.mjs',
+    'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.d.mts',
+  ])(
+    // B2 correction / confirmed bug: this file is imported ONLY by
+    // productionArtifactSmoke.spec.ts (an `artifact`-owned spec), never by
+    // any managed-updates spec. The old blanket
+    // tests/e2e/release/fixtures/** directory rule gave it `managed-updates`
+    // (wrong check) while silently missing its true owner `artifact` -- a
+    // genuine false negative this suite previously never covered.
+    'selects only artifact for the real artifact-owned fixture path %s (never managed-updates)',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('focused');
+      expect(plan.checks).toEqual(['artifact']);
+    },
+  );
+
+  it('fails closed to full for an unmapped tests/e2e/release/fixtures/** path (no blanket managed-updates directory default)', () => {
+    // B2 correction: fixture ownership must not fall back to a blanket
+    // directory-wide managed-updates default. An unlisted fixture's true
+    // consumer is not safely bounded, so it must fail closed to full rather
+    // than silently defaulting to managed-updates or skip.
+    const plan = resolveReleasePlan(['tests/e2e/release/fixtures/someNewFixture.mjs']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.checks).toEqual(ALL_CHECKS_SORTED);
+  });
+
+  it('selects both managed-updates and publisher-node-import for releaseWireContract.ts (the real publisher-node-import terminus, plus its real managed-update runtime ownership)', () => {
+    // B2 correction: scripts/release/publisherWireContractImportProof.mjs
+    // imports scripts/pages/lib/releasePublish.mjs ->
+    // scripts/pages/lib/releaseDescriptor.mjs ->
+    // src/shared/service/appUpdate/releaseWireContract.ts directly (confirmed
+    // by that script's own docstring/imports), so a change here genuinely
+    // affects the publisher-node-import proof. It is also imported by
+    // src/shared/service/appUpdate/contracts.ts, the runtime managed-update
+    // boundary, so its real managed-updates ownership must be preserved too.
+    const plan = resolveReleasePlan(['src/shared/service/appUpdate/releaseWireContract.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.checks).toEqual(['managed-updates']);
+    expect(plan.checks).toEqual(['managed-updates', 'publisher-node-import']);
   });
 
   it('selects exactly artifact and managed-updates for src/sw.ts (never the other four)', () => {
