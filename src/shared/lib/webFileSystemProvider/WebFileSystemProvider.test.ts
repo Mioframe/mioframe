@@ -5,8 +5,10 @@ import { FSNodeType } from '../virtualFileSystem';
 import { WebFileSystemProvider } from './WebFileSystemProvider';
 import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+  WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
   WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
   WebFileSystemAccessRequiredError,
+  WebFileSystemUnavailableRootError,
 } from '.';
 import { DomainError } from '../error';
 
@@ -73,6 +75,28 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
+  it('throws a typed access-required DomainError with mode:read when readDirectory("/") read permission is denied', async () => {
+    const { rootHandle } = createRootHandle('denied');
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({
+        spaceName: 'Work',
+        mode,
+      }),
+      onUnavailableRoot,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'read',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+    expect(onUnavailableRoot).not.toHaveBeenCalled();
+    expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
   it('throws a typed access-required DomainError with mode:readwrite for write operations when permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
@@ -125,6 +149,21 @@ describe('WebFileSystemProvider', () => {
       code: 'EACCES',
       name: 'VfsError',
     });
+  });
+
+  it('falls back to a VfsError when the access-recovery callback declines actionable recovery', async () => {
+    const { rootHandle } = createRootHandle('prompt');
+    const onAccessRequired = vi.fn(() => undefined);
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: 'EACCES',
+      name: 'VfsError',
+    });
+    expect(onAccessRequired).toHaveBeenCalledWith({ handle: rootHandle, mode: 'read' });
   });
 
   it('marks denied file handles as explicitly non-writable in stat capabilities', async () => {
@@ -350,7 +389,7 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.getFileHandleMock).toHaveBeenCalledWith('note.txt', {
       create: false,
     });
-    expect(fileHandle.__writtenContent).toEqual(['hello']);
+    expect(fileHandle.writtenContent).toEqual(['hello']);
   });
 
   it('uses the optimized create+overwrite write path without lookup, enumeration, or metadata reads', async () => {
@@ -1067,7 +1106,7 @@ describe('WebFileSystemProvider', () => {
     await expect(provider.move('/note.txt', '/note.txt')).resolves.toBeUndefined();
     expect(rootHandle.getFileHandleMock).not.toHaveBeenCalled();
     expect(rootHandle.removeEntryMock).not.toHaveBeenCalled();
-    expect(fileHandle.__writtenContent).toEqual(['hello']);
+    expect(fileHandle.writtenContent).toEqual(['hello']);
   });
 
   it('attempts removeEntry when canDelete capability is undefined', async () => {
@@ -1381,5 +1420,145 @@ describe('WebFileSystemProvider', () => {
       code: 'EACCES',
       name: 'VfsError',
     });
+  });
+
+  it('emits the unavailable-root error when root enumeration fails but read permission is still granted', async () => {
+    const { rootHandle } = createRootHandle('granted');
+    const enumerationError = new DOMException('I/O error', 'NotReadableError');
+    rootHandle.entries = () => {
+      throw enumerationError;
+    };
+    const onDiagnosticStep = vi.fn();
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onUnavailableRoot: () => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }),
+      onDiagnosticStep,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
+      name: 'WebFileSystemUnavailableRootError',
+      spaceName: 'Work',
+      recoveryKey: 'recovery-key',
+      cause: enumerationError,
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      step: 'rootRead',
+      result: 'failed',
+      error: enumerationError,
+    });
+    expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
+      step: 'rootReadPermissionRecheck',
+      result: 'succeeded',
+      permission: 'granted',
+    });
+  });
+
+  it('falls back to the access-required error when root read permission was revoked between the pre-check and the failed enumeration', async () => {
+    const { rootHandle } = createRootHandle('granted');
+    const enumerationError = new DOMException('I/O error', 'NotReadableError');
+    rootHandle.entries = () => {
+      throw enumerationError;
+    };
+    const queryPermissionMock = vi
+      .fn<(descriptor?: FileSystemHandlePermissionDescriptor) => Promise<PermissionState>>()
+      .mockResolvedValueOnce('granted')
+      .mockResolvedValueOnce('prompt');
+    Object.defineProperty(rootHandle, 'queryPermission', {
+      configurable: true,
+      value: queryPermissionMock,
+    });
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
+      onUnavailableRoot,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'read',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+    expect(onUnavailableRoot).not.toHaveBeenCalled();
+  });
+
+  it('rethrows the original enumeration failure when no unavailable-root recovery is configured', async () => {
+    const { rootHandle } = createRootHandle('granted');
+    const enumerationError = new DOMException('I/O error', 'NotReadableError');
+    rootHandle.entries = () => {
+      throw enumerationError;
+    };
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toBe(enumerationError);
+  });
+
+  it('does not convert a nested directory read failure into unavailable-root recovery', async () => {
+    const childDir = createDirectoryHandleMock({ name: 'child', permissionState: 'granted' });
+    const nestedError = new DOMException('I/O error', 'NotReadableError');
+    childDir.entries = () => {
+      throw nestedError;
+    };
+    const rootHandle = createDirectoryHandleMock({
+      entries: [childDir],
+      name: '',
+      permissionState: 'granted',
+    });
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onUnavailableRoot,
+    });
+
+    await expect(provider.readDirectory('/child')).rejects.toBe(nestedError);
+    expect(onUnavailableRoot).not.toHaveBeenCalled();
+  });
+
+  it('does not route Browser Storage root read failures through unavailable-root recovery', async () => {
+    const { rootHandle } = createRootHandle('granted');
+    const enumerationError = new DOMException('I/O error', 'NotReadableError');
+    rootHandle.entries = () => {
+      throw enumerationError;
+    };
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'originPrivateStorage',
+      onUnavailableRoot,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toBe(enumerationError);
+    expect(onUnavailableRoot).not.toHaveBeenCalled();
+  });
+
+  it('serializes only safe metadata for unavailable-root worker transfer', async () => {
+    const { rootHandle } = createRootHandle('granted');
+    rootHandle.entries = () => {
+      throw new DOMException('I/O error', 'NotReadableError');
+    };
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onUnavailableRoot: () => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }),
+    });
+
+    const thrownError = await provider
+      .readDirectory('/')
+      .catch((caughtError: unknown) => caughtError);
+
+    expect(thrownError).toBeInstanceOf(WebFileSystemUnavailableRootError);
+    if (!(thrownError instanceof WebFileSystemUnavailableRootError)) {
+      throw new Error('Expected WebFileSystemUnavailableRootError');
+    }
+
+    expect(thrownError.toJSON()).toMatchObject({
+      code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
+      spaceName: 'Work',
+      recoveryKey: 'recovery-key',
+    });
+    expect(thrownError.toJSON()).not.toHaveProperty('cause');
+    expect(JSON.stringify(thrownError.toJSON())).not.toContain('FileSystemDirectoryHandle');
   });
 });

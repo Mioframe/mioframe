@@ -3,7 +3,13 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import { DEVICE_FILES_ROOT_NAME, type DeviceFileDisplayRecord } from '@shared/service';
+import {
+  DEVICE_FILES_ROOT_NAME,
+  type DeviceFileDisplayRecord,
+  type MioframeSpaceInspection,
+  type ReconnectDeviceDirectoryResult,
+  type RelocateRememberedDeviceDirectoryResult,
+} from '@shared/service';
 import { useObservable } from '@shared/lib/useObservable';
 import { OPFSName } from '@shared/service';
 
@@ -40,6 +46,9 @@ const setupFileSystem = () => {
       directoryContent,
       addDeviceDirectory,
       removeDeviceDirectory,
+      reconnectDeviceDirectory,
+      relocateRememberedDeviceDirectory,
+      inspectMioframeSpaceCandidate,
       deviceFiles,
     },
   } = useMainServiceClient();
@@ -82,6 +91,22 @@ const setupFileSystem = () => {
     await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
   };
 
+  const reconnectDirectory = (params: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+    recoveryKey: string;
+  }): Promise<ReconnectDeviceDirectoryResult> => reconnectDeviceDirectory(params);
+
+  const relocateRememberedDirectory = (params: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+    recoveryKey: string;
+  }): Promise<RelocateRememberedDeviceDirectoryResult> => relocateRememberedDeviceDirectory(params);
+
+  const inspectMioframeSpaceCandidateEntry = (
+    handle: FileSystemDirectoryHandle,
+  ): Promise<MioframeSpaceInspection> => inspectMioframeSpaceCandidate(handle);
+
   return {
     rootDirectory,
     deviceFiles: mountedDirectories,
@@ -91,6 +116,9 @@ const setupFileSystem = () => {
     addDeviceDirectory,
     createDirectory,
     disconnectDeviceFile,
+    reconnectDirectory,
+    relocateRememberedDirectory,
+    inspectMioframeSpaceCandidate: inspectMioframeSpaceCandidateEntry,
 
     move,
     remove,

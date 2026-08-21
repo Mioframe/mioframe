@@ -6,6 +6,7 @@ import {
   type WebFileSystemProviderOptions,
 } from './WebFileSystemProvider';
 import type { WebFileSystemAccessRequiredDetails } from './WebFileSystemAccessRequiredError';
+import type { WebFileSystemUnavailableRootDetails } from './WebFileSystemUnavailableRootError';
 
 /** Provider instance with an internal access-refresh hook owned below the service boundary. */
 export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
@@ -15,7 +16,8 @@ export interface RefreshableWebFileSystemProvider extends IFileSystemProvider {
 
 type AccessRequiredHandler = (
   context: WebFileSystemProviderAccessRequiredContext,
-) => WebFileSystemAccessRequiredDetails;
+) => WebFileSystemAccessRequiredDetails | undefined;
+type UnavailableRootHandler = () => WebFileSystemUnavailableRootDetails | undefined;
 type DiagnosticStepHandler = (event: WebFileSystemDiagnosticStep) => void;
 
 /** Mounted provider kind used by the provider-boundary factory mapping. */
@@ -31,17 +33,20 @@ const createProvider = (
  * @param rootHandle - Mounted root directory handle.
  * @param onAccessRequired - Service-owned callback that records a pending access request.
  * @param onDiagnosticStep - Optional safe diagnostic milestone callback.
+ * @param onUnavailableRoot - Optional service-owned callback for a granted-but-unreadable root.
  * @returns Refreshable provider instance for the selected directory.
  */
 export const createUserSelectedDirectoryProvider = (
   rootHandle: FileSystemDirectoryHandle,
   onAccessRequired: AccessRequiredHandler,
   onDiagnosticStep?: DiagnosticStepHandler,
+  onUnavailableRoot?: UnavailableRootHandler,
 ): RefreshableWebFileSystemProvider =>
   createProvider(rootHandle, {
     permissionPolicy: 'userSelectedDirectory',
     onAccessRequired,
     ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
+    ...(onUnavailableRoot !== undefined ? { onUnavailableRoot } : {}),
   });
 
 /**
@@ -65,18 +70,26 @@ export const createMountedWebFileSystemProvider = ({
   kind,
   onAccessRequired,
   onDiagnosticStep,
+  onUnavailableRoot,
   rootHandle,
 }: {
   kind: MountedWebFileSystemKind;
   onAccessRequired?: AccessRequiredHandler | undefined;
   onDiagnosticStep?: DiagnosticStepHandler | undefined;
+  onUnavailableRoot?: UnavailableRootHandler | undefined;
   rootHandle: FileSystemDirectoryHandle;
 }): RefreshableWebFileSystemProvider =>
   kind === 'localDirectory' && onAccessRequired
-    ? createUserSelectedDirectoryProvider(rootHandle, onAccessRequired, onDiagnosticStep)
+    ? createUserSelectedDirectoryProvider(
+        rootHandle,
+        onAccessRequired,
+        onDiagnosticStep,
+        onUnavailableRoot,
+      )
     : kind === 'localDirectory'
       ? createProvider(rootHandle, {
           permissionPolicy: 'userSelectedDirectory',
           ...(onDiagnosticStep !== undefined ? { onDiagnosticStep } : {}),
+          ...(onUnavailableRoot !== undefined ? { onUnavailableRoot } : {}),
         })
       : createOriginPrivateStorageProvider(rootHandle);

@@ -964,6 +964,26 @@ describe('useRepositoriesService', () => {
     expect(recreatedRepo).not.toBe(firstRepo);
   });
 
+  it('normalizes a rejecting repo.flush() into a non-flushed write-recovery result instead of throwing', async () => {
+    const path = '/flush-failure';
+    createDirectoryContentSubject(path, []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    await service.initializeRepository(path);
+    const [repo] = repoInstances.get(path) ?? [];
+    repo?.flush.mockRejectedValueOnce(new Error('disk full'));
+
+    const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+
+    await expect(
+      handler({ mountPath: path, operation: 'write', spaceName: 'flush-failure' }),
+    ).resolves.toEqual({
+      status: 'failed',
+      replay: { flushedCount: 0, pendingCount: 0, failureClassification: 'storageFailure' },
+    });
+  });
+
   it('wires onSaveFailure callback to emit repositoryStorage.saveQueued for queued failures', async () => {
     let capturedOptions: RetryingStorageAdapterOptions | undefined;
     createRetryingStorageAdapterMock.mockImplementationOnce(

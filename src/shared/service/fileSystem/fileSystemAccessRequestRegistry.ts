@@ -8,6 +8,8 @@ type DeviceDirectoryAccessRequest = {
   handle: FileSystemDirectoryHandle;
   mode: WebFileSystemAccessMode;
   refreshProvider: () => Promise<void>;
+  /** Owning mounted-provider runtime identity; see {@link FileSystemAccessRequestRegistry}. */
+  recoveryKey: string;
 };
 
 type DeviceDirectoryAccessRequestKey = Pick<DeviceDirectoryAccessRequest, 'spaceName' | 'mode'>;
@@ -137,6 +139,10 @@ export interface FileSystemAccessRequestRegistryOptions {
  *
  * The registry:
  * - stores pending File System Access API directory requests indexed by `{ spaceName, mode }`;
+ * - stores each request's owning `recoveryKey` (the fileSystem-owned runtime identity of the
+ *   mounted provider instance that registered it) alongside its `{ spaceName, mode }` key, so a
+ *   `prepareHandle()`/`resolve()` pair can be correlated to the exact provider instance that was
+ *   current when the request was registered;
  * - does not call `requestPermission` — that stays on the main thread in the service client;
  * - does not own any UI state;
  * - does not know repository persistence details;
@@ -151,14 +157,17 @@ export interface FileSystemAccessRequestRegistry {
   /**
    * Stores or replaces the pending access request for the given space and mode.
    *
-   * If a request for the same `{ spaceName, mode }` already exists it is overwritten.
+   * If a request for the same `{ spaceName, mode }` already exists it is overwritten. Callers
+   * must only invoke this once they have verified the supplied `recoveryKey` still identifies the
+   * current mounted provider for `spaceName`; the registry itself does not perform that check.
    * Read and write requests for the same space are stored independently.
-   * @param params - Handle, mode, provider refresh callback, and space name.
+   * @param params - Handle, mode, provider refresh callback, owning `recoveryKey`, and space name.
    * @returns The normalized key identifying the stored request.
    */
   upsertRequest: (params: {
     handle: FileSystemDirectoryHandle;
     mode: WebFileSystemAccessMode;
+    recoveryKey: string;
     refreshProvider: () => Promise<void>;
     spaceName: string;
   }) => { spaceName: string; mode: WebFileSystemAccessMode };
@@ -182,31 +191,48 @@ export interface FileSystemAccessRequestRegistry {
   getRequest: (key: FileSystemAccessRequestKey) => Promise<FileSystemAccessRequestKey | undefined>;
 
   /**
-   * Returns the handle and key for a pending request if one exists, or `undefined`.
+   * Returns the handle, owning `recoveryKey`, and key for a pending request if one exists, or
+   * `undefined`.
    *
    * The returned handle is the `FileSystemDirectoryHandle` stored for the pending request.
    * It is provided so the service client can call `requestPermission` on the main thread;
-   * the registry itself never calls `requestPermission`.
+   * the registry itself never calls `requestPermission`. The returned `recoveryKey` is an
+   * ephemeral internal correlation value for that one explicit permission action: the caller must
+   * round-trip it unchanged to {@link resolve} and must not expose it to feature/UI callers.
    * @param key - The operation and space name to look up.
-   * @returns A promise resolving to the key plus handle, or `undefined` when not found.
+   * @returns A promise resolving to the key plus handle and `recoveryKey`, or `undefined` when
+   *   not found.
    */
   prepareHandle: (
     key: FileSystemAccessRequestKey,
-  ) => Promise<(FileSystemAccessRequestKey & { handle: FileSystemDirectoryHandle }) | undefined>;
+  ) => Promise<
+    | (FileSystemAccessRequestKey & { handle: FileSystemDirectoryHandle; recoveryKey: string })
+    | undefined
+  >;
 
   /**
    * Resolves a pending access request using the result of a browser permission check.
    *
+   * Before mutating anything, compares the supplied `recoveryKey` — the correlation value
+   * returned earlier by {@link prepareHandle} for this same explicit permission action — with the
+   * `recoveryKey` stored on the currently pending `{ spaceName, mode }` request. If no request
+   * exists or the keys differ, returns `{ status: 'missing' }` and leaves any current same-name
+   * request completely untouched: this is what makes a stale browser prompt from a replaced
+   * provider unable to consume or resolve a request registered later by its replacement.
+   *
+   * On identity match:
    * - On `granted`: removes the request, calls `refreshProvider`, and — for write
    *   operations — invokes registered {@link WriteAccessRecoveryHandler}s in order,
    *   stopping at the first failure.
    * - On `denied` or `prompt`: leaves the request in the registry so it can be retried.
-   * @param params - Key plus the `PermissionState` result from the browser.
+   * @param params - Key, the correlation `recoveryKey` from `prepareHandle`, and the
+   *   `PermissionState` result from the browser.
    * @returns A promise resolving to a {@link ResolveAccessRequestResult}.
    */
   resolve: (
     params: FileSystemAccessRequestKey & {
       permissionState: PermissionState;
+      recoveryKey: string;
     },
   ) => Promise<ResolveAccessRequestResult>;
 
@@ -228,6 +254,21 @@ export interface FileSystemAccessRequestRegistry {
    * @returns An unregister function; calling it removes the handler from the registry.
    */
   registerWriteRecoveryHandler: (handler: WriteAccessRecoveryHandler) => () => void;
+
+  /**
+   * Runs currently registered write recovery handlers directly for a mount, without requiring
+   * a pending permission request.
+   *
+   * Shares the exact handler execution semantics used by {@link resolve}: handlers run in
+   * registration order and execution stops at the first non-flushed result. Used by same-entry
+   * reconnect to settle repository writes after a proven-identical provider replacement.
+   * @param params - Mount path and space name to run registered handlers for.
+   * @returns A promise resolving to the {@link WriteAccessRecoveryResult} of the run.
+   */
+  runWriteRecoveryHandlers: (params: {
+    mountPath: string;
+    spaceName: string;
+  }) => Promise<WriteAccessRecoveryResult>;
 }
 
 const operationToMode = (operation: FileSystemAccessOperation): WebFileSystemAccessMode =>
@@ -254,16 +295,18 @@ export const createFileSystemAccessRequestRegistry = ({
   const upsertRequest = ({
     handle,
     mode,
+    recoveryKey,
     refreshProvider,
     spaceName,
   }: {
     handle: FileSystemDirectoryHandle;
     mode: WebFileSystemAccessMode;
+    recoveryKey: string;
     refreshProvider: () => Promise<void>;
     spaceName: string;
   }): DeviceDirectoryAccessRequestKey => {
     const key = makeRequestKey({ mode, spaceName });
-    pendingRequests.set(key, { spaceName, handle, mode, refreshProvider });
+    pendingRequests.set(key, { spaceName, handle, mode, refreshProvider, recoveryKey });
     return { mode, spaceName };
   };
 
@@ -288,29 +331,61 @@ export const createFileSystemAccessRequestRegistry = ({
 
   const prepareHandle = (
     key: FileSystemAccessRequestKey,
-  ): Promise<(FileSystemAccessRequestKey & { handle: FileSystemDirectoryHandle }) | undefined> => {
+  ): Promise<
+    | (FileSystemAccessRequestKey & { handle: FileSystemDirectoryHandle; recoveryKey: string })
+    | undefined
+  > => {
     const request = pendingRequests.get(
       makeRequestKey({ mode: operationToMode(key.operation), spaceName: key.spaceName }),
     );
     return Promise.resolve(
       request
-        ? { handle: request.handle, operation: key.operation, spaceName: request.spaceName }
+        ? {
+            handle: request.handle,
+            operation: key.operation,
+            spaceName: request.spaceName,
+            recoveryKey: request.recoveryKey,
+          }
         : undefined,
     );
+  };
+
+  const runWriteRecoveryHandlers = async ({
+    mountPath,
+    spaceName,
+  }: {
+    mountPath: string;
+    spaceName: string;
+  }): Promise<WriteAccessRecoveryResult> => {
+    for (const handler of writeRecoveryHandlers) {
+      // eslint-disable-next-line no-await-in-loop -- recovery handlers may depend on prior flush attempts
+      const result = await handler({ mountPath, operation: 'write', spaceName });
+
+      if (result.status !== 'flushed') {
+        return result;
+      }
+    }
+
+    return { status: 'flushed' };
   };
 
   const resolve = async ({
     operation,
     permissionState,
+    recoveryKey,
     spaceName,
   }: FileSystemAccessRequestKey & {
     permissionState: PermissionState;
+    recoveryKey: string;
   }): Promise<ResolveAccessRequestResult> => {
     const mode = operationToMode(operation);
     const requestKey = { mode, spaceName } satisfies DeviceDirectoryAccessRequestKey;
     const request = pendingRequests.get(makeRequestKey(requestKey));
 
-    if (!request) {
+    // A missing request or a `recoveryKey` mismatch means this correlation came from a prompt
+    // prepared against a provider that is no longer current for `spaceName`. Return the existing
+    // stale/missing outcome without touching a current same-name request registered afterward.
+    if (!request || request.recoveryKey !== recoveryKey) {
       return { status: 'missing' };
     }
 
@@ -326,18 +401,14 @@ export const createFileSystemAccessRequestRegistry = ({
     }
 
     const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+    const result = await runWriteRecoveryHandlers({ mountPath, spaceName });
 
-    for (const handler of writeRecoveryHandlers) {
-      // eslint-disable-next-line no-await-in-loop -- recovery handlers may depend on prior flush attempts
-      const result = await handler({ mountPath, operation: 'write', spaceName });
+    if (result.status === 'stillBlocked') {
+      return { status: 'grantedWithReplayFailures', replay: result.replay };
+    }
 
-      if (result.status === 'stillBlocked') {
-        return { status: 'grantedWithReplayFailures', replay: result.replay };
-      }
-
-      if (result.status === 'failed') {
-        return { status: 'grantedWithStorageFailures', replay: result.replay };
-      }
+    if (result.status === 'failed') {
+      return { status: 'grantedWithStorageFailures', replay: result.replay };
     }
 
     return { status: 'granted' };
@@ -363,5 +434,6 @@ export const createFileSystemAccessRequestRegistry = ({
     resolve,
     cancel,
     registerWriteRecoveryHandler,
+    runWriteRecoveryHandlers,
   };
 };

@@ -26,12 +26,23 @@ const {
   requestHomeDiagnosticsPromptAfterHandledErrorMock: vi.fn(),
 }));
 
-vi.mock('@entity/mountedDirectories', () => ({
-  useFileSystem: () => ({
-    addDeviceDirectory: addDeviceDirectoryMock,
-    disconnectDeviceFile: disconnectDeviceFileMock,
-  }),
-}));
+// `inspectMioframeSpaceCandidate` proxies the real automergeAdapter marker inspection (not a
+// canned mock): both features now consume it through the entity/service boundary instead of
+// importing marker-file logic directly, and these tests build real handle trees with/without the
+// canonical marker to prove the same open/create behavior is preserved through that boundary.
+vi.mock('@entity/mountedDirectories', async () => {
+  const { inspectMioframeSpaceDirectory } = await vi.importActual<
+    typeof import('@shared/lib/automergeAdapter')
+  >('@shared/lib/automergeAdapter');
+
+  return {
+    useFileSystem: () => ({
+      addDeviceDirectory: addDeviceDirectoryMock,
+      disconnectDeviceFile: disconnectDeviceFileMock,
+      inspectMioframeSpaceCandidate: inspectMioframeSpaceDirectory,
+    }),
+  };
+});
 
 vi.mock('@shared/service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shared/service')>();

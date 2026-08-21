@@ -4,10 +4,15 @@ import { createClient, createService } from '@shared/lib/proxyService';
 import {
   WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
   WebFileSystemAccessRequiredError,
+  WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
+  WebFileSystemUnavailableRootError,
   WEB_FILE_SYSTEM_WRITE_START_FAILED_CODE,
   createWebFileSystemWriteStartFailedError,
 } from '@shared/lib/webFileSystemProvider';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import {
+  getFileSystemAccessRecovery,
+  parseFileSystemUnavailableRootRecovery,
+} from '@shared/lib/fileSystem';
 import { FileSystemError, VfsError } from '@shared/lib/virtualFileSystem';
 import type { VfsActivityState } from '@shared/lib/virtualFileSystem';
 import { DomainError } from '@shared/lib/error';
@@ -156,6 +161,49 @@ describe('workerTransformerMap', () => {
         operation: 'write',
         spaceName: 'Work',
       });
+      return true;
+    });
+  });
+
+  it('reconstructs WebFileSystemUnavailableRootError across the service boundary', async () => {
+    const serviceId = uid();
+    const clientId = uid();
+    const { clientProvider, serviceProvider } = createChannel(clientId, serviceId);
+
+    const originalCause = new DOMException('I/O error', 'NotReadableError');
+
+    createService(serviceProvider, serviceId, transformers, () => ({
+      fail: () => {
+        throw new WebFileSystemUnavailableRootError({
+          spaceName: 'Work',
+          recoveryKey: 'recovery-key',
+          cause: originalCause,
+        });
+      },
+    }));
+
+    const client = createClient<{ fail: () => Promise<void> }>(
+      clientProvider,
+      clientId,
+      transformers,
+    );
+
+    await expect(client.fail()).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(WebFileSystemUnavailableRootError);
+      expect(error).toMatchObject({
+        code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
+        spaceName: 'Work',
+        recoveryKey: 'recovery-key',
+      });
+      expect(parseFileSystemUnavailableRootRecovery(error)).toEqual({
+        spaceName: 'Work',
+        recoveryKey: 'recovery-key',
+      });
+      if (!(error instanceof WebFileSystemUnavailableRootError)) return true;
+      expect(JSON.stringify(error.toJSON())).not.toContain('I/O error');
+      expect(JSON.stringify(error.toJSON())).not.toContain('NotReadableError');
+      expect(error.toJSON()).not.toHaveProperty('cause');
+      expect(error.toJSON()).not.toHaveProperty('handle');
       return true;
     });
   });

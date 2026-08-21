@@ -300,7 +300,28 @@ const setupRepositoriesService = () => {
       }
     }
 
-    await repo.flush();
+    try {
+      await repo.flush();
+    } catch (caughtError) {
+      // A same-entry reconnect has already persisted/remounted the replacement handle before
+      // this settlement runs, so a storage failure here must not reject the already-committed
+      // reconnect — it is reported as a non-flushed recovery result instead.
+      const failureClassification = isBrowserFileStateChangedError(caughtError)
+        ? 'browserFileStateChanged'
+        : 'storageFailure';
+
+      reportWriteAccessReplayStorageFailure({
+        flushedCount: 0,
+        pendingCount: 0,
+        failureClassification,
+      });
+
+      return {
+        status: 'failed',
+        replay: { flushedCount: 0, pendingCount: 0, failureClassification },
+      };
+    }
+
     return { status: 'flushed' };
   };
 

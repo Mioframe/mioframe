@@ -22,6 +22,11 @@ export { getPartialStorageKeyFileNamePrefix } from './getPartialStorageKeyFileNa
 export { partialKeyToFileName } from './partialKeyToFileName';
 export { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
 export {
+  inspectMioframeSpaceDirectory,
+  isMissingMioframeSpaceMarkerError,
+  type MioframeSpaceInspection,
+} from './mioframeSpaceDirectoryInspection';
+export {
   encodeStorageKeyToV2FileName,
   decodeV2FileName,
   isV2FileName,

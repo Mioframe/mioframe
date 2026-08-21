@@ -5,6 +5,7 @@ import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/Web
 import { createFileSystemAccessRequestRegistry } from './fileSystemAccessRequestRegistry';
 
 const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
+const recoveryKey = 'recovery-key';
 
 const createHandleMock = () =>
   createDirectoryHandleMock({ name: 'mock', permissionState: 'prompt', sameEntryKey: 'mock' });
@@ -22,12 +23,14 @@ describe('fileSystemAccessRequestRegistry', () => {
       spaceName: 'Work',
       handle: firstHandle,
       mode: 'read',
+      recoveryKey,
       refreshProvider,
     });
     registry.upsertRequest({
       spaceName: 'Work',
       handle: secondHandle,
       mode: 'read',
+      recoveryKey,
       refreshProvider,
     });
 
@@ -41,11 +44,17 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
     const result = await registry.prepareHandle({ operation: 'read', spaceName: 'Work' });
 
-    expect(result).toMatchObject({ handle, operation: 'read', spaceName: 'Work' });
+    expect(result).toMatchObject({ handle, operation: 'read', spaceName: 'Work', recoveryKey });
   });
 
   it('prepare returns undefined when no matching request exists', async () => {
@@ -60,8 +69,104 @@ describe('fileSystemAccessRequestRegistry', () => {
     const registry = createRegistry();
 
     await expect(
-      registry.resolve({ operation: 'read', spaceName: 'Missing', permissionState: 'granted' }),
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Missing',
+        permissionState: 'granted',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'missing' });
+  });
+
+  it('resolve returns missing and leaves the current request untouched when the recoveryKey does not match', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey: 'current-key',
+      refreshProvider,
+    });
+
+    await expect(
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'stale-key',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+    expect(refreshProvider).not.toHaveBeenCalled();
+    await expect(registry.getRequest({ operation: 'read', spaceName: 'Work' })).resolves.toEqual({
+      operation: 'read',
+      spaceName: 'Work',
+    });
+  });
+
+  it('a stale-key resolve does not invoke write recovery handlers for the current request', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey: 'current-key',
+      refreshProvider,
+    });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    await expect(
+      registry.resolve({
+        operation: 'write',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'stale-key',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+    expect(writeHandler).not.toHaveBeenCalled();
+    await expect(registry.getRequest({ operation: 'write', spaceName: 'Work' })).resolves.toEqual({
+      operation: 'write',
+      spaceName: 'Work',
+    });
+  });
+
+  it('a subsequent resolve with the current recoveryKey still succeeds after an earlier stale-key resolve', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey: 'current-key',
+      refreshProvider,
+    });
+
+    await expect(
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'stale-key',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+
+    await expect(
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'current-key',
+      }),
+    ).resolves.toEqual({ status: 'granted' });
+    expect(refreshProvider).toHaveBeenCalledOnce();
   });
 
   it('resolve returns denied for denied permission', async () => {
@@ -69,10 +174,21 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
     await expect(
-      registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'denied' }),
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'denied',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'denied' });
   });
 
@@ -81,10 +197,21 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
     await expect(
-      registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'prompt' }),
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'prompt',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'cancelled' });
   });
 
@@ -94,11 +221,22 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     await expect(
-      registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'granted' }),
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'granted' });
 
     expect(writeHandler).not.toHaveBeenCalled();
@@ -117,10 +255,21 @@ describe('fileSystemAccessRequestRegistry', () => {
       return Promise.resolve({ status: 'flushed' as const });
     });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
-    await registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' });
+    await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+      recoveryKey,
+    });
 
     expect(callOrder).toEqual(['refresh', 'handler']);
   });
@@ -131,10 +280,21 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
-    await registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' });
+    await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+      recoveryKey,
+    });
 
     expect(writeHandler).toHaveBeenCalledWith({
       mountPath: PathUtils.join(deviceFilesPath, 'Work'),
@@ -149,11 +309,22 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     await expect(
-      registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' }),
+      registry.resolve({
+        operation: 'write',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey,
+      }),
     ).resolves.toMatchObject({ status: 'grantedWithReplayFailures' });
   });
 
@@ -170,13 +341,20 @@ describe('fileSystemAccessRequestRegistry', () => {
       },
     });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     const result = await registry.resolve({
       operation: 'write',
       spaceName: 'Work',
       permissionState: 'granted',
+      recoveryKey,
     });
 
     expect(result).toMatchObject({
@@ -191,13 +369,20 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     const result = await registry.resolve({
       operation: 'write',
       spaceName: 'Work',
       permissionState: 'granted',
+      recoveryKey,
     });
 
     expect(result).toMatchObject({ status: 'grantedWithReplayFailures' });
@@ -210,11 +395,22 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'failed' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     await expect(
-      registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' }),
+      registry.resolve({
+        operation: 'write',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey,
+      }),
     ).resolves.toMatchObject({ status: 'grantedWithStorageFailures' });
   });
 
@@ -231,13 +427,20 @@ describe('fileSystemAccessRequestRegistry', () => {
       },
     });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     const result = await registry.resolve({
       operation: 'write',
       spaceName: 'Work',
       permissionState: 'granted',
+      recoveryKey,
     });
 
     expect(result).toMatchObject({
@@ -259,19 +462,27 @@ describe('fileSystemAccessRequestRegistry', () => {
       },
     });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     registry.registerWriteRecoveryHandler(writeHandler);
 
     const result = await registry.resolve({
       operation: 'write',
       spaceName: 'Work',
       permissionState: 'granted',
+      recoveryKey,
     });
 
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain('Work');
     expect(serialized).not.toContain('path');
     expect(serialized).not.toContain('spaceName');
+    expect(serialized).not.toContain(recoveryKey);
   });
 
   it('clearing by space name removes all pending requests for that space', async () => {
@@ -279,9 +490,27 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
-    registry.upsertRequest({ spaceName: 'Archive', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
+    registry.upsertRequest({
+      spaceName: 'Archive',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
     registry.clearForSpace('Work');
 
@@ -302,11 +531,22 @@ describe('fileSystemAccessRequestRegistry', () => {
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
     const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
     const unregister = registry.registerWriteRecoveryHandler(writeHandler);
     unregister();
 
-    await registry.resolve({ operation: 'write', spaceName: 'Work', permissionState: 'granted' });
+    await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+      recoveryKey,
+    });
 
     expect(writeHandler).not.toHaveBeenCalled();
   });
@@ -316,9 +556,20 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
-    await registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'prompt' });
+    await registry.resolve({
+      operation: 'read',
+      spaceName: 'Work',
+      permissionState: 'prompt',
+      recoveryKey,
+    });
 
     await expect(registry.getRequest({ operation: 'read', spaceName: 'Work' })).resolves.toEqual({
       operation: 'read',
@@ -331,9 +582,20 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
-    await registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'denied' });
+    await registry.resolve({
+      operation: 'read',
+      spaceName: 'Work',
+      permissionState: 'denied',
+      recoveryKey,
+    });
 
     await expect(registry.getRequest({ operation: 'read', spaceName: 'Work' })).resolves.toEqual({
       operation: 'read',
@@ -346,8 +608,19 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
-    await registry.resolve({ operation: 'read', spaceName: 'Work', permissionState: 'granted' });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
+    await registry.resolve({
+      operation: 'read',
+      spaceName: 'Work',
+      permissionState: 'granted',
+      recoveryKey,
+    });
 
     await expect(
       registry.getRequest({ operation: 'read', spaceName: 'Work' }),
@@ -359,7 +632,13 @@ describe('fileSystemAccessRequestRegistry', () => {
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
 
     await expect(registry.cancel({ operation: 'read', spaceName: 'Work' })).resolves.toBe(true);
     await expect(
@@ -373,13 +652,92 @@ describe('fileSystemAccessRequestRegistry', () => {
     await expect(registry.cancel({ operation: 'read', spaceName: 'Missing' })).resolves.toBe(false);
   });
 
+  it('runWriteRecoveryHandlers runs registered handlers directly without a pending request', async () => {
+    const registry = createRegistry();
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    await expect(
+      registry.runWriteRecoveryHandlers({
+        mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'flushed' });
+    expect(writeHandler).toHaveBeenCalledWith({
+      mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+      operation: 'write',
+      spaceName: 'Work',
+    });
+  });
+
+  it('runWriteRecoveryHandlers stops at the first non-flushed handler result', async () => {
+    const registry = createRegistry();
+    const firstHandler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
+    const secondHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+
+    registry.registerWriteRecoveryHandler(firstHandler);
+    registry.registerWriteRecoveryHandler(secondHandler);
+
+    await expect(
+      registry.runWriteRecoveryHandlers({
+        mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'stillBlocked' });
+    expect(secondHandler).not.toHaveBeenCalled();
+  });
+
+  it('resolve uses the same handler execution semantics as a direct runWriteRecoveryHandlers call', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'failed' as const });
+
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const resolved = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+      recoveryKey,
+    });
+    const direct = await registry.runWriteRecoveryHandlers({
+      mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+      spaceName: 'Work',
+    });
+
+    expect(resolved).toEqual({ status: 'grantedWithStorageFailures' });
+    expect(direct).toEqual({ status: 'failed' });
+    expect(writeHandler).toHaveBeenCalledTimes(2);
+  });
+
   it('read and write requests for the same space are independent', async () => {
     const registry = createRegistry();
     const handle = createHandleMock();
     const refreshProvider = vi.fn().mockResolvedValue(undefined);
 
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'read', refreshProvider });
-    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey,
+      refreshProvider,
+    });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey,
+      refreshProvider,
+    });
 
     await registry.cancel({ operation: 'read', spaceName: 'Work' });
 
@@ -390,5 +748,43 @@ describe('fileSystemAccessRequestRegistry', () => {
       operation: 'write',
       spaceName: 'Work',
     });
+  });
+
+  it('read and write requests for the same space carry independent recoveryKey identity', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'read',
+      recoveryKey: 'read-key',
+      refreshProvider,
+    });
+    registry.upsertRequest({
+      spaceName: 'Work',
+      handle,
+      mode: 'readwrite',
+      recoveryKey: 'write-key',
+      refreshProvider,
+    });
+
+    await expect(
+      registry.resolve({
+        operation: 'read',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'write-key',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+    await expect(
+      registry.resolve({
+        operation: 'write',
+        spaceName: 'Work',
+        permissionState: 'granted',
+        recoveryKey: 'write-key',
+      }),
+    ).resolves.toEqual({ status: 'granted' });
   });
 });

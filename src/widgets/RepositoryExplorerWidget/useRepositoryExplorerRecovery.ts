@@ -1,12 +1,14 @@
 import { computed, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
 import { useLocalDirectoryRecoveryAction } from '@feature/localDirectoryRecovery';
+import { useLocalDirectoryReconnectAction } from '@feature/localDirectoryReconnect';
 import { getGoogleDriveAccessRecoveryError } from '@entity/googleDriveAccess';
 
 /**
  * Arbitrates repository-explorer recovery precedence without pushing provider logic into the page.
+ * Collects the screen's error candidates and passes them to the local-directory features, which
+ * derive their own recovery; this widget only owns branch precedence and rendering.
  * @param options - Reactive repository explorer recovery inputs.
  * @returns Explicit recovery branches and actions for the widget template.
  */
@@ -24,17 +26,6 @@ export const useRepositoryExplorerRecovery = ({
   const recoveryErrors = computed(() =>
     [...repositoryRecoveryErrors.value, directoryStatError.value].filter(isNotNil),
   );
-  const localDirectoryRecovery = computed(() => {
-    for (const error of recoveryErrors.value) {
-      const recovery = getFileSystemAccessRecovery(error, { operation: 'read' });
-
-      if (recovery) {
-        return recovery;
-      }
-    }
-
-    return undefined;
-  });
   const hasGoogleDriveRecovery = computed(
     () =>
       !!errorMessage.value &&
@@ -46,23 +37,37 @@ export const useRepositoryExplorerRecovery = ({
   const {
     grantFullAccess,
     grantReadOnlyAccess,
+    hasLocalDirectoryRecovery,
     isGrantLocalDirectoryAccessDisabled,
     isGrantLocalDirectoryAccessPending,
     localDirectoryRecoveryMessage,
   } = useLocalDirectoryRecoveryAction({
-    recovery: localDirectoryRecovery,
+    errors: recoveryErrors,
+  });
+  const {
+    hasUnavailableRootRecovery,
+    isReconnectDisabled,
+    isReconnectPending,
+    reconnectFolder,
+    reconnectMessage,
+  } = useLocalDirectoryReconnectAction({
+    errors: recoveryErrors,
   });
 
   return {
     grantFullAccess,
     grantReadOnlyAccess,
-    hasLocalDirectoryRecovery: computed(() => !!localDirectoryRecovery.value),
+    hasLocalDirectoryRecovery,
+    hasUnavailableRootRecovery,
     googleDriveRecovery,
     hasGoogleDriveRecovery,
     isGrantLocalDirectoryAccessDisabled,
     isGrantLocalDirectoryAccessPending,
-    localDirectoryRecovery,
+    isReconnectDisabled,
+    isReconnectPending,
     localDirectoryRecoveryMessage,
+    reconnectFolder,
+    reconnectMessage,
     recoveryErrors,
   };
 };

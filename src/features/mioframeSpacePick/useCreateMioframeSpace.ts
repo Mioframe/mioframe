@@ -7,7 +7,6 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { MioframeSpacePickErrorCode } from './mioframeSpacePick.errors';
-import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
 
 const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';
@@ -43,7 +42,8 @@ export const useCreateMioframeSpace = (
   const loading = ref(false);
   const isDiagnosticsPromptVisible = ref(false);
   const { addSnackbar } = useSnackbar();
-  const { addDeviceDirectory, disconnectDeviceFile } = useFileSystem();
+  const { addDeviceDirectory, disconnectDeviceFile, inspectMioframeSpaceCandidate } =
+    useFileSystem();
   const {
     repositories: { initializeRepository },
   } = useMainServiceClient();
@@ -127,7 +127,7 @@ export const useCreateMioframeSpace = (
       throw error;
     }
 
-    const inspection = await inspectMioframeSpaceDirectory(targetHandle);
+    const inspection = await inspectMioframeSpaceCandidate(targetHandle);
 
     if (inspection.looksLikeExistingSpace) {
       return {
