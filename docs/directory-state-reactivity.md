@@ -194,12 +194,12 @@ The repository coordinator must not reconstruct public state from retained histo
 
 The normative directory-input transition matrix is:
 
-| Current `RepositoryState` | Directory `reading` | Directory `ready(entries)` | Directory `error(E)` |
-| --- | --- | --- | --- |
-| `loading` | remain `loading`; invalidate active derivation | schedule/queue derivation; remain `loading` until accepted success | publish `error(E)` |
-| `ready(S)` | publish `refreshing(S)`; invalidate active derivation | schedule/queue derivation; retain current snapshot while derivation is pending | publish `error(E)` |
-| `refreshing(S)` | remain `refreshing(S)`; invalidate active derivation | schedule/queue newest accepted input; remain `refreshing(S)` | publish `error(E)` |
-| `error(E1)` | remain `error(E1)`; invalidate active derivation | schedule/queue replacement derivation; remain `error(E1)` | publish `error(E2)` |
+| Current `RepositoryState` | Directory `reading`                                   | Directory `ready(entries)`                                                     | Directory `error(E)` |
+| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------- |
+| `loading`                 | remain `loading`; invalidate active derivation        | schedule/queue derivation; remain `loading` until accepted success             | publish `error(E)`   |
+| `ready(S)`                | publish `refreshing(S)`; invalidate active derivation | schedule/queue derivation; retain current snapshot while derivation is pending | publish `error(E)`   |
+| `refreshing(S)`           | remain `refreshing(S)`; invalidate active derivation  | schedule/queue newest accepted input; remain `refreshing(S)`                   | publish `error(E)`   |
+| `error(E1)`               | remain `error(E1)`; invalidate active derivation      | schedule/queue replacement derivation; remain `error(E1)`                      | publish `error(E2)`  |
 
 `ready(entries)` in this table describes accepted directory input, not successful repository recovery. It does not itself clear `error`, because repository facts have not yet been derived and accepted.
 
