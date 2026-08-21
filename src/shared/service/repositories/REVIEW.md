@@ -8,29 +8,28 @@ Verdict: blocked
 
 ## Blockers
 
-### B1 — Repository coordinator proof does not cover all accepted lifecycle and IO invariants
+### B1 — Real-boundary zero-listing proof uses wall-clock polling instead of deterministic fixture setup
 
 Owner: `src/shared/service/repositories`
 
-Problem: The implementation is structurally aligned with the handoff, but the required deterministic proof is incomplete. The accepted contract requires normalized-equivalent path sharing, sticky `error` through the first replacement derivation, zero duplicate canonical directory listings, and rediscovery even when a newly accepted directory listing is value-equal to the previous one. Current `repositoryState.test.ts` covers active-derivation serialization, latest-pending suppression, directory-error suppression, zero-demand abandonment, and atomic snapshots, but it does not cover normalized path sharing, the error -> replacement-derivation sticky interval, or equal-listing rediscovery. Its “zero canonical read” case mocks `getRepositoryFacts`, so it cannot prove that the real repository storage helper receives and uses the accepted listing without falling back to `vfs.readDirectory()`.
+Problem: The previously missing normalized-path sharing, sticky-error recovery, superseding-error suppression, and value-equal rediscovery proofs are now present and accepted. The remaining real-boundary proof correctly exercises the real `repositoryState` -> `getRepositoryFacts` path and asserts zero additional `vfs.readDirectory()` calls, but its fixture waits for asynchronous Automerge persistence with a bounded `setTimeout(25)` polling loop. The handoff requires deterministic service/unit proof for this invariant; wall-clock storage polling makes this proof scheduler/timing-dependent even though the invariant itself does not require asynchronous Repo persistence.
 
 Evidence:
 
-- [repositoryState.test.ts](./repositoryState.test.ts) — current primary coordinator proof omits normalized-equivalent path sharing, sticky error recovery, and equal-listing rediscovery; `getRepositoryFacts` is mocked in the zero-listing case.
-- [repositoriesService.test.ts](./repositoriesService.test.ts) — service integration preserves Repo error/recovery and idle/reuse behavior, but does not assert normalized coordinator sharing or zero canonical `readDirectory()` during repository derivation.
-- [repositoryStorageFiles.ts](./repositoryStorageFiles.ts) — the real `getRepositoryFacts` accepts a pre-read listing but still has a fallback `vfs.readDirectory(path)` path when no listing is supplied, so the no-duplicate-listing contract needs real-boundary proof rather than only a mocked call assertion.
-- [directory-state-reactivity.md](../../../../docs/directory-state-reactivity.md) — repository proof explicitly requires complete lifecycle coverage, zero duplicate canonical listings, normalized-equivalent path sharing, stale/zero-demand suppression, and recovery/error behavior.
+- [repositoryState.test.ts](./repositoryState.test.ts) — now proves normalized-equivalent path sharing, sticky error through replacement derivation, newer-error stale suppression, and value-equal ready rediscovery.
+- [repositoryState.integration.test.ts](./repositoryState.integration.test.ts) — correctly keeps `getRepositoryFacts` real and spies on `vfs.readDirectory`, but prepares the storage fixture by polling up to 20 times with a 25 ms `setTimeout` delay while waiting for Automerge writes.
+- [repositoryStorageFiles.ts](./repositoryStorageFiles.ts) — `getRepositoryFacts` only needs an accepted `DirectoryEntries` snapshot plus readable storage candidate bytes; the zero-listing contract does not require the fixture to be produced through asynchronous Repo persistence.
 
 Basis:
 
-- [directory-state-reactivity.md](../../../../docs/directory-state-reactivity.md) — these are explicit accepted repository invariants and proof requirements.
-- [AGENTS.md](../../../../AGENTS.md) — required contract proof must exist before handoff; automated green checks do not substitute for missing risk-specific proof.
+- [directory-state-reactivity.md](../../../../docs/directory-state-reactivity.md) — deterministic service/unit proof is the primary proof, and repository derivation must prove `0` duplicate canonical listings.
+- [AGENTS.md](../../../../AGENTS.md) — required risk-specific proof must be reliable; green automated checks do not replace a missing or unstable contract proof.
 
-Risk: Regressions in normalized-path ownership, recovery-state stickiness, or canonical listing reuse could pass the current suite while reintroducing duplicate derivation/IO or prematurely clearing the recoverable error state. Equal directory emissions could also become accidentally deduplicated without a test protecting required rediscovery.
+Risk: The proof can become flaky or slow under CI scheduling/load and can fail for fixture-timing reasons unrelated to the `0`-listing invariant, weakening exact-head verification without increasing contract fidelity.
 
-Required final state: Preserve the current two-coordinator architecture and add focused deterministic proof for: normalized-equivalent repository paths sharing one coordinator/derivation; directory `error` remaining published while the first replacement repository derivation is in flight and clearing only on accepted success (or replacement terminal directory error); accepted equal listings still causing a fresh repository derivation; and real repository derivation using the accepted directory snapshot with zero additional canonical `readDirectory()`.
+Required final state: Keep the real `createRepositoryStateCoordinator` -> real `getRepositoryFacts` -> real `VirtualFileSystem` boundary and the `readDirectory` spy, but prepare a valid repository storage candidate deterministically without wall-clock polling/sleeps. The test must still prove that supplied accepted directory entries are sufficient to discover a document ID with zero additional canonical `readDirectory()` calls. Production code must remain unchanged unless a deterministic proof exposes a real defect.
 
-Verification: Run the focused verifier-managed repository unit/service proof. Production changes are required only if these tests expose an actual defect.
+Verification: Run the focused verifier-managed unit/type/lint checks for the repository-state proof files. No browser proof or broad local handoff gate is required.
 
 ## Major issues
 
