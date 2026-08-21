@@ -1,14 +1,14 @@
 # Directory state reactivity — worker boundary correction
 
-Status: **completed; correction passed semantic re-review**. This addendum records the worker-publication correction that closed the final PR #215 review blocker without reopening the accepted directory/repository coordinator architecture.
+Status: **completed; correction passed semantic re-review**. This addendum records the worker-publication correction that closed the raw-Observable worker-boundary blocker without reopening the accepted directory/repository coordinator architecture.
 
-The directory/repository architecture and implementation are **ready**. No active owner-local `REVIEW.md` findings remain; exact-head GitHub CI is the remaining automatic acceptance gate.
+The worker-boundary correction itself remains accepted. A later full PR re-review found separate active findings owned by `src/entities/repository`, `src/entities/directory`, and `src/shared/service/repositories`; those findings do not reopen this correction and are tracked in their owner-local `REVIEW.md` files.
 
 Authority:
 
 - `docs/directory-state-reactivity.md` remains the architecture source for directory/repository lifecycle and state ownership.
 - `docs/directory-state-reactivity-implementation-preflight.md` remains the completed implementation record for the two-coordinator migration.
-- This document records only the worker-surface correction discovered during final PR review.
+- This document records only the worker-surface correction discovered during the earlier PR review.
 
 ## Problem
 
@@ -111,7 +111,7 @@ pnpm verify --only type-check --files src/shared/service/setupMainService.ts src
 pnpm verify --only oxlint --files src/shared/service/setupMainService.ts src/shared/service/setupMainService.test.ts
 ```
 
-Exact-head GitHub CI remains architect-owned after semantic re-review.
+Exact-head GitHub CI remains architect-owned after all active PR review findings are closed.
 
 ## Forbidden
 
