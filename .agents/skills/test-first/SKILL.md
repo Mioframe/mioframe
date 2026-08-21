@@ -1,15 +1,17 @@
 ---
 name: test-first
-description: 'Use whenever behavioral proof is added or materially changed. Derive the test oracle independently from the implementation, require failure sensitivity, and use a focused red/green cycle when the current implementation can fail meaningfully before the fix.'
+description: 'Use whenever behavioral proof is added or materially changed. A dedicated fresh test-author context derives proof from the accepted contract before implementation; the implementation context treats accepted tests as read-only and uses focused red/green proof when meaningful.'
 ---
 
 # Test-first and proof-independence workflow
 
-Follow `docs/testing/architecture.md`. This skill protects test quality when a coding agent writes or changes both production code and proof. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
+Follow `docs/testing/architecture.md`. This skill protects test quality when coding agents implement behavior. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
-The central rule is:
+The central rules are:
 
 > Tests verify the accepted contract independently of the implementation being written. They are not a second description of the same implementation.
+
+> New or materially changed behavioral proof is authored in a fresh test-author agent/session separate from the implementation agent/session.
 
 For Storybook-owned UI proof, use `docs/testing/storybook.md` for ownership and `docs/testing/migration-plan.md` for the currently executable Playwright location.
 
@@ -17,20 +19,58 @@ For Storybook-owned UI proof, use `docs/testing/storybook.md` for ownership and 
 
 Use this skill whenever a task adds or materially changes automated behavioral proof because observable behavior, a public contract, persistence/migration semantics, a transformation, a reproducible defect, or an existing proof gap changes.
 
+No separate test-author pass is required when the accepted `TEST IMPACT` requires no new or materially changed behavioral proof, for example a behavior-preserving refactor already protected by faithful existing tests.
+
 A focused pre-implementation red/green cycle is required when all of these are true:
 
 1. the expected behavior is already defined by an accepted contract, scenario, defect reproduction, or authoritative dependency/platform contract;
 2. `docs/testing/architecture.md` defines a faithful proof type;
 3. an existing focused test target can be updated, or a new focused target can be created without broad infrastructure;
-4. the check can fail against the current implementation for the expected behavioral reason before production edits.
+4. the pre-change implementation can demonstrate the contract gap through the owning proof.
 
-A pre-implementation red phase is not required for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, appearance-only changes without a meaningful behavioral failure, or proof added around behavior that is already correct. Those cases still require the proof-independence and failure-sensitivity rules below when tests are changed.
+A pre-implementation red phase is not required for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, appearance-only changes without a meaningful behavioral failure, or proof added around behavior that is already correct. Those cases still require separate test authorship, proof independence, and failure sensitivity when tests are materially changed.
 
 Skipping a red phase never skips required proof from `TEST IMPACT`, durable ownership maintenance, or required exact-head PR CI.
 
+## Role separation
+
+### Test author
+
+Use a fresh agent/subagent/session whose task is test/proof authoring only.
+
+The test author receives:
+
+- the accepted architecture/handoff or deterministic contract;
+- the applicable `TEST IMPACT` / `PROOF INTENT`;
+- relevant repository rules and proof-type skills;
+- the current pre-implementation repository state and existing tests needed to understand public behavior.
+
+Do not give the test author a proposed implementation as the source of expected behavior. Current production code may be inspected as evidence of existing behavior, but it is never the oracle by itself.
+
+The test author may change only the proof surface required by the accepted contract:
+
+- tests/specs;
+- proof-only fixtures/stories when they are the truthful owner of deterministic setup;
+- snapshots/baselines only when independently accepted by the applicable visual contract;
+- durable test ownership/impact metadata required by the repository.
+
+The test author must not implement or patch the production behavior under test merely to make the proof pass.
+
+### Implementer
+
+After the test-author pass is accepted, use a different agent/session for production implementation.
+
+The implementer receives the accepted contract plus the accepted proof and must treat test expectations/assertions as read-only implementation constraints. The implementer may run the tests and inspect them to understand the contract, but must not change, weaken, delete, regenerate, or bypass them merely to obtain green verification.
+
+If the implementer finds that an accepted test is inconsistent with the accepted contract, technically invalid, or impossible to satisfy without violating architecture, stop the production pass and return the conflict to the test owner/architect. Do not resolve the conflict by editing the test from the implementation context.
+
+A required test correction is another test-author pass in fresh context, followed by implementation continuing against the corrected accepted proof.
+
+This role separation is about independent reasoning, not identity. Two sessions of the same model are acceptable when they have separate contexts and responsibilities. A nominally different agent that receives and follows the implementation's expected outputs is not independent proof.
+
 ## Independent oracle
 
-Before writing or changing the assertion, identify the source of the expected result independently from the production implementation being edited.
+Before writing or changing an assertion, identify the source of the expected result independently from the production implementation being edited.
 
 Valid oracle sources include:
 
@@ -55,7 +95,7 @@ When the contract itself is unresolved, stop and return to the owning architectu
 
 ## Proof intent
 
-When `implementation-preflight` already recorded these fields in `TEST IMPACT`, use that record; do not create a duplicate. A deterministic workflow that does not use the generic preflight must establish the equivalent compact proof intent before production edits for a behavior-changing task, or before finalizing a tests-only proof change:
+When `implementation-preflight` already recorded these fields in `TEST IMPACT`, use that record; do not create a duplicate. A deterministic workflow that does not use the generic preflight must establish the equivalent compact proof intent before the test-author pass:
 
 ```text
 PROOF INTENT
@@ -70,20 +110,20 @@ PROOF INTENT
 
 ## Workflow
 
-1. Name the changed contract and truthful primary proof owner.
-2. Resolve the expected result from an independent oracle before adapting assertions to production code.
-3. Name at least one plausible incorrect observable result the proof must reject.
-4. Select the highest-risk applicable acceptance case.
-5. When a meaningful red phase is required, add or update one focused test before production edits.
-6. Maintain required durable ownership facts for any new/moved Playwright spec: use local ownership only when current discovery supports it; otherwise preserve the current truthful transitional/explicit relation.
-7. Run the owning verifier-managed lane and confirm the red check fails for the expected contractual assertion. Setup errors, missing fixtures, type failures, unrelated exceptions, timeouts, or wrong-environment failures are not valid red proof.
-8. If the test unexpectedly passes before the fix, determine whether the behavior is already correct, the reproduction is wrong, or the test is insensitive. Do not proceed by declaring the intended defect covered.
-9. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record why the red phase is not useful; required final proof still follows `TEST IMPACT`.
-10. Implement the minimum production change.
-11. Rerun the same focused target and confirm it passes without weakening the oracle or assertion.
-12. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
-13. Re-read the changed tests as if the production implementation were untrusted. Confirm the assertions still derive from the contract and reject the named plausible wrong result.
-14. Return to the top-level task after focused proof. This skill does not run a separate final repository gate.
+1. Resolve `TEST IMPACT` and the truthful primary proof owner before implementation.
+2. Start a fresh test-author agent/session.
+3. Resolve the expected result from an independent oracle and name at least one plausible incorrect observable result the proof must reject.
+4. Add/update the minimum faithful proof and any required proof-only fixture/ownership facts without implementing production behavior.
+5. When a meaningful red phase is required, run the owning verifier-managed lane against the pre-change production implementation.
+6. Accept red only when it demonstrates the required contract gap. A contractual assertion failure is preferred. Absence of an explicitly required public entry point may also be a valid red for a genuinely new API. Generic setup errors, unrelated type failures, missing fixtures, unrelated exceptions, timeouts, or wrong-environment failures are not valid red proof.
+7. If the test unexpectedly passes before the fix, determine whether the behavior is already correct, the reproduction is wrong, or the proof is insensitive. Do not claim the intended defect is covered until this is resolved.
+8. If faithful proof cannot be authored without unresolved architecture or brittle/duplicative coverage, stop and return the blocker instead of changing product code.
+9. Hand the accepted proof to a different implementation agent/session.
+10. Implement the minimum production change without modifying the accepted test expectations/assertions.
+11. Run the same focused owning proof until it passes. A failing accepted proof is evidence against the implementation unless the test owner/architect independently revises the contract/proof.
+12. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red case does not cap final proof.
+13. Review the resulting tests and production code independently under `project-review`; green execution alone does not validate the oracle.
+14. Return to the top-level task. This skill does not run a separate final repository gate.
 
 ## Maintaining existing tests
 
@@ -92,6 +132,8 @@ An existing failing test is evidence against the changed implementation until on
 - the accepted contract intentionally changed;
 - the test encoded behavior the project never owned;
 - the test itself is technically invalid or uses an unfaithful environment.
+
+When an implementation task requires a material change to existing behavioral proof, route that proof change through the test-author role before or separately from the implementation pass. The implementation agent must not opportunistically edit expectations while fixing production code.
 
 Do not change an expected value, loosen an assertion, delete a scenario, regenerate a baseline, add a retry, or broaden a mock merely because the new production implementation otherwise fails.
 
@@ -134,6 +176,9 @@ Use the owning verifier-managed label for other proof types. Raw Vitest or Playw
 
 ## Forbidden
 
+- Using one implementation context to author both materially changed production behavior and its behavioral proof when a separate test-author context is available.
+- Letting the implementation agent change accepted test expectations/assertions to make its code pass.
+- Giving the test author implementation output as the oracle.
 - Adding a test merely because a production file changed.
 - Treating the implementation's current output as the expected result without an independent contract.
 - Computing expected values through the same implementation or a copied implementation algorithm.
