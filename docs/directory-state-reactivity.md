@@ -315,4 +315,5 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Req
 - proof ownership and unchanged scope: resolved;
 - unresolved architecture blockers: none;
 - architecture verdict: **ready**;
-- implementation: present on `refactor/directory-state-reactivity`; remaining acceptance work is tracked by owner-local `REVIEW.md` and does not reopen this architecture.
+- implementation semantic review: **ready**; no active owner-local `REVIEW.md` findings remain;
+- final automatic acceptance gate: exact-head GitHub CI, architect-owned.
