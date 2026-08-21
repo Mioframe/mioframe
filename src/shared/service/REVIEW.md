@@ -21,10 +21,12 @@ Evidence:
 - [setupMainService.ts](./setupMainService.ts) — publishes `useFileSystemService()` and `useRepositoriesService()` objects directly as the main worker service surface.
 - [../lib/proxyService/proxyService.ts](../lib/proxyService/proxyService.ts) — `callPath` resolves arbitrary string paths and invokes any function found there; there is no member whitelist that would make returned `$` functions private.
 - [../../../docs/directory-state-reactivity.md](../../../docs/directory-state-reactivity.md) — defines raw `$` streams as service-internal and the worker-facing entry points as `readDirectoryFresh` and `repositoryState`; explicitly forbids raw Observable public/RPC API.
+- [../../../docs/directory-state-reactivity-worker-boundary-correction.md](../../../docs/directory-state-reactivity-worker-boundary-correction.md) — resolves the correction architecture at the worker assembly boundary without changing coordinator ownership.
 
 Basis:
 
 - [../../../docs/directory-state-reactivity.md](../../../docs/directory-state-reactivity.md) — accepted API boundary requires raw `$` streams to remain service-internal and forbids raw-Observable RPC.
+- [../../../docs/directory-state-reactivity-worker-boundary-correction.md](../../../docs/directory-state-reactivity-worker-boundary-correction.md) — correction contract selects `setupMainService` publication curation as the minimum complete design and preserves same-worker service access.
 - [../../../AGENTS.md](../../../AGENTS.md) — UI-facing background access must use explicit public proxy/client APIs and public service contracts must remain narrow.
 - [AGENTS.md](./AGENTS.md) — `@shared/service` and service proxy contracts must stay narrow and deterministic.
 
