@@ -25,7 +25,7 @@ import { DomainError } from '@shared/lib/error';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 
 const setupDocumentService = () => {
-  const { getDocumentIdList$, getRepo$ } = useRepositoriesService();
+  const { documentIds$, getRepo$ } = useRepositoriesService();
 
   const getDocHandle$ = defineCacheObservable(
     ({
@@ -39,7 +39,7 @@ const setupDocumentService = () => {
         return of(undefined);
       }
 
-      return getDocumentIdList$({ path: directoryPath }).pipe(
+      return documentIds$(directoryPath).pipe(
         switchMap((documentIdList) => {
           if (documentIdList instanceof Error) {
             return of(documentIdList);

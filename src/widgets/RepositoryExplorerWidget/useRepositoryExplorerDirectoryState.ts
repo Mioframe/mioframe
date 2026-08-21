@@ -1,11 +1,14 @@
 import { useLocalSettings } from '@entity/localSettings';
 import { useRepository } from '@entity/repository';
-import { resolveSafeErrorMessage } from '@shared/lib/error';
 import { computed, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
 
 /**
  * Reads directory entries and repository facts for Repository Explorer composition.
+ *
+ * Uses the repository entity's one effective lifecycle/error: `isLoading` and `errorMessage`
+ * already account for `loading`/`ready`/`refreshing`/`error`, so this composable adds no further
+ * loading inference from missing payloads.
  * @param directoryPath - Absolute path of the opened folder.
  * @returns Explicit reactive values for repository facts, file visibility, loading, and safe errors.
  */
@@ -18,10 +21,9 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     documentIds,
     isInitialized: isRepositoryInitialized,
     repositoryVisibleEntries,
-    repositoryFactsError: repositoryError,
-    repositoryVisibleEntriesError: directoryError,
-    errorMessage: repositoryErrorMessage,
-    isLoading: isRepositoryLoading,
+    error: repositoryError,
+    errorMessage,
+    isLoading,
   } = useRepository(
     directoryPath,
     computed(() => ({
@@ -29,22 +31,10 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     })),
   );
 
-  const directoryErrorMessage = computed(() =>
-    resolveSafeErrorMessage(directoryError.value, 'Could not read this folder'),
-  );
-  const recoveryErrors = computed(() =>
-    [directoryError.value, repositoryError.value].filter(isNotNil),
-  );
-
-  const errorMessage = computed(() => directoryErrorMessage.value ?? repositoryErrorMessage.value);
-  const isLoading = computed(
-    () => isRepositoryLoading.value || !repositoryVisibleEntries.value || !documentIds.value,
-  );
+  const recoveryErrors = computed(() => [repositoryError.value].filter(isNotNil));
   const regularFileEntries = computed(() => repositoryVisibleEntries.value ?? []);
 
   return {
-    directoryError: directoryError,
-    directoryErrorMessage,
     documentIds,
     errorMessage,
     hideAutomergeFiles,
@@ -53,6 +43,5 @@ export const useRepositoryExplorerDirectoryState = (directoryPath: Ref<string>) 
     regularFileEntries,
     recoveryErrors,
     repositoryError,
-    repositoryErrorMessage,
   };
 };

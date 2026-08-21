@@ -40,7 +40,7 @@ const isAlreadyExistingDirectoryError = (error: unknown) =>
  */
 export const useExampleDocumentsCreate = () => {
   const {
-    fileSystem: { createDirectory, directoryContent },
+    fileSystem: { createDirectory, readDirectoryFresh },
     repositories: { createDocument },
   } = useMainServiceClient();
 
@@ -50,11 +50,15 @@ export const useExampleDocumentsCreate = () => {
 
   const exampleRootPath = computed(() => PathUtils.join('/', DEVICE_FILES, OPFSName));
 
+  /**
+   * Best-effort occupied-name pre-inspection: a rejected read falls back to an empty known-name
+   * set, and the bounded naming loop plus authoritative `FileExists` retry take it from there.
+   * @returns Known existing names in the example root directory, or an empty set on read failure.
+   */
   const listExistingNames = async (): Promise<Set<string>> => {
     try {
-      const result = await directoryContent.fetch({ path: exampleRootPath.value });
-      if (!result || result instanceof Error) return new Set<string>();
-      return new Set(result.map(([name]) => name));
+      const entries = await readDirectoryFresh(exampleRootPath.value);
+      return new Set(entries.map(([name]) => name));
     } catch {
       return new Set<string>();
     }

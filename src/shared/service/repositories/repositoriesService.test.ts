@@ -3,7 +3,7 @@ import {
   parseAutomergeUrl,
   type RepoConfig,
 } from '@automerge/automerge-repo';
-import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
+import { BehaviorSubject, filter, firstValueFrom, map, Subscription } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { partialKeyToFileName } from '@shared/lib/automergeAdapter';
@@ -118,14 +118,23 @@ const fileStat = {
 
 vi.mock('../fileSystem', () => ({
   useFileSystemService: () => ({
-    directoryContent$: ({ path }: { path: string }) => {
+    // The mocked repository derivation coordinator dependency: derived from the same
+    // `directoryContentByPath` subjects each test already sets up, so no per-test change is
+    // needed. This mock never itself publishes an intermediate `reading` status.
+    directoryState$: ({ path }: { path: string }) => {
       const subject = directoryContentByPath.get(path);
 
       if (!subject) {
         throw new Error(`Missing mocked directory content for "${path}"`);
       }
 
-      return subject.asObservable();
+      return subject.pipe(
+        map((value) =>
+          value instanceof Error
+            ? { status: 'error' as const, error: value }
+            : { status: 'ready' as const, entries: value },
+        ),
+      );
     },
     vfs: {
       kind: 'mock-vfs',
@@ -861,7 +870,7 @@ describe('useRepositoriesService', () => {
     expect(repoInstances.get(path)).toHaveLength(1);
   });
 
-  it('returns errors from documentIdList and keeps only unique automerge ids', async () => {
+  it('returns errors from documentIds$ and keeps only unique automerge ids', async () => {
     const path = '/document-id-list';
     const directoryContentSubject = createDirectoryContentSubject(path);
     const { useRepositoriesService } = await import('./repositoriesService');
@@ -871,9 +880,7 @@ describe('useRepositoriesService', () => {
     const secondDocumentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
 
     directoryContentSubject.next(new Error('directory failed'));
-    await expect(firstValueFrom(service.getDocumentIdList$({ path }))).resolves.toBeInstanceOf(
-      Error,
-    );
+    await expect(firstValueFrom(service.documentIds$(path))).resolves.toBeInstanceOf(Error);
 
     directoryContentSubject.next([
       [firstFileName, fileStat],
@@ -882,9 +889,7 @@ describe('useRepositoriesService', () => {
       [getDocumentFileName(secondDocumentId), { ...fileStat, type: FSNodeType.Directory }],
     ]);
 
-    await expect(firstValueFrom(service.getDocumentIdList$({ path }))).resolves.toEqual([
-      firstDocumentId,
-    ]);
+    await expect(firstValueFrom(service.documentIds$(path))).resolves.toEqual([firstDocumentId]);
   });
 
   it('exposes repository initialization facts for marker-only and regular folders', async () => {
@@ -898,20 +903,28 @@ describe('useRepositoriesService', () => {
     const service = useRepositoriesService();
 
     await expect(
-      firstValueFrom(service.getRepositoryFacts$({ path: markerOnlyPath })),
-    ).resolves.toEqual({
-      documentIds: [],
-      isInitialized: true,
+      firstValueFrom(
+        service
+          .repositoryState$({ path: markerOnlyPath })
+          .pipe(filter((s) => s.status !== 'loading')),
+      ),
+    ).resolves.toMatchObject({
+      status: 'ready',
+      snapshot: { documentIds: [], isInitialized: true },
     });
     await expect(
-      firstValueFrom(service.getRepositoryFacts$({ path: regularFolderPath })),
-    ).resolves.toEqual({
-      documentIds: [],
-      isInitialized: false,
+      firstValueFrom(
+        service
+          .repositoryState$({ path: regularFolderPath })
+          .pipe(filter((s) => s.status !== 'loading')),
+      ),
+    ).resolves.toMatchObject({
+      status: 'ready',
+      snapshot: { documentIds: [], isInitialized: false },
     });
   });
 
-  it('exposes repository-visible directory entries with marker files hidden and Automerge visibility configurable', async () => {
+  it('classifies repository directory entries, excluding the marker and tagging Automerge storage candidates', async () => {
     const path = '/visible-entries';
     const documentId = parseAutomergeUrl(generateAutomergeUrl()).documentId;
     createDirectoryContentSubject(path, [
@@ -923,17 +936,20 @@ describe('useRepositoriesService', () => {
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
 
-    await expect(firstValueFrom(service.getRepositoryVisibleEntries$({ path }))).resolves.toEqual([
-      ['plain.txt', fileStat],
-      ['nested', { ...fileStat, type: FSNodeType.Directory }],
-    ]);
+    const state = await firstValueFrom(
+      service.repositoryState$({ path }).pipe(filter((s) => s.status !== 'loading')),
+    );
 
-    await expect(
-      firstValueFrom(service.getRepositoryVisibleEntries$({ path, hideAutomergeFiles: false })),
-    ).resolves.toEqual([
-      [getDocumentFileName(documentId), fileStat],
-      ['plain.txt', fileStat],
-      ['nested', { ...fileStat, type: FSNodeType.Directory }],
+    if (state.status !== 'ready') {
+      throw new Error(`Expected ready, got ${state.status}`);
+    }
+    expect(state.snapshot.entries).toEqual([
+      {
+        entry: [getDocumentFileName(documentId), fileStat],
+        classification: 'automergeStorageCandidate',
+      },
+      { entry: ['plain.txt', fileStat], classification: 'regular' },
+      { entry: ['nested', { ...fileStat, type: FSNodeType.Directory }], classification: 'regular' },
     ]);
   });
 

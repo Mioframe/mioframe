@@ -20,9 +20,9 @@ import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   concat,
   defer,
+  filter,
   finalize,
   firstValueFrom,
-  from,
   map,
   NEVER,
   type Observable,
@@ -34,13 +34,12 @@ import {
   timer,
 } from 'rxjs';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
-import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
 import {
   cleanupDeletedDocumentStorageFiles,
-  getRepositoryFacts,
-  getRegularDirectoryEntries,
   getDocumentStorageFiles,
 } from './repositoryStorageFiles';
+import { createRepositoryStateCoordinator } from './repositoryState';
+import type { RepositoryState } from './repositoryContracts';
 import { exportDirectoryZip, exportDocumentZip } from './repositoryZipExport';
 import { importDirectoryZip } from './repositoryZipImport';
 import {
@@ -56,8 +55,26 @@ const isBrowserFileStateChangedError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'InvalidStateError';
 
 const setupRepositoriesService = () => {
-  const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
+  const { directoryState$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<RepositoryCacheEntry>>();
+  const { repositoryState$ } = createRepositoryStateCoordinator(vfs, directoryState$);
+
+  /**
+   * Internal document-id projection of `RepositoryState`, used for Repo gating and by
+   * `DocumentService`. Skips `loading` (no document-list value yet); `ready`/`refreshing` project
+   * `snapshot.documentIds`; `error` projects the raw error. A transient error never terminates this
+   * stream — later `RepositoryState` emissions keep flowing normally.
+   * @param path - Repository path.
+   * @returns Document ids, or the repository's current error.
+   */
+  const documentIds$ = (path: string): Observable<AMDocumentId[] | Error> =>
+    repositoryState$({ path }).pipe(
+      filter(
+        (state): state is Exclude<RepositoryState, { status: 'loading' }> =>
+          state.status !== 'loading',
+      ),
+      map((state) => (state.status === 'error' ? state.error : state.snapshot.documentIds)),
+    );
 
   const shouldQueueFailedSave = (error: unknown) =>
     !!getFileSystemAccessRecovery(error, {
@@ -73,88 +90,6 @@ const setupRepositoriesService = () => {
     repo: Repo;
     storageRecovery: RepositoryStorageRecovery;
   };
-
-  /**
-   * Observes canonical repository facts derived from repository storage files in a directory.
-   *
-   * `isInitialized` is a repository storage fact, not a UI state. It is true for marker-only
-   * repositories and repositories with document storage files. Directory read failures are
-   * returned as `Error` values so entity APIs can convert them into privacy-safe UI messages.
-   */
-  const getRepositoryFacts$ = defineCacheObservable(
-    ({
-      path,
-    }: {
-      /**
-       * Repository path.
-       */
-      path: string;
-    }) =>
-      directoryContent$({ path }).pipe(
-        switchMap((value) => {
-          if (value instanceof Error) {
-            return of(value);
-          }
-
-          return from(getRepositoryFacts(vfs, path, value));
-        }),
-      ),
-  );
-
-  /**
-   * Observes repository-aware directory entries for Repository Explorer file listings.
-   *
-   * Repository marker files are always hidden. Automerge document storage files are hidden by
-   * default and are included only when `hideAutomergeFiles` is `false`. Directory read failures
-   * are returned as `Error` values so entity APIs can expose the raw boundary failure separately
-   * from repository fact failures.
-   */
-  const getRepositoryVisibleEntries$ = defineCacheObservable(
-    ({
-      hideAutomergeFiles = true,
-      path,
-    }: {
-      /** Whether Automerge storage files should stay hidden in repository-aware file listings. */
-      hideAutomergeFiles?: boolean | undefined;
-      /** Absolute repository path whose visible entries should be observed. */
-      path: string;
-    }) =>
-      directoryContent$({ path }).pipe(
-        map((value) => {
-          if (value instanceof Error) {
-            return value;
-          }
-
-          return getRegularDirectoryEntries(value, hideAutomergeFiles);
-        }),
-      ),
-  );
-
-  /**
-   * Observes document ids as a compatibility projection of repository facts.
-   *
-   * Prefer `getRepositoryFacts$` when callers also need repository initialization. Directory
-   * read failures are preserved as `Error` values for existing observable-query consumers.
-   */
-  const getDocumentIdList$ = defineCacheObservable(
-    ({
-      path,
-    }: {
-      /**
-       * Repository path.
-       */
-      path: string;
-    }) =>
-      getRepositoryFacts$({ path }).pipe(
-        map((value) => {
-          if (value instanceof Error) {
-            return value;
-          }
-
-          return value.documentIds;
-        }),
-      ),
-  );
 
   const createRepoObservable = (path: string) => {
     let repoEntry: RepositoryCacheEntry | undefined;
@@ -215,7 +150,7 @@ const setupRepositoriesService = () => {
       return repoByPath$(path).pipe(map(({ repo }) => repo));
     }
 
-    return getDocumentIdList$({ path }).pipe(
+    return documentIds$(path).pipe(
       switchMap((docs) => {
         if (docs instanceof Error) {
           return NEVER;
@@ -237,7 +172,7 @@ const setupRepositoriesService = () => {
       return firstValueFrom(repo$(path, true));
     }
 
-    const documentIdList = await firstValueFrom(getDocumentIdList$({ path }));
+    const documentIdList = await firstValueFrom(documentIds$(path));
 
     if (documentIdList instanceof Error) {
       throw documentIdList;
@@ -555,23 +490,21 @@ const setupRepositoriesService = () => {
     return importDirectoryZip(vfs, targetDirectoryPath, archiveFile, onProgress);
   };
 
-  const documentIdList = defineObservableQuery(getDocumentIdList$);
-  const repositoryFacts = defineObservableQuery(getRepositoryFacts$);
-  const repositoryVisibleEntries = defineObservableQuery(getRepositoryVisibleEntries$);
+  const repositoryState = defineObservableQuery(repositoryState$);
 
   return {
-    /** Observable-query wrapper for document ids derived from repository facts. */
-    documentIdList,
-    /** Observable-query wrapper for canonical repository initialization facts and document ids. */
-    repositoryFacts,
-    /** Observable-query wrapper for repository-aware visible directory entries. */
-    repositoryVisibleEntries,
-    /** Low-level observable for document ids derived from repository facts. */
-    getDocumentIdList$,
-    /** Low-level observable for canonical repository initialization facts and document ids. */
-    getRepositoryFacts$,
-    /** Low-level observable for repository-aware visible directory entries. */
-    getRepositoryVisibleEntries$,
+    /**
+     * Observable-query wrapper for the atomic repository derivation coordinator: one lifecycle
+     * covering initialization, document ids, and classified entries per repository directory.
+     */
+    repositoryState,
+    /** Low-level observable for the atomic repository derivation coordinator. */
+    repositoryState$,
+    /**
+     * Internal document-id projection of `repositoryState$`, shared by `DocumentService` and Repo
+     * gating. Not a UI-facing query; consume `repositoryState`/`repositoryState$` from UI layers.
+     */
+    documentIds$,
     getRepo$: repo$,
     /**
      * Creates a document in the repository.

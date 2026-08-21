@@ -43,14 +43,14 @@ Do not add polling, global VFS scheduling, a generic reactive-resource manager, 
 
 Affected scenarios: initial repository open, VFS/provider invalidation bursts, read error + recovery, #211 unavailable-root/permission recovery, coherent Explorer facts, DocumentService/Repo availability, and starter-example name pre-inspection.
 
-| Owner | Final responsibility |
-| --- | --- |
-| `shared/service/fileSystem` | canonical reactive directory lifecycle/order; stateless fresh one-shot listing |
+| Owner                         | Final responsibility                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `shared/service/fileSystem`   | canonical reactive directory lifecycle/order; stateless fresh one-shot listing                                   |
 | `shared/service/repositories` | storage visibility classification; atomic repository derivation/lifecycle; internal document-id/Repo projections |
-| `shared/service/document` | document behavior only; consumes repository projection |
-| `entities/repository` | adapts one repository state and synchronous visibility projection |
-| Repository Explorer widget | recovery > error > initial loading > content composition only |
-| `exampleDocumentsCreate` | best-effort name pre-read, bounded naming loop, `FileExists`, action loading/error |
+| `shared/service/document`     | document behavior only; consumes repository projection                                                           |
+| `entities/repository`         | adapts one repository state and synchronous visibility projection                                                |
+| Repository Explorer widget    | recovery > error > initial loading > content composition only                                                    |
+| `exampleDocumentsCreate`      | best-effort name pre-read, bounded naming loop, `FileExists`, action loading/error                               |
 
 Source of truth:
 
@@ -170,15 +170,15 @@ Rules:
 
 Lifecycle:
 
-| Directory/input | RepositoryState |
-| --- | --- |
-| `reading`, no previous snapshot | `loading` |
-| `reading`, previous snapshot | `refreshing(previous)` |
-| `ready(A)`, no previous snapshot | derive A; remain `loading` |
-| `ready(A)`, previous snapshot | derive A; remain `refreshing(previous)` |
-| `error(E)` | suppress active derivation; `error(E)` |
-| `ready(A)` after error | derive A while keeping existing `error` until success |
-| accepted derivation succeeds | `ready(result)` |
+| Directory/input                  | RepositoryState                                       |
+| -------------------------------- | ----------------------------------------------------- |
+| `reading`, no previous snapshot  | `loading`                                             |
+| `reading`, previous snapshot     | `refreshing(previous)`                                |
+| `ready(A)`, no previous snapshot | derive A; remain `loading`                            |
+| `ready(A)`, previous snapshot    | derive A; remain `refreshing(previous)`               |
+| `error(E)`                       | suppress active derivation; `error(E)`                |
+| `ready(A)` after error           | derive A while keeping existing `error` until success |
+| accepted derivation succeeds     | `ready(result)`                                       |
 
 Error retry is therefore sticky across both filesystem retry and the first replacement repository derivation; #211 recovery target disappears only on replacement `ready` or a new terminal directory error.
 

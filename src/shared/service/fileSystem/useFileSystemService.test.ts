@@ -1,10 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Repo } from '@automerge/automerge-repo';
-import {
-  encodeStorageKeyToV2FileName,
-  partialKeyToFileName,
-  storageAdapterMarkerFileName,
-} from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
 import {
   captureRecoveryKeyFromUnavailableRoot,
@@ -15,6 +9,7 @@ import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virt
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
 import { FileSystemServiceErrorCode } from './fileSystemContracts';
+import type { DirectoryState } from './fileSystemContracts';
 
 const getRecordListMock = vi.fn();
 const updateRecordListMock = vi.fn();
@@ -53,28 +48,6 @@ const fileStat = {
     canChangePath: true,
   },
 } satisfies FSNodeStat;
-
-const createDocumentStorageFileName = () => {
-  const documentId = new Repo().create({}).documentId;
-  const fileName = partialKeyToFileName([documentId, 'snapshot', 'hash']);
-
-  if (!fileName) {
-    throw new Error('Failed to create Automerge storage file fixture');
-  }
-
-  return fileName;
-};
-
-const createV2DocumentStorageFileName = () => {
-  const documentId = new Repo().create({}).documentId;
-  const fileName = encodeStorageKeyToV2FileName(documentId, 'snapshot', 'a'.repeat(64));
-
-  if (!fileName) {
-    throw new Error('Failed to create v2 Automerge storage file fixture');
-  }
-
-  return fileName;
-};
 
 const createDiagnosticProvider = ({
   createDirectory = vi.fn(() => Promise.resolve(undefined)),
@@ -525,7 +498,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Projects' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+    await service.readDirectoryFresh('/Device Files/Projects').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
@@ -580,7 +553,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Projects' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+    await service.readDirectoryFresh('/Device Files/Projects').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
@@ -634,7 +607,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Projects' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+    await service.readDirectoryFresh('/Device Files/Projects').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
@@ -691,7 +664,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Projects' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+    await service.readDirectoryFresh('/Device Files/Projects').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
@@ -1046,7 +1019,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Work' }),
@@ -1089,7 +1062,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     await expect(
       service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Work' }),
@@ -1591,10 +1564,10 @@ describe('useFileSystemService', () => {
 
     // The selected storage is reachable only under the new path; the old path routes nowhere.
     await expect(
-      service.directoryContent.fetch({ path: '/Device Files/Work' }),
+      service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e),
     ).resolves.toBeInstanceOf(Error);
     await expect(
-      service.directoryContent.fetch({ path: '/Device Files/Work (moved)' }),
+      service.readDirectoryFresh('/Device Files/Work (moved)').catch((e: unknown) => e),
     ).resolves.not.toBeInstanceOf(Error);
   });
 
@@ -2276,9 +2249,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    await service.directoryContent.fetch({
-      path: '/Device Files/Work',
-    });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     await expect(
       service.getTemporaryFileSystemAccessHandle({
@@ -2311,9 +2282,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({
-      path: '/Device Files/Work',
-    });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
@@ -2368,9 +2337,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({
-      path: '/Device Files/Work',
-    });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
@@ -2439,9 +2406,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({
-      path: '/Device Files/Work',
-    });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected DeviceDirectoryAccessRequiredError');
@@ -2501,7 +2466,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
     const firstError = await service.fsNodeStat.fetch({ path: '/Device Files/Work/file.txt' });
 
     expect(firstError).toBeInstanceOf(Error);
@@ -2510,7 +2475,9 @@ describe('useFileSystemService', () => {
     }
 
     await service.addDeviceDirectory(secondHandle);
-    const secondError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const secondError = await service
+      .readDirectoryFresh('/Device Files/Work')
+      .catch((e: unknown) => e);
 
     expect(secondError).toBeInstanceOf(Error);
     if (!isAccessErrorWithRecoveryKey(secondError)) {
@@ -2544,7 +2511,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -2589,7 +2556,7 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -2622,7 +2589,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -2671,7 +2638,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -2874,7 +2841,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -3215,7 +3182,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -3287,15 +3254,17 @@ describe('useFileSystemService', () => {
     });
     oldHandle.queryPermissionMock?.mockImplementation(() => deferredPermission);
 
-    const oldReadPromise = service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const oldReadPromise = service
+      .readDirectoryFresh('/Device Files/Work')
+      .catch((e: unknown) => e);
 
     getRecordListMock
       .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }])
       .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }]);
     await service.addDeviceDirectory(replacementHandle);
 
-    // The current (replacement) provider registers its own request through an independent query
-    // so it does not share the still-pending `directoryContent$` subscription above.
+    // The current (replacement) provider registers its own request through an independent read
+    // so it does not share the still-pending read above.
     const currentStatError = await service.fsNodeStat
       .fetch({ path: '/Device Files/Work/child.txt' })
       .catch((caughtError: unknown) => caughtError);
@@ -3349,7 +3318,7 @@ describe('useFileSystemService', () => {
     });
     handle.queryPermissionMock?.mockImplementation(() => deferredPermission);
 
-    const readPromise = service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const readPromise = service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     await service.removeDeviceDirectory('Work');
 
@@ -3385,7 +3354,7 @@ describe('useFileSystemService', () => {
 
     // An old-provider request was prepared (its handle/key captured) before replacement, mirroring
     // an already-started browser prompt.
-    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
     const oldPrepared = await service.getTemporaryFileSystemAccessHandle({
       operation: 'read',
       spaceName: 'Work',
@@ -3401,7 +3370,9 @@ describe('useFileSystemService', () => {
       .mockResolvedValueOnce([{ name: 'Work', handle: oldHandle }]);
     await service.addDeviceDirectory(replacementHandle);
 
-    const currentError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const currentError = await service
+      .readDirectoryFresh('/Device Files/Work')
+      .catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(currentError)) {
       throw new Error('Expected the replacement provider to require access');
@@ -3563,7 +3534,9 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const readResult = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const readResult = await service
+      .readDirectoryFresh('/Device Files/Work')
+      .catch((e: unknown) => e);
 
     expect(readResult).toEqual([]);
 
@@ -3592,7 +3565,7 @@ describe('useFileSystemService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('reactively refreshes directoryContent$ after permission is granted without a route retry', async () => {
+  it('reactively refreshes directoryState$ after permission is granted without a route retry', async () => {
     const noteHandle = createFileHandleMock({
       name: 'note.txt',
       permissionState: 'prompt',
@@ -3613,18 +3586,21 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
-    const results: Array<[string, FSNodeStat][] | Error> = [];
+    const results: DirectoryState[] = [];
     const subscription = service
-      .directoryContent$({ path: '/Device Files/Work' })
-      .subscribe((value) => {
-        results.push(value);
+      .directoryState$({ path: '/Device Files/Work' })
+      .subscribe((state) => {
+        results.push(state);
       });
 
     await vi.waitFor(() => {
       expect(results).toContainEqual(
         expect.objectContaining({
-          mode: 'read',
-          spaceName: 'Work',
+          status: 'error',
+          error: expect.objectContaining({
+            mode: 'read',
+            spaceName: 'Work',
+          }),
         }),
       );
     });
@@ -3653,14 +3629,17 @@ describe('useFileSystemService', () => {
     });
 
     await vi.waitFor(() => {
-      expect(results).toContainEqual([
-        [
-          'note.txt',
-          expect.objectContaining({
-            type: FSNodeType.File,
-          }),
+      expect(results).toContainEqual({
+        status: 'ready',
+        entries: [
+          [
+            'note.txt',
+            expect.objectContaining({
+              type: FSNodeType.File,
+            }),
+          ],
         ],
-      ]);
+      });
     });
 
     subscription.unsubscribe();
@@ -3752,7 +3731,7 @@ describe('useFileSystemService', () => {
         },
       ]);
     });
-    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const error = await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
 
     if (!isAccessErrorWithRecoveryKey(error)) {
       throw new Error('Expected access error');
@@ -3771,7 +3750,9 @@ describe('useFileSystemService', () => {
       }),
     ).resolves.toBeUndefined();
 
-    const nextError = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+    const nextError = await service
+      .readDirectoryFresh('/Device Files/Work')
+      .catch((e: unknown) => e);
 
     expect(nextError).toMatchObject({
       mode: 'read',
@@ -3818,8 +3799,8 @@ describe('useFileSystemService', () => {
         },
       ]);
     });
-    await service.directoryContent.fetch({ path: '/Device Files/Work' });
-    await service.directoryContent.fetch({ path: '/Device Files/Archive' });
+    await service.readDirectoryFresh('/Device Files/Work').catch((e: unknown) => e);
+    await service.readDirectoryFresh('/Device Files/Archive').catch((e: unknown) => e);
 
     await service.removeDeviceDirectory('Work');
 
@@ -3859,9 +3840,7 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const result = await service.directoryContent.fetch({
-      path: `/Device Files/${OPFSName}`,
-    });
+    const result = await service.readDirectoryFresh(`/Device Files/${OPFSName}`);
 
     expect(result).toEqual([]);
     await expect(
@@ -3873,7 +3852,7 @@ describe('useFileSystemService', () => {
     expect(opfsHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
-  it('re-reads directoryContent$ and emits an updated payload after createDirectory', async () => {
+  it('re-reads directoryState$ and publishes an updated ready payload after createDirectory', async () => {
     const readDirectoryMock = vi
       .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
       .mockResolvedValueOnce([])
@@ -3890,15 +3869,18 @@ describe('useFileSystemService', () => {
     await service.createDirectory('/drive');
     service.vfs.mount('/drive', provider);
 
-    const results: [string, FSNodeStat][][] = [];
-    const subscription = service.directoryContent$({ path: '/drive/folder' }).subscribe((value) => {
-      if (!(value instanceof Error)) {
-        results.push(value);
+    const results: (readonly [string, FSNodeStat])[][] = [];
+    const subscription = service.directoryState$({ path: '/drive/folder' }).subscribe((state) => {
+      if (state.status === 'ready') {
+        results.push([...state.entries]);
       }
     });
 
+    // Wait for the first read to fully settle (not just start) before invalidating: otherwise the
+    // coordinator's dirty-coalescing may legitimately fold this test's own createDirectory
+    // invalidation into the still-in-flight first read, superseding it with a single trailing read.
     await vi.waitFor(() => {
-      expect(readDirectoryMock).toHaveBeenCalledTimes(1);
+      expect(results).toEqual([[]]);
     });
 
     await service.createDirectory('/drive/folder/new-folder');
@@ -3912,87 +3894,7 @@ describe('useFileSystemService', () => {
     subscription.unsubscribe();
   });
 
-  it('filters automerge files from directoryContent$ when requested', async () => {
-    const readDirectoryMock = vi
-      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
-      .mockResolvedValue([
-        ['storage-adapter-id.automerge', fileStat],
-        ['visible.txt', fileStat],
-      ]);
-    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
-    const service = await createService();
-
-    await service.createDirectory('/drive');
-    service.vfs.mount('/drive', provider);
-
-    await expect(
-      service.directoryContent.fetch({
-        path: '/drive/folder',
-        options: { hideAutomergeFiles: true },
-      }),
-    ).resolves.toEqual([['visible.txt', fileStat]]);
-  });
-
-  it('keeps repository storage files visible because repository filtering is owned elsewhere', async () => {
-    const documentStorageFileName = createDocumentStorageFileName();
-    const readDirectoryMock = vi
-      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
-      .mockResolvedValue([
-        [storageAdapterMarkerFileName, fileStat],
-        [documentStorageFileName, fileStat],
-        ['visible.txt', fileStat],
-      ]);
-    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
-    const service = await createService();
-
-    await service.createDirectory('/drive');
-    service.vfs.mount('/drive', provider);
-
-    await expect(
-      service.directoryContent.fetch({
-        path: '/drive/folder',
-        options: { hideAutomergeFiles: true },
-      }),
-    ).resolves.toEqual([['visible.txt', fileStat]]);
-
-    const entriesWithAutomergeFiles = await service.directoryContent.fetch({
-      path: '/drive/folder',
-      options: { hideAutomergeFiles: false },
-    });
-
-    expect(entriesWithAutomergeFiles).toEqual(
-      expect.arrayContaining([
-        [documentStorageFileName, fileStat],
-        [storageAdapterMarkerFileName, fileStat],
-        ['visible.txt', fileStat],
-      ]),
-    );
-    expect(entriesWithAutomergeFiles).toHaveLength(3);
-  });
-
-  it('filters v2 compact .am automerge storage files and preserves unrelated .am files', async () => {
-    const v2StorageFileName = createV2DocumentStorageFileName();
-    const readDirectoryMock = vi
-      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
-      .mockResolvedValue([
-        [v2StorageFileName, fileStat],
-        ['user-notes.am', fileStat],
-      ]);
-    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
-    const service = await createService();
-
-    await service.createDirectory('/drive');
-    service.vfs.mount('/drive', provider);
-
-    await expect(
-      service.directoryContent.fetch({
-        path: '/drive/folder',
-        options: { hideAutomergeFiles: true },
-      }),
-    ).resolves.toEqual([['user-notes.am', fileStat]]);
-  });
-
-  it('emits errors as values for directoryContent$ and forwards non-Error failures to the observable error channel', async () => {
+  it('normalizes a non-Error rejection into an Error published as a directoryState$ value, never terminating the stream', async () => {
     const readDirectoryMock = vi
       .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
       .mockRejectedValueOnce(new Error('read failed'))
@@ -4003,20 +3905,71 @@ describe('useFileSystemService', () => {
     await service.createDirectory('/drive');
     service.vfs.mount('/drive', provider);
 
-    await expect(service.directoryContent.fetch({ path: '/drive/folder' })).resolves.toBeInstanceOf(
-      Error,
-    );
+    await expect(service.readDirectoryFresh('/drive/folder')).rejects.toBeInstanceOf(Error);
 
-    const errors: unknown[] = [];
-    const subscription = service.directoryContent$({ path: '/drive/folder' }).subscribe({
-      error: (error) => {
-        errors.push(error);
+    const states: unknown[] = [];
+    let observableTerminated = false;
+    const subscription = service.directoryState$({ path: '/drive/folder' }).subscribe({
+      next: (state) => {
+        states.push(state);
+      },
+      error: () => {
+        observableTerminated = true;
       },
     });
 
     await vi.waitFor(() => {
-      expect(errors).toEqual(['directory failed']);
+      expect(states.at(-1)).toEqual({ status: 'error', error: new Error('directory failed') });
     });
+    expect(observableTerminated).toBe(false);
+    subscription.unsubscribe();
+  });
+
+  it('readDirectoryFresh performs exactly one independent normalized, name-sorted physical read with no coordinator/watcher coupling', async () => {
+    const readDirectoryMock = vi
+      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
+      .mockResolvedValue([
+        ['b.txt', fileStat],
+        ['a.txt', fileStat],
+      ]);
+    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
+    const service = await createService();
+
+    await service.createDirectory('/drive');
+    service.vfs.mount('/drive', provider);
+
+    await expect(service.readDirectoryFresh('/drive/folder//')).resolves.toEqual([
+      ['a.txt', fileStat],
+      ['b.txt', fileStat],
+    ]);
+    expect(readDirectoryMock).toHaveBeenCalledTimes(1);
+
+    // A second call is a fully independent physical read, not a replay of the first.
+    await expect(service.readDirectoryFresh('/drive/folder')).resolves.toEqual([
+      ['a.txt', fileStat],
+      ['b.txt', fileStat],
+    ]);
+    expect(readDirectoryMock).toHaveBeenCalledTimes(2);
+
+    // Reactive coordinator state for the same path is unaffected: it starts its own read rather
+    // than reusing anything readDirectoryFresh produced.
+    const results: (readonly [string, FSNodeStat])[][] = [];
+    const subscription = service.directoryState$({ path: '/drive/folder' }).subscribe((state) => {
+      if (state.status === 'ready') {
+        results.push([...state.entries]);
+      }
+    });
+
+    await vi.waitFor(() => {
+      expect(readDirectoryMock).toHaveBeenCalledTimes(3);
+      expect(results).toEqual([
+        [
+          ['a.txt', fileStat],
+          ['b.txt', fileStat],
+        ],
+      ]);
+    });
+
     subscription.unsubscribe();
   });
 });
