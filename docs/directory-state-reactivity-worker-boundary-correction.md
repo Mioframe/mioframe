@@ -2,6 +2,8 @@
 
 Status: **ready for correction**. This addendum resolves the only active PR #215 review blocker in `src/shared/service/REVIEW.md`. It narrows the worker publication boundary without reopening the accepted directory/repository coordinator architecture.
 
+While this addendum is active, it supersedes earlier implementation-review status statements that say semantic review is complete or that no findings remain. The directory/repository architecture remains **ready**; implementation acceptance is **blocked** until this worker-boundary correction is implemented and re-reviewed.
+
 Authority:
 
 - `docs/directory-state-reactivity.md` remains the architecture source for directory/repository lifecycle and state ownership.
