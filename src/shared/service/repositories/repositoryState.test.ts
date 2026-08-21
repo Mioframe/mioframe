@@ -335,4 +335,129 @@ describe('createRepositoryStateCoordinator', () => {
     });
     expect(states).toEqual([{ status: 'loading' }]);
   });
+
+  it('shares one normalized coordinator/derivation for equivalent path spellings, never keying by the raw input path', async () => {
+    const source = createDirectorySource();
+    const facts = createControllableFacts();
+    const directoryStateSpy = vi.fn(source.directoryState$);
+    const { repositoryState$ } = createRepositoryStateCoordinator(vfsStub, directoryStateSpy);
+
+    const first = collectStates(repositoryState$({ path: '/A' }));
+    const second = collectStates(repositoryState$({ path: '/A//' }));
+
+    // Both subscriptions must resolve to the same normalized coordinator: exactly one upstream
+    // directory-state subscription, keyed by the normalized path, not by the raw input string.
+    expect(directoryStateSpy).toHaveBeenCalledTimes(1);
+    expect(directoryStateSpy).toHaveBeenCalledWith({ path: '/A' });
+
+    source.emit('/A', { status: 'ready', entries: entries('shared.txt') });
+
+    // One active derivation for one accepted ready snapshot, shared by both subscribers.
+    expect(facts.callCount()).toBe(1);
+
+    const docId = documentId();
+    facts.resolveNext({ documentIds: [docId], isInitialized: true });
+
+    await vi.waitFor(() => {
+      expect(first.states.at(-1)?.status).toBe('ready');
+      expect(second.states.at(-1)?.status).toBe('ready');
+    });
+
+    // Both subscribers observe the exact same resulting repository state.
+    expect(first.states.at(-1)).toEqual(second.states.at(-1));
+    expect(facts.callCount()).toBe(1);
+  });
+
+  it('keeps a sticky directory error current through the first replacement derivation until it succeeds', async () => {
+    const source = createDirectorySource();
+    const facts = createControllableFacts();
+    const { repositoryState$ } = createRepositoryStateCoordinator(vfsStub, source.directoryState$);
+
+    const { states } = collectStates(repositoryState$({ path: '/A' }));
+
+    const directoryError = new Error('read failed');
+    source.emit('/A', { status: 'error', error: directoryError });
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // Directory recovers with a replacement ready snapshot: a fresh derivation starts, but the
+    // sticky error must still be the published repository state while it is pending.
+    source.emit('/A', { status: 'ready', entries: entries('a.txt') });
+    expect(facts.callCount()).toBe(1);
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    // Do not resolve yet: repository state must remain the sticky error, not `loading`,
+    // `refreshing`, or cleared.
+    expect(states.at(-1)).toEqual({ status: 'error', error: directoryError });
+
+    const docId = documentId();
+    facts.resolveNext({ documentIds: [docId], isInitialized: true });
+
+    await vi.waitFor(() => {
+      const last = states.at(-1);
+      if (last?.status !== 'ready') throw new Error('not ready yet');
+      expect(last.snapshot.documentIds).toEqual([docId]);
+    });
+  });
+
+  it('lets a newer terminal directory error supersede the previous one; a stale replacement completion cannot overwrite it', async () => {
+    const source = createDirectorySource();
+    const facts = createControllableFacts();
+    const { repositoryState$ } = createRepositoryStateCoordinator(vfsStub, source.directoryState$);
+
+    const { states } = collectStates(repositoryState$({ path: '/A' }));
+
+    const firstError = new Error('read failed');
+    source.emit('/A', { status: 'error', error: firstError });
+    expect(states.at(-1)).toEqual({ status: 'error', error: firstError });
+
+    source.emit('/A', { status: 'ready', entries: entries('a.txt') });
+    expect(facts.callCount()).toBe(1);
+    expect(states.at(-1)).toEqual({ status: 'error', error: firstError });
+
+    // A new terminal directory error arrives before the replacement derivation settles; it
+    // becomes the current repository error.
+    const secondError = new Error('second read failed');
+    source.emit('/A', { status: 'error', error: secondError });
+    expect(states.at(-1)).toEqual({ status: 'error', error: secondError });
+
+    // The now-stale replacement derivation must not overwrite the newer error when it settles.
+    facts.resolveNext({ documentIds: [], isInitialized: false });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(states.at(-1)).toEqual({ status: 'error', error: secondError });
+  });
+
+  it('starts a fresh derivation for a newly accepted ready listing that is value-equal to the previously accepted listing', async () => {
+    const source = createDirectorySource();
+    const facts = createControllableFacts();
+    const { repositoryState$ } = createRepositoryStateCoordinator(vfsStub, source.directoryState$);
+
+    const { states } = collectStates(repositoryState$({ path: '/A' }));
+    source.emit('/A', { status: 'ready', entries: entries('a.txt') });
+    expect(facts.callCount()).toBe(1);
+
+    const firstDocId = documentId();
+    facts.resolveNext({ documentIds: [firstDocId], isInitialized: true });
+    await vi.waitFor(() => {
+      expect(states.at(-1)?.status).toBe('ready');
+    });
+
+    // A second, distinct `ready` event whose entries are structurally value-equal to the
+    // previously accepted listing must still start a fresh derivation. Directory invalidation is
+    // authoritative; value equality does not mean the repository candidate contents are
+    // unchanged, since wrapper bytes may have changed behind the same names/stats.
+    source.emit('/A', { status: 'ready', entries: entries('a.txt') });
+    expect(facts.callCount()).toBe(2);
+    expect(getRepositoryFactsMock).toHaveBeenLastCalledWith(vfsStub, '/A', entries('a.txt'));
+
+    const secondDocId = documentId();
+    facts.resolveNext({ documentIds: [secondDocId], isInitialized: true });
+
+    await vi.waitFor(() => {
+      const last = states.at(-1);
+      if (last?.status !== 'ready') throw new Error('not ready yet');
+      expect(last.snapshot.documentIds).toEqual([secondDocId]);
+    });
+  });
 });
