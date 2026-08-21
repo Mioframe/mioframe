@@ -2,11 +2,12 @@
 
 This document is the canonical project-wide testing policy for Mioframe.
 
-Its purpose is to keep three decisions reliable and separate:
+Its purpose is to keep four decisions reliable and separate:
 
-1. coding work chooses proof that matches the changed contract and risk;
-2. `verify` resolves workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact;
-3. GitHub CI verifies the exact pull-request head before merge.
+1. accepted product/architecture contracts decide what must be proved;
+2. dedicated test-author work turns that contract into the minimum faithful proof independently from production implementation;
+3. `verify` resolves workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact;
+4. GitHub CI verifies the exact pull-request head before merge.
 
 `verify` executes workspace-backed facts. It never parses or depends on agent prose.
 
@@ -16,27 +17,49 @@ Its purpose is to keep three decisions reliable and separate:
 
 Use the smallest reliable set of tests and measurements that completely protects changed observable contracts without duplicating framework, browser, foundation, component, or product behavior.
 
+The goal is not test count, coverage percentage, snapshot count, mutation score, or a fixed unit/integration/E2E ratio. A test exists only when it protects a current contract or risk at the lowest faithful proof boundary.
+
 Automatic selection must be deterministic, inspectable, and fail closed. An empty or skipped lane is never evidence that a proof type is unnecessary.
 
 Local verification exists for implementation feedback and contract proof. For pull requests, required GitHub CI on the exact PR head is the authoritative repository gate; coding agents do not need to duplicate that broad gate locally merely to report implementation completion.
 
 ## Responsibilities
 
-### Coding work: proof design
+### Architecture and preflight: proof design
 
 Before non-trivial implementation, identify:
 
 - changed observable contracts and scenarios;
 - applicable risks;
 - the lowest faithful proof type;
+- the independent oracle for the expected result;
+- at least one plausible incorrect observable result the proof must reject;
 - existing proof that already owns the contract;
 - proof that must be added or changed;
+- whether a dedicated test-author pass is required or existing proof remains sufficient and unchanged;
+- whether a meaningful pre-change red check should exist;
 - durable workspace impact facts that must be maintained;
 - task-specific measurements that cannot be automated yet.
 
 Implementation preflight records this as `TEST IMPACT`. It is a reviewable decision record, not input to `verify`.
 
-Coding work runs the focused verifier-managed checks needed to implement and correct the selected contracts. Broader local runs are allowed when materially useful for diagnosis or risk, but they are not a second mandatory copy of PR CI.
+### Test author: independent proof
+
+When automated behavioral proof is added or materially changed, author it in a fresh test-agent/session separate from the production implementation context. Follow `test-first`, `test-authoring`, and the selected proof-type skill.
+
+The test author receives the accepted contract and `TEST IMPACT`, not a proposed implementation as the source of expected behavior. Current production code may be inspected to understand existing behavior, but it is not an oracle by itself.
+
+The test author owns only the proof surface required by the accepted contract: tests/specs, truthful proof-only fixtures/stories, independently accepted visual baselines, and required durable ownership/impact metadata. The test author must not implement production behavior merely to make proof pass.
+
+A meaningful red phase is required when the pre-change implementation can faithfully demonstrate the accepted contract gap. Red is valid only when it fails for that contract gap, not because of unrelated setup, fixture, type, environment, timeout, or infrastructure failure.
+
+### Implementer: satisfy accepted proof
+
+After independent proof is accepted, production implementation runs in a different agent/session. Accepted test expectations and assertions are implementation constraints.
+
+The implementer may inspect and run accepted proof but must not weaken, delete, regenerate, bypass, or opportunistically rewrite it to make production code pass. If proof conflicts with the accepted contract or architecture, return the conflict to the test owner/architect and correct the proof in a fresh test-author pass before continuing.
+
+A behavior-preserving refactor with sufficient unchanged proof does not require a ceremonial test-author pass or red phase.
 
 ### Workspace: durable facts
 
@@ -66,11 +89,13 @@ Do not create metadata when the repository structure already expresses the relat
 - executes the resulting plan;
 - never infers test sufficiency from a skipped lane or a focused command with no matching tests.
 
+`verify` proves that selected checks executed according to repository rules. It does not prove that an assertion has an independent oracle or that a test was written at the right semantic boundary; test-authoring and semantic review own those decisions.
+
 ### Architect and PR CI
 
-The architect owns PR creation, exact-head CI review, full resulting-PR review, and merge readiness.
+The architect owns PR creation, exact-head CI review, full resulting-PR review, proof-quality review, and merge readiness.
 
-Required GitHub CI must run against the exact published PR head. A green CI run does not replace architecture review, correct ownership, faithful proof, or required scenario coverage; it is the authoritative repository execution gate after those contracts are ready.
+Required GitHub CI must run against the exact published PR head. A green CI run proves only that the executed checks passed. It does not replace architecture review, correct ownership, independent oracle review, faithful proof, or required scenario coverage.
 
 If CI fails, route the exact failed contract to the correct owner, run the smallest useful local verifier-managed proof while correcting it, publish the correction, and let CI rerun on the new exact head.
 
@@ -81,6 +106,21 @@ If CI fails, route the exact failed contract to the correct owner, run the small
 Every test protects observable behavior, a public contract, persisted state, data safety, accessibility, accepted visible output, release behavior, or an explicit non-functional requirement.
 
 Do not test private methods, incidental classes, render counts, framework lifecycle, internal branches, or third-party behavior unless Mioframe owns the adaptation or observable outcome.
+
+A behavior-preserving implementation rewrite should normally leave its contract tests unchanged and green.
+
+### Independent oracle and failure sensitivity
+
+Expected results must come from an accepted architecture/product/public contract, explicit scenario or acceptance criterion, reproducible defect and corrected outcome, persistence/protocol/migration contract, authoritative platform/dependency contract that Mioframe adapts, or another independently accepted behavior source.
+
+Do not derive expected values from:
+
+- the same production helper/algorithm under test;
+- a copied or lightly rewritten implementation algorithm;
+- newly observed production output without independent acceptance;
+- mocks or fixtures programmed so the assertion only confirms what the test injected, unless that is the real boundary contract.
+
+Every new or materially changed behavioral proof must be able to name at least one plausible incorrect observable result that its assertions reject. This is a sensitivity check, not a request for exhaustive negative tests.
 
 ### One contract has one primary proof owner
 
@@ -94,21 +134,39 @@ Choose the cheapest environment that reproduces the real semantics. A cheaper en
 
 `happy-dom` does not prove real focus, keyboard behavior, pointer/touch, layout, geometry, scrolling, overlays, responsive behavior, browser APIs, or browser lifecycle.
 
+Do not promote deterministic logic into browser/E2E merely to make a test feel more realistic, and do not demote browser-owned behavior into mocks merely to make it cheaper.
+
 ### Proof is proportional to changed risk
 
 Add or change proof when observable behavior, a public contract, persistence, migration, transformation, accessibility, performance, release behavior, or a reproducible defect changes.
 
-Do not add a test merely because a production file changed. A behavior-preserving refactor may rely on existing relevant proof when the accepted contract is already protected.
+Do not add a test merely because a production file changed or a coverage number is low. A behavior-preserving refactor may rely on existing relevant proof when the accepted contract is already protected.
+
+Cover materially distinct current happy, boundary, invalid, failure, cancellation, compatibility, platform, or state paths required by risk. Do not build theoretical Cartesian matrices without distinct contract value.
+
+### Isolation and determinism
+
+Every automated test must be independently runnable. It must not require another test to run first or leave mutable state that changes another test's result.
+
+Own test data and nondeterminism. Control time, randomness, third-party/network/provider behavior, and mutable persistence only where they are real dependencies of the contract. Restore fake time, mocks, globals, and mutable test state after the owning test where applicable.
+
+Do not hide instability with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept missing required state.
+
+A known intermittent failure is a defect and blocks acceptance until its cause is corrected and the required stability proof passes. Retries may collect diagnostics only when a retry-pass/flaky classification still fails the owning gate; a retry-pass is never accepted as green proof.
+
+### Prefer public and user-facing observation
+
+At UI/browser boundaries, prefer public semantics and user-observable behavior over implementation structure.
+
+For rendered/UI selection, prefer role and accessible name, label, visible text, or another stable public semantic locator. Use test IDs only when no stable public semantic locator exists and the ID represents an intentional testing seam rather than private structure.
+
+For browser-owned asynchronous outcomes, use Playwright actionability and web-first assertions instead of manual polling or arbitrary timing assumptions.
 
 ### Duplication is not additional assurance
 
 Do not repeat the same algorithm matrix, browser behavior, foundation behavior, visual contract, product flow, or performance assertion across several proof types.
 
-### Failures remain visible
-
-Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept missing required state.
-
-A known intermittent failure is a defect and blocks acceptance until its cause is corrected and the required stability proof passes. Retries may collect diagnostics only when a retry-pass/flaky classification still fails the owning gate; a retry-pass is never accepted as green proof.
+Coverage percentage, assertion count, snapshot count, mutation score, and number of E2E scenarios are diagnostic metrics, not acceptance objectives by themselves.
 
 ## Proof types
 
@@ -146,13 +204,17 @@ Supplemental evidence:
 
 ### Deterministic behavior
 
-Use direct inputs, outputs, transitions, persisted effects, protocol messages, and typed failures. Mock only real external or nondeterministic boundaries.
+Use direct inputs, outputs, transitions, persisted effects, protocol messages, and typed failures. Prefer real fast/reliable owned modules. Mock only genuine external or nondeterministic boundaries.
 
 A deterministic multi-module test remains in `unit-tests` when it proves a boundary result without browser rendering or complete application orchestration.
+
+Do not mock every internal dependency and then assert call choreography. Do not copy the production algorithm into the expected-value calculation. A useful deterministic test should survive a behavior-preserving rewrite.
 
 ### Component contract
 
 Use Vue Test Utils for stable public API, native semantics, explicit attributes, ARIA ownership, controlled state, invalid combinations, and narrow child/foundation wiring.
+
+Assert public output or an explicit Vue/adapter seam. Prefer semantic DOM locators where the assertion is rendered/public semantics. Avoid incidental CSS classes, private child state, broad rendered-tree snapshots, and component lifecycle details.
 
 Do not prove real focus, keyboard operation, pointer/touch, layout, geometry, scrolling, overlays, responsive rendering, browser APIs, ripple, motion, elevation, or computed appearance here.
 
@@ -160,24 +222,82 @@ Do not prove real focus, keyboard operation, pointer/touch, layout, geometry, sc
 
 Use isolated deterministic Storybook state and real public browser input. Behavior specs contain no screenshots.
 
+The story establishes deterministic preconditions only; the spec performs the behavior under test. Drive keyboard, pointer/touch, focus, scrolling, viewport, or browser capability through public browser surfaces, locate through user-facing semantics, and assert the exact observable result with web-first assertions.
+
+Do not invoke private component/renderer APIs, use arbitrary sleeps/forced actions to bypass actionability, or assert an internal proxy that can remain correct while the public result is wrong.
+
 Storybook ownership and physical placement follow `docs/testing/storybook.md`. The behavior lane supports mixed discovery: migrated owners use colocated `src/**/*.browser.spec.ts`, and unmigrated owners remain in the current central Playwright location. `docs/testing/migration-plan.md` controls which owners are currently authorized to migrate.
 
 ### Product scenario
 
-Use application E2E when the complete user outcome or cross-boundary integration is the contract. Lower-level setup may establish valid initial state but must not perform the action under test.
+Use application E2E when the complete user outcome or cross-boundary integration is the contract.
+
+An E2E spec represents a coherent user goal:
+
+```text
+owned valid starting state
+→ public/user-observable action(s)
+→ user-visible or durable product outcome
+```
+
+Perform the action under test through the same public UI/browser surface available to the user whenever that action is part of the scenario. Lower-level setup APIs may create valid preconditions but must not perform, short-circuit, or directly mutate the product action/outcome under test.
+
+Prefer role/name/label/user-facing locators and Playwright web-first assertions. Isolate browser/persistence/test data so execution order does not matter. Control third-party/network/provider responses when Mioframe does not own them; test Mioframe's handling of that boundary, not the third party itself.
+
+Assert the final user-visible or durable product result, including reload/persistence behavior when it belongs to the scenario. Do not use E2E to repeat lower-level algorithm/state matrices already faithfully owned elsewhere.
 
 ### Visual regression
 
-A visual spec opens a canonical deterministic story, waits for stable rendering, and captures a bounded surface. It contains no behavioral success criteria and does not reproduce token tables through computed-style matrices.
+A visual spec opens a canonical deterministic story, waits for stable rendering, and captures the smallest readable surface that owns the accepted appearance. It contains no behavioral success criteria and does not reproduce token tables through computed-style matrices.
 
-A baseline detects change; it does not prove Material correctness, accessibility, or interaction.
+Baseline generation and comparison must use equivalent browser/runtime/OS/font conditions. Stabilize fonts, icons, assets, async fixtures, and genuinely nondeterministic content before capture. Animation may be settled only to reach the accepted stable state; screenshots do not prove motion lifecycle.
+
+A baseline detects change; it does not approve the new result. Every intentional baseline change must be independently reviewed against the accepted visual contract before acceptance. Never update a baseline merely because the implementation produced different pixels.
+
+A visual baseline does not prove Material correctness, accessibility, interaction, or numeric geometry that belongs to a more faithful proof.
+
+### Release behavior
+
+Release proof exists only for behavior that can differ in the built/deployable artifact from source/dev-runtime proof.
+
+Build through the repository-owned production/release path and test the artifact that would be served or deployed. Do not use the Vite dev server or source modules as a proxy for production-artifact behavior.
+
+Assert externally observable release contracts such as bootstrap, base/routing, manifest/PWA assets, service-worker/channel isolation, update lifecycle, persisted compatibility, first/returning-user behavior, publication/import seams, or another accepted release invariant.
+
+Preserve real browser/lifecycle boundaries when the defect can only exist there. A source import test may own a specific Node/module compatibility seam but cannot replace browser/artifact proof. Do not duplicate ordinary product E2E in release proof unless the production artifact boundary materially changes the risk.
 
 ### Accessibility
 
+Accessibility is distributed across faithful owners rather than treated as one substitute test category:
+
 - native semantics, accessible name, explicit ARIA ownership, disabled/readonly semantics: component contract;
 - focus order, keyboard operation, focus restoration, actionability, overlay containment: browser behavior or product scenario;
-- automated scans: supplemental only;
+- automated scans: supplemental detection of automatable issues only;
 - screenshot appearance alone does not prove accessibility.
+
+A green automated accessibility scan never establishes overall accessibility by itself.
+
+### Mutation testing
+
+Mutation is supplemental test-sensitivity evidence for explicitly registered/audited high-risk deterministic logic after the primary proof is green.
+
+A meaningful survived/no-coverage mutant is a reason to inspect whether an accepted observable outcome is missing from proof. Strengthen tests only when the mutant represents a real wrong result that should have been rejected.
+
+Do not add implementation-detail assertions, change production behavior, or create broad mutation scope merely to improve mutation score. Equivalent or irrelevant mutants do not create product requirements.
+
+### Performance evidence
+
+Add performance proof only for an accepted performance claim or durable budget.
+
+Define before measurement:
+
+- the user-relevant metric;
+- scenario and representative data size;
+- device/browser/runtime conditions;
+- baseline or numeric budget;
+- acceptable variance/comparison method when measurement is noisy.
+
+Prefer reproducible budgets/thresholds over brittle exact timings. Do not claim an optimization from one uncontrolled run, a different environment, or an unrelated proxy metric. Performance evidence never replaces correctness proof.
 
 ## Automatic verification contract
 
@@ -319,7 +439,7 @@ Unresolved added, modified, removed, or moved baseline ownership selects the ful
 
 Until colocated visual discovery is implemented, preserve the current executable visual spec/baseline location and current resolver behavior.
 
-## Release verification
+## Release verification impact
 
 Focused development verification must select release checks when a changed contract can only be proved against the built artifact.
 
@@ -354,22 +474,32 @@ Do not create permanent benchmark infrastructure for one task.
 
 ## TEST IMPACT
 
-Implementation preflight records task-specific design:
+Implementation preflight records task-specific proof design:
 
 ```text
 TEST IMPACT
-Changed contracts:
-Risks:
-Proof owners:
-Existing proof:
-New or changed tests:
-Workspace impact metadata updates:
-Task-specific measurements:
+- Contract/scenario:
+  - Primary proof owner:
+  - Oracle source:
+  - Must reject:
+  - Test author: dedicated test agent/session | existing proof only
+  - Red phase: required | not applicable — <reason>
+  - Additional proof:
+  - Existing proof:
+  - New/updated proof:
+  - Risk or platform matrix:
+  - Durable ownership/impact updates:
+  - Task-specific measurements:
 ```
 
 Rules:
 
 - include only applicable proof;
+- derive expectations from independent accepted contract/evidence, not proposed implementation output;
+- require a dedicated fresh test-author pass for new or materially changed behavioral proof;
+- do not require a test-author pass when existing proof remains faithful and unchanged;
+- name one plausible wrong observable result that the proof must reject;
+- require a meaningful red phase only when the pre-change implementation can faithfully demonstrate the contract gap;
 - name exact existing/planned tests where known;
 - maintain durable ownership/mapping/snapshot/release/mutation/performance facts when their relation changes;
 - update preflight when implementation changes planned contracts or proof;
@@ -383,7 +513,9 @@ Generic foundation behavior is proved once at the foundation owner. Consumers pr
 
 ## Test helpers
 
-Helpers may provide deterministic setup, semantic actions, and strict outcome waits. Required actions fail when preconditions or outcomes are absent. Optional cleanup is separate and never behavior evidence.
+Helpers may provide deterministic setup, semantic public actions, and strict outcome waits. Required actions fail when preconditions or outcomes are absent. Optional cleanup is separate and never behavior evidence.
+
+Browser helpers must not hide private actions, actionability failures, arbitrary timing, recovery loops, or repeated user-action delivery behind convenient APIs.
 
 Create shared helpers only after multiple current tests prove the same concrete need and extraction reduces total complexity.
 
@@ -393,13 +525,23 @@ Reject or revise proof when:
 
 1. it uses a less faithful proof type than required;
 2. the same contract is already fully owned elsewhere;
-3. assertions follow implementation instead of accepted contracts;
-4. fixtures reconstruct broad product behavior through mocks;
-5. browser instability is hidden by sleeps, force, retries, or recovery loops;
-6. visual tests contain behavior/token-table assertions;
-7. product E2E repeats deterministic logic branches or shared component states;
-8. ownership/impact facts are missing, stale, duplicated, or overloaded;
-9. a local relation is replaced by unnecessary registry infrastructure;
-10. a spec path is used as a source-mapping prefix to group tests;
-11. current migration state is ignored and tests are placed where the runner cannot discover them;
-12. proof depends on private third-party implementation that Mioframe does not own.
+3. assertions follow implementation instead of an independent accepted oracle;
+4. the proof cannot identify a plausible contract-relevant wrong result it would reject;
+5. fixtures/mocks reconstruct broad product behavior or make assertions tautological;
+6. tests depend on execution order or leaked mutable state;
+7. browser/E2E behavior is driven through private/internal APIs when the tested action is user-facing;
+8. browser instability is hidden by sleeps, `force`, retries, recovery loops, or manual timing instead of observable readiness;
+9. E2E asserts internal implementation state rather than a user-visible or durable product outcome;
+10. visual baselines are blindly regenerated or captured from nondeterministic/uncontrolled rendering;
+11. visual tests contain behavior/token-table assertions;
+12. product E2E repeats deterministic logic branches or shared component-state matrices;
+13. mutation/coverage/snapshot/test-count metrics are treated as product acceptance goals;
+14. an accessibility scan is presented as complete accessibility proof;
+15. performance claims use undefined metrics, unrepresentative data, uncontrolled environments, or brittle exact timings without an accepted budget;
+16. release proof uses dev/source behavior as a substitute for a contract that exists only in the built artifact;
+17. ownership/impact facts are missing, stale, duplicated, or overloaded;
+18. a local relation is replaced by unnecessary registry infrastructure;
+19. a spec path is used as a source-mapping prefix to group tests;
+20. current migration state is ignored and tests are placed where the runner cannot discover them;
+21. proof depends on private third-party implementation that Mioframe does not own;
+22. production and materially changed proof were authored in one implementation context despite the required independent test-author workflow.
