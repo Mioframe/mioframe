@@ -5,7 +5,7 @@ description: 'Use verifier-managed checks for implementation feedback and risk-s
 
 # Verification workflow
 
-Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` records which target discovery/ownership mechanisms are currently executable.
+Follow `docs/testing/architecture.md`. For verifier terminal/progress behavior also follow `docs/testing/verify-agent-output.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` records which target discovery/ownership mechanisms are currently executable.
 
 ## Ownership
 
@@ -39,6 +39,26 @@ Use these commands normally when they are actually required. The verifier owns i
 Do not prepend shell-level environment assignments such as `NAME=value pnpm verify ...` or `env NAME=value pnpm verify ...` to select verifier behavior. Agent-selectable behavior must be represented by a verifier CLI option or resolved automatically by the verifier.
 
 Do not preflight verifier internals or infer that a verifier command is unavailable from generic sandbox capabilities. Attempt the canonical command when the task actually requires it. If the runtime rejects it, use the runtime's normal command-scoped approval/escalation path without changing the command. Never ask the operator to run verifier commands, broaden approval to generic shell execution, or enable unrestricted/full-access execution.
+
+## Agent-facing output
+
+Normal coding-agent verification uses the default bounded verifier output. Do **not** add `--verbose` preemptively.
+
+The default verifier surface must give the agent only the control information needed for the next decision:
+
+- current runnable check and check index/total;
+- compact completion status and elapsed time;
+- bounded heartbeat for a long-running check so quiet work does not look hung;
+- on failure, a short actionable reason/excerpt, exact `.verify/logs/...` path, and canonical focused rerun command;
+- compact final success/failure summary.
+
+Raw child stdout/stderr, long output tails, routine skipped-check inventories, complete trigger-reason inventories, changed-file lists, and environment/planner detail belong in `.verify/logs/**` or explicit verbose diagnostics rather than the normal agent context.
+
+A normal heartbeat is verifier-owned liveness information. It must not echo arbitrary child-output lines; it should identify the active check, elapsed time, owned timeout when applicable, and the detailed log path. Do not invent percentages or completion estimates for tools that do not expose trustworthy progress.
+
+If the bounded failure summary is insufficient, inspect the exact log first. Use `--verbose` only as deliberate diagnostic escalation when raw live output materially helps. Verbose presentation never changes proof selection or verification semantics.
+
+Do not build a second logging/progress mechanism around `verify`. The verifier's existing execution, per-check logs, command-lock metadata, and status/resume surfaces own this behavior.
 
 ## Coding-agent use
 
