@@ -1,8 +1,8 @@
 # Directory state reactivity — implementation preflight
 
-Status: **completed; implementation is under final semantic re-review**.
+Status: **completed; implementation passed final semantic re-review**.
 
-Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture or active review findings. Active findings discovered by the later full PR re-review are tracked in owner-local `REVIEW.md` files and supersede older statements that implementation acceptance was complete.
+Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture. Later full-PR findings and their completed correction are recorded in `docs/directory-state-reactivity-final-review-correction.md`; no active owner-local findings remain.
 
 ## Source and readiness
 
@@ -211,4 +211,4 @@ Do not require a broad final local `pnpm verify` solely for coding-agent handoff
 
 ## Result
 
-Preflight: **completed**. The two-coordinator implementation is present on `refactor/directory-state-reactivity`; final semantic acceptance is currently blocked by active owner-local review findings discovered during the later full PR re-review. Those findings must be closed before exact-head GitHub CI can serve as the final automatic merge gate.
+Preflight: **completed**. The two-coordinator implementation is present on `refactor/directory-state-reactivity`; the full PR semantic re-review and all correction re-reviews are complete with no active owner-local findings. Exact-head GitHub CI is the remaining automatic merge gate.
