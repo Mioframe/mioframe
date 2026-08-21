@@ -217,16 +217,16 @@ Release-sensitive domains include production build/release configuration, routin
 
 Do not automatically continue V3C-B/C/D/E or V3D/V3E. First benchmark representative real diff classes.
 
-| Change | Expected verify |
-| --- | --- |
-| docs / AGENTS | format/static only where applicable |
-| local entity source | type-check + related unit; mutation only if registered |
-| feature source | unit + only relevant product E2E |
-| Material component | relevant component/browser/visual proof |
-| shared runtime primitive | conservative affected lane |
-| CSS runtime change | corresponding browser/visual proof; never skipped merely by extension |
-| service worker / PWA | release-sensitive proof |
-| verifier tooling | verifier tests + conservative affected verifier lanes |
+| Change                   | Expected verify                                                       |
+| ------------------------ | --------------------------------------------------------------------- |
+| docs / AGENTS            | format/static only where applicable                                   |
+| local entity source      | type-check + related unit; mutation only if registered                |
+| feature source           | unit + only relevant product E2E                                      |
+| Material component       | relevant component/browser/visual proof                               |
+| shared runtime primitive | conservative affected lane                                            |
+| CSS runtime change       | corresponding browser/visual proof; never skipped merely by extension |
+| service worker / PWA     | release-sensitive proof                                               |
+| verifier tooling         | verifier tests + conservative affected verifier lanes                 |
 
 For every benchmark record:
 
