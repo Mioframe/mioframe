@@ -28,17 +28,15 @@ export const VERIFY_LABELS: readonly string[] = [
   'artifact',
   'release-smoke',
   'managed-updates',
+  'release-impact',
 ];
 
-export const FULL_ONLY_LABELS: ReadonlySet<string> = new Set([
-  'release-version',
-  'release-config',
-  'build',
-  'publisher-node-import',
-  'artifact',
-  'release-smoke',
-  'managed-updates',
-]);
+// `release-version` is independent PR/release policy and remains
+// exclusively a full-mode label. The six source-impact release checks are
+// ordinary labels valid both inside and outside --full (see
+// scripts/lib/releaseRisk.ts): --full runs them unconditionally, and
+// ordinary/--only invocations select them from the current changed files.
+export const FULL_ONLY_LABELS: ReadonlySet<string> = new Set(['release-version']);
 
 export const FIX_ONLY_LABELS: ReadonlySet<string> = new Set([
   'agent-environment',
@@ -47,7 +45,11 @@ export const FIX_ONLY_LABELS: ReadonlySet<string> = new Set([
   'eslint',
 ]);
 
-const FULL_FORBIDDEN_LABELS: ReadonlySet<string> = new Set(['mutation']);
+// `release-impact` is the ordinary-mode source-impact orchestration
+// grouping (see scripts/lib/releaseRisk.ts); --full already runs all six
+// source-impact checks unconditionally, so combining it with --full is
+// redundant/conflicting, matching mutation's existing full-forbidden precedent.
+const FULL_FORBIDDEN_LABELS: ReadonlySet<string> = new Set(['mutation', 'release-impact']);
 
 /** Runtime profile a verify invocation executes under. */
 export type VerifyProfile = 'local' | 'github-actions';

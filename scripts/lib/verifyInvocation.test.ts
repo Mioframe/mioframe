@@ -74,12 +74,34 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
-  it('requires full mode for release-only labels', () => {
-    expect(() => resolveVerifyInvocation(['--only', 'artifact'], {})).toThrow(
-      '--only artifact requires --full',
-    );
+  it('accepts the six source-impact release labels without requiring --full', () => {
+    expect(resolveVerifyInvocation(['--only', 'artifact'], {}).onlyLabel).toBe('artifact');
+  });
+
+  it('still accepts a source-impact release label alongside --full', () => {
     expect(resolveVerifyInvocation(['--full', '--only', 'artifact'], {}).onlyLabel).toBe(
       'artifact',
+    );
+  });
+
+  it('still requires full mode for release-version, the one release-policy label that did not change', () => {
+    expect(() => resolveVerifyInvocation(['--only', 'release-version'], {})).toThrow(
+      '--only release-version requires --full',
+    );
+    expect(resolveVerifyInvocation(['--full', '--only', 'release-version'], {}).onlyLabel).toBe(
+      'release-version',
+    );
+  });
+
+  it('accepts release-impact without --full', () => {
+    expect(resolveVerifyInvocation(['--only', 'release-impact'], {}).onlyLabel).toBe(
+      'release-impact',
+    );
+  });
+
+  it('rejects release-impact in full mode', () => {
+    expect(() => resolveVerifyInvocation(['--full', '--only', 'release-impact'], {})).toThrow(
+      '--only release-impact is not available with --full',
     );
   });
 

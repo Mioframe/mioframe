@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isNonRuntimeRepositoryMetadataPath } from './repositoryMetadata.ts';
 
 const STORYBOOK_BEHAVIOR_SPEC_DIR = 'tests/e2e/storybook';
 const STORYBOOK_BEHAVIOR_SPEC_PREFIX = `${STORYBOOK_BEHAVIOR_SPEC_DIR}/`;
@@ -494,6 +495,10 @@ export function resolveStorybookBehaviorPlan(
   const focusedReasons: string[] = [];
 
   for (const filePath of changedFiles) {
+    if (isNonRuntimeRepositoryMetadataPath(filePath)) {
+      continue;
+    }
+
     const scenarios = getScenariosForPath(filePath);
 
     for (const scenario of scenarios) {

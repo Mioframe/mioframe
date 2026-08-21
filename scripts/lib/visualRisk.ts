@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isVisualRelevantPackageJsonChange } from './packageJsonImpact.ts';
+import { isNonRuntimeRepositoryMetadataPath } from './repositoryMetadata.ts';
 
 const LEGACY_VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const PACKAGE_JSON_PATH = 'package.json';
@@ -36,13 +37,16 @@ const FULL_LANE_EXACT_FILES = new Set([
   'src/app/styles/fonts.css',
 ]);
 
-// Safe non-visual proof/documentation suffixes that cannot affect Storybook
-// rendering: colocated Vitest specs, Storybook browser-behavior specs, and
-// plain Markdown documentation. Checked ahead of owner-local and broad
-// visual-relevant classification so these never select or force the visual
-// lane, but after global infrastructure/package.json/spec/snapshot
-// resolution, which stays independently authoritative.
-const SAFE_VISUAL_EXCLUSION_SUFFIXES = ['.test.ts', '.browser.spec.ts', '.md'];
+// Safe non-visual proof suffixes that cannot affect Storybook rendering:
+// colocated Vitest specs and Storybook browser-behavior specs. Markdown is
+// deliberately not excluded by extension here -- confirmed non-runtime
+// repository metadata is excluded via isNonRuntimeRepositoryMetadataPath
+// instead, so unclassified Markdown keeps normal owner-local/full fallback.
+// Checked ahead of owner-local and broad visual-relevant classification so
+// these never select or force the visual lane, but after global
+// infrastructure/package.json/spec/snapshot resolution, which stays
+// independently authoritative.
+const SAFE_VISUAL_EXCLUSION_SUFFIXES = ['.test.ts', '.browser.spec.ts'];
 
 // Legacy central visual execution remains full-fallback for its entire
 // subtree during S3: specs, snapshots, and shared visual helpers alike.
@@ -324,6 +328,10 @@ export function resolveVisualPlan(
     }
 
     if (isSafeVisualExclusionPath(filePath)) {
+      continue;
+    }
+
+    if (isNonRuntimeRepositoryMetadataPath(filePath)) {
       continue;
     }
 

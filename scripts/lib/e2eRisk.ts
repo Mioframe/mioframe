@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isNonRuntimeRepositoryMetadataPath } from './repositoryMetadata.ts';
 
 const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const RELEASE_SPEC_PREFIX = 'tests/e2e/release/';
@@ -153,7 +154,7 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
   },
   {
     name: 'help navigation',
-    sourcePrefixes: ['src/pages/Help/'],
+    sourcePrefixes: ['src/pages/Help/', 'docs/user/'],
     specs: ['tests/e2e/helpNavigation.spec.ts'],
   },
   {
@@ -441,6 +442,10 @@ export function isAppE2ERelevantPath(filePath: string): boolean {
   }
 
   if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
+    return false;
+  }
+
+  if (isNonRuntimeRepositoryMetadataPath(filePath)) {
     return false;
   }
 

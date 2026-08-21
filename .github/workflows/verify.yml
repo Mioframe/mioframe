@@ -313,11 +313,65 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Independent parallel implementation-proof lane for source-impact release
+  # checks (see scripts/lib/releaseRisk.ts): starts directly after autofix,
+  # like the other implementation lanes, and must not be serialized behind
+  # static/E2E/Storybook proof. For an ordinary non-release-sensitive diff the
+  # release planner selects nothing, so this job runs quickly in parallel
+  # rather than lengthening the longer browser lanes' critical path.
+  # release-version (below) remains a fully independent PR/release-policy
+  # gate and is not folded into this job.
+  verification-release:
+    needs:
+      - autofix
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify release-impact
+        run: pnpm verify --verbose --only release-impact
+
+      - name: Upload release-impact verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-release-impact-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
   verification:
     needs:
       - verification-static
       - verification-browser-e2e
       - verification-storybook-browser
+      - verification-release
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -328,6 +382,7 @@ jobs:
           STATIC_RESULT: ${{ needs.verification-static.result }}
           E2E_RESULT: ${{ needs.verification-browser-e2e.result }}
           STORYBOOK_BROWSER_RESULT: ${{ needs.verification-storybook-browser.result }}
+          RELEASE_RESULT: ${{ needs.verification-release.result }}
         run: |
           failed=0
 
@@ -343,6 +398,11 @@ jobs:
 
           if [ "$STORYBOOK_BROWSER_RESULT" != "success" ]; then
             echo "Storybook browser verification result: $STORYBOOK_BROWSER_RESULT"
+            failed=1
+          fi
+
+          if [ "$RELEASE_RESULT" != "success" ]; then
+            echo "Release-impact verification result: $RELEASE_RESULT"
             failed=1
           fi
 

@@ -524,6 +524,82 @@ describe('resolveAppE2EPlan composition (V2A)', () => {
   });
 });
 
+describe('resolveAppE2EPlan repository metadata exclusion (change-classification precision)', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Acceptance matrix"
+  // and "Browser-related lane audit" -- confirmed non-runtime repository
+  // metadata inside a broad app-E2E-relevant domain must not select app e2e
+  // solely from directory location, while unknown/unclassified paths in the
+  // same domain (including arbitrary source-adjacent Markdown) keep the
+  // existing fail-closed fallback.
+
+  it('no longer resolves full app e2e for a confirmed AGENTS.md path under a broad shared-UI domain', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/material/AGENTS.md']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('no longer resolves full app e2e for a confirmed src/shared/ui/material/docs/** path', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/material/docs/component-contract.md']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('preserves the existing full app e2e fallback for CSS/runtime assets in the same broad domain', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/material/foundation/tokens.css']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('unmapped application-E2E-relevant path');
+  });
+
+  it('does not classify arbitrary source-adjacent Markdown as metadata merely by basename, preserving full fallback', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/material/components/button/README.md']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('unmapped application-E2E-relevant path');
+  });
+
+  it('keeps the runtime-owned scenario selection when a confirmed-metadata path is combined with a mapped runtime change', () => {
+    const plan = resolveAppE2EPlan([
+      'src/shared/ui/material/AGENTS.md',
+      'src/entities/databaseData/index.ts',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/databasePersistenceSmoke.spec.ts']);
+  });
+});
+
+describe('resolveAppE2EPlan docs/user Help runtime mapping', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Affected scenarios"
+  // #3 and "Required test proof": docs/user/** is application runtime Help
+  // content, not metadata, and must select the existing focused Help e2e
+  // scenario rather than being globally ignored.
+
+  it('selects the Help navigation spec for docs/user/README.md', () => {
+    const plan = resolveAppE2EPlan(['docs/user/README.md']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/helpNavigation.spec.ts']);
+  });
+
+  it('selects the Help navigation spec for a nested docs/user/** path', () => {
+    const plan = resolveAppE2EPlan(['docs/user/getting-started/intro.md']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/helpNavigation.spec.ts']);
+  });
+
+  it('merges the Help mapping with another scenario mapping in the same changeset', () => {
+    const plan = resolveAppE2EPlan(['docs/user/README.md', 'src/entities/databaseData/index.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/databasePersistenceSmoke.spec.ts',
+      'tests/e2e/helpNavigation.spec.ts',
+    ]);
+  });
+});
+
 describe('resolveAppE2EPlan removed/renamed spec safety', () => {
   it('runs full app e2e for a nonexistent directly changed app e2e spec', () => {
     const plan = resolveAppE2EPlan(['tests/e2e/removedFlow.spec.ts'], {

@@ -28,7 +28,18 @@ import {
 } from './lib/storybookBehaviorRisk.ts';
 import { resolveStorybookBuildPlan, type StorybookBuildPlan } from './lib/storybookBuildRisk.ts';
 import { resolveVisualPlan, type VisualPlan } from './lib/visualRisk.ts';
-import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
+import {
+  getChangedFileProjection,
+  resolveChangedPathsScope,
+  type ChangedPath,
+} from './lib/changedPaths.ts';
+import { resolveUnitPlan } from './lib/unitRisk.ts';
+import { resolveMutationPlan } from './lib/mutationTargets.ts';
+import {
+  RELEASE_IMPACT_CHECKS,
+  resolveReleasePlan,
+  type ReleaseImpactCheck,
+} from './lib/releaseRisk.ts';
 import {
   FIX_ONLY_LABELS,
   formatShellCommand,
@@ -219,7 +230,6 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ]);
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
-const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function isFormatLintIgnored(filePath: string): boolean {
@@ -257,216 +267,6 @@ function isTypeCheckTarget(filePath: string): boolean {
     (baseName.startsWith('tsconfig') && baseName.endsWith('.json')) ||
     baseName.includes('.config.')
   );
-}
-
-/**
- * Find sibling test files for a production file path.
- *
- * For `src/` paths, maps `.ts` and `.vue` production files to colocated
- * `.test.ts` files using exact basename matching and directory scan.
- * For `scripts/` paths, maps `.mjs`/`.ts` production files to colocated
- * `.test.mjs`/`.test.ts` and `.spec.mjs` files using exact name match.
- * @param filePath Production file path relative to the repository root.
- * @returns Sorted unique list of existing sibling test file paths, or an
- * empty array when no tests are found.
- */
-export function getAllSiblingTestFiles(filePath: string): string[] {
-  if (filePath.startsWith('src/')) {
-    if (filePath.endsWith('.test.ts')) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    const extension = path.posix.extname(filePath);
-
-    if (!SOURCE_EXTENSIONS.includes(extension)) {
-      return [];
-    }
-
-    const baseName = path.posix.basename(filePath, extension);
-    const dirPath = path.posix.dirname(filePath);
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const exactMatch = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactMatch)) {
-      return [exactMatch];
-    }
-
-    const testCandidates: string[] = [];
-
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
-          continue;
-        }
-
-        const candidateBase = entry.name.slice(0, -'.test.ts'.length);
-        const parts = candidateBase.split('.');
-
-        if (parts.length < 2) {
-          continue;
-        }
-
-        if (parts[0] === baseName) {
-          testCandidates.push(path.posix.join(dirPath, entry.name));
-        }
-      }
-    } catch {
-      // Directory read failure falls through to an empty focused test scope.
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
-    if (
-      filePath.endsWith('.test.mjs') ||
-      filePath.endsWith('.spec.mjs') ||
-      filePath.endsWith('.test.ts')
-    ) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    if (!filePath.endsWith('.mjs') && !filePath.endsWith('.ts')) {
-      return [];
-    }
-
-    const extension = filePath.endsWith('.mjs') ? '.mjs' : '.ts';
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const testCandidates: string[] = [];
-
-    const exactTestMatchMjs = `${nameWithoutExt}.test.mjs`;
-
-    if (fileExists(exactTestMatchMjs)) {
-      testCandidates.push(exactTestMatchMjs);
-    }
-
-    const exactTestMatchTs = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactTestMatchTs)) {
-      testCandidates.push(exactTestMatchTs);
-    }
-
-    const exactSpecMatch = `${nameWithoutExt}.spec.mjs`;
-
-    if (fileExists(exactSpecMatch)) {
-      testCandidates.push(exactSpecMatch);
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  return [];
-}
-
-function getVitestScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
-      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
-      // colocated `.test.mjs` fixture-logic test there is valid vitest
-      // scope and falls through to the checks below like any other file.
-      continue;
-    }
-
-    if (filePath.endsWith('.browser.spec.ts')) {
-      // Colocated browser specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (filePath.endsWith('.visual.spec.ts')) {
-      // Colocated visual specs belong to the visual Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (
-      (filePath.endsWith('.test.ts') ||
-        filePath.endsWith('.spec.ts') ||
-        filePath.endsWith('.test.mjs') ||
-        filePath.endsWith('.spec.mjs')) &&
-      fileExists(filePath)
-    ) {
-      scope.push(filePath);
-      continue;
-    }
-
-    const testFiles = getAllSiblingTestFiles(filePath);
-
-    for (const testFile of testFiles) {
-      scope.push(testFile);
-    }
-  }
-
-  return uniqSorted(scope);
-}
-
-function isSharedUiFile(filePath: string): boolean {
-  return filePath.startsWith('src/shared/ui/');
-}
-
-function getMutationSourceCandidate(testFilePath: string): string | null {
-  const basePath = testFilePath.slice(0, -'.test.ts'.length);
-  const dirPath = path.posix.dirname(testFilePath);
-  const baseName = path.posix.basename(basePath);
-
-  for (const extension of SOURCE_EXTENSIONS) {
-    const candidate = `${basePath}${extension}`;
-
-    if (fileExists(candidate)) {
-      return candidate;
-    }
-  }
-
-  const parts = baseName.split('.');
-
-  if (parts.length >= 2) {
-    const trimmedBaseName = parts.slice(0, -1).join('.');
-    const trimmedPath = `${dirPath}/${trimmedBaseName}`;
-
-    for (const extension of SOURCE_EXTENSIONS) {
-      const candidate = `${trimmedPath}${extension}`;
-
-      if (fileExists(candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return null;
-}
-
-function getMutationScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('src/') && filePath.endsWith('.test.ts')) {
-      const candidate = getMutationSourceCandidate(filePath);
-
-      if (candidate && !isSharedUiFile(candidate)) {
-        scope.push(candidate);
-      }
-
-      continue;
-    }
-
-    if (!filePath.startsWith('src/') || isSharedUiFile(filePath)) {
-      continue;
-    }
-
-    if (!SOURCE_EXTENSIONS.includes(path.posix.extname(filePath))) {
-      continue;
-    }
-
-    const siblingTests = getAllSiblingTestFiles(filePath);
-
-    if (siblingTests.length > 0) {
-      scope.push(filePath);
-    }
-  }
-
-  return uniqSorted(scope);
 }
 
 function formatCommand(command: string, args: readonly string[]): string {
@@ -666,13 +466,169 @@ function formatHelpTimeout(milliseconds: number): string {
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
 
-function getLastMeaningfulLine(text: string): string | null {
-  const lines = text
+/** Runnable-check position for a compact progress/heartbeat/completion line. */
+export interface CheckProgressLabel {
+  label: string;
+  /**
+   * 1-based position among runnable checks this invocation; `null` for a
+   * focused/--only invocation where no denominator is known.
+   */
+  checkIndex: number | null;
+  /** Total runnable checks this invocation; `null` alongside `checkIndex`. */
+  totalRunnableChecks: number | null;
+}
+
+function getCheckProgressPrefix({ checkIndex, totalRunnableChecks }: CheckProgressLabel): string {
+  return checkIndex !== null && totalRunnableChecks !== null
+    ? `[verify ${checkIndex}/${totalRunnableChecks}]`
+    : '[verify]';
+}
+
+/**
+ * Compact progress line printed before a runnable check starts, per
+ * `docs/testing/verify-agent-output.md` "Check-level progress".
+ * @param progress Runnable-check label and index/total.
+ * @returns One bounded progress line.
+ */
+export function formatCheckRunningLine(progress: CheckProgressLabel): string {
+  return `${getCheckProgressPrefix(progress)} ${progress.label} running`;
+}
+
+/** Completion status a runnable check can report in a compact completion line. */
+export type CheckCompletionStatus = 'passed' | 'passed-with-warnings' | 'failed';
+
+const CHECK_COMPLETION_STATUS_TEXT: Record<CheckCompletionStatus, string> = {
+  passed: 'passed',
+  'passed-with-warnings': 'passed with warnings',
+  failed: 'failed',
+};
+
+/**
+ * Compact completion line printed once a runnable check finishes, per
+ * `docs/testing/verify-agent-output.md` "Check-level progress". Never
+ * fabricates a percentage or ETA.
+ * @param progress Runnable-check label and index/total.
+ * @param status Completion status.
+ * @param durationMs Elapsed wall time for the check, in milliseconds.
+ * @returns One bounded completion line.
+ */
+export function formatCheckCompletionLine(
+  progress: CheckProgressLabel,
+  status: CheckCompletionStatus,
+  durationMs: number,
+): string {
+  return `${getCheckProgressPrefix(progress)} ${progress.label} ${CHECK_COMPLETION_STATUS_TEXT[status]} (${formatDuration(durationMs)})`;
+}
+
+/** Verifier-owned liveness fields for a bounded heartbeat line. */
+export interface HeartbeatProgress extends CheckProgressLabel {
+  elapsedMs: number;
+  /** Verifier-owned timeout for this check, or `null` when none is owned. */
+  timeoutMs: number | null;
+  logPath: string;
+}
+
+/**
+ * Bounded liveness heartbeat for a long-running check, per
+ * `docs/testing/verify-agent-output.md` "Long-running heartbeat". Carries no
+ * child-output field by construction, so it can never echo the child's last
+ * output line; never fabricates a percentage or ETA.
+ * @param progress Verifier-owned liveness fields.
+ * @returns One bounded heartbeat line.
+ */
+export function formatHeartbeatLine(progress: HeartbeatProgress): string {
+  const segments = [formatDuration(progress.elapsedMs)];
+
+  if (progress.timeoutMs !== null) {
+    segments.push(`timeout ${formatDuration(progress.timeoutMs)}`);
+  }
+
+  segments.push(`log ${progress.logPath}`);
+
+  return `${getCheckProgressPrefix(progress)} ${progress.label} still running (${segments.join('; ')})`;
+}
+
+/** Bounded actionable failure detail for one failed check. */
+export interface FailureDetail {
+  check: string;
+  /** Bounded actionable reason; never the complete raw output. */
+  reason: string;
+  /** Exact detailed log path, or `null` when no child process ran. */
+  logPath: string | null;
+  /** Canonical focused verify rerun command, or `null` when not representable. */
+  rerun: string | null;
+}
+
+/**
+ * Render bounded failure detail lines for one failed check, per
+ * `docs/testing/verify-agent-output.md` "Actionable failure, not generic
+ * noise". A pointer line is omitted entirely (never a null placeholder) when
+ * its field is not representable.
+ * @param detail Bounded failure detail.
+ * @returns Ordered failure detail lines.
+ */
+export function formatFailureDetailLines(detail: FailureDetail): string[] {
+  const lines = [`${detail.check}: failed`, `reason: ${detail.reason}`];
+
+  if (detail.logPath !== null) {
+    lines.push(`details: ${detail.logPath}`);
+  }
+
+  if (detail.rerun !== null) {
+    lines.push(`rerun: ${detail.rerun}`);
+  }
+
+  return lines;
+}
+
+const FAILURE_REASON_EXCERPT_MAX_CHARS = 300;
+const FAILURE_REASON_EXCERPT_MAX_LINES = 3;
+
+/**
+ * Bounded excerpt of captured command output, used only when no
+ * verifier-owned failure reason exists. Materially smaller than the
+ * existing `MAX_RELEVANT_LINES` verbose tail, and hard-capped in length so
+ * very large captured output cannot grow the reason proportionally.
+ * @param output Combined captured stdout/stderr.
+ * @returns Bounded excerpt, or an empty string when `output` is blank.
+ */
+function getBoundedFailureExcerpt(output: string): string {
+  const trimmedLines = output
     .split('\n')
-    .map((line) => line.trim())
+    .map((line) => line.replace(ANSI_ESCAPE_PATTERN, '').trim())
     .filter((line) => line.length > 0);
 
-  return lines.at(-1) ?? null;
+  if (trimmedLines.length === 0) {
+    return '';
+  }
+
+  const excerpt = trimmedLines.slice(-FAILURE_REASON_EXCERPT_MAX_LINES).join(' | ');
+
+  return excerpt.length > FAILURE_REASON_EXCERPT_MAX_CHARS
+    ? `${excerpt.slice(0, FAILURE_REASON_EXCERPT_MAX_CHARS)}…`
+    : excerpt;
+}
+
+/**
+ * Resolve a bounded, trustworthy failure reason for one failed check, per
+ * `docs/testing/verify-agent-output.md` "Failure-detail extraction": prefer
+ * a verifier-owned reason, then a small bounded excerpt, then the exit
+ * code. Never returns the complete unbounded output.
+ * @param result Failed executed or pre-execution invalid command result.
+ * @returns Bounded failure reason.
+ */
+export function getFailureReason(result: ExecutedCommandResult | InvalidCommandResult): string {
+  if (result.blockingLogIssue) {
+    return result.blockingLogIssue.reason;
+  }
+
+  if (result.exitCode === null) {
+    return result.reason;
+  }
+
+  const excerpt = getBoundedFailureExcerpt(`${result.stdout}\n${result.stderr}`);
+
+  return excerpt.length > 0 ? excerpt : `exit code ${result.exitCode}`;
 }
 
 function printHelp(): void {
@@ -867,14 +823,19 @@ async function runCommand(
   args: readonly string[],
   extraEnv: NodeJS.ProcessEnv = {},
   verboseMode: boolean = isVerboseMode,
+  checkIndex: number | null = null,
+  totalRunnableChecks: number | null = null,
 ): Promise<ExecutedCommandResult> {
+  const progress: CheckProgressLabel = { label, checkIndex, totalRunnableChecks };
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
   const logPath = getLogPath(label);
   const logStream = fs.createWriteStream(logPath, { encoding: 'utf8' });
   logStream.write(`# command\n${formattedCommand}\n\n# output\n`);
 
-  console.log(`\n[${label}] running ${displayCommand}`);
+  if (verboseMode) {
+    console.log(`[${label}] running ${displayCommand}`);
+  }
 
   const child: ChildProcess = spawn(command, args, {
     stdio: ['inherit', 'pipe', 'pipe'],
@@ -892,9 +853,6 @@ async function runCommand(
   let killGraceTimer: NodeJS.Timeout | null = null;
   const startedAt = Date.now();
   const perfStartedAt = performance.now();
-  let lastOutputAt = startedAt;
-  let lastOutputLine: string | null = null;
-  let incompleteOutputLine = '';
   const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label] ?? null;
   const forwarder = createChildSignalForwarder(child);
 
@@ -911,18 +869,18 @@ async function runCommand(
     process.stdout.write(text);
   };
 
+  // Bounded, verifier-owned liveness only: elapsed time, owned timeout, and
+  // log path. Deliberately carries no child-output field (see
+  // HeartbeatProgress) so it can never echo the child's last output line.
   const heartbeatTimer = setInterval(() => {
-    const heartbeatParts = [
-      `[${label}] heartbeat: elapsed ${formatDuration(Date.now() - startedAt)}`,
-      `last output ${formatDuration(Date.now() - lastOutputAt)} ago`,
-      `last line: ${lastOutputLine === null ? '<none>' : JSON.stringify(lastOutputLine)}`,
-    ];
-
-    if (commandTimeoutMs !== null) {
-      heartbeatParts.push(`timeout ${formatDuration(commandTimeoutMs)}`);
-    }
-
-    writeStatusLine(heartbeatParts.join('; '));
+    writeStatusLine(
+      formatHeartbeatLine({
+        ...progress,
+        elapsedMs: Date.now() - startedAt,
+        timeoutMs: commandTimeoutMs,
+        logPath,
+      }),
+    );
   }, HEARTBEAT_INTERVAL_MS);
 
   const timeoutTimer =
@@ -962,15 +920,6 @@ async function runCommand(
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
-    lastOutputAt = Date.now();
-    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
-    incompleteOutputLine = completeLines.pop() ?? '';
-    const completedOutput = completeLines.join('\n');
-    const latestLine = getLastMeaningfulLine(completedOutput);
-
-    if (latestLine !== null) {
-      lastOutputLine = latestLine;
-    }
 
     if (verboseMode) {
       process.stdout.write(chunk);
@@ -981,15 +930,6 @@ async function runCommand(
     const text = chunk.toString();
     logStream.write(text);
     outputBuffer = appendToRollingBuffer(outputBuffer, text);
-    lastOutputAt = Date.now();
-    const completeLines = `${incompleteOutputLine}${text}`.split('\n');
-    incompleteOutputLine = completeLines.pop() ?? '';
-    const completedOutput = completeLines.join('\n');
-    const latestLine = getLastMeaningfulLine(completedOutput);
-
-    if (latestLine !== null) {
-      lastOutputLine = latestLine;
-    }
 
     if (verboseMode) {
       process.stderr.write(chunk);
@@ -1030,12 +970,6 @@ async function runCommand(
         logStream.write(`\n[verify] process exited via signal ${signal}\n`);
       }
 
-      const trailingLine = getLastMeaningfulLine(incompleteOutputLine);
-
-      if (trailingLine !== null) {
-        lastOutputLine = trailingLine;
-      }
-
       resolve();
     });
   });
@@ -1050,15 +984,20 @@ async function runCommand(
   const warningSummary = getWarningSummary(label, logOutput);
   const { status, blockingLogIssue } = resolveCommandStatus(label, exitCode, logOutput);
   const durationMs = performance.now() - perfStartedAt;
+  const completionStatus: CheckCompletionStatus =
+    status === 'failed' ? 'failed' : warningSummary ? 'passed-with-warnings' : 'passed';
 
-  if (status === 'passed' && !warningSummary) {
-    console.log(`[${label}] passed ✅`);
-  } else if (status === 'passed' && warningSummary) {
-    console.log(`[${label}] passed with warnings ⚠️`);
+  console.log(formatCheckCompletionLine(progress, completionStatus, durationMs));
+
+  if (status === 'passed' && warningSummary) {
     console.log(`[${label}] warnings: ${warningSummary}`);
     console.log(`[${label}] full log: ${logPath}`);
-  } else {
-    console.log(`[${label}] failed ❌`);
+  }
+
+  // Bounded reason/details/rerun for a failed check are the final-summary's
+  // job (see printSummary); this extra block is opt-in raw diagnostic detail
+  // for --verbose only, per docs/testing/verify-agent-output.md "Verbose mode".
+  if (verboseMode && status === 'failed') {
     console.log(`[${label}] command: ${formattedCommand}`);
     console.log(`[${label}] exit code: ${exitCode}`);
 
@@ -1083,7 +1022,10 @@ async function runCommand(
     logPath,
     exitCode,
     status,
-    stdout: '',
+    // Bounded rolling buffer (see appendToRollingBuffer/MAX_ROLLING_BUFFER_CHARS)
+    // of combined captured output; getFailureReason further excerpts this
+    // for a failed check's bounded reason. stderr is not tracked separately.
+    stdout: outputBuffer,
     stderr: '',
     hasWarnings: warningSummary.length > 0,
     warningSummary,
@@ -1186,6 +1128,38 @@ function createStorybookBehaviorCommand(
   };
 }
 
+// Exact command/args for each of the six existing source-impact release
+// contracts, shared between the unconditional full-mode invocation
+// (addReleaseOnlyCommands) and the ordinary-mode source-impact selection
+// (addReleaseImpactCommands) so they cannot drift from each other.
+const RELEASE_CHECK_COMMANDS: Record<ReleaseImpactCheck, { command: string; args: string[] }> = {
+  'release-config': { command: 'node', args: ['scripts/release/validateReleaseConfig.mjs'] },
+  build: { command: 'node', args: ['scripts/release/buildArtifact.mjs'] },
+  'publisher-node-import': {
+    command: 'node',
+    args: ['scripts/release/publisherWireContractImportProof.mjs'],
+  },
+  artifact: {
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'artifact',
+      'tests/e2e/release/productionArtifactSmoke.spec.ts',
+    ],
+  },
+  'release-smoke': {
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'release-smoke',
+      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+    ],
+  },
+  'managed-updates': { command: 'node', args: ['scripts/release/managedUpdatesProof.mjs'] },
+};
+
 function addReleaseOnlyCommands(commands: CommandEntry[]): void {
   commands.push({
     kind: 'run',
@@ -1195,63 +1169,73 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
     weight: classifyCommandWeight({ label: 'release-version' }),
   });
 
-  commands.push({
-    kind: 'run',
-    label: 'release-config',
-    command: 'node',
-    args: ['scripts/release/validateReleaseConfig.mjs'],
-    weight: classifyCommandWeight({ label: 'release-config' }),
-  });
+  for (const check of RELEASE_IMPACT_CHECKS) {
+    const { command, args } = RELEASE_CHECK_COMMANDS[check];
 
-  commands.push({
-    kind: 'run',
-    label: 'build',
-    command: 'node',
-    args: ['scripts/release/buildArtifact.mjs'],
-    weight: classifyCommandWeight({ label: 'build' }),
-  });
+    commands.push({
+      kind: 'run',
+      label: check,
+      command,
+      args,
+      weight: classifyCommandWeight({ label: check }),
+    });
+  }
+}
 
-  commands.push({
-    kind: 'run',
-    label: 'publisher-node-import',
-    command: 'node',
-    args: ['scripts/release/publisherWireContractImportProof.mjs'],
-    weight: classifyCommandWeight({ label: 'publisher-node-import' }),
-  });
+/**
+ * Append the six source-impact release checks to an ordinary (non-full)
+ * command list, selected by `releaseRisk.ts` against the current changed
+ * files. `release-version` is independent PR/release policy and is never
+ * added here.
+ * @param commands Command list being built, mutated in place.
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param options Resolution options for `resolveReleasePlan`.
+ */
+function addReleaseImpactCommands(
+  commands: CommandEntry[],
+  changedFiles: readonly string[],
+  options: { packageJsonOldRef: string | null },
+): void {
+  const releasePlan = resolveReleasePlan(changedFiles, options);
 
-  commands.push({
-    kind: 'run',
-    label: 'artifact',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
-    ],
-    weight: classifyCommandWeight({ label: 'artifact' }),
-  });
+  if (releasePlan.mode === 'invalid') {
+    for (const check of RELEASE_IMPACT_CHECKS) {
+      const { command, args } = RELEASE_CHECK_COMMANDS[check];
 
-  commands.push({
-    kind: 'run',
-    label: 'release-smoke',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
-    ],
-    weight: classifyCommandWeight({ label: 'release-smoke' }),
-  });
+      commands.push({
+        kind: 'failed',
+        label: check,
+        command: formatCommand(command, args),
+        reason: `invalid release-impact mapping state: ${releasePlan.reasons.join('; ')}`,
+      });
+    }
 
-  commands.push({
-    kind: 'run',
-    label: 'managed-updates',
-    command: 'node',
-    args: ['scripts/release/managedUpdatesProof.mjs'],
-    weight: classifyCommandWeight({ label: 'managed-updates' }),
-  });
+    return;
+  }
+
+  const selectedChecks = new Set<ReleaseImpactCheck>(releasePlan.checks);
+
+  for (const check of RELEASE_IMPACT_CHECKS) {
+    const { command, args } = RELEASE_CHECK_COMMANDS[check];
+
+    if (selectedChecks.has(check)) {
+      commands.push({
+        kind: 'run',
+        label: check,
+        command,
+        args,
+        weight: classifyCommandWeight({ label: check }),
+        triggerReason: releasePlan.reasons.join('; '),
+      });
+    } else {
+      commands.push({
+        kind: 'skipped',
+        label: check,
+        command: formatCommand(command, args),
+        reason: 'no release-sensitive changes',
+      });
+    }
+  }
 }
 
 type BuildCommandsVisualPlan = VisualPlan | { mode: 'invalid'; specs: string[]; reasons: string[] };
@@ -1292,6 +1276,14 @@ export interface BuildCommandsOptions {
    * invocation.
    */
   repeat?: number | null;
+  /**
+   * Status-aware changed paths for unit-impact planning (see
+   * `scripts/lib/unitRisk.ts`), sourced from `resolveVerifyChangedPathContext`.
+   * Deleted/renamed status cannot be resolved safely from `changedFiles`
+   * alone. Defaults to treating every `changedFiles` entry as `modified`
+   * when omitted, so existing flat-string-array callers keep working.
+   */
+  unitChangedPaths?: readonly ChangedPath[] | null;
 }
 
 /**
@@ -1313,6 +1305,7 @@ export function buildCommands(
     visualPlan: visualPlanOverride = null,
     storybookBuildCiFallback = false,
     repeat = currentVerifyInvocation?.repeat ?? null,
+    unitChangedPaths = null,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1325,7 +1318,14 @@ export function buildCommands(
   const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const vitestScope = getVitestScope(changedFiles);
+  const unitPlan = resolveUnitPlan(
+    unitChangedPaths ??
+      changedFiles.map((filePath) => ({
+        status: fileExists(filePath) ? ('modified' as const) : ('deleted' as const),
+        path: filePath,
+      })),
+    { packageJsonOldRef },
+  );
   const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
   const projectApplicabilityValidation =
     projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
@@ -1339,7 +1339,7 @@ export function buildCommands(
   const visualPlan: BuildCommandsVisualPlan | null =
     visualPlanOverride ??
     (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
-  const mutationScope = getMutationScope(existingChangedFiles);
+  const mutationPlan = resolveMutationPlan(existingChangedFiles);
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 
@@ -1461,13 +1461,33 @@ export function buildCommands(
       args: ['exec', 'vitest', 'run', '--reporter=verbose'],
       weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
     });
-  } else if (vitestScope.length > 0) {
+  } else if (unitPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'unit-tests',
+      command: 'pnpm exec vitest run',
+      reason: `invalid unit file-as-data registry state: ${unitPlan.reasons.join('; ')}`,
+    });
+  } else if (unitPlan.mode === 'full') {
     commands.push({
       kind: 'run',
       label: 'unit-tests',
       command: 'pnpm',
-      args: ['exec', 'vitest', 'run', '--reporter=verbose', ...vitestScope],
-      weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
+      args: ['exec', 'vitest', 'run', '--reporter=verbose'],
+      weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
+      triggerReason: unitPlan.reasons.join('; '),
+    });
+  } else if (unitPlan.mode === 'focused') {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'related', ...unitPlan.relatedInputs, '--run', '--reporter=verbose'],
+      weight: classifyCommandWeight({
+        label: 'unit-tests',
+        fileCount: unitPlan.relatedInputs.length,
+      }),
+      triggerReason: unitPlan.reasons.join('; '),
     });
   } else {
     commands.push({
@@ -1689,14 +1709,21 @@ export function buildCommands(
   // Mutation testing is a test-design/PR-quality tool, not a release-publish
   // blocker: it is expensive/slow and does not validate the production
   // artifact, so it never runs in full/release mode (pnpm verify:release).
-  if (!fullMode && mutationScope.length > 0) {
+  if (!fullMode && mutationPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: `invalid mutation registry state: ${mutationPlan.reasons.join('; ')}`,
+    });
+  } else if (!fullMode && mutationPlan.sources.length > 0) {
     commands.push({
       kind: 'run',
       label: 'mutation',
       command: 'pnpm',
-      args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+      args: ['exec', 'stryker', 'run', '-m', mutationPlan.sources.join(',')],
       weight: classifyCommandWeight({ label: 'mutation' }),
-      triggerReason: `mutation scope: ${mutationScope.join(', ')}`,
+      triggerReason: mutationPlan.reasons.join('; '),
     });
   } else if (!fullMode) {
     commands.push({
@@ -1709,10 +1736,14 @@ export function buildCommands(
 
   if (fullMode) {
     addReleaseOnlyCommands(commands);
+  } else {
+    addReleaseImpactCommands(commands, changedFiles, { packageJsonOldRef });
   }
 
   return commands;
 }
+
+const RELEASE_IMPACT_CHECK_SET: ReadonlySet<string> = new Set(RELEASE_IMPACT_CHECKS);
 
 function selectOnlyCommands(
   commands: readonly CommandEntry[],
@@ -1720,6 +1751,13 @@ function selectOnlyCommands(
 ): CommandEntry[] {
   if (onlyLabel === null) {
     return [...commands];
+  }
+
+  // `release-impact` is an execution grouping, not a real per-check label:
+  // resolve and run exactly the six source-impact release checks selected
+  // by releaseRisk.ts (a mix of run/skipped/failed) in one invocation.
+  if (onlyLabel === 'release-impact') {
+    return commands.filter((entry) => RELEASE_IMPACT_CHECK_SET.has(entry.label));
   }
 
   const selectedCommands = commands.filter((entry) => entry.label === onlyLabel);
@@ -1863,10 +1901,91 @@ export interface VerifySummaryOutcome {
   hasCiProfileRisk: boolean;
 }
 
+function getCheckCounts(results: readonly CommandResult[]): { passed: number; failed: number } {
+  let passed = 0;
+  let failed = 0;
+
+  for (const result of results) {
+    if (result.status === 'passed') {
+      passed += 1;
+    } else if (result.status === 'failed') {
+      failed += 1;
+    }
+  }
+
+  return { passed, failed };
+}
+
+/**
+ * Print the bounded default (non-verbose) `VERIFY RESULT` summary, per
+ * `docs/testing/verify-agent-output.md` "Final summary": a compact result
+ * line, check counts, elapsed time, and the durable log directory; on
+ * failure, one bounded reason/details/rerun block per failed check instead
+ * of the routine skipped/trigger/environment/changed-file inventory.
+ * @param results Collected command results in run order.
+ * @param context Overall status, elapsed time, resolved invocation, and any CI-profile risk.
+ */
+function printCompactVerifySummary(
+  results: readonly CommandResult[],
+  {
+    status,
+    totalDurationMs,
+    invocation,
+    ciProfileRisk,
+  }: {
+    status: 'passed' | 'failed';
+    totalDurationMs: number;
+    invocation: VerifyInvocation;
+    ciProfileRisk: CiProfileRisk | null;
+  },
+): void {
+  const { passed, failed } = getCheckCounts(results);
+
+  console.log(`\nVERIFY RESULT: ${status}`);
+  console.log(`checks: ${passed} passed, ${failed} failed`);
+  console.log(`elapsed: ${formatDuration(totalDurationMs)}`);
+  console.log(`logs: ${VERIFY_LOG_DIR}`);
+
+  for (const result of results) {
+    if (result.status !== 'failed') {
+      continue;
+    }
+
+    const logPath = 'logPath' in result ? result.logPath : null;
+
+    for (const line of formatFailureDetailLines({
+      check: result.label,
+      reason: getFailureReason(result),
+      logPath,
+      rerun: getVerifyRerunCommand(invocation, { onlyLabel: result.label }),
+    })) {
+      console.log(line);
+    }
+  }
+
+  for (const result of results) {
+    if (result.status === 'failed' || !result.hasWarnings) {
+      continue;
+    }
+
+    console.log(`${result.label}: passed with warnings`);
+    console.log(`warnings: ${result.warningSummary}`);
+    console.log(`rerun: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`);
+  }
+
+  if (ciProfileRisk !== null) {
+    console.log(
+      `ci-profile risk: ${ciProfileRisk.affectedChecks.join(', ')} ran under ${ciProfileRisk.activeProfile.name} locally; GitHub Actions uses ${ciProfileRisk.githubActionsProfile.name}.`,
+    );
+  }
+}
+
 /**
  * Print the agent-facing `VERIFY RESULT` summary for a finished run.
  * Every executed, skipped, or failed command result must flow through this
- * summary instead of an early exit.
+ * summary instead of an early exit. Default (non-verbose) output is bounded
+ * per `docs/testing/verify-agent-output.md`; `--verbose` prints the full
+ * plan/trigger/environment/profile/base-ref inventory instead.
  * @param changedFiles Changed files the run was scoped to.
  * @param scope Human-readable changed-file scope description.
  * @param results Collected command results in run order.
@@ -1888,8 +2007,20 @@ export function printSummary(
   const hasFailed = results.some((result) => result.status === 'failed');
   const processEnv = options.processEnv ?? getVerifyProcessEnv(process.env, invocation.profile);
   const ciProfileRisk = options.ciProfileRisk ?? getCiProfileRisk(results, processEnv);
-  const { environment, profile } = options.profileSummary ?? getProfileSummary(processEnv);
   const status = hasFailed ? 'failed' : 'passed';
+
+  if (!invocation.verbose) {
+    printCompactVerifySummary(results, {
+      status,
+      totalDurationMs: options.totalDurationMs ?? 0,
+      invocation,
+      ciProfileRisk,
+    });
+
+    return { status, hasFailed, hasCiProfileRisk: ciProfileRisk !== null };
+  }
+
+  const { environment, profile } = options.profileSummary ?? getProfileSummary(processEnv);
   const displayStatus = hasFailed
     ? 'failed ❌'
     : ciProfileRisk === null
@@ -1908,7 +2039,7 @@ export function printSummary(
   console.log(`environment: ${environment}`);
   console.log(`profile: ${profile.name} (source: ${profile.source})`);
   console.log(`release: ${fullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
-  console.log(`verbose: ${invocation.verbose ? 'on' : 'off'}`);
+  console.log('verbose: on');
   console.log(`only: ${invocation.onlyLabel ?? 'all'}`);
   console.log(`scope: ${fullMode ? 'full-project (changed-file scope ignored)' : scope}`);
   console.log(`base ref: ${baseRef ?? 'n/a'}`);
@@ -2064,6 +2195,12 @@ export function buildCommandEnv(
 /** Execution context resolved from the invocation's changed-path scope. */
 export interface VerifyChangedPathContext {
   changedFiles: string[];
+  /**
+   * Status-aware changed paths for unit-impact planning (see
+   * `scripts/lib/unitRisk.ts`). `explicit-files` scope carries no real Git
+   * status, so each file is synthesized as `modified`.
+   */
+  changedPaths: ChangedPath[];
   scope: string;
   baseRef: string | null;
   packageJsonOldRef: string | null;
@@ -2089,6 +2226,7 @@ export function resolveVerifyChangedPathContext(
   if (invocation.scope.kind === 'full') {
     return {
       changedFiles: [],
+      changedPaths: [],
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
@@ -2100,9 +2238,14 @@ export function resolveVerifyChangedPathContext(
   const { input, scope, baseRef, packageJsonOldRef } = resolveScope({
     invocationScope: invocation.scope,
   });
+  const changedPaths: ChangedPath[] =
+    input.kind === 'git-diff'
+      ? input.changedPaths
+      : input.files.map((filePath) => ({ status: 'modified' as const, path: filePath }));
 
   return {
     changedFiles: projectChangedFiles(input),
+    changedPaths,
     scope,
     baseRef,
     packageJsonOldRef,
@@ -2126,12 +2269,13 @@ async function main(
   const totalStartedAt = performance.now();
   const onlyLabel = invocation.onlyLabel;
   const verifyProcessEnv = getVerifyProcessEnv(process.env, invocation.profile);
-  const { changedFiles, scope, baseRef, packageJsonOldRef } =
+  const { changedFiles, changedPaths, scope, baseRef, packageJsonOldRef } =
     resolveVerifyChangedPathContext(invocation);
   const commands = selectOnlyCommands(
     buildCommands(changedFiles, {
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
+      unitChangedPaths: changedPaths,
       fixMode: invocation.fixMode,
       // `--storybook-build-ci-fallback` is only ever resolved to true alongside
       // `--only storybook-build` outside `--full` (enforced by
@@ -2166,13 +2310,16 @@ async function main(
       continue;
     }
 
-    if (onlyLabel === null) {
-      console.log(
-        `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
-      );
-    } else {
-      console.log(`[verify] focused check: ${entry.label}`);
-    }
+    const checkIndex = onlyLabel === null ? completedRunnableChecks + 1 : null;
+    const totalRunnableChecksForProgress = onlyLabel === null ? totalRunnableChecks : null;
+
+    console.log(
+      formatCheckRunningLine({
+        label: entry.label,
+        checkIndex,
+        totalRunnableChecks: totalRunnableChecksForProgress,
+      }),
+    );
     verifyLockController.updateMetadata({
       activeCommand: summarizeCommandForDisplay(entry.command, entry.args),
       activeLabel: entry.label,
@@ -2200,6 +2347,8 @@ async function main(
               verifyProcessEnv,
             }),
             invocation.verbose,
+            checkIndex,
+            totalRunnableChecksForProgress,
           ),
       );
 
@@ -2221,6 +2370,8 @@ async function main(
           verifyProcessEnv,
         }),
         invocation.verbose,
+        checkIndex,
+        totalRunnableChecksForProgress,
       );
 
       if (result.terminatedBySignal) {

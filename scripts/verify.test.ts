@@ -12,16 +12,21 @@ import {
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
 } from './lib/packageJsonImpact.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
+import type { ChangedPath, ResolvedChangedPathsScope } from './lib/changedPaths.ts';
 import {
   buildCommandEnv,
   buildCommands,
   COMMAND_TIMEOUT_MS_BY_LABEL,
+  formatCheckCompletionLine,
+  formatCheckRunningLine,
+  formatFailureDetailLines,
+  formatHeartbeatLine,
   getCiProfileRisk,
   getActionRequired,
   getBlockingLogIssue,
   getCliFilesOverride,
+  getFailureReason,
   getVerifyProcessEnv,
-  getAllSiblingTestFiles,
   getExtraEnvForEntry,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
@@ -29,8 +34,11 @@ import {
   resolvePlaywrightCommandTimeoutMs,
   resolveVerifyChangedPathContext,
   runVerifyCli,
+  type CheckProgressLabel,
   type CommandEntry,
   type ExecutedCommandResult,
+  type FailureDetail,
+  type InvalidCommandResult,
   type RunCommandEntry,
   type SkippedCommandEntry,
   type SkippedCommandResult,
@@ -98,6 +106,25 @@ function makeSkippedResult(
   return {
     command: 'pnpm test',
     status: 'skipped',
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    hasWarnings: false,
+    warningSummary: '',
+    blockingLogIssue: null,
+    triggerReason: null,
+    ...overrides,
+  };
+}
+
+function makeInvalidResult(
+  overrides: Partial<InvalidCommandResult> & Pick<InvalidCommandResult, 'label' | 'reason'>,
+): InvalidCommandResult {
+  return {
+    command: 'pnpm e2e:container',
+    displayCommand: 'pnpm e2e:container',
+    status: 'failed',
+    note: overrides.reason,
     exitCode: null,
     stdout: '',
     stderr: '',
@@ -202,44 +229,6 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
 
     expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
-  });
-});
-
-describe('getAllSiblingTestFiles', () => {
-  it('maps scripts production .mjs files to sibling .test.mjs', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.mjs');
-
-    expect(result).toContain('scripts/agentEnvironment.test.mjs');
-  });
-
-  it('maps scripts production .ts files to sibling .test.ts', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.ts');
-
-    expect(result).toContain('scripts/lib/commandLock.test.ts');
-  });
-
-  it('returns already-test scripts .test.mjs files', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.test.mjs');
-
-    expect(result).toEqual(['scripts/agentEnvironment.test.mjs']);
-  });
-
-  it('returns already-test scripts .test.ts files', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.test.ts');
-
-    expect(result).toEqual(['scripts/lib/commandLock.test.ts']);
-  });
-
-  it('still discovers src/ sibling tests', () => {
-    const result = getAllSiblingTestFiles('src/shared/lib/cache/index.ts');
-
-    expect(result).toContain('src/shared/lib/cache/index.test.ts');
-  });
-
-  it('returns empty for non-src non-scripts files', () => {
-    const result = getAllSiblingTestFiles('config/tooling.json');
-
-    expect(result).toEqual([]);
   });
 });
 
@@ -361,16 +350,43 @@ describe('buildCommands full mode', () => {
     expect(managedUpdates.args).not.toContain('tests/e2e/release/managedUpdatesLifecycle.spec.ts');
   });
 
-  it('does not add release-only checks outside full mode', () => {
+  it('keeps release-version out of ordinary mode but adds the six source-impact checks as skipped when nothing release-sensitive changed', () => {
     const commands = buildCommands([], { fullMode: false });
     const labels = commands.map((entry) => entry.label);
 
     expect(labels).not.toContain('release-version');
-    expect(labels).not.toContain('release-config');
-    expect(labels).not.toContain('build');
-    expect(labels).not.toContain('artifact');
-    expect(labels).not.toContain('release-smoke');
-    expect(labels).not.toContain('managed-updates');
+
+    for (const label of [
+      'release-config',
+      'build',
+      'publisher-node-import',
+      'artifact',
+      'release-smoke',
+      'managed-updates',
+    ]) {
+      expect(labels).toContain(label);
+      requireSkippedEntry(commands, label);
+    }
+  });
+
+  it('adds a run entry for the matching source-impact release check when a release-sensitive file changed in ordinary mode', () => {
+    const commands = buildCommands(['scripts/release/validateReleaseConfig.mjs'], {
+      fullMode: false,
+    });
+    const releaseConfigEntry = requireRunEntry(commands, 'release-config');
+
+    expect(releaseConfigEntry.command).toBe('node');
+    expect(releaseConfigEntry.args).toEqual(['scripts/release/validateReleaseConfig.mjs']);
+
+    for (const label of [
+      'build',
+      'publisher-node-import',
+      'artifact',
+      'release-smoke',
+      'managed-updates',
+    ]) {
+      requireSkippedEntry(commands, label);
+    }
   });
 });
 
@@ -462,8 +478,10 @@ describe('buildCommands type-check applicability', () => {
 });
 
 describe('buildCommands mutation scope', () => {
-  it('still adds a scoped mutation run outside full mode when mutation scope is non-empty', () => {
-    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+  it('still adds a scoped mutation run outside full mode for a registered mutation target', () => {
+    const commands = buildCommands(['src/shared/lib/reorder/reorderArray.ts'], {
+      fullMode: false,
+    });
     const mutationEntry = requireRunEntry(commands, 'mutation');
 
     expect(mutationEntry.args).toEqual([
@@ -471,7 +489,7 @@ describe('buildCommands mutation scope', () => {
       'stryker',
       'run',
       '-m',
-      'src/shared/lib/cache/index.ts',
+      'src/shared/lib/reorder/reorderArray.ts',
     ]);
   });
 
@@ -1298,12 +1316,20 @@ describe('getActionRequired', () => {
     );
   });
 
-  it('reports a zero-exit blocked unit-tests result through the normal VERIFY RESULT summary', () => {
+  // Per docs/testing/verify-agent-output.md "Verbose mode": verbose output may
+  // still include the full plan/trigger/environment/profile/base-ref
+  // inventory this contract otherwise retires from the default summary.
+  // These two cases now force `verbose: true` explicitly and keep the
+  // detailed-inventory coverage there; see the "printSummary default
+  // (non-verbose) mode" describe block below for the now-bounded default
+  // presentation this contract requires.
+  it('reports a zero-exit blocked unit-tests result through the verbose VERIFY RESULT summary', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
       const summary = printSummary([], 'local-changes', [blockedUnitTestsResult], {
         totalDurationMs: 1234,
+        invocation: resolveVerifyInvocation(['--verbose'], { GITHUB_ACTIONS: 'false' }),
       });
 
       expect(summary).toEqual({ status: 'failed', hasFailed: true, hasCiProfileRisk: false });
@@ -1321,7 +1347,7 @@ describe('getActionRequired', () => {
     }
   });
 
-  it('reports no CI-profile risk in the summary once local and GitHub Actions defaults are canonical', () => {
+  it('reports no CI-profile risk in the verbose summary once local and GitHub Actions defaults are canonical', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     try {
@@ -1346,6 +1372,7 @@ describe('getActionRequired', () => {
           processEnv: {
             GITHUB_ACTIONS: 'false',
           },
+          invocation: resolveVerifyInvocation(['--verbose'], { GITHUB_ACTIONS: 'false' }),
         },
       );
 
@@ -1410,6 +1437,413 @@ describe('getCiProfileRisk', () => {
   });
 });
 
+// Per docs/testing/verify-agent-output.md "Progress contract": before a
+// runnable check, print one compact index/total (or focused) running line.
+describe('formatCheckRunningLine', () => {
+  it('renders a multi-check running line with the runnable index/total', () => {
+    expect(
+      formatCheckRunningLine({ label: 'unit-tests', checkIndex: 2, totalRunnableChecks: 5 }),
+    ).toBe('[verify 2/5] unit-tests running');
+  });
+
+  it('renders a focused single-check running line without a denominator', () => {
+    expect(
+      formatCheckRunningLine({ label: 'unit-tests', checkIndex: null, totalRunnableChecks: null }),
+    ).toBe('[verify] unit-tests running');
+  });
+});
+
+// Per docs/testing/verify-agent-output.md "Progress contract": on
+// completion, print one compact line with status and elapsed time, never a
+// fabricated percentage/ETA.
+describe('formatCheckCompletionLine', () => {
+  const multiProgress: CheckProgressLabel = {
+    label: 'unit-tests',
+    checkIndex: 2,
+    totalRunnableChecks: 5,
+  };
+  const focusedProgress: CheckProgressLabel = {
+    label: 'unit-tests',
+    checkIndex: null,
+    totalRunnableChecks: null,
+  };
+
+  it('renders a compact multi-check passed line with duration', () => {
+    expect(formatCheckCompletionLine(multiProgress, 'passed', 18_000)).toBe(
+      '[verify 2/5] unit-tests passed (18s)',
+    );
+  });
+
+  it('renders a compact multi-check failed line with duration', () => {
+    expect(formatCheckCompletionLine(multiProgress, 'failed', 18_000)).toBe(
+      '[verify 2/5] unit-tests failed (18s)',
+    );
+  });
+
+  it('renders a focused completion line without a denominator', () => {
+    expect(formatCheckCompletionLine(focusedProgress, 'passed', 18_000)).toBe(
+      '[verify] unit-tests passed (18s)',
+    );
+  });
+
+  it('distinguishes passed-with-warnings from a clean pass instead of collapsing the state', () => {
+    const passedLine = formatCheckCompletionLine(multiProgress, 'passed', 18_000);
+    const warningsLine = formatCheckCompletionLine(multiProgress, 'passed-with-warnings', 18_000);
+
+    expect(warningsLine).not.toBe(passedLine);
+    expect(warningsLine).toMatch(/warning/i);
+  });
+
+  it('never fabricates a percentage or ETA for any completion status', () => {
+    for (const status of ['passed', 'passed-with-warnings', 'failed'] as const) {
+      expect(formatCheckCompletionLine(multiProgress, status, 18_000)).not.toMatch(/%|\bETA\b/i);
+    }
+  });
+});
+
+// Per docs/testing/verify-agent-output.md "Long-running heartbeat": bounded,
+// verifier-owned liveness only. The heartbeat must never carry a parameter
+// for child-process output, so it can never echo the last output line.
+describe('formatHeartbeatLine', () => {
+  it('renders a bounded heartbeat with index/total, elapsed, owned timeout, and log path', () => {
+    expect(
+      formatHeartbeatLine({
+        label: 'e2e',
+        checkIndex: 2,
+        totalRunnableChecks: 5,
+        elapsedMs: 2 * 60_000,
+        timeoutMs: 17 * 60_000,
+        logPath: '.verify/logs/e2e.log',
+      }),
+    ).toBe('[verify 2/5] e2e still running (2m 0s; timeout 17m 0s; log .verify/logs/e2e.log)');
+  });
+
+  it('omits the timeout segment when the verifier does not own a timeout for this label', () => {
+    expect(
+      formatHeartbeatLine({
+        label: 'mutation',
+        checkIndex: null,
+        totalRunnableChecks: null,
+        elapsedMs: 60_000,
+        timeoutMs: null,
+        logPath: '.verify/logs/mutation.log',
+      }),
+    ).toBe('[verify] mutation still running (1m 0s; log .verify/logs/mutation.log)');
+  });
+
+  it('never fabricates a percentage or ETA', () => {
+    const line = formatHeartbeatLine({
+      label: 'e2e',
+      checkIndex: 2,
+      totalRunnableChecks: 5,
+      elapsedMs: 2 * 60_000,
+      timeoutMs: 17 * 60_000,
+      logPath: '.verify/logs/e2e.log',
+    });
+
+    expect(line).not.toMatch(/%|\bETA\b/i);
+  });
+
+  it('has no parameter for child-output text, proving by construction it cannot echo the last output line', () => {
+    // HeartbeatProgress intentionally carries no output/last-line field. If the directive
+    // below stops erroring, someone added a child-output parameter and reintroduced the
+    // regression docs/testing/verify-agent-output.md forbids ("Echoing the last child-output
+    // line in normal heartbeats").
+    formatHeartbeatLine({
+      label: 'e2e',
+      checkIndex: 2,
+      totalRunnableChecks: 5,
+      elapsedMs: 2 * 60_000,
+      timeoutMs: 17 * 60_000,
+      logPath: '.verify/logs/e2e.log',
+      // @ts-expect-error lastOutputLine is not a key of HeartbeatProgress.
+      lastOutputLine: 'this must not compile',
+    });
+  });
+});
+
+// Per docs/testing/verify-agent-output.md "Actionable failure, not generic
+// noise": omit a pointer line entirely rather than printing a null
+// placeholder when that field is not representable.
+describe('formatFailureDetailLines', () => {
+  const fullDetail: FailureDetail = {
+    check: 'unit-tests',
+    reason: 'Vue runtime warnings were emitted during unit tests',
+    logPath: '.verify/logs/unit-tests.log',
+    rerun: 'pnpm verify --only unit-tests',
+  };
+
+  it('renders all four lines in order when every field is representable', () => {
+    expect(formatFailureDetailLines(fullDetail)).toEqual([
+      'unit-tests: failed',
+      'reason: Vue runtime warnings were emitted during unit tests',
+      'details: .verify/logs/unit-tests.log',
+      'rerun: pnpm verify --only unit-tests',
+    ]);
+  });
+
+  it('omits the details line, without a null placeholder, when no child process ran', () => {
+    const lines = formatFailureDetailLines({ ...fullDetail, logPath: null });
+
+    expect(lines).toEqual([
+      'unit-tests: failed',
+      'reason: Vue runtime warnings were emitted during unit tests',
+      'rerun: pnpm verify --only unit-tests',
+    ]);
+    expect(lines.some((line) => line.startsWith('details:'))).toBe(false);
+  });
+
+  it('omits the rerun line, without a null placeholder, when no rerun is representable', () => {
+    const lines = formatFailureDetailLines({ ...fullDetail, rerun: null });
+
+    expect(lines).toEqual([
+      'unit-tests: failed',
+      'reason: Vue runtime warnings were emitted during unit tests',
+      'details: .verify/logs/unit-tests.log',
+    ]);
+    expect(lines.some((line) => line.startsWith('rerun:'))).toBe(false);
+  });
+
+  it('omits both pointer lines when neither is representable', () => {
+    expect(formatFailureDetailLines({ ...fullDetail, logPath: null, rerun: null })).toEqual([
+      'unit-tests: failed',
+      'reason: Vue runtime warnings were emitted during unit tests',
+    ]);
+  });
+});
+
+// Per docs/testing/verify-agent-output.md "Failure-detail extraction": prefer
+// a verifier-owned reason, then a small bounded excerpt, then exit code —
+// and never the complete unbounded output regardless of how large it is.
+describe('getFailureReason', () => {
+  it('prefers a verifier-owned blocking-log reason on an executed result over its raw output', () => {
+    const result = makeExecutedResult({
+      label: 'unit-tests',
+      status: 'failed',
+      exitCode: 0,
+      blockingLogIssue: {
+        reason: 'Vue runtime warnings were emitted during unit tests',
+        warningSummary: '[Vue warn]: Invalid watch source: 0',
+      },
+      stdout: 'irrelevant noisy output that must not override the blocking reason',
+    });
+
+    expect(getFailureReason(result)).toBe('Vue runtime warnings were emitted during unit tests');
+  });
+
+  it('prefers the invalid-plan reason on a pre-execution failed plan entry', () => {
+    const result = makeInvalidResult({
+      label: 'e2e',
+      reason: 'invalid app e2e scenario registry state: duplicate scenario id foo',
+    });
+
+    expect(getFailureReason(result)).toBe(
+      'invalid app e2e scenario registry state: duplicate scenario id foo',
+    );
+  });
+
+  it('falls back to a bounded excerpt of captured output when no verifier-owned reason exists', () => {
+    const result = makeExecutedResult({
+      label: 'type-check',
+      status: 'failed',
+      exitCode: 1,
+      blockingLogIssue: null,
+      stdout: 'src/foo.ts(12,3): error TS2322: Type mismatch',
+      stderr: '',
+    });
+
+    const reason = getFailureReason(result);
+
+    expect(reason.length).toBeGreaterThan(0);
+    expect(reason).toContain('TS2322');
+  });
+
+  it('never grows proportionally with a very large captured output (hard bound)', () => {
+    const hugeOutput = 'x'.repeat(50_000);
+    const result = makeExecutedResult({
+      label: 'type-check',
+      status: 'failed',
+      exitCode: 1,
+      blockingLogIssue: null,
+      stdout: hugeOutput,
+      stderr: hugeOutput,
+    });
+
+    const reason = getFailureReason(result);
+
+    // Materially smaller than the 100,000-char input, and well under the
+    // existing 20-line/MAX_RELEVANT_LINES tail this contract narrows further.
+    expect(reason.length).toBeLessThan(500);
+  });
+
+  it('falls back to the exit code when no reason or output is available', () => {
+    const result = makeExecutedResult({
+      label: 'build',
+      status: 'failed',
+      exitCode: 3,
+      blockingLogIssue: null,
+      stdout: '',
+      stderr: '',
+    });
+
+    expect(getFailureReason(result)).toBe('exit code 3');
+  });
+});
+
+// Per docs/testing/verify-agent-output.md "Final summary": bounded by
+// default, everything currently always-on (base ref, changed-file count,
+// environment, profile, verbose/only metadata, the full per-check
+// inventory, the complete skipped-check list, heavy-check triggers, and an
+// empty "ci profile risk: - none" line) moves to verbose-only.
+describe('printSummary default (non-verbose) mode', () => {
+  it('prints a compact bounded result on success without the always-on inventory', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const summary = printSummary(
+        ['scripts/verify.ts'],
+        'local-base origin/develop',
+        [
+          makeExecutedResult({
+            label: 'e2e',
+            command: 'pnpm e2e:container',
+            displayCommand: 'pnpm e2e:container',
+            status: 'passed',
+            triggerReason: 'low-level path scripts/verify.ts -> full app e2e',
+          }),
+          makeSkippedResult({
+            label: 'e2e-install',
+            reason: 'browser install is not required; Playwright container provides browsers',
+          }),
+        ],
+        {
+          baseRef: 'origin/develop',
+          processEnv: { GITHUB_ACTIONS: 'false' },
+          invocation: resolveVerifyInvocation(['--base', 'origin/develop'], {
+            GITHUB_ACTIONS: 'false',
+          }),
+          totalDurationMs: 252_000,
+        },
+      );
+
+      expect(summary).toEqual({ status: 'passed', hasFailed: false, hasCiProfileRisk: false });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+
+      // Still present: compact result, plus the durable log-directory pointer
+      // and elapsed time from the doc's compact success example.
+      expect(output).toContain('VERIFY RESULT');
+      expect(output).toContain('passed');
+      expect(output).toContain('.verify/logs');
+      expect(output).toMatch(/4m\s*12s/);
+
+      // Retired from default output per the Forbidden list.
+      expect(output).not.toContain('base ref:');
+      expect(output).not.toContain('changed files:');
+      expect(output).not.toContain('environment:');
+      expect(output).not.toContain('profile:');
+      expect(output).not.toContain('verbose:');
+      expect(output).not.toContain('only:');
+      expect(output).not.toContain('mode:');
+      expect(output).not.toContain('heavy-check triggers');
+      expect(output).not.toContain('checks skipped');
+      expect(output).not.toContain('trigger:');
+      expect(output).not.toContain('low-level path scripts/verify.ts -> full app e2e');
+      expect(output).not.toContain('e2e-install');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('prints a bounded actionable failure summary with reason/details/rerun per failed check', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const blockedUnitTestsResult = makeExecutedResult({
+      label: 'unit-tests',
+      command: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+      displayCommand: 'pnpm exec vitest run --reporter=verbose src/foo.test.ts',
+      status: 'failed',
+      exitCode: 0,
+      blockingLogIssue: {
+        reason: 'Vue runtime warnings were emitted during unit tests',
+        warningSummary: '[Vue warn]: Invalid watch source: 0',
+      },
+    });
+
+    try {
+      const summary = printSummary(
+        ['scripts/verify.ts'],
+        'local-changes',
+        [blockedUnitTestsResult],
+        {
+          totalDurationMs: 18_000,
+          invocation: resolveVerifyInvocation(['--base', 'origin/develop'], {
+            GITHUB_ACTIONS: 'false',
+          }),
+          baseRef: 'origin/develop',
+        },
+      );
+
+      expect(summary).toEqual({ status: 'failed', hasFailed: true, hasCiProfileRisk: false });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+
+      // Actionable per the "Actionable failure, not generic noise" contract:
+      // check label, bounded reason, exact log path, canonical rerun.
+      expect(output).toContain('unit-tests');
+      expect(output).toContain('failed');
+      expect(output).toContain('Vue runtime warnings were emitted during unit tests');
+      expect(output).toContain(blockedUnitTestsResult.logPath);
+      expect(output).toContain(
+        'pnpm verify --base origin/develop --profile local --only unit-tests',
+      );
+
+      // Retired from default output per the Forbidden list, even on failure.
+      expect(output).not.toContain('base ref:');
+      expect(output).not.toContain('changed files:');
+      expect(output).not.toContain('environment:');
+      expect(output).not.toContain('profile:');
+      expect(output).not.toContain('verbose:');
+      expect(output).not.toContain('only:');
+      expect(output).not.toContain('mode:');
+      expect(output).not.toContain('heavy-check triggers');
+      expect(output).not.toContain('checks skipped');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('keeps a pre-execution invalid-plan failure actionable without a log pointer', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      const invalidResult = makeInvalidResult({
+        label: 'e2e',
+        reason: 'invalid app e2e scenario registry state: duplicate scenario id foo',
+      });
+
+      const summary = printSummary(['scripts/verify.ts'], 'local-changes', [invalidResult], {
+        totalDurationMs: 5_000,
+        invocation: resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' }),
+      });
+
+      expect(summary).toEqual({ status: 'failed', hasFailed: true, hasCiProfileRisk: false });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+
+      expect(output).toContain('e2e');
+      expect(output).toContain(
+        'invalid app e2e scenario registry state: duplicate scenario id foo',
+      );
+      expect(output).toContain('pnpm verify --profile local --only e2e');
+      // No child process ran for this entry, so there is nothing to point a
+      // "details:"/log line at; the reason/rerun stay actionable regardless.
+      expect(output).not.toContain('details: .verify/logs/e2e.log');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+});
+
 describe('verify help output', () => {
   it('distinguishes ignored environment bases from rejected explicit full-mode scope', () => {
     const result = spawnSync(process.execPath, ['scripts/verify.ts', '--help'], {
@@ -1461,11 +1895,63 @@ describe('resolveVerifyChangedPathContext', () => {
       resolveVerifyChangedPathContext(invocation, { resolveScope, projectChangedFiles }),
     ).toEqual({
       changedFiles: [],
+      changedPaths: [],
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
     });
     expect(resolveScope).not.toHaveBeenCalled();
     expect(projectChangedFiles).not.toHaveBeenCalled();
+  });
+
+  it('passes git-diff changed paths through unmodified', () => {
+    const changedPaths: ChangedPath[] = [
+      { status: 'added', path: 'src/added.ts' },
+      { status: 'modified', path: 'src/modified.ts' },
+      { status: 'deleted', path: 'src/deleted.ts' },
+      { status: 'renamed', oldPath: 'src/old.ts', newPath: 'src/new.ts' },
+    ];
+    const resolveScope = vi.fn(
+      (): ResolvedChangedPathsScope => ({
+        input: { kind: 'git-diff', changedPaths },
+        scope: 'local',
+        baseRef: null,
+        packageJsonOldRef: null,
+      }),
+    );
+    const projectChangedFiles = vi.fn(() => []);
+    const invocation = resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' });
+
+    const result = resolveVerifyChangedPathContext(invocation, {
+      resolveScope,
+      projectChangedFiles,
+    });
+
+    expect(result.changedPaths).toEqual(changedPaths);
+  });
+
+  it('synthesizes explicit-files changed paths as modified, never deleted', () => {
+    const resolveScope = vi.fn(
+      (): ResolvedChangedPathsScope => ({
+        input: { kind: 'explicit-files', files: ['a.ts', 'b.ts'] },
+        scope: 'explicit-files',
+        baseRef: null,
+        packageJsonOldRef: null,
+      }),
+    );
+    const projectChangedFiles = vi.fn(() => ['a.ts', 'b.ts']);
+    const invocation = resolveVerifyInvocation(['--only', 'eslint', '--files', 'a.ts', 'b.ts'], {
+      GITHUB_ACTIONS: 'false',
+    });
+
+    const result = resolveVerifyChangedPathContext(invocation, {
+      resolveScope,
+      projectChangedFiles,
+    });
+
+    expect(result.changedPaths).toEqual([
+      { status: 'modified', path: 'a.ts' },
+      { status: 'modified', path: 'b.ts' },
+    ]);
   });
 });

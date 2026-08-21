@@ -900,6 +900,46 @@ describe('resolveStorybookBehaviorPlan DialogForm owner-local ownership (S2-E)',
   });
 });
 
+describe('resolveStorybookBehaviorPlan repository metadata exclusion (change-classification precision)', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Affected
+  // scenarios" #1 and "Boundaries and ownership" -- apply the confirmed
+  // non-runtime metadata predicate before owner-local/source mapping so a
+  // confirmed-metadata file colocated inside an owner directory does not
+  // inherit that owner's colocated browser spec or a directory-wide central
+  // scenario mapping, while a real runtime change in the same owner keeps
+  // its existing selection.
+
+  it('does not select the colocated spec for a confirmed AGENTS.md path inside the Loading Indicator owner directory', () => {
+    const plan = resolveStorybookBehaviorPlan([`${LOADING_INDICATOR_OWNER_DIR}/AGENTS.md`]);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('does not select the directory-wide central Button scenario or its colocated spec for a confirmed AGENTS.md path inside the Button owner directory', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/AGENTS.md']);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('does not select any lane for a confirmed src/shared/ui/material/docs/** metadata path', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/material/docs/component-contract.md',
+    ]);
+
+    expect(plan.mode).toBe('none');
+  });
+
+  it('keeps the owner colocated spec selection when a confirmed-metadata path is combined with a real owner runtime change', () => {
+    const plan = resolveStorybookBehaviorPlan([
+      `${LOADING_INDICATOR_OWNER_DIR}/AGENTS.md`,
+      `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`,
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LOADING_INDICATOR_BROWSER_SPEC]);
+  });
+});
+
 describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {
   it('runs the full lane for a nonexistent directly changed behavior spec', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/removedFlow.spec.ts'], {

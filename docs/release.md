@@ -301,9 +301,18 @@ focused and the full gate, and tag pushes never rerun the full gate:
     Each runs its own verifier-selected Playwright proof and builds the
     Storybook it needs in that job; neither waits for nor consumes output from
     `verification-static`;
+  - `verification-release` is an independent parallel job that also depends
+    only on `autofix` and invokes `pnpm verify --verbose --only
+release-impact`. That label resolves `scripts/lib/releaseRisk.ts`'s
+    source-impact plan against the current changed files and runs only the
+    selected release-config/build/publisher/artifact/release-smoke/managed-updates
+    checks in this one job; for an ordinary non-release-sensitive diff the
+    planner selects nothing and the job completes quickly. It never waits for
+    static/E2E/Storybook proof;
   - aggregate `verification` succeeds only when static verification,
-    application E2E, and the complete Storybook browser matrix succeed, and
-    owns whether deployable PR source is valid;
+    application E2E, the complete Storybook browser matrix, and
+    `verification-release` succeed, and owns whether deployable PR source is
+    valid;
   - PR-only `release-version` enforces the exact label-selected version for an
     ordinary `develop` PR and the exact inherited direct-base version for an
     intermediate dependent PR;

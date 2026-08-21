@@ -128,13 +128,18 @@ describe('isBroadVisualRelevantPath', () => {
 });
 
 describe('isSafeVisualExclusionPath', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Minimum sufficient
+  // design" / visual architecture -- the blanket `.md` suffix exclusion is
+  // retired; only `.test.ts` and `.browser.spec.ts` remain suffix-based safe
+  // exclusions. Markdown exclusion now goes through the narrow repository
+  // metadata predicate instead (see the `resolveVisualPlan repository
+  // metadata exclusion` and `resolveVisualPlan unclassified Markdown is no
+  // longer excluded by extension` blocks below).
   it.each([
     ['migrated owner *.test.ts', LOADING_INDICATOR_TEST],
     ['migrated owner *.browser.spec.ts', LOADING_INDICATOR_BROWSER_SPEC],
-    ['migrated owner .md', LOADING_INDICATOR_DOC],
     ['unmigrated shared UI *.test.ts', BUTTON_TEST],
     ['unmigrated shared UI *.browser.spec.ts', BUTTON_BROWSER_SPEC],
-    ['unmigrated shared UI .md', BUTTON_DOC],
     ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
   ])('flags %s: %s', (_description, filePath) => {
     expect(isSafeVisualExclusionPath(filePath)).toBe(true);
@@ -144,6 +149,12 @@ describe('isSafeVisualExclusionPath', () => {
     ['a colocated visual spec', LOADING_INDICATOR_VISUAL_SPEC],
     ['a runtime file', BUTTON_VUE],
     ['a story', `${BUTTON_OWNER_DIR}/MDButton.stories.ts`],
+    ['a migrated-owner .md file (no longer excluded by extension alone)', LOADING_INDICATOR_DOC],
+    ['an unmigrated shared UI .md file (no longer excluded by extension alone)', BUTTON_DOC],
+    [
+      'a confirmed-metadata .md file (excluded via the metadata predicate, not this suffix check)',
+      'src/shared/ui/material/docs/component-contract.md',
+    ],
   ])('does not flag %s: %s', (_description, filePath) => {
     expect(isSafeVisualExclusionPath(filePath)).toBe(false);
   });
@@ -427,10 +438,8 @@ describe('resolveVisualPlan safe non-visual proof/documentation exclusions', () 
       'migrated owner *.browser.spec.ts, colocated with a visual spec',
       LOADING_INDICATOR_BROWSER_SPEC,
     ],
-    ['migrated owner .md, colocated with a visual spec', LOADING_INDICATOR_DOC],
     ['unmigrated shared UI *.test.ts, otherwise fail-closed to full', BUTTON_TEST],
     ['unmigrated shared UI *.browser.spec.ts, otherwise fail-closed to full', BUTTON_BROWSER_SPEC],
-    ['unmigrated shared UI .md, otherwise fail-closed to full', BUTTON_DOC],
     ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
     ['the application-shell stylesheet Storybook does not import', APP_STYLES_CSS],
   ])('skips %s: %s', (_description, filePath) => {
@@ -438,9 +447,77 @@ describe('resolveVisualPlan safe non-visual proof/documentation exclusions', () 
   });
 });
 
+describe('resolveVisualPlan repository metadata exclusion (change-classification precision)', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Minimum sufficient
+  // design" and visual architecture section -- confirmed non-runtime
+  // repository metadata is excluded through the narrow shared predicate
+  // instead of the retired blanket `.md` suffix rule, applied ahead of
+  // owner-local/broad visual classification.
+  it('skips a confirmed AGENTS.md path under a broad shared-UI domain with no colocated owner', () => {
+    const plan = resolveVisualPlan(['src/shared/ui/material/AGENTS.md'], {
+      colocatedSpecFiles: [],
+    });
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('skips a confirmed src/shared/ui/material/docs/** metadata path with no colocated owner', () => {
+    const plan = resolveVisualPlan(['src/shared/ui/material/docs/component-contract.md'], {
+      colocatedSpecFiles: [],
+    });
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('keeps the owner colocated spec selection when a confirmed-metadata path is combined with a real owner runtime change', () => {
+    const plan = resolveVisualPlan(
+      [
+        `${LOADING_INDICATOR_OWNER_DIR}/AGENTS.md`,
+        `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`,
+      ],
+      { colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC] },
+    );
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LOADING_INDICATOR_VISUAL_SPEC]);
+  });
+});
+
+describe('resolveVisualPlan unclassified Markdown is no longer excluded by extension alone', () => {
+  // Oracle: docs/testing/verify-change-classification.md "Required test
+  // proof" -- an arbitrary source-adjacent Markdown file outside the
+  // confirmed metadata roots must not be skipped merely by extension; it
+  // falls through to the existing owner-local/fail-closed visual fallback
+  // exactly like any other unclassified non-story, non-test path.
+  it('falls through to the colocated owner spec for an unclassified README.md inside a migrated owner directory (no longer skipped by extension)', () => {
+    const plan = resolveVisualPlan([LOADING_INDICATOR_DOC], {
+      colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC],
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LOADING_INDICATOR_VISUAL_SPEC]);
+  });
+
+  it('falls through to the full fail-closed fallback for an unclassified README.md with no resolvable colocated owner (no longer skipped by extension)', () => {
+    const plan = resolveVisualPlan(['src/shared/ui/Example/README.md'], {
+      colocatedSpecFiles: [],
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('has no resolvable colocated visual owner');
+  });
+
+  it('falls through to the full fail-closed fallback for an unmigrated shared-UI README.md with no colocated owner (no longer skipped by extension)', () => {
+    const plan = resolveVisualPlan([BUTTON_DOC], { colocatedSpecFiles: [] });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('has no resolvable colocated visual owner');
+  });
+});
+
 describe('resolveVisualPlan mixed changes', () => {
-  it('stays skip when only safe proof-only paths change, across multiple owner directories', () => {
-    const plan = resolveVisualPlan([LOADING_INDICATOR_TEST, LOADING_INDICATOR_DOC, BUTTON_TEST], {
+  it('stays skip when only safe proof-only suffix paths change, across multiple owner directories', () => {
+    const plan = resolveVisualPlan([LOADING_INDICATOR_TEST, BUTTON_TEST], {
       colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC],
     });
 

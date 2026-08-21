@@ -48,9 +48,10 @@ describe('buildCommands colocated browser spec routing', () => {
     expect(entry.args).toEqual([
       'exec',
       'vitest',
-      'run',
-      '--reporter=verbose',
+      'related',
       'src/shared/lib/cache/index.test.ts',
+      '--run',
+      '--reporter=verbose',
     ]);
   });
 });
