@@ -35,6 +35,31 @@ Use external best practices only where the repository does not already decide th
 
 Do not use a generic best-practice link to manufacture a project requirement.
 
+## Independent proof review
+
+When production code and tests changed in the same work, treat them as two potentially correlated implementations of the same mistaken assumption. Agreement between them is not evidence by itself.
+
+Before using changed tests as evidence:
+
+1. reconstruct the expected observable behavior from the accepted architecture/product/public contract, reproducible defect, persisted/protocol contract, or authoritative platform/dependency contract;
+2. identify the truthful primary proof owner and environment;
+3. inspect the test oracle independently from the changed production implementation;
+4. identify at least one plausible incorrect observable result that the assertions must reject;
+5. only then compare the production implementation with both the contract and the proof.
+
+For a behavior-changing task where `test-first` required a meaningful red phase, review whether the red failure was contract-relevant when evidence is available. A setup error, timeout, unrelated exception, or environment failure is not proof that the test detected the defect.
+
+A test is not faithful merely because it passes against the implementation. Treat these as proof defects when applicable:
+
+- expected values are computed by the same production helper/algorithm or a copied implementation algorithm;
+- fixtures/mocks are programmed so the assertion only confirms the value injected by the test rather than an external boundary contract;
+- assertions observe an internal proxy that can remain correct while the required public result is wrong;
+- an existing assertion/scenario/baseline was weakened, deleted, or regenerated only because the changed implementation otherwise failed;
+- a changed test no longer rejects a realistic failure relevant to its claimed contract;
+- test-only production APIs or architecture boundary violations were introduced solely to make proof convenient.
+
+When an existing test changed, require independent evidence that the accepted contract changed or the old test was invalid. The new implementation's observed output is not sufficient basis for changing the expected result.
+
 ## Review standard
 
 Start from confirmed scenarios and required final behavior. Check only concerns that are relevant to the scope, but do not omit a relevant concern merely because the changed diff is small.
@@ -48,14 +73,14 @@ Review, as applicable:
 - correctness of implementation against the required behavior;
 - consumer impact and shared/blast-radius effects;
 - browser, mobile, accessibility, performance, concurrency, privacy/security, persistence, diagnostics, or offline behavior when the scope makes them relevant;
-- proof ownership, test fidelity, missing scenarios, and whether automated checks actually prove the claimed contract;
+- proof ownership, independent oracle quality, failure sensitivity, test fidelity, missing scenarios, and whether automated checks actually prove the claimed contract;
 - documentation affected by the change;
 - obsolete/replaced logic that should have been removed;
 - complexity, readability, and whether a simpler complete solution exists.
 
 Compare non-trivial design with the simplest viable alternative. Additional abstraction, state, mapping, compatibility path, or infrastructure is a finding when it is not required by a current verified need and increases total complexity or weakens ownership.
 
-Green verification proves only covered checks. It is not architecture or semantic approval.
+Green verification proves only that the executed assertions passed. It is not evidence that the assertions were derived independently, that they would catch the relevant implementation error, or that architecture/semantics are correct.
 
 ## Finding quality
 
@@ -92,13 +117,13 @@ Project rules outrank external guidance. Existing code is evidence of current be
 
 Consolidate one root cause into one finding. Do not scatter symptoms across multiple entries.
 
-- **Blocker** — must be fixed before merge/acceptance: required scenario missing or broken, unsafe ownership/source-of-truth/public contract, data/security/correctness risk, required proof absent, or another condition that makes acceptance unsafe.
+- **Blocker** — must be fixed before merge/acceptance: required scenario missing or broken, unsafe ownership/source-of-truth/public contract, data/security/correctness risk, required proof absent or materially untrustworthy, or another condition that makes acceptance unsafe.
 - **Major issue** — material architecture/correctness/maintenance problem that belongs to the current change and should normally be corrected before acceptance. If the architect explicitly accepts it, move it to `Accepted risks`; do not leave an accepted issue classified as unresolved major.
 - **Minor issue** — evidence-backed, non-blocking local quality problem. Do not use `Minor` for taste, optional refactoring, or speculative improvement.
 - **Accepted risk** — explicit bounded deviation accepted by the architect. State why it is acceptable and what remains true. Missing mandatory work or unknown required behavior cannot be an accepted risk.
 - **Item not required** — worthwhile but outside the current required scope. Keep it separate so it does not inflate the correction task.
 
-Two correction rounds that still expose ownership drift, mixed responsibilities, missing scenarios, or accumulating workaround logic are a signal to return to architecture rather than continue patching symptoms.
+Two correction rounds that still expose ownership drift, mixed responsibilities, missing scenarios, unreliable proof, or accumulating workaround logic are a signal to return to architecture rather than continue patching symptoms.
 
 ## Correction handoff
 
@@ -202,7 +227,7 @@ Verification: <faithful proof>
 
 ## Items not required
 
-- <separate non-required improvement>, or `None.`
+- <separate non-required improvement>, or `None.`>
 
 ## Unresolved questions
 
@@ -213,7 +238,7 @@ Do not add timestamps, review counters, workflow history, author biographies, ge
 
 ## Verdict
 
-- `blocked` — one or more blockers or unresolved major issues prevent acceptance, or a required fact/proof is still unknown.
+- `blocked` — one or more blockers or unresolved major issues prevent acceptance, or a required fact/proof is still unknown or materially untrustworthy.
 - `ready-with-listed-risks` — no blockers or unresolved major issues remain; only explicit bounded accepted risks remain.
 - `ready` — no blockers, unresolved major issues, or accepted risks remain. Minor non-blocking observations may still be listed.
 
@@ -223,7 +248,9 @@ A review verdict is semantic review state, not a claim that exact-head CI passed
 
 Use repository verification only when it materially strengthens or resolves review evidence. Prefer the smallest faithful verifier-managed check. Do not rerun broad verification simply because a review exists.
 
-Missing proof is itself a finding when the project requires that proof. Do not replace missing browser/E2E/visual/mutation or other risk-specific proof with green unit tests or CI.
+Missing or self-confirming proof is itself a finding when the project requires reliable proof. Do not replace missing browser/E2E/visual/mutation or other risk-specific proof with green unit tests or CI.
+
+When tests changed with production code, a green run is only execution evidence. Review the test oracle, failure sensitivity, environment fidelity, and any weakened/deleted previous proof before accepting it as contract evidence.
 
 ## Report
 
@@ -251,13 +278,14 @@ Then list only the findings that need the user's/implementer's attention. The `R
 
 - Fixing production code while performing the review.
 - Reviewing only the latest patch when the verdict depends on surrounding/current behavior.
+- Treating agreement between changed tests and changed production code as independent evidence without checking the contract/oracle.
 - Inventing project requirements from personal preference or generic style advice.
 - Creating a finding without linked evidence and linked basis.
 - Using external best practices to override an explicit Mioframe rule or contract.
 - Citing a source that does not support the claimed requirement.
 - Duplicating one root cause across multiple severities or owner documents.
 - Writing a component-owned defect into a pane/consumer review merely because that is where it was observed.
-- Treating green automated checks as semantic or architecture approval.
+- Treating green automated checks as semantic, proof-quality, or architecture approval.
 - Leaving stale resolved findings in `REVIEW.md`.
 - Returning `blocked` with actionable findings but no next-owner correction handoff.
 - Turning `REVIEW.md` into permanent architecture/product documentation.
