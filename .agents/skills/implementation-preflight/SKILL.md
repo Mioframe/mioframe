@@ -76,6 +76,10 @@ Record a compact acceptance matrix containing, for every materially distinct cur
 - the wrong omission/over-selection it must reject;
 - whether a real delegated resolver/tool probe is required in addition to pure planner assertions.
 
+If the planner consumes status-aware changed paths, the acceptance matrix must also cover every status transition that can change ownership semantics: `added`, `modified`, `deleted`, and both old/new sides of `renamed`. In particular, a surviving external owner must not disappear merely because its source path was deleted or renamed and no longer exists in the current tree. Use focused exact ownership when the historical relation is still deterministic; use the existing fail-closed fallback only when it is not.
+
+For every bounded scan/set ownership rule, verify both a representative path inside the actual scanned population and a nearby negative path outside it. The planner predicate must mirror the owning scan's real population, not reuse a broader adjacent category simply because that is convenient.
+
 A path list or grep pattern is not a substitute for this matrix. Search expressions are discovery aids only.
 
 If the planner delegates ownership to another mechanism such as `vitest related`, Playwright discovery, a release consumer chain, or another project-owned resolver, pure planner tests prove only the planner output. At least one representative case for each newly introduced or materially changed delegated mechanism must be checked through the real resolver/tool semantics when that is practical and deterministic. Do not make the planner test and implementation agree on an unverified assumption about what the delegated resolver will select.
