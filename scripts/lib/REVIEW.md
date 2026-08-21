@@ -2,64 +2,68 @@
 
 Verdict: blocked
 
-## Scope reviewed
+## Correction scope
 
-- Complete verifier-modernization finish architecture as implemented on `refactor/verify-modernization-finish`, with emphasis on unit impact, release impact, verifier orchestration/output, CI topology, and the reported Pass G benchmark.
+Fix only the findings below. Do not redesign the verifier architecture or expand modernization scope.
+
+For B1 and B2, behavioral planner proof must be corrected in a fresh test-author context before production implementation. Accepted corrected assertions are read-only for the implementation context.
+
+After both blockers are fixed:
+
+1. run the smallest focused verifier proof for the corrected unit/release planners;
+2. rerun the representative planner benchmark cases affected by the corrections;
+3. verify the two reported `visualRisk.test.ts` failures against the current `develop` baseline and record exact test names/results;
+4. hand back without Git/PR operations.
 
 ## Blockers
 
-### B1 — Unit file-as-data ownership for `verify.yml` is incomplete
+### B1 — complete `verify.yml` file-as-data unit ownership
 
 Owner: `scripts/lib/unitRisk.ts`
 
-Problem: `.github/workflows/verify.yml` is mapped to three workflow tests, but `scripts/ciAutofix.test.ts` also reads that workflow directly through `fs.readFileSync`. Vitest `related` cannot discover this relation through the module graph, so a `verify.yml` change can run focused unit proof without executing a real owner of the changed workflow contract.
+`.github/workflows/verify.yml` must select every confirmed Vitest test that directly reads that file outside the module graph. The current mapping omits `scripts/ciAutofix.test.ts`, which directly reads and asserts workflow content.
 
-Evidence:
+Required final state:
 
-- [`unitRisk.ts`](unitRisk.ts) — `UNIT_FILE_AS_DATA_MAPPINGS` maps `.github/workflows/verify.yml` only to `buildDateWorkflow.test.mjs`, `managedDeploymentValidationWorkflow.test.mjs`, and `materializePrVersionWorkflow.test.mjs`.
-- [`../ciAutofix.test.ts`](../ciAutofix.test.ts) — `workflow autofix commit detection` reads `.github/workflows/verify.yml` directly and asserts the `Handle autofix changes` workflow contract.
+- complete a bounded audit of direct repository-file readers for the workflow/config inputs already represented by `UNIT_FILE_AS_DATA_MAPPINGS`;
+- add every confirmed direct-reading Vitest owner, including `scripts/ciAutofix.test.ts` for `.github/workflows/verify.yml`;
+- keep mappings exact and local to unit impact; do not introduce a generic dependency registry;
+- prove that a `verify.yml` change selects all confirmed direct readers and does not widen unrelated unit work.
 
-Basis:
+Basis: `docs/testing/verify-target-architecture.md` unit file-as-data contract and `docs/testing/architecture.md` fail-closed proof ownership.
 
-- [`../../docs/testing/verify-target-architecture.md`](../../docs/testing/verify-target-architecture.md) — exact file-as-data mappings must cover tests that deliberately consume repository files outside the import relation; ordinary verify must not silently miss required unit proof.
-- [`../../docs/testing/architecture.md`](../../docs/testing/architecture.md) — automatic planning must preserve the truthful proof owner and fail closed when ownership cannot be represented safely.
-
-Risk: exact-head CI can report the unit lane green for a `verify.yml` change while skipping a unit test that directly owns part of that workflow behavior.
-
-Required final state: the bounded file-as-data audit is complete for the changed workflow/config inputs. `.github/workflows/verify.yml` selects every confirmed direct-reading Vitest owner, including `scripts/ciAutofix.test.ts`, without introducing a generic dependency registry.
-
-Verification: add/adjust independent unit-planner proof that a `verify.yml` change selects all confirmed direct file readers, then run the smallest focused verifier proof for `unitRisk`/verifier planning.
-
-### B2 — Release focused mappings under-select real consumers
+### B2 — correct release-impact consumer ownership
 
 Owner: `scripts/lib/releaseRisk.ts`
 
-Problem: several focused release mappings do not match the repository's real release consumer chains:
+Focused release mappings must follow the real current consumer graph, not the existing narrowed expectations.
 
-- `src/shared/service/appUpdate/releaseWireContract.ts` falls through `appUpdate/** -> managed-updates`, but it is also the terminal module of the plain-Node publisher import proof and therefore must select `publisher-node-import`.
-- `scripts/release/buildArtifact.mjs` maps only to `build` + `artifact`, while `playwright.release.config.ts` invokes that script for release browser proof, including `release-smoke` and managed-update groups.
-- every `tests/e2e/release/fixtures/**` path is currently treated as `managed-updates`, but artifact-owned fixtures such as `ordinaryBranchArtifactFixture.mjs` and `legacyGeneratedWorkboxPwaConfig.ts` are consumed by `productionArtifactSmoke.spec.ts`.
+Minimum required corrections:
 
-The corresponding releaseRisk tests encode the same narrowed assumptions, so green tests are correlated with the implementation rather than independent evidence of the real ownership graph.
+- `src/shared/service/appUpdate/releaseWireContract.ts` must include `publisher-node-import` because it terminates the proven plain-Node publisher import chain; keep any additional real managed-update ownership it also has;
+- `scripts/release/buildArtifact.mjs` must select every release contract that actually consumes that build path through `playwright.release.config.ts`; if the exact consumer set cannot be bounded safely, use full source-impact release proof;
+- `tests/e2e/release/fixtures/**` must not be treated as managed-update-only by directory. Artifact-owned fixtures must select `artifact`; managed-update-owned fixtures must select `managed-updates`; shared/unknown fixture ownership must select all actual consumers or fail closed to full;
+- audit other release helper/fixture mappings touched by the same ownership assumptions so no equivalent silent under-selection remains.
 
-Evidence:
+Required independent proof must cover at minimum:
 
-- [`releaseRisk.ts`](releaseRisk.ts) — `isAppUpdateRuntimePath()` adds only `managed-updates`; `buildArtifact.mjs` is mapped only to `build`/`artifact`; `isManagedUpdatesReleaseFixturePath()` treats the whole release fixture directory as managed-update-only.
-- [`../release/publisherWireContractImportProof.mjs`](../release/publisherWireContractImportProof.mjs) — documents and executes the plain-Node chain `releasePublish.mjs -> releaseDescriptor.mjs -> releaseWireContract.ts`.
-- [`../../playwright.release.config.ts`](../../playwright.release.config.ts) — the release Playwright web server executes `node scripts/release/buildArtifact.mjs ...`, so browser release contracts are real consumers of that build script.
-- [`../../tests/e2e/release/productionArtifactSmoke.spec.ts`](../../tests/e2e/release/productionArtifactSmoke.spec.ts) — owns production artifact proof and imports artifact-specific fixture/config inputs from `tests/e2e/release/fixtures/`.
-- [`releaseRisk.test.ts`](releaseRisk.test.ts) — asserts `buildArtifact.mjs -> artifact + build` and treats sampled release fixtures as managed-update-only, reproducing the narrowed ownership rather than testing against the full real consumer set.
+- `releaseWireContract.ts`;
+- `buildArtifact.mjs`;
+- one artifact-owned release fixture;
+- one managed-update-owned release fixture;
+- one shared/unknown release helper or fixture that must fail closed safely.
 
-Basis:
+Do not preserve current `releaseRisk.test.ts` expectations when they conflict with the repository consumer graph.
 
-- [`../../docs/testing/verify-target-architecture.md`](../../docs/testing/verify-target-architecture.md) — the publisher import seam explicitly includes `releaseWireContract.ts`; release proof helpers shared by several checks must select every actual consumer or conservatively full the source-impact plan; unknown significant release-sensitive ownership must fail closed rather than skip.
-- [`../../docs/testing/architecture.md`](../../docs/testing/architecture.md) — one primary proof owner per contract and independent oracle quality are required; green correlated tests do not establish correctness.
+Basis: `docs/testing/verify-target-architecture.md` release planner contract and current release proof/import chains.
 
-Risk: ordinary verify can silently omit required release proof for changes to the wire contract, release build path, or artifact fixtures, creating false-green source-impact release planning.
+## Validation required before review can close
 
-Required final state: derive the affected release checks from the real current consumer chains. Every confirmed shared input selects all actual consumers; where a narrow consumer set is not safely bounded, use the conservative `full` source-impact release plan. Update proof from the accepted architecture/current repository chain rather than preserving the current narrowed expectations.
-
-Verification: independently cover at minimum `releaseWireContract.ts`, `buildArtifact.mjs`, an artifact-owned fixture, a managed-update-owned fixture, and an unknown/shared release fixture/helper. Re-run the representative release-impact benchmark after correction; the current “no false negatives observed” conclusion is invalidated by these findings.
+- corrected planner tests are green;
+- focused verifier commands for unit/release planning are green;
+- affected Pass G benchmark cases are rerun and no false negative remains;
+- the two reported `visualRisk.test.ts` failures are either green now or proven pre-existing by exact baseline comparison; because this change modifies `visualRisk.ts`/tests, an unsupported “unrelated” claim is insufficient;
+- exact-head CI and merge-latency evidence remain architect-owned after PR publication.
 
 ## Major issues
 
@@ -72,12 +76,3 @@ None.
 ## Accepted risks
 
 None.
-
-## Items not required
-
-None.
-
-## Unresolved questions
-
-- The implementation report states that two `visualRisk.test.ts` failures are pre-existing and unrelated, but their exact test names/failure output and baseline evidence were not available in the reviewed repository state. Because this PR changes both `visualRisk.ts` and `visualRisk.test.ts`, that claim must be verified before final acceptance.
-- Pass G still needs exact-head CI critical-path evidence after a PR exists; planner-only timing cannot complete the merge-latency part of the finish benchmark.
