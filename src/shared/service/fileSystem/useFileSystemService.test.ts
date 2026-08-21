@@ -3972,4 +3972,99 @@ describe('useFileSystemService', () => {
 
     subscription.unsubscribe();
   });
+
+  it('reads and publishes an updated directoryState$ result while a same-entry reconnect write-recovery settlement is still holding the topology queue', async () => {
+    // The topology-queue-owned side: a same-entry reconnect whose write-recovery settlement is
+    // held pending, exactly like the existing "does not let a queued removeDeviceDirectory begin
+    // its topology mutation..." coverage above.
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    // The reactive-directory side: an unrelated mounted path, subscribed through the same
+    // coordinator-owned `directoryState$` used by the earlier createDirectory-invalidation test.
+    const readDirectoryMock = vi
+      .fn<(path: string) => Promise<[string, FSNodeStat][]>>()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([['new-folder', directoryStat]]);
+    const { provider } = createDiagnosticProvider({ readDirectory: readDirectoryMock });
+    await service.createDirectory('/drive');
+    service.vfs.mount('/drive', provider);
+
+    const results: (readonly [string, FSNodeStat])[][] = [];
+    const subscription = service.directoryState$({ path: '/drive/folder' }).subscribe((state) => {
+      if (state.status === 'ready') {
+        results.push([...state.entries]);
+      }
+    });
+
+    await vi.waitFor(() => {
+      expect(results).toEqual([[]]);
+    });
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'flushed' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'flushed' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const reconnectPromise = service.reconnectDeviceDirectory({
+      handle: reconnectedHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+    let reconnectSettled = false;
+    void reconnectPromise.then(() => {
+      reconnectSettled = true;
+    });
+
+    // Let the topology turn actually reach the pending settlement handler: the queue is now held.
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    // Trigger a matching invalidation for the subscribed directory while the topology turn is
+    // still pending. `createDirectory` is not routed through `enqueueMutation`.
+    await service.createDirectory('/drive/folder/new-folder');
+
+    // The reactive coordinator independently observes the invalidation, performs its next physical
+    // read, and publishes the updated clean `ready` result before the held topology turn releases.
+    await vi.waitFor(() => {
+      expect(readDirectoryMock).toHaveBeenCalledTimes(2);
+      expect(results).toEqual([[], [['new-folder', directoryStat]]]);
+    });
+    expect(reconnectSettled).toBe(false);
+
+    releaseSettlement?.();
+
+    await expect(reconnectPromise).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+    expect(reconnectSettled).toBe(true);
+
+    subscription.unsubscribe();
+  });
 });
