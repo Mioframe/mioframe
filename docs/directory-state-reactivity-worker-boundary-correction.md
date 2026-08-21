@@ -1,20 +1,20 @@
 # Directory state reactivity — worker boundary correction
 
-Status: **ready for correction**. This addendum resolves the only active PR #215 review blocker in `src/shared/service/REVIEW.md`. It narrows the worker publication boundary without reopening the accepted directory/repository coordinator architecture.
+Status: **completed; correction passed semantic re-review**. This addendum records the worker-publication correction that closed the final PR #215 review blocker without reopening the accepted directory/repository coordinator architecture.
 
-While this addendum is active, it supersedes earlier implementation-review status statements that say semantic review is complete or that no findings remain. The directory/repository architecture remains **ready**; implementation acceptance is **blocked** until this worker-boundary correction is implemented and re-reviewed.
+The directory/repository architecture and implementation are **ready**. No active owner-local `REVIEW.md` findings remain; exact-head GitHub CI is the remaining automatic acceptance gate.
 
 Authority:
 
 - `docs/directory-state-reactivity.md` remains the architecture source for directory/repository lifecycle and state ownership.
 - `docs/directory-state-reactivity-implementation-preflight.md` remains the completed implementation record for the two-coordinator migration.
-- This document is authoritative only for the worker-surface correction discovered during final PR review.
+- This document records only the worker-surface correction discovered during final PR review.
 
 ## Problem
 
-`directoryState$`, `repositoryState$`, and the repository `documentIds$` projection are worker-local service internals. They are currently returned by `useFileSystemService()` / `useRepositoriesService()`, and `setupMainService()` publishes those complete service objects through the reflective worker proxy. That makes the three raw Observable functions reachable from `useMainServiceClient()` even though the accepted contract forbids raw Observable RPC.
+`directoryState$`, `repositoryState$`, and the repository `documentIds$` projection are worker-local service internals. They were returned by `useFileSystemService()` / `useRepositoriesService()`, while `setupMainService()` published those complete service objects through the reflective worker proxy. That made the three raw Observable functions reachable from `useMainServiceClient()` even though the accepted contract forbids raw Observable RPC.
 
-The coordinator implementations are not defective. The defect is publication ownership at `setupMainService()`.
+The coordinator implementations were not defective. The defect was publication ownership at `setupMainService()`.
 
 ## Goal
 
@@ -64,14 +64,12 @@ Why this is the minimum design:
 - an explicit public-key allowlist for every current service would unnecessarily turn this correction into a broad API migration;
 - omitting only the three newly introduced internal members fixes the accepted contract with one assembly-owned boundary decision.
 
-## Expected files
-
-Change:
+## Files changed
 
 - `src/shared/service/setupMainService.ts`
 - `src/shared/service/setupMainService.test.ts`
 
-No production changes are expected elsewhere.
+No production changes were required elsewhere.
 
 ## TEST IMPACT
 
@@ -88,9 +86,9 @@ Required proof:
 5. prove `fileSystem.readDirectoryFresh` remains present;
 6. prove `repositories.repositoryState` remains present;
 7. preserve the existing proof that `setupMainService` does not import the main-thread permission broker;
-8. type-check must prove the omitted members are not keys of the published `setupMainService()` result/client type.
+8. type-check proves the omitted members are not keys of the published `setupMainService()` result/client type.
 
-Mock the service factory modules in this assembly test if needed to avoid initializing real browser/storage services. The test should prove the assembly contract, not reproduce coordinator behavior.
+The assembly test uses stand-in service factories to avoid initializing browser/storage services; coordinator behavior remains owned by its existing tests.
 
 No browser, E2E, visual, storage, or coordinator proof is required for this correction.
 
@@ -102,11 +100,10 @@ No browser, E2E, visual, storage, or coordinator proof is required for this corr
 - `readDirectoryFresh` and `repositoryState` remain worker-facing.
 - No coordinator, repository lifecycle, DocumentService, UI lifecycle, #211 recovery, VFS/provider, or proxy behavior changes.
 - No legacy service-surface cleanup is bundled into this correction.
-- `src/shared/service/REVIEW.md` is not edited by the coding agent; it remains the reviewer-owned active finding until re-review.
 
 ## Verification
 
-Use the smallest verifier-managed checks that prove the changed boundary:
+Focused coding-agent verification passed:
 
 ```text
 pnpm verify --only unit-tests --files src/shared/service/setupMainService.test.ts
@@ -114,7 +111,7 @@ pnpm verify --only type-check --files src/shared/service/setupMainService.ts src
 pnpm verify --only oxlint --files src/shared/service/setupMainService.ts src/shared/service/setupMainService.test.ts
 ```
 
-Do not run a broad local final gate solely for handoff. Exact-head GitHub CI remains architect-owned after the correction and semantic re-review.
+Exact-head GitHub CI remains architect-owned after semantic re-review.
 
 ## Forbidden
 
@@ -126,5 +123,4 @@ Do not run a broad local final gate solely for handoff. Exact-head GitHub CI rem
 - no hiding unrelated existing worker members;
 - no compatibility alias for the three internal functions;
 - no test-only production hook;
-- no sleeps, polling, or browser proof;
-- no editing `src/shared/service/REVIEW.md` or PR state.
+- no sleeps, polling, or browser proof.
