@@ -62,11 +62,11 @@ const createDocument = (): CFRDocumentContent => ({
 
 vi.mock('../repositories', () => ({
   useRepositoriesService: () => ({
-    getDocumentIdList$: ({ path }: { path: string }) => {
+    documentIds$: (path: string) => {
       const subject = documentIdListByPath.get(path);
 
       if (!subject) {
-        throw new Error(`Missing mocked documentIdList$ for "${path}"`);
+        throw new Error(`Missing mocked documentIds$ for "${path}"`);
       }
 
       return subject.asObservable();

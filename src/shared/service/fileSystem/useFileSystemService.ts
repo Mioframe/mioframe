@@ -1,6 +1,5 @@
 import {
   inspectMioframeSpaceDirectory,
-  isAutomergeStorageFileName,
   type MioframeSpaceInspection,
 } from '@shared/lib/automergeAdapter';
 import {
@@ -13,10 +12,11 @@ import { DomainError } from '@shared/lib/error';
 import { FileSystemServiceErrorCode } from './fileSystemContracts';
 import type {
   DeviceDirectoryRecoveryTarget,
-  ReadDirectoryOptions,
+  DirectoryEntries,
   ReconnectDeviceDirectoryResult,
   RelocateRememberedDeviceDirectoryResult,
 } from './fileSystemContracts';
+import { createDirectoryStateCoordinator } from './directoryState';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
@@ -26,7 +26,7 @@ import { VirtualFileSystem, PathUtils } from '@shared/lib/virtualFileSystem';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { OPFSName } from '../directories';
 import { createGlobalState } from '@vueuse/core';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, Observable, shareReplay } from 'rxjs';
 import { isEqual, sortBy } from 'es-toolkit';
 import { defineObservableQuery } from '@shared/lib/useObservableQuery';
 import { defineCacheObservable } from '@shared/lib/defineCacheObservable';
@@ -45,7 +45,7 @@ import { addWebFileSystemReadDiagnosticStepBreadcrumb } from './webFileSystemRea
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 export { DEVICE_FILES_ROOT_NAME };
-export type { DeviceFileDisplayRecord, ReadDirectoryOptions, WriteAccessRecoveryHandler };
+export type { DeviceFileDisplayRecord, WriteAccessRecoveryHandler };
 
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],
@@ -73,6 +73,21 @@ const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
   const registry = createFileSystemAccessRequestRegistry({ deviceFilesPath });
+  const { directoryState$ } = createDirectoryStateCoordinator(vfs);
+
+  /**
+   * Performs exactly one normalized, name-sorted physical directory read. Stateless: no cache,
+   * watcher, retry state, coordinator demand, or repository coupling. May overlap with reactive
+   * coordinator reads or other calls to this function; no same-path serialization is promised.
+   * @param path - Absolute path to the directory to read.
+   * @returns The directory's entries, sorted by name.
+   */
+  const readDirectoryFresh = async (path: string): Promise<DirectoryEntries> => {
+    const normalizedPath = PathUtils.normalize(path);
+    const entries = await vfs.readDirectory(normalizedPath);
+
+    return sortBy(entries, [0]);
+  };
 
   // Opaque runtime recovery key per mounted `localDirectory` provider instance, keyed by mounted
   // name. Minted once per genuinely new provider (see `createProvider` below), which is exactly
@@ -159,53 +174,6 @@ const setupFileSystemService = () => {
     await vfs.createDirectory(path);
     vfs.mount(path, provider);
   };
-
-  const directoryContent$ = defineCacheObservable(
-    ({
-      options: { hideAutomergeFiles = false } = {},
-      path,
-    }: {
-      path: string;
-      options?: ReadDirectoryOptions | undefined;
-    }) =>
-      new Observable<[string, FSNodeStat][] | Error>((subscriber) => {
-        const fetchEntries = async () => {
-          try {
-            const entries = await vfs.readDirectory(path);
-
-            subscriber.next(sortBy(entries, [0]));
-          } catch (err) {
-            if (err instanceof Error) {
-              subscriber.next(err);
-            } else {
-              subscriber.error(err);
-            }
-          }
-        };
-
-        void fetchEntries();
-
-        const unwatch = vfs.watch(path, () => {
-          void fetchEntries();
-        });
-
-        return () => {
-          unwatch();
-        };
-      }).pipe(
-        distinctUntilChanged((a, b) => isEqual(a, b)),
-        shareReplay({ bufferSize: 1, refCount: true }),
-        map((payload) => {
-          if (payload instanceof Error) {
-            return payload;
-          }
-          if (hideAutomergeFiles) {
-            return payload.filter(([name]) => !isAutomergeStorageFileName(name));
-          }
-          return payload;
-        }),
-      ),
-  );
 
   const fsNodeStat$ = defineCacheObservable(({ path }: { path: string }) =>
     new Observable<FSNodeStat | Error>((subscriber) => {
@@ -617,8 +585,8 @@ const setupFileSystemService = () => {
     vfs,
 
     createDirectory,
-    directoryContent$,
-    directoryContent: defineObservableQuery(directoryContent$),
+    directoryState$,
+    readDirectoryFresh,
     fsNodeStat$,
     fsNodeStat: defineObservableQuery(fsNodeStat$),
     vfsActivity: fromObservable(vfs.activity$),

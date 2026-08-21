@@ -6,11 +6,9 @@ import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem
 import { unpackZipArchive } from '@shared/lib/zipArchive';
 import { RepositoryZipErrorCode } from './repositoryZipContracts';
 import type { OnZipExportProgress } from './repositoryZipContracts';
-import type { RepositoryDirectoryEntry } from './repositoryContracts';
+import type { DirectoryEntry } from '../fileSystem/fileSystemContracts';
 
-const getDocumentStorageFilesMock = vi.hoisted(() =>
-  vi.fn<() => Promise<RepositoryDirectoryEntry[]>>(),
-);
+const getDocumentStorageFilesMock = vi.hoisted(() => vi.fn<() => Promise<DirectoryEntry[]>>());
 
 vi.mock('./repositoryStorageFiles', () => ({
   getDocumentStorageFiles: getDocumentStorageFilesMock,
@@ -215,7 +213,7 @@ describe('exportDocumentZip', () => {
     const vfs = createVfs();
     await vfs.createDirectory('/repo');
     const fileCount = 130;
-    const storageFiles: RepositoryDirectoryEntry[] = [];
+    const storageFiles: DirectoryEntry[] = [];
     for (let index = 0; index < fileCount; index += 1) {
       const name = `storage-file-${index}`;
       // eslint-disable-next-line no-await-in-loop -- fixture setup, sequential writes are simplest here

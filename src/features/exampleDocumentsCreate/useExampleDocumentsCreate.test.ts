@@ -9,12 +9,12 @@ import {
 const {
   createDirectoryMock,
   createDocumentMock,
-  directoryContentFetchMock,
+  readDirectoryFreshMock,
   captureDiagnosticExceptionMock,
 } = vi.hoisted(() => ({
   createDirectoryMock: vi.fn(),
   createDocumentMock: vi.fn(),
-  directoryContentFetchMock: vi.fn(),
+  readDirectoryFreshMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
 }));
 
@@ -25,9 +25,7 @@ vi.mock('@shared/service', async (importOriginal) => {
     useMainServiceClient: () => ({
       fileSystem: {
         createDirectory: createDirectoryMock,
-        directoryContent: {
-          fetch: directoryContentFetchMock,
-        },
+        readDirectoryFresh: readDirectoryFreshMock,
       },
       repositories: {
         createDocument: createDocumentMock,
@@ -75,10 +73,10 @@ describe('useExampleDocumentsCreate', () => {
   beforeEach(() => {
     createDirectoryMock.mockReset();
     createDocumentMock.mockReset();
-    directoryContentFetchMock.mockReset();
+    readDirectoryFreshMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
 
-    directoryContentFetchMock.mockResolvedValue([]);
+    readDirectoryFreshMock.mockResolvedValue([]);
     createDirectoryMock.mockResolvedValue(undefined);
     createDocumentMock
       .mockResolvedValueOnce('related-doc-id')
@@ -88,7 +86,7 @@ describe('useExampleDocumentsCreate', () => {
   });
 
   it('selects Examples 2 without calling createDirectory for Examples when Examples already exists in the listing', async () => {
-    directoryContentFetchMock.mockResolvedValueOnce([['Examples', { type: 'directory' }]]);
+    readDirectoryFreshMock.mockResolvedValueOnce([['Examples', { type: 'directory' }]]);
 
     const { createWeeklyPlanExample, weeklyPlanErrorMessage, isCreatingWeeklyPlanExample } =
       useExampleDocumentsCreate();
@@ -111,7 +109,7 @@ describe('useExampleDocumentsCreate', () => {
   });
 
   it('does not leave VFS activity in an error state when Examples already exists — no FileExists createDirectory attempt is made', async () => {
-    directoryContentFetchMock.mockResolvedValueOnce([
+    readDirectoryFreshMock.mockResolvedValueOnce([
       ['Examples', { type: 'directory' }],
       ['Examples 2', { type: 'directory' }],
     ]);
@@ -132,8 +130,24 @@ describe('useExampleDocumentsCreate', () => {
     });
   });
 
+  it('falls back to an empty known-name set and still succeeds when the best-effort pre-read rejects', async () => {
+    readDirectoryFreshMock.mockReset().mockRejectedValueOnce(new Error('read failed'));
+
+    const { createWeeklyPlanExample, weeklyPlanErrorMessage } = useExampleDocumentsCreate();
+
+    const result = await createWeeklyPlanExample();
+
+    expect(createDirectoryMock).toHaveBeenCalledTimes(1);
+    expect(createDirectoryMock).toHaveBeenCalledWith('/Device Files/Browser Storage/Examples');
+    expect(result).toEqual({
+      documentDirectory: '/Device Files/Browser Storage/Examples',
+      documentId: 'primary-doc-id',
+    });
+    expect(weeklyPlanErrorMessage.value).toBeUndefined();
+  });
+
   it('retries to the next available name when a race-condition FileExists occurs on the selected name', async () => {
-    directoryContentFetchMock.mockResolvedValueOnce([]);
+    readDirectoryFreshMock.mockResolvedValueOnce([]);
     createDirectoryMock
       .mockRejectedValueOnce(new VfsError(FileSystemError.FileExists, 'Directory already exists'))
       .mockResolvedValueOnce(undefined);
