@@ -64,6 +64,7 @@ TEST IMPACT
   - Primary proof owner:
   - Oracle source:
   - Must reject:
+  - Test author: dedicated test agent/session | existing proof only
   - Red phase: required | not applicable — <reason>
   - Additional proof:
   - Existing proof:
@@ -72,7 +73,7 @@ TEST IMPACT
   - Durable ownership/impact updates:
 ```
 
-Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first`: the expected result must come from an independent accepted contract/evidence rather than the implementation being written.
+Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first`: the expected result must come from independent accepted contract/evidence and the proof must be authored in a fresh test-agent/session separate from production implementation.
 
 For Storybook-owned UI proof also follow `docs/testing/storybook.md` and current executable state from `docs/testing/migration-plan.md`.
 
@@ -82,6 +83,7 @@ Resolve:
 - the lowest faithful primary proof;
 - the independent oracle for the expected result;
 - at least one plausible incorrect observable result that the selected proof must reject;
+- whether the task needs a dedicated test-author pass or existing proof is already sufficient and unchanged;
 - whether a meaningful focused red check can and should fail against the pre-change implementation;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
@@ -94,7 +96,9 @@ The `Must reject` item is a proof-sensitivity check, not an instruction to enume
 
 Do not add explicit registry metadata when deterministic local ownership already expresses the relation. Do not list a proof merely because a lane exists.
 
-Do not begin a behavior-changing production pass while the expected result is being inferred from the proposed implementation rather than the accepted contract. If the oracle is unresolved, return to the upstream architecture/product decision.
+Do not begin a behavior-changing production pass while new/materially changed behavioral proof still belongs to the same implementation context. Run the dedicated test-author pass first. If the oracle is unresolved, return to the upstream architecture/product decision.
+
+When accepted proof is handed to the implementation agent, test expectations/assertions are implementation constraints. If the implementer believes the proof is wrong, it must stop and return that conflict to the test owner/architect rather than edit the proof opportunistically.
 
 ## Consumer migration
 
@@ -125,7 +129,7 @@ Use the domain workflow as the execution contract:
 - diagnostics: `diagnostic-events`;
 - ordinary Vue mechanics: `vue-component-implementation`.
 
-Use `test-first` whenever automated behavioral proof is added or materially changed. It owns proof independence, failure sensitivity, and the focused red/green cycle when meaningful. Then use the proof-type skill selected by `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
+Use `test-first` whenever automated behavioral proof is added or materially changed. It owns dedicated test-author routing, proof independence, failure sensitivity, and the focused red/green cycle when meaningful. Then use the proof-type skill selected by `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
 ## Breadth control
 
@@ -136,4 +140,4 @@ Use `test-first` whenever automated behavioral proof is added or materially chan
 
 ## Output
 
-Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how to prove it, what plausible wrong outcome that proof must reject, and when to stop.
+Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how proof is authored independently, what plausible wrong outcome it must reject, and when to stop.
