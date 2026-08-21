@@ -1,8 +1,8 @@
 # Directory state reactivity — implementation preflight
 
-Status: **completed; implementation passed final semantic re-review**.
+Status: **completed; implementation semantic review reopened by one active repository lifecycle blocker**.
 
-Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture. Later full-PR findings and their completed correction are recorded in `docs/directory-state-reactivity-final-review-correction.md`; no active owner-local findings remain.
+Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture. The earlier full-PR correction remains completed in `docs/directory-state-reactivity-final-review-correction.md`. A later audit found one additional implementation deviation from the already-accepted sticky repository-error contract; it is tracked in `src/shared/service/repositories/REVIEW.md` and does not reopen the two-coordinator architecture or this preflight's ownership decisions.
 
 ## Source and readiness
 
@@ -211,4 +211,4 @@ Do not require a broad final local `pnpm verify` solely for coding-agent handoff
 
 ## Result
 
-Preflight: **completed**. The two-coordinator implementation is present on `refactor/directory-state-reactivity`; the full PR semantic re-review and all correction re-reviews are complete with no active owner-local findings. Exact-head GitHub CI is the remaining automatic merge gate.
+Preflight: **completed**. The two-coordinator implementation is present on `refactor/directory-state-reactivity`; semantic acceptance is currently blocked only by the active repository sticky-error transition finding in `src/shared/service/repositories/REVIEW.md`. The architecture, ownership, state shape, public API, worker boundary, and previously accepted correction scopes remain unchanged. Exact-head GitHub CI becomes the final automatic merge gate after that finding is closed and the resulting PR is re-reviewed.
