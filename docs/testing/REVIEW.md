@@ -4,32 +4,49 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Pass G final benchmark and finish-completion evidence after the latest Pass C ownership correction.
+- Pass G final benchmark and finish-completion evidence after the latest Pass C ownership correction and synchronization with current `develop`.
 
 ## Blockers
 
-### B1 — the recorded final benchmark is not valid against the current implementation/proof state
+### B1 — the recorded final benchmark is not yet valid against the final implementation/proof state
 
-Owner: `docs/testing/verify-modernization.md`
+Owner: `docs/testing/verify-modernization.md`.
 
-The document now contains the complete canonical representative table, but its finish conclusion is still invalid for two reasons owned by `scripts/lib/REVIEW.md`:
+The document contains the complete canonical representative table, but its finish conclusion remains invalid while the owner-local findings in `scripts/lib/REVIEW.md` are open:
 
-1. Pass C still has a status-aware false negative for deleted/renamed exact external inputs (`PRIVACY.md`, workflow YAML, `.gitignore` class).
-2. the recorded real-resolver case for `tests/e2e/appSmoke.spec.ts` selects `playwright.lanes.test.ts`, while that owner currently contains a stale assertion against top-level `appConfig.testIgnore` and is red against the actual project-level Playwright config. Therefore this case cannot count as green end-to-end ownership evidence in the current tree.
+1. exact external ownership is not status-safe for deleted/renamed non-ordinary inputs;
+2. the recorded Playwright inventory real-resolver case selects `playwright.lanes.test.ts`, while that owner is currently stale against the actual project-level `testIgnore` config;
+3. the recorded Playwright scan population is broader than the lane test's real filesystem inventory.
 
-The current benchmark also describes `playwright.lanes.test.ts` ownership using the broader `tests/e2e/**/*.spec.ts` category, while the test's actual scan is narrower (root app specs plus the explicit storybook/visual/release subtrees and colocated src specs). Refresh the record after that predicate is corrected.
+Branch synchronization is now complete, so the previous `develop`-sync prerequisite is resolved. The benchmark must now be refreshed only for cases invalidated by the final correction and for one representative post-sync source case that proves the record corresponds to the current tree.
 
 Required final state:
 
 - resolve every active finding in `scripts/lib/REVIEW.md` first;
-- sync the finish branch with current `develop` and ensure the external-ownership audit still covers the resulting complete Vitest population;
-- rerun only the representative cases invalidated by the final corrections/integration, including:
-  - deleted/renamed exact external input status handling;
+- complete the post-sync semantic external-ownership audit of the current Vitest population and record whether it found any new relations;
+- rerun the benchmark/proof cases invalidated by the final correction:
+  - deleted exact external input;
+  - renamed exact external input;
   - Playwright inventory scan with every selected unit owner green;
-  - a negative nested `tests/e2e/<other-subtree>/*.spec.ts` case proving the lane scan owner is not over-selected;
-- update the final table/false-negative and accepted-over-selection sections to match the resulting implementation;
-- keep exact-head CI critical-path / merge-latency explicitly pending until the published PR exists;
-- do not add benchmark infrastructure.
+  - adjacent nested `tests/e2e/<other-subtree>/*.spec.ts` proving `playwright.lanes.test.ts` is not over-selected;
+- rerun one representative source case introduced by the synchronized directory/repository-state change, for example a current production file under `src/shared/service/fileSystem/` or `src/shared/service/repositories/`, to demonstrate the final table is based on the post-sync tree rather than the old baseline;
+- update the Pass G table, false-negative section, and accepted-over-selection section to match the resulting implementation exactly;
+- state the post-sync audit result explicitly (`new relations: ...` or `new relations: none`);
+- keep exact-head CI critical-path / merge-latency pending until the architect publishes the PR;
+- do not add benchmark tooling or rerun unrelated expensive child proof locally.
+
+## Acceptance for benchmark closure
+
+The final recorded benchmark is acceptable only when:
+
+- every canonical representative class remains present;
+- every current Pass C ownership mechanism remains represented;
+- status-aware exact ownership is represented explicitly;
+- the Playwright inventory row describes the exact real scan population;
+- the real `tests/e2e/appSmoke.spec.ts` focused unit invocation is green including `playwright.lanes.test.ts`;
+- no known semantic-review false negative remains;
+- all timing claims are actually measured local planner timing;
+- CI critical-path claims are deferred to exact-head CI.
 
 ## Major issues
 
@@ -45,5 +62,5 @@ None.
 
 ## Items not required
 
-- Do not rerun every expensive child proof locally; only planner/resolver benchmark cases invalidated by the final correction and develop integration are required before PR publication.
+- Do not rerun every expensive child proof locally; only planner/resolver/benchmark cases invalidated by the final correction and synchronization are required before PR publication.
 - A standalone benchmark framework or historical metrics database is not required.
