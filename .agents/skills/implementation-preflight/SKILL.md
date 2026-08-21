@@ -73,7 +73,7 @@ TEST IMPACT
   - Durable ownership/impact updates:
 ```
 
-Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first`: the expected result must come from independent accepted contract/evidence and the proof must be authored in a fresh test-agent/session separate from production implementation.
+Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first` and `test-authoring`: the expected result must come from independent accepted contract/evidence, the proof must be authored in a fresh test-agent/session separate from production implementation, and the selected proof type must satisfy its quality rules rather than exist for coverage/count alone.
 
 For Storybook-owned UI proof also follow `docs/testing/storybook.md` and current executable state from `docs/testing/migration-plan.md`.
 
@@ -129,7 +129,7 @@ Use the domain workflow as the execution contract:
 - diagnostics: `diagnostic-events`;
 - ordinary Vue mechanics: `vue-component-implementation`.
 
-Use `test-first` whenever automated behavioral proof is added or materially changed. It owns dedicated test-author routing, proof independence, failure sensitivity, and the focused red/green cycle when meaningful. Then use the proof-type skill selected by `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
+Use `test-first` whenever automated behavioral proof is added or materially changed. It owns dedicated test-author routing, proof independence, failure sensitivity, and the focused red/green cycle when meaningful. The dedicated test-author context then uses `test-authoring` plus the proof-type skill selected by `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
 ## Breadth control
 
