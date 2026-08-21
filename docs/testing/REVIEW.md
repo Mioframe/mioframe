@@ -4,52 +4,36 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Pass G representative benchmark and finish-completion evidence for verifier modernization after the latest correction round.
+- Pass G final benchmark and finish-completion evidence after the latest Pass C ownership correction.
 
 ## Blockers
 
-### B1 — the recorded Pass G benchmark does not cover the required final system
+### B1 — the recorded final benchmark is not valid against the current implementation/proof state
 
 Owner: `docs/testing/verify-modernization.md`
 
-Problem: a durable benchmark is now recorded, but it contains only a correction subset and explicitly omits unchanged Pass B/D/E classes. The finish plan requires the final benchmark to represent the complete final verifier system. Pass C has also gained an explicit ownership-mechanism acceptance matrix after repeated review findings, so the final benchmark must demonstrate the final external-ownership behavior rather than only the earlier root/import cases.
+The document now contains the complete canonical representative table, but its finish conclusion is still invalid for two reasons owned by `scripts/lib/REVIEW.md`:
 
-Evidence:
+1. Pass C still has a status-aware false negative for deleted/renamed exact external inputs (`PRIVACY.md`, workflow YAML, `.gitignore` class).
+2. the recorded real-resolver case for `tests/e2e/appSmoke.spec.ts` selects `playwright.lanes.test.ts`, while that owner currently contains a stale assertion against top-level `appConfig.testIgnore` and is red against the actual project-level Playwright config. Therefore this case cannot count as green end-to-end ownership evidence in the current tree.
 
-- [`verify-modernization.md`](verify-modernization.md) lists canonical representative classes including feature source, Material component, registered mutation source, and unregistered adjacent source; those classes are absent from the current recorded result table.
-- the current record states that unchanged Pass B/D/E classes were not re-benchmarked because the latest correction did not change them. That is valid for a regression delta, but there was no earlier durable final Pass G record covering the omitted classes.
-- [`verify-unit-impact-correction.md`](verify-unit-impact-correction.md) now requires final representative evidence for ordinary import ownership, exact external ownership, runtime/tool discovery, bounded repository scans, existence/absence ownership, and delegated `vitest related` behavior.
-- the current benchmark predates the final scan/runtime-discovery acceptance model.
-
-Basis:
-
-- [`verify-finish-plan.md`](verify-finish-plan.md), Pass G: benchmark representative change classes from `verify-modernization.md` and record selected/skipped checks, trigger reasons, duration, false positives, potential false negatives, critical path/merge latency, aggregate expensive compute, and output behavior.
-- the completion criteria require the recorded benchmark to remain valid after the latest correction/review round.
-
-Risk: the persisted finish evidence cannot support the stop decision for the whole A-G system, especially mutation and external unit ownership, because some required behavior exists only in earlier handoffs or local planner tests rather than the durable final record.
+The current benchmark also describes `playwright.lanes.test.ts` ownership using the broader `tests/e2e/**/*.spec.ts` category, while the test's actual scan is narrower (root app specs plus the explicit storybook/visual/release subtrees and colocated src specs). Refresh the record after that predicate is corrected.
 
 Required final state:
 
-- after `scripts/lib/REVIEW.md` is resolved, record the complete canonical representative set from `verify-modernization.md`, including at minimum feature source, Material component, registered mutation source, and unregistered adjacent source;
-- keep useful correction-specific cases such as root imported config and `tests/e2e/**` Vitest helper source;
-- add representative final Pass C cases for:
-  - runtime-discovered config ownership (`eslint.config.mjs`);
-  - one broad repository-scan boundary owner;
-  - Material `components/*/tokens.css` scan ownership;
-  - Playwright spec inventory ownership through `playwright.lanes.test.ts`;
-  - an exact existence/absence owner;
-  - an ordinary import owner that remains selected after its redundant external mapping is removed;
-- record selected/skipped behavior and trigger reason for each representative class;
-- state accepted conservative false positives/over-selection explicitly, including the known unclassified source-adjacent Markdown fallback where applicable;
-- record only actually measured local timing;
-- keep exact-head CI critical-path / merge-latency explicitly pending until architect-owned PR CI exists;
-- do not add benchmark tooling or infrastructure.
-
-Verification: the final recorded table must correspond to the final planner implementation, cover every canonical representative class and the new Pass C ownership mechanisms, and contain no known false-negative case from semantic review.
+- resolve every active finding in `scripts/lib/REVIEW.md` first;
+- sync the finish branch with current `develop` and ensure the external-ownership audit still covers the resulting complete Vitest population;
+- rerun only the representative cases invalidated by the final corrections/integration, including:
+  - deleted/renamed exact external input status handling;
+  - Playwright inventory scan with every selected unit owner green;
+  - a negative nested `tests/e2e/<other-subtree>/*.spec.ts` case proving the lane scan owner is not over-selected;
+- update the final table/false-negative and accepted-over-selection sections to match the resulting implementation;
+- keep exact-head CI critical-path / merge-latency explicitly pending until the published PR exists;
+- do not add benchmark infrastructure.
 
 ## Major issues
 
-None.
+None beyond the owner-local Pass C findings.
 
 ## Minor issues
 
@@ -61,4 +45,5 @@ None.
 
 ## Items not required
 
-- A standalone benchmark framework or historical performance database is not required.
+- Do not rerun every expensive child proof locally; only planner/resolver benchmark cases invalidated by the final correction and develop integration are required before PR publication.
+- A standalone benchmark framework or historical metrics database is not required.
