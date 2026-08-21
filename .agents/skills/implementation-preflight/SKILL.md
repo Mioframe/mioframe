@@ -71,6 +71,7 @@ TEST IMPACT
   - New/updated proof:
   - Risk or platform matrix:
   - Durable ownership/impact updates:
+  - Task-specific measurements:
 ```
 
 Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first` and `test-authoring`: the expected result must come from independent accepted contract/evidence, the proof must be authored in a fresh test-agent/session separate from production implementation, and the selected proof type must satisfy its quality rules rather than exist for coverage/count alone.
@@ -90,7 +91,8 @@ Resolve:
 - new, moved, renamed, or removed proof files;
 - required durable ownership/impact updates;
 - applicable browser/mobile/accessibility/visual/release/data-safety/performance risks;
-- exact metric/budget when making a performance claim.
+- task-specific measurements that cannot be automated yet;
+- exact metric/budget and representative environment when making a performance claim.
 
 The `Must reject` item is a proof-sensitivity check, not an instruction to enumerate every theoretical error. It exists because a coding agent can otherwise make implementation and test agree while both encode the same mistake.
 
