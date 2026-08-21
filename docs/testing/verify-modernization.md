@@ -1,14 +1,14 @@
 # Verify modernization
 
-Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. The active finish line is now: change-classification precision, expensive-check impact completion (unit / mutation / release), representative benchmark, then stop unless the benchmark proves another bottleneck.
+Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. The active finish line is: change-classification precision, expensive-check impact completion (unit / mutation / release), representative benchmark, then stop unless the benchmark proves another bottleneck.
 
-`docs/testing/architecture.md` remains the canonical testing policy. This document records the verifier modernization architecture, implemented state, current finish plan, and exit criterion.
+`docs/testing/architecture.md` remains the canonical testing policy. `docs/testing/verify-target-architecture.md` is the resolved implementation target for all remaining verifier work. This document records progress, implementation order, and the stop criterion rather than duplicating the complete target design.
 
 ## Goal
 
 Make `pnpm verify` fast without reducing verification quality.
 
-Automatic verification must run only checks that are justified by the changed workspace impact while preserving fail-closed behavior:
+Automatic verification must run only checks justified by changed-workspace impact while preserving fail-closed behavior:
 
 ```text
 known irrelevant change
@@ -31,7 +31,9 @@ Modernization is not a goal by itself. Stop infrastructure work when the exit cr
 ## Source of truth and ownership
 
 - `AGENTS.md` and `.agents/skills/verification/SKILL.md`: verification workflow and ownership rules;
-- `docs/testing/architecture.md`: proof ownership and project-wide testing policy;
+- `docs/testing/architecture.md`: canonical proof ownership and project-wide testing policy;
+- `docs/testing/verify-target-architecture.md`: complete target architecture for the remaining verifier work;
+- `docs/testing/verify-change-classification.md`: implementation contract for finish PR 1;
 - `docs/testing/storybook.md`: Storybook ownership and authoring policy;
 - `docs/testing/migration-plan.md`: currently executable migration/discovery state;
 - `scripts/verify.ts` and verifier-owned `scripts/lib/*.ts`: planning, execution, locking, and reporting implementation;
@@ -66,19 +68,19 @@ No generic task runner, emitted tooling build, dependency graph, or verification
 
 ### V2 — planner precision
 
-Status: **complete, with one confirmed classification follow-up described below**.
+Status: **complete, with one confirmed classification follow-up in finish PR 1**.
 
 - **V2A — application E2E planner precision:** explicit product source-to-scenario mappings select focused proof; unknown relevant application source fails closed to full application E2E; proof-only files do not inherit product mappings.
 - **V2B — visual planner precision:** visual impact distinguishes owner-local/focused proof from broad visual fallback and safe non-visual proof paths.
 
-V2 established the lane-specific `skip | focused | full | invalid` model. It did not prove that every repository path class was classified optimally; the current `AGENTS.md` false positive is the remaining concrete defect.
+V2 established lane-specific `skip | focused | full | invalid` semantics. It did not prove every repository path purpose was classified optimally; `AGENTS.md` inside a broad runtime directory is the remaining confirmed classification defect.
 
 ### V3 — execution and proof cost
 
 Completed:
 
 - **V3A — application E2E project applicability:** application specs declare `desktop`, `mobile`, or `both`, removing project executions that do not prove an additional platform contract while preserving fail-safe behavior for unclassified specs.
-- **V3B — Storybook build execution:** local verification can reuse one deterministic static Storybook prerequisite across behavior and visual proof. GitHub behavior and visual lanes remain independent/self-contained and may run in parallel; duplicated CI Storybook build compute is accepted unless benchmark data shows it increases the critical path enough to justify extra artifact plumbing.
+- **V3B — Storybook build execution:** local verification can reuse one deterministic static Storybook prerequisite across behavior and visual proof. GitHub behavior and visual lanes remain independent/self-contained and may run in parallel; duplicated CI Storybook build compute is accepted unless benchmark data proves a critical-path reason to add artifact plumbing.
 - **V3C-A — Lists proof ownership cleanup:** merged in PR #213 (`9427fa4aea0b4fea0c72ea4ef4dd8d94711d6121`). Lists visual proof is screenshot-only, reusable browser behavior moved to the owner-local browser spec, duplicated baselines/material-contract proof were removed, and the real focus flake was corrected. Production Lists code was unchanged.
 
 Measured V3C-A effect:
@@ -91,7 +93,7 @@ visual + Storybook browser executions:
 277 → 221
 ```
 
-Lists now has a bounded legacy exception because it will later migrate to the canonical Mioframe Material wrapper backed privately by `@m3e/web`. Do not continue deep Lists proof idealization.
+Lists has a bounded legacy exception because it will later migrate to the canonical Mioframe Material wrapper backed privately by `@m3e/web`. Do not continue deep Lists proof idealization.
 
 ### Current exact-head browser baseline
 
@@ -116,117 +118,136 @@ Storybook static build inside a browser lane is about 2m17s. Behavior and visual
 
 ## Active finish plan
 
-### PR 1 — verifier change classification precision
+The complete expected end state and ownership are already resolved in `verify-target-architecture.md`. The slices below are implementation boundaries for coding agents, not separate architecture explorations.
+
+### PR 1 — verifier change-classification precision
 
 Status: **next**.
 
+Contract: `docs/testing/verify-change-classification.md`.
+
 Goal: eliminate confirmed repository-path false positives without weakening runtime protection.
 
-Confirmed defect:
+Required shape:
 
 ```text
-src/shared/ui/material/AGENTS.md
-→ application-E2E relevant
-→ unmapped relevant source
-→ full application E2E
+narrow positive repository-metadata predicate
+→ app E2E / Storybook behavior / visual use it where broad ownership would misclassify metadata
+→ Storybook build unchanged after explicit audit
 ```
 
-The current cause is `scripts/lib/e2eRisk.ts`: broad application-E2E domains intentionally treat every non-story/non-test path under `src/app/`, `src/shared/service/`, `src/shared/serviceClient/`, `src/shared/lib/`, and `src/shared/ui/` as runtime-relevant so CSS/assets are not accidentally skipped.
+Important facts:
 
-The fix must classify repository/instruction metadata by **path purpose**, not by file extension.
-
-Important repository facts:
-
-- Markdown cannot be globally excluded: `PRIVACY.md` is imported as runtime text with `?raw`;
-- `docs/user/**/*.md` is imported with `import.meta.glob(..., { query: '?raw' })` and is application runtime content;
-- therefore `*.md = irrelevant` is forbidden.
-
-Minimum path classes to cover with planner tests:
-
-- nested/root `AGENTS.md` and `.agents/**` instruction metadata;
-- architecture/testing documentation and ordinary repository README/docs metadata;
-- runtime Markdown/content such as `PRIVACY.md` and `docs/user/**`;
-- stories, unit tests, owner-local browser specs, and visual specs;
-- runtime CSS and other non-TypeScript/Vue assets inside broad runtime domains;
-- verifier/config/tooling paths with their existing full-lane semantics.
-
-Acceptance:
-
-- instruction-only/docs-only metadata does not select browser lanes without an owning reason;
-- `src/shared/ui/material/AGENTS.md` does not select full application E2E;
-- runtime CSS/assets in broad runtime domains remain protected;
-- runtime Markdown/content remains protected and is not hidden by a generic extension exclusion;
+- Markdown cannot be globally excluded: `PRIVACY.md` and `docs/user/**` are runtime inputs;
+- `docs/user/**` maps to the existing Help product E2E owner;
+- CSS/assets in broad runtime domains remain protected;
 - unknown runtime-relevant impact still fails closed;
-- representative planner tests show the selected mode and reason for every important path class;
-- no generic cross-lane path-classification framework is introduced unless an existing lane-specific mechanism is demonstrably insufficient.
+- no generic cross-lane path classifier is introduced.
 
-### PR 2 — complete expensive-check impact planning
+### PR 2A — durable unit impact
 
 Status: **after PR 1**.
 
-Keep each lane specialized. Do not create a generic planner abstraction merely to make the APIs look uniform.
+Goal: replace sibling-basename ownership with supported Vitest related selection plus only necessary exact file-as-data mappings.
 
-#### Unit
-
-Durable target:
+Required shape:
 
 ```text
 direct changed test
-→ known deterministic local ownership
-→ supported Vitest related resolution
-→ cannot resolve safely
-    → full unit fallback
+→ exact external file-as-data owner when confirmed
+→ existing source/test-support input
+→ Vitest related
+
+unit runner/config change
+or deleted/moved relation that cannot be resolved safely
+→ full unit
 ```
 
-Use Vitest-supported related resolution rather than building a second dependency graph.
+Key constraints:
 
-#### Mutation
+- use Vitest related; do not build a persistent module graph;
+- consume status-aware `ChangedPath` data for removal/move safety;
+- seed exact mappings only where tests demonstrably read repository files as data, including the confirmed `PRIVACY.md` owner and bounded workflow/config relations;
+- zero related tests does not suppress other lanes;
+- remove old `getVitestScope()` sibling ownership only after the new resolver fully replaces it.
 
-Durable target:
+### PR 2B — explicit mutation ownership
+
+Status: **after PR 2A**.
+
+Goal: mutation only for explicitly accepted high-risk contracts.
+
+Required shape:
 
 ```text
-changed path
-→ explicit small high-risk mutation registry?
-    yes → focused mutation
-    no  → skip
+registered source or registered owning test changes
+→ mutate exact registered source
+
+unregistered source, even with adjacent test
+→ skip
 ```
 
-The registry must contain exact high-risk source ownership, focused proof, and a concrete risk reason. File adjacency is not mutation ownership.
+One mutation-specific registry is shared by verifier planning and Stryker configuration. Each target has exact source, exact owning tests, and a concrete risk reason. Adjacency scanning is removed.
 
-#### Release
+The repository currently has no canonical high-risk target list; before implementation is enabled, perform one bounded audit of current useful mutation targets and seed only justified entries. This is target-data population under the resolved architecture, not permission to redesign it or preserve every current Stryker candidate.
 
-Ordinary `pnpm verify` must resolve release-sensitive impact:
+### PR 2C — release impact + exact-head CI parity
+
+Status: **after PR 2B**.
+
+Goal: ordinary verify automatically selects existing release contracts when a develop-bound diff is release-sensitive.
+
+Keep release policy separate:
 
 ```text
-changed path
-→ known release-sensitive owner
-    → focused required release proof
+release-version
+→ independent branch/label/version policy gate
 
-unknown release-sensitive impact
-    → conservative full relevant release lane
-
-irrelevant
-    → skip
+source impact
+→ release-config | build | publisher-node-import |
+   artifact | release-smoke | managed-updates
 ```
 
-Release-sensitive domains include production build/release configuration, routing/base behavior, PWA/service-worker/channel isolation, release scripts/artifact assembly, and runtime dependency changes that affect production output.
+Required shape:
 
-`pnpm verify:release` remains the deliberate full release command; ordinary PWA changes do not automatically imply that every release check must run when narrower faithful proof is known.
+- create specialized release-impact planning over the six existing source-impact checks;
+- exact known owner → focused release checks;
+- unknown significant source inside a confirmed release-sensitive boundary → all source-impact release checks;
+- version-only `package.json` does not expand runtime/release impact;
+- runtime dependency/lockfile changes stay conservative;
+- `pnpm verify:release` remains the deliberate complete release gate;
+- source-impact release labels become usable outside `--full`; `release-version` remains policy/full-only;
+- keep existing artifact reuse within one verifier invocation;
+- do not add cross-job artifact transfer.
 
-## Representative benchmark after PR 2
+CI parity uses the existing topology first:
+
+- non-browser release labels in `verification-static`;
+- release browser labels after application E2E in the existing `verification-browser-e2e` job;
+- `release-version` remains independent;
+- each verifier invocation skips quickly when its plan does not select that contract.
+
+Do not add a new CI job for performance before the benchmark. If rare selected release proof later dominates critical path, benchmark data may justify revisiting job topology.
+
+## Representative benchmark after PR 2C
 
 Do not automatically continue V3C-B/C/D/E or V3D/V3E. First benchmark representative real diff classes.
 
-| Change                   | Expected verify                                                       |
-| ------------------------ | --------------------------------------------------------------------- |
-| docs / AGENTS            | format/static only where applicable                                   |
-| local entity source      | type-check + related unit; mutation only if registered                |
-| feature source           | unit + only relevant product E2E                                      |
-| Material component       | relevant component/browser/visual proof                               |
-| shared runtime primitive | conservative affected lane                                            |
-| CSS runtime change       | corresponding browser/visual proof; never skipped merely by extension |
-| service worker / PWA     | release-sensitive proof                                               |
-| verifier tooling         | verifier tests + conservative affected verifier lanes                 |
+| Change | Expected verify |
+| --- | --- |
+| docs / AGENTS | format/static only where applicable |
+| local entity source | type-check + related unit; mutation only if registered |
+| external file-as-data unit input | exact mapped unit proof |
+| deleted/moved unit source | conservative unit fallback when previous ownership cannot be resolved |
+| feature source | unit + only relevant product E2E |
+| Material component | relevant component/browser/visual proof |
+| shared runtime primitive | conservative affected lane |
+| CSS runtime change | corresponding browser/visual proof; never skipped merely by extension |
+| registered high-risk mutation source | exact mutation target only |
+| unregistered source with adjacent unit test | no mutation |
+| service worker / PWA / managed update source | exact release-sensitive proof |
+| runtime dependency/lockfile | conservative affected lanes including release impact |
+| verifier tooling | verifier tests + conservative affected verifier lanes |
 
 For every benchmark record:
 
@@ -249,10 +270,13 @@ Verifier modernization is complete when all of these are true:
 4. unknown significant risk selects the full affected lane or produces an invalid plan;
 5. there are no known false-positive full runs such as `AGENTS.md → full E2E`;
 6. ordinary `pnpm verify` has no known required proof that it can silently miss;
-7. coding agents have a fast focused feedback surface;
-8. exact-head CI uses the same planner semantics;
-9. known flakes are absent;
-10. further test-suite optimization is required only when a benchmark identifies a real remaining bottleneck.
+7. unit impact uses supported related resolution and status-safe fallback rather than sibling guesses;
+8. mutation ownership is explicit high-risk opt-in rather than adjacency;
+9. release-sensitive develop diffs automatically select existing release contracts while release-version stays independent;
+10. coding agents have a fast focused feedback surface;
+11. exact-head CI uses the same planner semantics;
+12. known flakes are absent;
+13. further test-suite/CI optimization is required only when the representative benchmark identifies a real remaining bottleneck.
 
 Once these are satisfied, **stop verifier infrastructure modernization**.
 
@@ -264,25 +288,27 @@ Do not start without measurement:
 - V3D-style optimization of individual expensive tests;
 - V3E parallelism;
 - more Playwright workers;
-- additional CI jobs;
-- CI Storybook artifact transfer between behavior/visual runners;
+- additional CI jobs for performance;
+- CI Storybook/release artifact transfer between runners;
 - sharding;
 - Nx/Turbo or another task runner;
 - a generic dependency graph;
 - a universal test registry;
 - broad E2E scenario optimization without evidence that it remains a bottleneck.
 
-Parallelism is specifically inactive. Reconsider it only if correct impact planning leaves an irreducible critical-path bottleneck whose measured wall-clock benefit justifies added compute and complexity.
+Parallelism is specifically inactive as an optimization project. Reconsider it only if correct impact planning leaves an irreducible critical-path bottleneck whose measured wall-clock benefit justifies added compute and complexity.
 
 ## Rejected approaches
 
 - `*.md = irrelevant`: rejected because Mioframe has runtime Markdown inputs.
-- moving repository responsibility into a generic cross-lane classifier without a current need: rejected; lane-specific resolvers keep ownership explicit.
-- building a custom unit dependency graph: rejected; use supported Vitest related resolution plus conservative fallback.
+- moving repository responsibility into a generic cross-lane classifier: rejected; lane-specific resolvers keep ownership explicit.
+- building a custom unit dependency graph: rejected; use Vitest related plus conservative fallback/exact external-input mappings.
 - mutation by neighboring test/source adjacency: rejected; mutation applies only to explicit high-risk targets.
-- full `verify:release` for every release-adjacent change: rejected when focused release proof can faithfully own the changed contract.
+- copying every current Stryker candidate into the new registry: rejected; historical adjacency is not risk ownership.
+- full `verify:release` for every release-adjacent change: rejected when focused existing release contracts can faithfully own the changed behavior.
+- treating `release-version` as source impact: rejected; version intent is independent human/release policy.
+- adding a new release CI job before measurement: rejected; existing jobs can execute required selected contracts first.
 - continuing component-by-component legacy proof cleanup before measuring the post-planning bottleneck: rejected because it no longer serves the primary goal directly.
-- adding workers/jobs/sharding solely because aggregate CI work is duplicated: rejected unless critical-path improvement is measured and worth the complexity.
 
 ## Forbidden
 
@@ -291,5 +317,7 @@ Parallelism is specifically inactive. Reconsider it only if correct impact plann
 - Do not add a persistent generic dependency graph or generic verification DSL.
 - Do not add a cross-lane registry when lane-local ownership is sufficient.
 - Do not accept retry-pass/flaky classification as green proof.
+- Do not infer mutation targets from adjacency.
+- Do not infer PATCH/MINOR/MAJOR from source paths.
 - Do not claim performance improvement without before/after measurement.
 - Do not require coding agents to reproduce the architect-owned exact-head repository gate locally solely for handoff.
