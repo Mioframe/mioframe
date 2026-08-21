@@ -1,3 +1,4 @@
+import { omit } from 'es-toolkit';
 import { useDocumentService } from './document';
 import { useDatabaseDocumentService } from './databaseDocument';
 import { useGoogleService } from './google';
@@ -14,8 +15,8 @@ export const setupMainService = () => {
   return {
     databaseDocument: useDatabaseDocumentService(),
     google: useGoogleService(),
-    fileSystem: useFileSystemService(),
-    repositories: useRepositoriesService(),
+    fileSystem: omit(useFileSystemService(), ['directoryState$']),
+    repositories: omit(useRepositoriesService(), ['repositoryState$', 'documentIds$']),
     documents: useDocumentService(),
   };
 };
