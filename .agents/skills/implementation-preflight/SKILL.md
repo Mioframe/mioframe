@@ -63,6 +63,25 @@ When the accepted task requires a bounded audit, the preflight must additionally
 
 Do not begin the implementation pass if “audit the relevant files” is still open-ended.
 
+### Impact/selection planner preflight
+
+When the task changes an impact planner, dependency selector, test selector, release selector, ownership mapper, or similar mechanism that decides which proof/consumer runs, the preflight must describe **ownership mechanisms**, not only example paths.
+
+Record a compact acceptance matrix containing, for every materially distinct current mechanism:
+
+- source/input population;
+- truthful owner or delegated resolver;
+- how ownership is expressed: import graph, exact external relation, bounded scan/set relation, runtime/tool discovery, status/global fallback, or another verified mechanism;
+- representative current repository case;
+- the wrong omission/over-selection it must reject;
+- whether a real delegated resolver/tool probe is required in addition to pure planner assertions.
+
+A path list or grep pattern is not a substitute for this matrix. Search expressions are discovery aids only.
+
+If the planner delegates ownership to another mechanism such as `vitest related`, Playwright discovery, a release consumer chain, or another project-owned resolver, pure planner tests prove only the planner output. At least one representative case for each newly introduced or materially changed delegated mechanism must be checked through the real resolver/tool semantics when that is practical and deterministic. Do not make the planner test and implementation agree on an unverified assumption about what the delegated resolver will select.
+
+When current tests observe repository state outside an import graph — for example direct file reads, runtime config discovery, directory scans, or existence/absence checks — classify those as external ownership explicitly instead of silently excluding them because they do not fit an exact-file mapping.
+
 ## TEST IMPACT
 
 For each materially changed contract or user scenario, record:
@@ -153,4 +172,4 @@ Use `test-first` whenever automated behavioral proof is added or materially chan
 
 ## Output
 
-Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how proof is authored independently, what plausible wrong outcome it must reject, and when to stop. For bounded audits, it must also make the audit population and completion criterion explicit enough that examples cannot be mistaken for the complete scope.
+Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how proof is authored independently, what plausible wrong outcome it must reject, and when to stop. For bounded audits, it must also make the audit population and completion criterion explicit enough that examples cannot be mistaken for the complete scope. For impact/selection planners, it must also state the ownership-mechanism acceptance matrix and any real delegated-resolver probes required to validate it.
