@@ -26,6 +26,8 @@ explicit full/release request
 
 The same risk-based planning semantics must serve local coding-agent feedback and exact-head GitHub CI. Coding agents own code and required proof; the architect owns PR review, exact-head CI, and merge readiness.
 
+For CI performance, optimize the parallel **critical path / merge latency** first. Aggregate compute is secondary: do not serialize independent proof owners merely to reuse one provisioned runner or build artifact.
+
 Modernization is not a goal by itself. Stop infrastructure work when the exit criterion below is satisfied.
 
 ## Source of truth and ownership
@@ -116,6 +118,8 @@ Visual:
 
 Storybook static build inside a browser lane is about 2m17s. Behavior and visual lanes are independent and parallel, so duplicated build compute is not by itself evidence of a critical-path problem.
 
+Current develop CI also deliberately starts `verification-static`, application E2E, Storybook behavior, visual, and the independent PR `release-version` gate after `autofix` without serial dependencies between those proof owners. Preserve that property when source-impact release proof is added.
+
 ## Active finish plan
 
 The complete expected end state and ownership are already resolved in `verify-target-architecture.md`. The slices below are implementation boundaries for coding agents, not separate architecture explorations.
@@ -139,8 +143,9 @@ narrow positive repository-metadata predicate
 Important facts:
 
 - Markdown cannot be globally excluded: `PRIVACY.md` and `docs/user/**` are runtime inputs;
+- arbitrary source-adjacent `README.md` / `ARCHITECTURE.md` / `DESIGN.md` / `REVIEW.md` are not globally metadata by basename;
 - `docs/user/**` maps to the existing Help product E2E owner;
-- CSS/assets in broad runtime domains remain protected;
+- CSS/assets and unknown source-adjacent files in broad runtime domains remain protected;
 - unknown runtime-relevant impact still fails closed;
 - no generic cross-lane path classifier is introduced.
 
@@ -195,7 +200,7 @@ The repository currently has no canonical high-risk target list; before implemen
 
 Status: **after PR 2B**.
 
-Goal: ordinary verify automatically selects existing release contracts when a develop-bound diff is release-sensitive.
+Goal: ordinary verify automatically selects existing release contracts when a develop-bound diff is release-sensitive, without serializing those checks behind existing independent CI proof lanes.
 
 Keep release policy separate:
 
@@ -216,18 +221,26 @@ Required shape:
 - version-only `package.json` does not expand runtime/release impact;
 - runtime dependency/lockfile changes stay conservative;
 - `pnpm verify:release` remains the deliberate complete release gate;
-- source-impact release labels become usable outside `--full`; `release-version` remains policy/full-only;
-- keep existing artifact reuse within one verifier invocation;
+- add a specialized `release-impact` orchestration label for one selected release invocation;
+- individual source-impact release labels remain focused diagnostic entry points outside `--full`; `release-version` remains policy/full-only;
+- keep existing artifact reuse within one release-impact invocation;
 - do not add cross-job artifact transfer.
 
-CI parity uses the existing topology first:
+CI parity preserves the existing post-`autofix` parallel graph by adding **one dedicated `verification-release` job**:
 
-- non-browser release labels in `verification-static`;
-- release browser labels after application E2E in the existing `verification-browser-e2e` job;
-- `release-version` remains independent;
-- each verifier invocation skips quickly when its plan does not select that contract.
+```text
+autofix
+   ├─ verification-static
+   ├─ verification-browser-e2e
+   ├─ storybook-behavior
+   ├─ visual
+   ├─ verification-release
+   └─ release-version
+```
 
-Do not add a new CI job for performance before the benchmark. If rare selected release proof later dominates critical path, benchmark data may justify revisiting job topology.
+`verification-release` runs `pnpm verify --verbose --only release-impact`. It must not be appended after application E2E or static verification merely to reuse an existing runner. The aggregate `verification` gate additionally requires this lane.
+
+The dedicated release lane may remain internally sequential initially so existing artifact reuse and managed-update isolation stay simple. If the post-finish benchmark proves that release-sensitive PRs are now dominated by this lane, splitting artifact-oriented and managed-update release proof into separate parallel jobs is a later measured optimization.
 
 ## Representative benchmark after PR 2C
 
@@ -236,6 +249,7 @@ Do not automatically continue V3C-B/C/D/E or V3D/V3E. First benchmark representa
 | Change | Expected verify |
 | --- | --- |
 | docs / AGENTS | format/static only where applicable |
+| source-adjacent unknown Markdown | fail-closed owning-lane behavior; no basename-wide skip |
 | local entity source | type-check + related unit; mutation only if registered |
 | external file-as-data unit input | exact mapped unit proof |
 | deleted/moved unit source | conservative unit fallback when previous ownership cannot be resolved |
@@ -245,7 +259,7 @@ Do not automatically continue V3C-B/C/D/E or V3D/V3E. First benchmark representa
 | CSS runtime change | corresponding browser/visual proof; never skipped merely by extension |
 | registered high-risk mutation source | exact mutation target only |
 | unregistered source with adjacent unit test | no mutation |
-| service worker / PWA / managed update source | exact release-sensitive proof |
+| service worker / PWA / managed update source | exact release-sensitive proof in parallel release CI lane |
 | runtime dependency/lockfile | conservative affected lanes including release impact |
 | verifier tooling | verifier tests + conservative affected verifier lanes |
 
@@ -257,8 +271,10 @@ For every benchmark record:
 - duration;
 - false positives;
 - potential false negatives;
-- critical-path time;
+- critical-path / merge latency;
 - aggregate expensive compute.
+
+Use critical-path time as the primary CI performance metric. Aggregate compute is a secondary cost metric and must not be reduced by making previously independent lanes serial without a measured wall-clock benefit.
 
 ## Exit criterion
 
@@ -275,8 +291,9 @@ Verifier modernization is complete when all of these are true:
 9. release-sensitive develop diffs automatically select existing release contracts while release-version stays independent;
 10. coding agents have a fast focused feedback surface;
 11. exact-head CI uses the same planner semantics;
-12. known flakes are absent;
-13. further test-suite/CI optimization is required only when the representative benchmark identifies a real remaining bottleneck.
+12. source-impact release proof runs as its own parallel implementation lane rather than extending unrelated static/E2E/Storybook lanes;
+13. known flakes are absent;
+14. further test-suite/CI optimization is required only when the representative benchmark identifies a real remaining bottleneck.
 
 Once these are satisfied, **stop verifier infrastructure modernization**.
 
@@ -286,7 +303,8 @@ Do not start without measurement:
 
 - further sequential cleanup of legacy Material visual suites;
 - V3D-style optimization of individual expensive tests;
-- V3E parallelism;
+- extra parallelism beyond the required dedicated release-impact lane;
+- splitting release-impact into artifact/managed-update jobs;
 - more Playwright workers;
 - additional CI jobs for performance;
 - CI Storybook/release artifact transfer between runners;
@@ -296,28 +314,32 @@ Do not start without measurement:
 - a universal test registry;
 - broad E2E scenario optimization without evidence that it remains a bottleneck.
 
-Parallelism is specifically inactive as an optimization project. Reconsider it only if correct impact planning leaves an irreducible critical-path bottleneck whose measured wall-clock benefit justifies added compute and complexity.
+The new `verification-release` job is not speculative V3E-style parallelism: it is the minimum execution boundary needed to add required release proof without destroying the existing independent CI critical path. Further parallelism remains inactive until measured.
 
 ## Rejected approaches
 
 - `*.md = irrelevant`: rejected because Mioframe has runtime Markdown inputs.
+- common Markdown basename = metadata: rejected because future runtime content could otherwise become a silent false negative.
 - moving repository responsibility into a generic cross-lane classifier: rejected; lane-specific resolvers keep ownership explicit.
 - building a custom unit dependency graph: rejected; use Vitest related plus conservative fallback/exact external-input mappings.
 - mutation by neighboring test/source adjacency: rejected; mutation applies only to explicit high-risk targets.
 - copying every current Stryker candidate into the new registry: rejected; historical adjacency is not risk ownership.
 - full `verify:release` for every release-adjacent change: rejected when focused existing release contracts can faithfully own the changed behavior.
 - treating `release-version` as source impact: rejected; version intent is independent human/release policy.
-- adding a new release CI job before measurement: rejected; existing jobs can execute required selected contracts first.
+- appending release checks to `verification-browser-e2e` or `verification-static`: rejected because it serializes newly required proof behind independent existing lanes and can increase merge latency.
+- workflow `paths` filters for release relevance: rejected because they duplicate `releaseRisk.ts` and can drift.
 - continuing component-by-component legacy proof cleanup before measuring the post-planning bottleneck: rejected because it no longer serves the primary goal directly.
 
 ## Forbidden
 
 - Do not weaken fail-closed behavior, tests, flaky handling, lock guards, timeouts, or invalid-plan failures to make verification faster.
-- Do not globally exclude a file extension that currently contains runtime inputs.
+- Do not globally exclude a file extension or common source-adjacent Markdown basename that can contain runtime inputs.
 - Do not add a persistent generic dependency graph or generic verification DSL.
 - Do not add a cross-lane registry when lane-local ownership is sufficient.
 - Do not accept retry-pass/flaky classification as green proof.
 - Do not infer mutation targets from adjacency.
 - Do not infer PATCH/MINOR/MAJOR from source paths.
+- Do not duplicate release impact classification in workflow YAML.
+- Do not serialize release-impact behind static/application E2E merely to reuse setup or build work.
 - Do not claim performance improvement without before/after measurement.
 - Do not require coding agents to reproduce the architect-owned exact-head repository gate locally solely for handoff.
