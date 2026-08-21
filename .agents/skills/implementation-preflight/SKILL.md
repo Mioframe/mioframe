@@ -62,6 +62,9 @@ For each materially changed contract or user scenario, record:
 TEST IMPACT
 - Contract/scenario:
   - Primary proof owner:
+  - Oracle source:
+  - Must reject:
+  - Red phase: required | not applicable — <reason>
   - Additional proof:
   - Existing proof:
   - New/updated proof:
@@ -69,12 +72,17 @@ TEST IMPACT
   - Durable ownership/impact updates:
 ```
 
-Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md` and current executable state from `docs/testing/migration-plan.md`.
+Follow `docs/testing/architecture.md`. Whenever automated behavioral proof is added or materially changed, also follow `test-first`: the expected result must come from an independent accepted contract/evidence rather than the implementation being written.
+
+For Storybook-owned UI proof also follow `docs/testing/storybook.md` and current executable state from `docs/testing/migration-plan.md`.
 
 Resolve:
 
 - the stable contract/scenario being changed;
 - the lowest faithful primary proof;
+- the independent oracle for the expected result;
+- at least one plausible incorrect observable result that the selected proof must reject;
+- whether a meaningful focused red check can and should fail against the pre-change implementation;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
 - new, moved, renamed, or removed proof files;
@@ -82,7 +90,11 @@ Resolve:
 - applicable browser/mobile/accessibility/visual/release/data-safety/performance risks;
 - exact metric/budget when making a performance claim.
 
+The `Must reject` item is a proof-sensitivity check, not an instruction to enumerate every theoretical error. It exists because a coding agent can otherwise make implementation and test agree while both encode the same mistake.
+
 Do not add explicit registry metadata when deterministic local ownership already expresses the relation. Do not list a proof merely because a lane exists.
+
+Do not begin a behavior-changing production pass while the expected result is being inferred from the proposed implementation rather than the accepted contract. If the oracle is unresolved, return to the upstream architecture/product decision.
 
 ## Consumer migration
 
@@ -113,7 +125,7 @@ Use the domain workflow as the execution contract:
 - diagnostics: `diagnostic-events`;
 - ordinary Vue mechanics: `vue-component-implementation`.
 
-Use testing skills according to selected proof: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
+Use `test-first` whenever automated behavioral proof is added or materially changed. It owns proof independence, failure sensitivity, and the focused red/green cycle when meaningful. Then use the proof-type skill selected by `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
 ## Breadth control
 
@@ -124,4 +136,4 @@ Use testing skills according to selected proof: `unit-testing`, `component-contr
 
 ## Output
 
-Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how to prove it, and when to stop.
+Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how to prove it, what plausible wrong outcome that proof must reject, and when to stop.
