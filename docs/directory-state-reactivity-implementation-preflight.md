@@ -1,6 +1,6 @@
 # Directory state reactivity — implementation preflight
 
-Status: **completed; implementation is under semantic review**.
+Status: **completed; implementation passed semantic review**.
 
 Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture or active review findings.
 
@@ -211,4 +211,4 @@ Do not require a broad final local `pnpm verify` solely for coding-agent handoff
 
 ## Result
 
-Preflight: **completed**. The initial implementation is present on `refactor/directory-state-reactivity`. Remaining acceptance/correction work is owned by the active owner-local `REVIEW.md` findings; those corrections must preserve this implementation contract unless new evidence proves a runtime defect.
+Preflight: **completed**. The implementation on `refactor/directory-state-reactivity` passed semantic/project review with no active owner-local `REVIEW.md` findings. Exact-head GitHub CI remains the architect-owned final automatic acceptance gate; any CI-caused correction must preserve this implementation contract unless new evidence proves a runtime defect.
