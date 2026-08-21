@@ -1,8 +1,8 @@
 # Directory state reactivity
 
-Status: **architecture ready; implementation semantic review blocked by active repository lifecycle drift; exact-head GitHub CI is not an acceptance gate until that blocker is closed**.
+Status: **architecture ready; implementation semantic review ready; exact-head GitHub CI pending**.
 
-This document is the architecture source of truth for the directory-state-reactivity refactor. The implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The completed final-review correction is recorded in `docs/directory-state-reactivity-final-review-correction.md`. The currently active repository lifecycle implementation finding is tracked in `src/shared/service/repositories/REVIEW.md`; its narrow coding handoff is `docs/directory-state-reactivity-sticky-error-correction.md`.
+This document is the architecture source of truth for the directory-state-reactivity refactor. The implementation preflight is recorded in `docs/directory-state-reactivity-implementation-preflight.md`. The worker-publication correction is recorded in `docs/directory-state-reactivity-worker-boundary-correction.md`. The completed final-review correction is recorded in `docs/directory-state-reactivity-final-review-correction.md`.
 
 ## Goal
 
@@ -181,39 +181,18 @@ Public state while deriving:
 
 - before first successful snapshot: `loading`;
 - after a successful snapshot: `refreshing` with that retained snapshot;
-- after directory `error`: keep that error visible while replacement repository derivation is pending; do not clear recovery/error merely because retry, another invalidation, directory `reading`, or replacement derivation began.
-
-### Repository lifecycle precedence
-
-`RepositoryState.error` is sticky across the complete recovery attempt. Once a canonical directory error has published `error(E)`, directory lifecycle activity alone cannot clear it. The repository remains in `error(E)` across any number of directory `reading` and accepted `ready` inputs, including replacement derivation start and repeated invalidation, until either:
-
-1. a newer canonical directory error publishes `error(E2)`; or
-2. an accepted successful repository derivation publishes `ready(snapshot)`.
-
-The repository coordinator must not reconstruct public state from retained historical facts in a way that bypasses this precedence. In particular, a previously successful snapshot may produce `refreshing(snapshot)` only while the current repository lifecycle is not in `error`.
-
-The normative directory-input transition matrix is:
-
-| Current `RepositoryState` | Directory `reading`                                   | Directory `ready(entries)`                                                     | Directory `error(E)` |
-| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------- |
-| `loading`                 | remain `loading`; invalidate active derivation        | schedule/queue derivation; remain `loading` until accepted success             | publish `error(E)`   |
-| `ready(S)`                | publish `refreshing(S)`; invalidate active derivation | schedule/queue derivation; retain current snapshot while derivation is pending | publish `error(E)`   |
-| `refreshing(S)`           | remain `refreshing(S)`; invalidate active derivation  | schedule/queue newest accepted input; remain `refreshing(S)`                   | publish `error(E)`   |
-| `error(E1)`               | remain `error(E1)`; invalidate active derivation      | schedule/queue replacement derivation; remain `error(E1)`                      | publish `error(E2)`  |
-
-`ready(entries)` in this table describes accepted directory input, not successful repository recovery. It does not itself clear `error`, because repository facts have not yet been derived and accepted.
+- after directory `error`: keep that error visible while the first replacement derivation is pending; do not clear recovery/error merely because retry began.
 
 Derivation settlement:
 
-- accepted success publishes one atomic `ready` snapshot and is the only successful transition that clears a repository `error`;
-- stale/invalidated completion never publishes and cannot change the current public state;
+- accepted success publishes one atomic `ready` snapshot;
+- stale/invalidated completion never publishes;
 - after settlement, process only the newest pending accepted ready input;
-- if a newer directory error has already been published, an older derivation completion cannot replace it;
 - unexpected programmer/invariant failures are diagnostic defects, not a new public lifecycle state;
 - with zero demand, release upstream immediately; an already-running uncancellable derivation remains owned until settlement but cannot publish or retain upstream demand solely for itself;
 - a resubscribe before settlement may queue the latest accepted input, but must not revive an abandoned result.
 
-No generation counter/token/lease is required. Ownership is expressed directly by current active derivation, pending input, demand, invalidation state, and current `RepositoryState`.
+No generation counter/token/lease is required. Ownership is expressed directly by current active derivation, pending input, demand, and invalidation state.
 
 ## Repository derivation
 
@@ -300,10 +279,7 @@ Filesystem must prove:
 
 Repository must prove:
 
-- the complete normative directory-input transition matrix above, not only representative transitions;
-- specifically `error -> ready/replacement derivation pending -> reading` preserves the same error until an accepted replacement success;
-- a newer directory error replaces the previous error and stale/non-publishable derivation settlement cannot overwrite it;
-- normal `ready -> reading -> refreshing` continuity remains intact;
+- complete directory -> repository lifecycle matrix;
 - `0` duplicate canonical listings;
 - normalized-equivalent path sharing;
 - derivation concurrency `<= 1`, latest-pending, stale/zero-demand suppression;
@@ -322,7 +298,7 @@ Consumers must prove:
 
 Browser/visual proof is required only if implementation actually changes interaction/appearance. #211 browser recovery proof remains owned by #211. Provider-convergence proof remains provider-specific.
 
-Implementation preflight resolves exact test/spec paths and impact metadata. Required task-specific proof must exist in the repository; coding agents may use focused verifier-managed checks when useful. Broad automatic local verification is not a coding-agent handoff gate. Exact-head GitHub CI is the architect-owned final automatic repository gate only after semantic review has no active blocker.
+Implementation preflight resolves exact test/spec paths and impact metadata. Required task-specific proof must exist in the repository; coding agents may use focused verifier-managed checks when useful. Broad automatic local verification is not a coding-agent handoff gate. Exact-head GitHub CI is the architect-owned final automatic repository gate.
 
 ## Forbidden
 
@@ -333,8 +309,7 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Req
 - refresh-waiter coordination for the one-shot read;
 - duplicate canonical repository listing;
 - generic query refetch as freshness;
-- clearing recovery/error on retry start, directory `reading`, accepted directory `ready`, replacement derivation start, or repeated invalidation;
-- reconstructing `refreshing` from a historical snapshot while current `RepositoryState` is `error`;
+- clearing recovery/error on retry start;
 - duplicate error-source/synchronization state;
 - treating plausible v3 filename as confirmed decoded storage;
 - new recoverable repository derivation error without a confirmed scenario;
@@ -349,9 +324,8 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Req
 - ownership/source of truth/state/API/lifecycle/error/consumer contracts: resolved;
 - reactive vs one-shot read responsibility: resolved;
 - exactly two stateful coordinators justified; no third mechanism required;
-- repository error precedence and complete directory-input transition matrix: resolved and normative;
 - proof ownership and unchanged scope: resolved;
 - unresolved architecture blockers: none;
 - architecture verdict: **ready**;
-- implementation semantic review: **blocked** by the active repository lifecycle finding in `src/shared/service/repositories/REVIEW.md`;
-- final automatic acceptance gate: exact-head GitHub CI, architect-owned, after semantic blockers are closed.
+- implementation semantic review: **ready**; all owner-local findings from the full PR re-review and its correction passes are closed;
+- final automatic acceptance gate: exact-head GitHub CI, architect-owned.
