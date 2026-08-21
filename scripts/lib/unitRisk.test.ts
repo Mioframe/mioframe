@@ -17,6 +17,31 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // readFile/new URL(<repo path>, import.meta.url)), not just the four
 // previously-seeded examples.
 //
+// B1 correction pass (docs/testing/verify-unit-impact-correction.md): this
+// pass corrected/added assertions for three previously-conflated concerns:
+// (1) ordinary current-tree module/style/support inputs are eligible for
+// Vitest `related` resolution repository-wide -- src/, config/, scripts/,
+// tests/e2e/, and repository root alike -- never restricted to the Vitest
+// test-discovery roots (new "repository-wide ordinary source widening"
+// describe block below, using real verified relations: root
+// postcss.config.js <- config/postcss.config.test.ts, root
+// playwright.config.ts <- playwright.lanes.test.ts, and
+// tests/e2e/release/fixtures/managedReleaseFixture.mjs <- its sibling
+// .test.mjs); (2) a file-as-data mapping is always additive to real ordinary
+// pass-through for the same source, never extension- or location-exclusive,
+// so every mapped source that is itself a plausible ordinary
+// module/style/support input (any UNIT_FILE_AS_DATA_MAPPINGS entry ending in
+// .ts/.vue/.mjs/.js/.json/.css) now also expects itself in relatedInputs
+// alongside its mapped owner(s) -- corrected below for vite.config.ts and
+// every mapped .css source; PRIVACY.md/.gitignore/.github workflow .yml
+// mappings are unaffected, since .md/.yml and extension-less paths are not
+// ordinary-source-eligible shapes; (3) the .gitignore -> agentEnvironment
+// mapping was independently re-verified against the real repository file
+// (see "repo test fixture sanity" in scripts/agentEnvironment.test.mjs,
+// which resolves and reads the real root .gitignore via
+// fileURLToPath-relative path resolution, not a temp/mkdtemp fixture) and
+// found still justified; no test change was needed for it.
+//
 // Audit method: `grep -rn -E 'readFileSync|readFile\(|new URL\(' src config
 // scripts tests eslint.config.test.ts`, then every hit was read and verified
 // directly in its owning file (not trusted from the pattern match alone).
@@ -69,13 +94,17 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   resolves `../.gitignore` relative to the test file's own directory and
 //   asserts its content -- a real fixed repository path, not a temp fixture);
 // - `vite.config.ts` (root, outside src/config/scripts) ->
-//   `config/viteConfigFixtureImport.test.ts` (direct readFileSync) AND
-//   `scripts/release/viteBuildDate.test.mjs` (a genuine `import viteConfig
-//   from '../../vite.config.ts'` ES import -- still requires an explicit
-//   mapping because isOrdinaryUnitSourcePath's UNIT_RELEVANT_PREFIXES is
-//   `src/`, `config/`, `scripts/` only, so a root-level file is NEVER handed
-//   to Vitest's related resolution by resolveUnitPlan regardless of any real
-//   import edge; confirmed by direct read of unitRisk.ts);
+//   `config/viteConfigFixtureImport.test.ts` (direct readFileSync, a true
+//   file-as-data relation the import graph cannot express regardless of any
+//   prefix fix) AND `scripts/release/viteBuildDate.test.mjs` (a genuine
+//   `import viteConfig from '../../vite.config.ts'` ES import -- this second
+//   relation is ALSO real ordinary-source pass-through once
+//   docs/testing/verify-unit-impact-correction.md decisions #2/#4 are
+//   implemented: vite.config.ts is a plausible ordinary `.ts` module input
+//   repository-wide, not only under src/config/scripts, so the corrected
+//   resolveUnitPlan must additionally pass vite.config.ts itself through to
+//   Vitest related, additive to both mapped owners -- see "selects both
+//   direct root vite.config.ts readers plus vite.config.ts itself" below);
 // - `src/shared/lib/md/index.css` -> `config/postcss.config.test.ts`,
 //   `src/shared/lib/md/index.test.ts`, `src/shared/ui/material/foundation/
 //   tokens.test.ts` (all three readFileSync it directly; none import it);
@@ -116,33 +145,37 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   `MDButton.test.ts` has a real `import MDButton from './MDButton.vue'`
 //   (line 5) -- a genuine two-hop import chain Vitest's related resolution
 //   can trace, even though the test ALSO happens to readFileSync the same
-//   CSS file directly for its own assertion. NOTE: this specific relation
-//   requires the corrected unitRisk.ts to treat `.css` as ordinary unit
-//   source (isOrdinaryUnitSourcePath's ORDINARY_SOURCE_EXTENSIONS currently
-//   omits `.css` entirely), a companion production fix beyond
-//   UNIT_FILE_AS_DATA_MAPPINGS -- reported as an open implementation note,
-//   not resolved by this test-author pass.
+//   CSS file directly for its own assertion. `.css` is already part of the
+//   current unitRisk.ts's ORDINARY_SOURCE_EXTENSIONS (confirmed by direct
+//   read), so this case already passes against the current unfixed
+//   production module -- it is not part of the B1 defect and requires no
+//   production change.
 //
-// Two open implementation notes for the corrected unitRisk.ts, beyond adding
+// One open implementation note for the corrected unitRisk.ts, beyond adding
 // UNIT_FILE_AS_DATA_MAPPINGS rows (reported in full at handoff):
-// 1. `src/shared/ui/Card/MDCard.vue` is itself real ordinary `.vue` unit
-//    source under `src/` (MDCard.test.ts imports it directly) AND a
-//    file-as-data source MDStateLayer.test.ts reads without importing.
-//    resolveUnitPlan's current mapping branch does an early `continue` on a
-//    mapping match, which would silently suppress MDCard.vue's own ordinary
-//    related-input pass-through (dropping MDCard.test.ts) once a mapping is
-//    added. The corrected resolver must treat the mapping as ADDITIVE to
-//    ordinary-source pass-through for the same changed path, not a mutually
-//    exclusive first-match-wins branch, for a source that is genuinely both.
-// 2. `src/shared/ui/material/components/button/tokens.css` is deliberately
-//    NOT mapped (see below) because a real import edge already reaches
-//    MDButton.test.ts -- but ORDINARY_SOURCE_EXTENSIONS in the current
-//    unitRisk.ts omits `.css` entirely, so that pass-through cannot actually
-//    happen without also widening CSS handling in isOrdinaryUnitSourcePath.
+// - `src/shared/ui/Card/MDCard.vue` is itself real ordinary `.vue` unit
+//   source under `src/` (MDCard.test.ts imports it directly) AND a
+//   file-as-data source MDStateLayer.test.ts reads without importing.
+//   resolveUnitPlan's current mapping branch does an early `continue` on a
+//   mapping match, which would silently suppress MDCard.vue's own ordinary
+//   related-input pass-through (dropping MDCard.test.ts) once a mapping is
+//   added. The corrected resolver must treat the mapping as ADDITIVE to
+//   ordinary-source pass-through for the same changed path, not a mutually
+//   exclusive first-match-wins branch, for a source that is genuinely both.
+//   This already passes against the current unfixed production module too
+//   (its mapping branch only special-cases CSS, not `.vue`); the same
+//   ADDITIVE treatment is required more broadly for every mapped CSS source
+//   (`isMappedCssSource` currently makes CSS mappings exclusive -- see the
+//   corrected CSS mapping tests above and the B1 correction pass note at the
+//   top of this file) and for every mapped source repository-wide once the
+//   `UNIT_RELEVANT_PREFIXES` restriction is removed (see the "repository-wide
+//   ordinary source widening" describe block below).
 //
-// resolveUnitPlan does not exist yet; this whole suite is expected to fail at
-// import time (valid new-API red). Do not weaken these assertions to make
-// the current unfixed production module pass.
+// resolveUnitPlan already exists but still has the B1 defects (prefix-
+// restricted ordinary-source eligibility, CSS-mapping exclusivity); this
+// suite is expected to show genuine assertion failures against the current
+// unfixed production module, not an import-time failure. Do not weaken these
+// assertions to make the current unfixed production module pass.
 
 function added(filePath: string): ChangedPath {
   return { status: 'added', path: filePath };
@@ -491,74 +524,101 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     expect(plan.relatedInputs).toEqual(['scripts/agentEnvironment.test.mjs']);
   });
 
-  it('selects both direct root vite.config.ts readers, since a root-level file never matches isOrdinaryUnitSourcePath regardless of any real import edge', () => {
+  it('selects both direct root vite.config.ts readers plus vite.config.ts itself, since a root-level .ts file is repository-wide ordinary unit source in addition to any file-as-data mapping (verify-unit-impact-correction.md decisions #2/#4: ordinary pass-through is repository-wide and mappings are additive, never extension- or location-exclusive)', () => {
     const plan = resolveUnitPlan([modified('vite.config.ts')]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
       'config/viteConfigFixtureImport.test.ts',
       'scripts/release/viteBuildDate.test.mjs',
+      'vite.config.ts',
     ]);
   });
 
-  it('selects every confirmed direct reader of src/shared/lib/md/index.css', () => {
+  it('selects every confirmed direct reader of src/shared/lib/md/index.css, plus the CSS source itself as additive ordinary pass-through (mapped CSS must not suppress a real ordinary import consumer)', () => {
     const plan = resolveUnitPlan([modified('src/shared/lib/md/index.css')]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
       'config/postcss.config.test.ts',
+      'src/shared/lib/md/index.css',
       'src/shared/lib/md/index.test.ts',
       'src/shared/ui/material/foundation/tokens.test.ts',
     ]);
   });
 
-  it('selects every confirmed direct reader of the Material foundation tokens.css', () => {
+  it('selects every confirmed direct reader of the Material foundation tokens.css, plus the CSS source itself as additive ordinary pass-through', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/material/foundation/tokens.css')]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
       'config/postcss.config.test.ts',
+      'src/shared/ui/material/foundation/tokens.css',
       'src/shared/ui/material/foundation/tokens.test.ts',
     ]);
   });
 
-  it('selects every confirmed direct reader of the Material foundation theme.css', () => {
+  it('selects every confirmed direct reader of the Material foundation theme.css, plus the CSS source itself as additive ordinary pass-through', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/material/foundation/theme.css')]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual([
       'config/postcss.config.test.ts',
+      'src/shared/ui/material/foundation/theme.css',
       'src/shared/ui/material/foundation/theme.test.ts',
       'src/shared/ui/material/foundation/tokens.test.ts',
     ]);
   });
 
-  it('selects the sole direct reader of foundation/index.css', () => {
+  it('selects the direct reader of foundation/index.css, plus the CSS source itself as additive ordinary pass-through', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/material/foundation/index.css')]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.relatedInputs).toEqual(['src/shared/ui/material/foundation/tokens.test.ts']);
+    expect(plan.relatedInputs).toEqual([
+      'src/shared/ui/material/foundation/index.css',
+      'src/shared/ui/material/foundation/tokens.test.ts',
+    ]);
   });
 
-  it.each(['src/app/styles/styles.css', 'src/app/styles/base.css'])(
-    'selects the sole direct reader of %s',
-    (source) => {
-      const plan = resolveUnitPlan([modified(source)]);
+  it('selects the direct reader of src/app/styles/styles.css, plus the CSS source itself as additive ordinary pass-through', () => {
+    const plan = resolveUnitPlan([modified('src/app/styles/styles.css')]);
 
-      expect(plan.mode).toBe('focused');
-      expect(plan.relatedInputs).toEqual(['src/shared/ui/material/foundation/tokens.test.ts']);
-    },
-  );
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/app/styles/styles.css',
+      'src/shared/ui/material/foundation/tokens.test.ts',
+    ]);
+  });
 
-  it.each(['src/shared/ui/Lists/listItemAnatomy.css', 'src/shared/ui/State/ripple.css'])(
-    'selects the sole direct reader of %s (MDStateLayer.test.ts cross-file opacity-alias assertions)',
-    (source) => {
-      const plan = resolveUnitPlan([modified(source)]);
+  it('selects the direct reader of src/app/styles/base.css, plus the CSS source itself as additive ordinary pass-through', () => {
+    const plan = resolveUnitPlan([modified('src/app/styles/base.css')]);
 
-      expect(plan.mode).toBe('focused');
-      expect(plan.relatedInputs).toEqual(['src/shared/ui/State/MDStateLayer.test.ts']);
-    },
-  );
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/app/styles/base.css',
+      'src/shared/ui/material/foundation/tokens.test.ts',
+    ]);
+  });
+
+  it('selects the direct reader of src/shared/ui/Lists/listItemAnatomy.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through', () => {
+    const plan = resolveUnitPlan([modified('src/shared/ui/Lists/listItemAnatomy.css')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/shared/ui/Lists/listItemAnatomy.css',
+      'src/shared/ui/State/MDStateLayer.test.ts',
+    ]);
+  });
+
+  it('selects the direct reader of src/shared/ui/State/ripple.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through', () => {
+    const plan = resolveUnitPlan([modified('src/shared/ui/State/ripple.css')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/shared/ui/State/MDStateLayer.test.ts',
+      'src/shared/ui/State/ripple.css',
+    ]);
+  });
 
   it('selects both the file-as-data owner and the ordinary-source owner for src/shared/ui/Card/MDCard.vue (unlike the other two MDStateLayer.test.ts file-as-data sources, MDCard.vue is itself real .vue unit source with its own colocated MDCard.test.ts, reached only through ordinary related-input pass-through; the mapping must not suppress that real relation)', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/Card/MDCard.vue')]);
@@ -568,6 +628,31 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
       'src/shared/ui/Card/MDCard.vue',
       'src/shared/ui/State/MDStateLayer.test.ts',
     ]);
+  });
+});
+
+describe('resolveUnitPlan repository-wide ordinary source widening (B1-corrected: dependency-input eligibility is not limited to src/config/scripts, and tests/e2e/** non-test helpers are eligible too)', () => {
+  it('selects the real root postcss.config.js as ordinary source pass-through -- config/postcss.config.test.ts has a real "import postcssConfig from \'../postcss.config.js\'" edge to this exact root module; resolveUnitPlan only selects which paths to hand to Vitest related, it does not itself trace the import graph', () => {
+    const plan = resolveUnitPlan([modified('postcss.config.js')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['postcss.config.js']);
+  });
+
+  it('selects a real root Playwright config module as ordinary source pass-through -- playwright.lanes.test.ts has a real "import appConfig from \'./playwright.config\'" edge to this exact root .ts module', () => {
+    const plan = resolveUnitPlan([modified('playwright.config.ts')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['playwright.config.ts']);
+  });
+
+  it('selects a real tests/e2e/** non-test helper as ordinary source pass-through -- tests/e2e/release/fixtures/managedReleaseFixture.test.mjs imports materializeManagedRelease/mutateControllerWorkerBytes from this exact adjacent tests/e2e/** module, but the current UNIT_RELEVANT_PREFIXES excludes tests/e2e/** from ordinary-source eligibility entirely', () => {
+    const plan = resolveUnitPlan([
+      modified('tests/e2e/release/fixtures/managedReleaseFixture.mjs'),
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['tests/e2e/release/fixtures/managedReleaseFixture.mjs']);
   });
 });
 

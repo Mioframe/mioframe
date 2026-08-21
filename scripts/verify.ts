@@ -118,6 +118,15 @@ export interface ExecutedCommandResult extends CommandResultBase {
   exitCode: number;
   terminatedBySignal: NodeJS.Signals | null;
   signal: NodeJS.Signals | null;
+  /**
+   * Verifier-owned timeout signal: true when this command was killed by
+   * `runCommand`'s own internal timeout (see `COMMAND_TIMEOUT_MS_BY_LABEL`),
+   * independent of captured output content. Lets `getFailureReason` report
+   * an actionable timeout reason without inferring anything from the log.
+   * Optional/defaults to not-timed-out so existing constructors of this
+   * result shape are unaffected.
+   */
+  timedOut?: boolean;
 }
 
 /** Result of a command the planner skipped before execution. */
@@ -581,39 +590,17 @@ export function formatFailureDetailLines(detail: FailureDetail): string[] {
   return lines;
 }
 
-const FAILURE_REASON_EXCERPT_MAX_CHARS = 300;
-const FAILURE_REASON_EXCERPT_MAX_LINES = 3;
-
-/**
- * Bounded excerpt of captured command output, used only when no
- * verifier-owned failure reason exists. Materially smaller than the
- * existing `MAX_RELEVANT_LINES` verbose tail, and hard-capped in length so
- * very large captured output cannot grow the reason proportionally.
- * @param output Combined captured stdout/stderr.
- * @returns Bounded excerpt, or an empty string when `output` is blank.
- */
-function getBoundedFailureExcerpt(output: string): string {
-  const trimmedLines = output
-    .split('\n')
-    .map((line) => line.replace(ANSI_ESCAPE_PATTERN, '').trim())
-    .filter((line) => line.length > 0);
-
-  if (trimmedLines.length === 0) {
-    return '';
-  }
-
-  const excerpt = trimmedLines.slice(-FAILURE_REASON_EXCERPT_MAX_LINES).join(' | ');
-
-  return excerpt.length > FAILURE_REASON_EXCERPT_MAX_CHARS
-    ? `${excerpt.slice(0, FAILURE_REASON_EXCERPT_MAX_CHARS)}…`
-    : excerpt;
-}
-
 /**
  * Resolve a bounded, trustworthy failure reason for one failed check, per
  * `docs/testing/verify-agent-output.md` "Failure-detail extraction": prefer
- * a verifier-owned reason, then a small bounded excerpt, then the exit
- * code. Never returns the complete unbounded output.
+ * a verifier-owned reason (blocking log signal, pre-execution invalid plan,
+ * or the verifier's own timeout), then the exit code. Deliberately never
+ * infers a reason from arbitrary captured output: a real error can be
+ * followed by unrelated trailing chatter, and no stable reporter-summary
+ * contract exists for this yet, so an output-tail excerpt is not trustworthy
+ * proof of relevance (see `scripts/REVIEW.md` B1). Never returns the
+ * complete unbounded output; detailed diagnostics remain in
+ * `.verify/logs/**` and `--verbose`.
  * @param result Failed executed or pre-execution invalid command result.
  * @returns Bounded failure reason.
  */
@@ -626,9 +613,15 @@ export function getFailureReason(result: ExecutedCommandResult | InvalidCommandR
     return result.reason;
   }
 
-  const excerpt = getBoundedFailureExcerpt(`${result.stdout}\n${result.stderr}`);
+  if (result.timedOut) {
+    const commandTimeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[result.label] ?? null;
 
-  return excerpt.length > 0 ? excerpt : `exit code ${result.exitCode}`;
+    return commandTimeoutMs === null
+      ? 'timeout: exceeded verifier-owned command timeout'
+      : `timeout: exceeded ${formatDuration(commandTimeoutMs)}`;
+  }
+
+  return `exit code ${result.exitCode}`;
 }
 
 function printHelp(): void {
@@ -1035,6 +1028,7 @@ async function runCommand(
     terminatedBySignal: forwarder.terminatedBySignal,
     // Populated for expensive commands to support applyProcessResult.
     signal: forwarder.terminatedBySignal,
+    timedOut,
   };
 }
 

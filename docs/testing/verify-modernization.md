@@ -1,6 +1,6 @@
 # Verify modernization
 
-Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. The remaining verifier modernization is implemented in **one finish branch and one pull request** using bounded passes, followed by one representative benchmark and a stop decision.
+Status: V1, V2A, V2B, V3A, V3B, and V3C-A are complete. Passes A-F of the finish branch (`refactor/verify-modernization-finish`) are complete and green under focused verifier-managed proof, including the `scripts/lib/REVIEW.md` (B1), `scripts/REVIEW.md` (B1), and `.github/workflows/REVIEW.md` (B1) correction-round blockers. Pass G's representative benchmark is recorded below. Exact-head CI critical-path/merge-latency evidence remains architect-owned pending the published PR.
 
 Source documents:
 
@@ -210,23 +210,60 @@ After A–F, benchmark representative diff classes and record:
 
 Representative classes:
 
-| Change | Expected behavior |
-| --- | --- |
-| docs / `AGENTS.md` | static/format only where applicable; no broad browser false positive |
-| source-adjacent unknown Markdown | fail closed to owning runtime lane; no basename-wide skip |
-| local entity source | type-check + related unit; mutation only if registered |
-| file-as-data input | exact mapped unit owner |
-| deleted/moved unit source | conservative status-safe unit fallback |
-| feature source | unit + only relevant product E2E |
-| Material component | relevant component/browser/visual proof |
-| CSS runtime change | browser/visual proof where owned; never extension-skipped |
-| registered mutation source | exact mutation target |
-| unregistered adjacent source | no mutation |
-| service-worker/PWA/managed-update source | exact release-sensitive proof in parallel release lane |
-| runtime dependency/lockfile | conservative affected lanes including release impact |
-| verifier tooling | verifier-owned proof + conservative affected verifier lanes |
+| Change                                   | Expected behavior                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| docs / `AGENTS.md`                       | static/format only where applicable; no broad browser false positive |
+| source-adjacent unknown Markdown         | fail closed to owning runtime lane; no basename-wide skip            |
+| local entity source                      | type-check + related unit; mutation only if registered               |
+| file-as-data input                       | exact mapped unit owner                                              |
+| deleted/moved unit source                | conservative status-safe unit fallback                               |
+| feature source                           | unit + only relevant product E2E                                     |
+| Material component                       | relevant component/browser/visual proof                              |
+| CSS runtime change                       | browser/visual proof where owned; never extension-skipped            |
+| registered mutation source               | exact mutation target                                                |
+| unregistered adjacent source             | no mutation                                                          |
+| service-worker/PWA/managed-update source | exact release-sensitive proof in parallel release lane               |
+| runtime dependency/lockfile              | conservative affected lanes including release impact                 |
+| verifier tooling                         | verifier-owned proof + conservative affected verifier lanes          |
 
 The benchmark is evidence for the stop decision, not permission to begin more infrastructure work automatically.
+
+### Pass G — recorded results (correction round, `refactor/verify-modernization-finish`)
+
+This records the representative benchmark after the active correction round that resolved `scripts/lib/REVIEW.md` B1 (unit-impact ownership), `scripts/REVIEW.md` B1 (failure-detail extraction), the stale `visualRisk.test.ts` unmigrated-owner fixture, and `.github/workflows/REVIEW.md` B1 (`verification-release` timeout). Only the cases affected by these corrections were rerun; Pass B/D/E ownership was unchanged by this round and is not re-benchmarked here.
+
+**Method:** each resolver (`resolveUnitPlan`, `resolveVisualPlan`, `resolveAppE2EPlan`, `resolveStorybookBehaviorPlan`, `resolveMutationPlan`, `resolveReleasePlan`) was invoked directly against representative changed-file sets, avoiding execution of the expensive child commands themselves (build/e2e/Playwright) since only planner correctness and timing are in scope for this round. Planner resolution time was measured locally with `performance.now()`; this is real local timing, not a CI measurement.
+
+| Case                                                             | unit                                                                    | visual                                          | appE2E                                | storybook-behavior                                             | mutation | release                                      | planner time |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------- | -------------------------------------------------------------- | -------- | -------------------------------------------- | ------------ |
+| `AGENTS.md`                                                      | skip                                                                    | skip                                            | skip                                  | skip                                                           | skip     | skip                                         | ~15ms        |
+| unclassified `src/shared/ui/Example/README.md`                   | skip                                                                    | **full** (no resolvable colocated visual owner) | **full** (unmapped E2E-relevant path) | skip                                                           | skip     | skip                                         | ~6ms         |
+| local entity source `src/entities/document/model/document.ts`    | **focused** (Vitest related)                                            | skip                                            | **full** (unmapped)                   | skip                                                           | skip     | skip                                         | ~6ms         |
+| file-as-data `PRIVACY.md`                                        | **focused** -> `DataStoragePrivacyPane.test.ts`                         | skip                                            | skip                                  | skip                                                           | skip     | skip                                         | ~6ms         |
+| root config `postcss.config.js` (B1 case)                        | **focused**, self in `relatedInputs`                                    | skip                                            | skip                                  | skip                                                           | skip     | skip                                         | ~6ms         |
+| `tests/e2e/release/fixtures/managedReleaseFixture.mjs` (B1 case) | **focused**, self in `relatedInputs`                                    | skip                                            | skip                                  | skip                                                           | skip     | **focused** -> `managed-updates`             | ~5ms         |
+| CSS runtime `button/tokens.css`                                  | **focused** (Vitest related; no exclusive-mapping suppression, B1 case) | **focused** -> `MDButton.visual.spec.ts`        | **full** (unmapped)                   | **focused** -> `MDButton.browser.spec.ts` + 2 shared scenarios | skip     | skip                                         | ~5ms         |
+| `src/sw.ts` (managed-update runtime)                             | **focused**                                                             | skip                                            | **full** (unmapped)                   | skip                                                           | skip     | **focused** -> `artifact`, `managed-updates` | ~5ms         |
+| `pnpm-lock.yaml`                                                 | **full**                                                                | **full**                                        | **full**                              | **full**                                                       | skip     | **full** (all 6 checks)                      | ~3ms         |
+| `scripts/verify.ts` (verifier tooling)                           | **focused**                                                             | **full**                                        | **full**                              | **full**                                                       | skip     | **full** (all 6 checks)                      | ~3ms         |
+| deleted `src/entities/foo/foo.ts`                                | **full** (deleted unit-relevant, unresolved surviving ownership)        | n/a                                             | n/a                                   | n/a                                                            | n/a      | n/a                                          | —            |
+
+**Accepted false positives:** none newly introduced by this correction round. `pnpm-lock.yaml` and `scripts/verify.ts` correctly triggering conservative `full` across every affected lane is expected fail-closed behavior for real infrastructure/dependency changes, not a false positive.
+
+**Potential false negatives, and their resolution:** the four B1-identified silent under-selections are confirmed fixed and re-covered by fresh proof in `scripts/lib/unitRisk.test.ts`:
+
+- root-level imported modules (e.g. `postcss.config.js`, root Playwright config) are no longer skipped merely for living outside `src/`, `config/`, `scripts/` — ordinary-source eligibility for `vitest related` is repository-wide;
+- `tests/e2e/**` non-test helpers (e.g. `managedReleaseFixture.mjs`) are now eligible the same way;
+- an exact file-as-data mapping over a CSS/`.vue` source no longer suppresses that source's own real ordinary-source pass-through (`isMappedCssSource` exclusivity removed; mappings are strictly additive);
+- the `.gitignore -> scripts/agentEnvironment.test.mjs` mapping was independently re-verified against the real fixed-path read in that test (not a temp fixture) and remains justified.
+
+One new exclusion was required to avoid a regression while widening ordinary-source eligibility to repository-wide: `tests/e2e/**/*.spec.ts` Playwright specs and `package.json` are now explicitly excluded from `isOrdinaryUnitSourcePath` (previously excluded only incidentally by the removed `src/config/scripts` prefix restriction). Both exclusions are covered by existing/updated unit-planner tests. No other known false negative remains.
+
+**Verifier output boundedness/actionability (Pass A):** `getFailureReason` no longer derives a default reason from an arbitrary output tail. Verified locally: a real TS2322 error followed by unrelated build-tool/npm-notice trailing chatter no longer surfaces that chatter as `reason`; the default fallback is the exact `exit code N`, and a genuine verifier-owned `timeout: exceeded <duration>` reason was added (independent of output content, driven by the existing `runCommand` timeout signal) so timeout failures stay actionable without any output-tail inference. Confirmed via this session's own focused `pnpm verify --only unit-tests` runs, whose own failure summaries correctly showed `reason: exit code 1` with no injected tail content.
+
+**CI critical-path / merge latency:** explicitly **pending, architect-owned** — no PR exists yet against this branch. The `verification-release` job timeout was raised from 60 to 120 minutes (`.github/workflows/verify.yml`), driven by a measured worst-case sequential source-impact release envelope of ~103 minutes (`build` 10m + `artifact` 8m + `release-smoke` 17m + `managed-updates` 68m, per the derived `COMMAND_TIMEOUT_MS_BY_LABEL` constants in `scripts/verify.ts`) plus a 5-minute setup allowance, safely exceeding both that envelope and the prior 90-minute precedent. Real exact-head wall-clock/merge-latency numbers require the published PR's CI run.
+
+**Aggregate expensive compute:** unchanged by this correction round — no new CI jobs, workers, or sharding were added; Pass F only raised one existing job's `timeout-minutes`.
 
 ## Exit criterion
 

@@ -170,10 +170,19 @@ function uniqSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
-// Colocated Playwright proof inputs only; never Vitest-owned regardless of
-// location (see .agents/skills/verification/SKILL.md).
+// Playwright-owned proof inputs only; never Vitest-owned regardless of
+// location (see .agents/skills/verification/SKILL.md): colocated
+// *.browser.spec.ts/*.visual.spec.ts anywhere, plus every tests/e2e/**/*.spec.ts.
+// Explicit rather than incidental: now that ordinary-source eligibility below
+// is repository-wide, a *.spec.ts under tests/e2e/ would otherwise match the
+// ordinary `.ts` shape merely because it is no longer confined to
+// src/config/scripts.
 function isPlaywrightOnlyProofPath(filePath: string): boolean {
-  return filePath.endsWith('.browser.spec.ts') || filePath.endsWith('.visual.spec.ts');
+  if (filePath.endsWith('.browser.spec.ts') || filePath.endsWith('.visual.spec.ts')) {
+    return true;
+  }
+
+  return filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts');
 }
 
 /**
@@ -203,18 +212,29 @@ function isTestShapedPath(filePath: string): boolean {
 /**
  * An ordinary (non-test) source/support path Vitest's own related-test
  * resolution can trace, deliberately excluding Playwright-only proof files.
+ * Repository-wide by design: dependency-input eligibility for `vitest
+ * related` is not the same concept as Vitest's test-discovery roots (see
+ * `isTestShapedPath` and `docs/testing/verify-unit-impact-correction.md`), so
+ * a plausible ordinary module/style/support path is eligible regardless of
+ * whether it lives under `src/`, `config/`, `scripts/`, `tests/e2e/`, or the
+ * repository root.
  * @param filePath Repository-relative path.
  * @returns True when the path is ordinary unit-relevant source.
  */
 function isOrdinaryUnitSourcePath(filePath: string): boolean {
-  if (isTestShapedPath(filePath) || isPlaywrightOnlyProofPath(filePath)) {
+  // package.json has its own dedicated version-only/runtime-relevant
+  // full-unit trigger (see checkInfrastructureTrigger below); it is never
+  // ordinary pass-through source, so a version-only change stays skippable
+  // instead of manufacturing an unwanted `vitest related package.json` input.
+  if (
+    isTestShapedPath(filePath) ||
+    isPlaywrightOnlyProofPath(filePath) ||
+    filePath === PACKAGE_JSON_PATH
+  ) {
     return false;
   }
 
-  return (
-    UNIT_RELEVANT_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
-    ORDINARY_SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension))
-  );
+  return ORDINARY_SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension));
 }
 
 function isUnitRelevantByShape(filePath: string): boolean {
@@ -356,17 +376,13 @@ export function resolveUnitPlan(
       continue;
     }
 
-    // A CSS path already covered by an explicit file-as-data mapping is
-    // consumed as data outside the import graph by definition (that is why
-    // it needed a mapping); also passing it through as ordinary source would
-    // add no discoverable relation and would wrongly surface it in
-    // relatedInputs alongside its real mapped owners. A mapped path with
-    // another extension (e.g. MDCard.vue) is genuinely both a file-as-data
-    // source and real ordinary unit source, so the mapping stays additive
-    // there rather than suppressing its own colocated-test relation.
-    const isMappedCssSource = mapping !== undefined && change.path.endsWith('.css');
-
-    if (!isMappedCssSource && isOrdinaryUnitSourcePath(change.path)) {
+    // A mapping is always additive to real ordinary-source pass-through,
+    // never exclusive: an exact file-as-data mapping exists for a
+    // non-import consumption relation Vitest related cannot discover, but
+    // that never suppresses whatever real import-based relation the same
+    // path also has -- see docs/testing/verify-unit-impact-correction.md
+    // decision #4 ("mapped CSS must not suppress real CSS import consumers").
+    if (isOrdinaryUnitSourcePath(change.path)) {
       relatedInputs.add(change.path);
       focusedReasons.push(`unit-relevant source ${change.path} -> Vitest related resolution`);
     }

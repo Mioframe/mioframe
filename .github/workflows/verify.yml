@@ -328,7 +328,18 @@ jobs:
       !cancelled() &&
       (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # A release-sensitive diff can select every RELEASE_IMPACT_CHECKS entry
+    # together (see scripts/lib/releaseRisk.ts full mode), and scripts/verify.ts
+    # runs its resolved command list sequentially, never in parallel. The
+    # summed worst-case verifier-owned command envelope alone (build + artifact
+    # + release-smoke + managed-updates; release-config/publisher-node-import
+    # carry no verifier-owned command timeout) already exceeds 100 minutes —
+    # see the computed envelope in scripts/verify.test.ts "verification-release
+    # CI job timeout envelope" and .github/workflows/REVIEW.md B1. 120 minutes
+    # keeps this outer GitHub deadline safely above that envelope plus
+    # checkout/install/setup, so a healthy run is never cancelled before the
+    # verifier reaches its own owned timeout/diagnostic path.
+    timeout-minutes: 120
     permissions:
       contents: read
 

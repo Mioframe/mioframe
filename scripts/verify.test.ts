@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +14,7 @@ import {
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
 } from './lib/packageJsonImpact.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
+import { RELEASE_IMPACT_CHECKS } from './lib/releaseRisk.ts';
 import type { ChangedPath, ResolvedChangedPathsScope } from './lib/changedPaths.ts';
 import {
   buildCommandEnv,
@@ -229,6 +232,94 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
 
     expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
+  });
+});
+
+// .github/workflows/verify.yml's `verification-release` job runs a single
+// `pnpm verify --only release-impact` invocation. scripts/lib/releaseRisk.ts's
+// `resolveReleasePlan` `full` mode (a release-sensitive infrastructure path,
+// pnpm-lock.yaml, or a runtime-relevant package.json change) legitimately
+// selects every RELEASE_IMPACT_CHECKS entry together, and scripts/verify.ts
+// runs its resolved command list sequentially (a `for...of` loop with
+// `await runCommand`, never `Promise.all`). So the worst-case wall-clock
+// budget the GitHub Actions job timeout must cover is the SUM of every
+// selected release check's own verifier-owned command timeout, not just the
+// longest single check (`managed-updates`) in isolation. See
+// .github/workflows/REVIEW.md, blocker B1.
+describe('verification-release CI job timeout envelope', () => {
+  // Reuses the plain-text job-block-extraction pattern already established
+  // for workflow assertions elsewhere in this repo (see
+  // scripts/release/managedDeploymentValidationWorkflow.test.mjs and
+  // scripts/release/buildDateWorkflow.test.mjs) instead of introducing a
+  // generic YAML parser dependency.
+  function extractJob(source: string, jobName: string): string {
+    const match = new RegExp(`\\n {2}${jobName}:\\n([\\s\\S]*?)(?=\\n {2}[\\w-]+:\\n|$)`).exec(
+      source,
+    );
+
+    if (!match) {
+      throw new Error(`Job "${jobName}" not found in workflow source`);
+    }
+
+    return match[1];
+  }
+
+  function readVerificationReleaseTimeoutMinutes(): number {
+    const workflowPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../.github/workflows/verify.yml',
+    );
+    const source = fs.readFileSync(workflowPath, 'utf8');
+    const jobBlock = extractJob(source, 'verification-release');
+    const match = /\n {4}timeout-minutes: (\d+)\n/.exec(jobBlock);
+
+    if (!match) {
+      throw new Error('verification-release job is missing a top-level timeout-minutes value');
+    }
+
+    return Number(match[1]);
+  }
+
+  // Strictly-bounded worst case: only sums checks that carry an explicit
+  // COMMAND_TIMEOUT_MS_BY_LABEL entry. release-config and
+  // publisher-node-import are plain `node` invocations with no entry, so
+  // verify.ts enforces no command-level deadline for them; they are real
+  // release-impact checks but contribute no additional *verifier-owned*
+  // minimum to this envelope. Their exclusion is itself asserted below so a
+  // future timeout entry added for either label is not silently dropped from
+  // this computation.
+  function computeWorstCaseReleaseImpactEnvelopeMs(): number {
+    return RELEASE_IMPACT_CHECKS.reduce((total, check) => {
+      const timeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[check];
+
+      return timeoutMs === undefined ? total : total + timeoutMs;
+    }, 0);
+  }
+
+  it('has no verifier-owned command timeout for release-config or publisher-node-import', () => {
+    const uncoveredChecks = RELEASE_IMPACT_CHECKS.filter(
+      (check) => COMMAND_TIMEOUT_MS_BY_LABEL[check] === undefined,
+    );
+
+    expect(uncoveredChecks).toEqual(['release-config', 'publisher-node-import']);
+  });
+
+  it('keeps timeout-minutes strictly greater than the summed worst-case release-impact envelope plus a checkout/install/setup allowance', () => {
+    const worstCaseEnvelopeMinutes = computeWorstCaseReleaseImpactEnvelopeMs() / (60 * 1000);
+    // Conservative, documented allowance for actions/checkout,
+    // pnpm/action-setup, and `pnpm install --frozen-lockfile` ahead of the
+    // verify invocation itself. Not a measured budget: every other job in
+    // this workflow completes that same setup sequence in a small fraction
+    // of its own timeout, so 5 minutes is a deliberately generous buffer
+    // rather than an attempt at a tight bound.
+    const setupAllowanceMinutes = 5;
+    const requiredMinimumMinutes = worstCaseEnvelopeMinutes + setupAllowanceMinutes;
+
+    expect(readVerificationReleaseTimeoutMinutes()).toBeGreaterThan(requiredMinimumMinutes);
+  });
+
+  it('keeps timeout-minutes at least the existing 90-minute release-gate precedent (.github/workflows/release.yml release-gate)', () => {
+    expect(readVerificationReleaseTimeoutMinutes()).toBeGreaterThanOrEqual(90);
   });
 });
 
@@ -1613,8 +1704,11 @@ describe('formatFailureDetailLines', () => {
 });
 
 // Per docs/testing/verify-agent-output.md "Failure-detail extraction": prefer
-// a verifier-owned reason, then a small bounded excerpt, then exit code —
-// and never the complete unbounded output regardless of how large it is.
+// a verifier-owned reason, then a structured/stable reporter summary (none
+// implemented for this finish PR — see scripts/REVIEW.md B1's "Items not
+// required"), then exit code — and never an arbitrary excerpt of captured
+// output, which is not proof of relevance and can surface unrelated
+// trailing chatter instead of the real error.
 describe('getFailureReason', () => {
   it('prefers a verifier-owned blocking-log reason on an executed result over its raw output', () => {
     const result = makeExecutedResult({
@@ -1642,7 +1736,13 @@ describe('getFailureReason', () => {
     );
   });
 
-  it('falls back to a bounded excerpt of captured output when no verifier-owned reason exists', () => {
+  // Per scripts/REVIEW.md B1: an arbitrary output tail is not proof of
+  // relevance. Even when captured stdout contains a real-looking error
+  // line, `getFailureReason` must not present an excerpt of it as `reason`
+  // unless it comes from a recognized verifier-owned/structured source —
+  // this PR intentionally adds no such reporter-extraction framework, so
+  // the correct default fallback is the exact exit code.
+  it('does not infer a reason from unstructured output; falls back to exit code even when stdout contains a real-looking error line', () => {
     const result = makeExecutedResult({
       label: 'type-check',
       status: 'failed',
@@ -1654,10 +1754,46 @@ describe('getFailureReason', () => {
 
     const reason = getFailureReason(result);
 
-    expect(reason.length).toBeGreaterThan(0);
-    expect(reason).toContain('TS2322');
+    expect(reason).toBe('exit code 1');
+    expect(reason).not.toContain('TS2322');
   });
 
+  // Per scripts/REVIEW.md B1: a real error can be followed by unrelated
+  // trailing chatter (a build-tool footer, a package-manager notice, blank
+  // lines). Tail-slicing would present that trailing noise as the
+  // "reason", misleading the next agent toward the wrong fix. The default
+  // reason must not surface any of it.
+  it('does not present unrelated trailing output as the reason when a real error is followed by unrelated trailing chatter', () => {
+    const result = makeExecutedResult({
+      label: 'build',
+      status: 'failed',
+      exitCode: 1,
+      blockingLogIssue: null,
+      stdout: [
+        'src/foo.ts(12,3): error TS2322: Type "string" is not assignable to type "number".',
+        '',
+        'vite v5.4.10 building for production...',
+        'done in 842ms.',
+        '',
+        'npm notice New minor version of npm available! 10.2.0 -> 10.5.0',
+      ].join('\n'),
+      stderr: '',
+    });
+
+    const reason = getFailureReason(result);
+
+    expect(reason).toBe('exit code 1');
+    expect(reason).not.toContain('TS2322');
+    expect(reason).not.toContain('done in 842ms');
+    expect(reason).not.toContain('npm notice');
+    expect(reason).not.toContain('New minor version');
+  });
+
+  // Regression guard for the hard bound required by
+  // docs/testing/verify-agent-output.md's "very large child output does not
+  // grow normal terminal output proportionally" acceptance criterion. Under
+  // the corrected contract no excerpt is derived from output at all, so a
+  // huge captured output must not leak into, or lengthen, the reason.
   it('never grows proportionally with a very large captured output (hard bound)', () => {
     const hugeOutput = 'x'.repeat(50_000);
     const result = makeExecutedResult({
@@ -1671,8 +1807,7 @@ describe('getFailureReason', () => {
 
     const reason = getFailureReason(result);
 
-    // Materially smaller than the 100,000-char input, and well under the
-    // existing 20-line/MAX_RELEVANT_LINES tail this contract narrows further.
+    expect(reason).toBe('exit code 1');
     expect(reason.length).toBeLessThan(500);
   });
 
