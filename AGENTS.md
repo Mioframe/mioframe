@@ -18,6 +18,8 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Work only with task-relevant readable workspace files, file-oriented tools, and documented project commands.
 - Load only the project rules and documentation required by the current task.
 - When a project command fails before reaching its relevant check, record the exact visible failure, continue safe file work where possible, and report the remaining verification.
+- Coding and test-author agents own workspace file edits and task-relevant project commands only. Git/GitHub lifecycle is architect/integration-owner responsibility.
+- Do not run direct `git ...` commands from coding or test-author contexts, including read-only `status`, `diff`, `log`, or branch/worktree inspection. Do not stage, commit, amend, stash, reset, checkout/switch, merge, rebase, cherry-pick, revert, push, or otherwise mutate repository/index/history state. Project-owned commands may use Git internally as an implementation detail.
 
 ## Architecture and implementation workflow
 
