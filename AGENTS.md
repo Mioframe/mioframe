@@ -89,6 +89,7 @@ For Material-specific worker roles, source authority, resume/correction routing,
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc.
 - Keep validation, parsing, and extraction close to the defining boundary.
 - Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, and proportional coverage.
+- When automated behavioral proof is added or materially changed, follow `test-first`: author or modify that proof in a fresh test-agent/session before the production implementation pass. The implementation agent treats accepted test expectations/assertions as read-only and returns any proof conflict to the test owner/architect instead of editing the test to make its code pass.
 - Follow `docs/testing/storybook.md` for isolated UI stories and Storybook-owned browser/visual proof. Colocate `*.stories.ts` now; place browser/visual Playwright specs only where `docs/testing/migration-plan.md` says the current runner can discover them. Do not treat target colocation as already implemented.
 - Keep complete cross-owner product scenarios centralized in application E2E; do not move them into Storybook fixtures.
 - Keep unit tests and helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels.
