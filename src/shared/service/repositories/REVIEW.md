@@ -5,31 +5,32 @@ Verdict: blocked
 ## Scope reviewed
 
 - `repositoryState.ts` repository lifecycle handling after directory error and during replacement derivation.
-- Canonical directory/repository lifecycle contract in `docs/directory-state-reactivity.md`.
+- Existing repository-state lifecycle tests and the canonical directory/repository lifecycle contract.
 
 ## Blockers
 
-### B1 — Directory `reading` can clear sticky repository error before recovery succeeds
+### B1 — Repeated invalidation can clear a sticky repository error before replacement success
 
 Owner: `src/shared/service/repositories`
 
-Problem: after a directory error has published `RepositoryState.error`, a replacement `ready` may start a repository derivation while that error remains visible. If another directory invalidation publishes `reading` before the replacement derivation succeeds, `handleDirectoryState()` calls `publishLoadingLike()`, which can replace the sticky error with `loading` or `refreshing(previousSnapshot)`. No accepted replacement repository snapshot exists yet, so recovery is reported prematurely.
+Problem: after a directory error publishes `RepositoryState.error`, a clean directory retry can publish `ready` and start a replacement repository derivation while the repository error correctly remains visible. If the directory is invalidated again before that derivation succeeds, the filesystem publishes `reading`; `handleDirectoryState()` then calls `publishLoadingLike()`, which replaces the current error with `loading` or `refreshing(previousSnapshot)`. No replacement repository snapshot has been accepted, so the repository reports recovery too early.
 
 Evidence:
 
-- [`repositoryState.ts`](./repositoryState.ts) — `handleDirectoryState()` handles every `reading` by calling `publishLoadingLike()`; `publishLoadingLike()` derives public state from `previousSnapshot` rather than preserving an already-published error.
-- [`../../../../docs/directory-state-reactivity.md`](../../../../docs/directory-state-reactivity.md) — repository lifecycle requires an error to remain visible while replacement derivation is pending and now defines the complete transition precedence explicitly.
+- [`repositoryState.ts`](./repositoryState.ts) — every directory `reading` calls `publishLoadingLike()`, which derives state only from `previousSnapshot` and does not preserve an already-current `RepositoryState.error`.
+- [`../fileSystem/directoryState.ts`](../fileSystem/directoryState.ts) — retry while directory state is `error` runs without publishing `reading`; after a clean `ready` result, a later invalidation does publish `reading`, so `error -> ready/replacement derivation pending -> reading` is a real production sequence.
+- [`repositoryState.test.ts`](./repositoryState.test.ts) — existing proof covers sticky error through one replacement derivation and newer-error supersession, but does not cover a second `reading` invalidation while that replacement derivation is pending.
 
 Basis:
 
-- [`../../../../docs/directory-state-reactivity.md`](../../../../docs/directory-state-reactivity.md) — canonical repository lifecycle contract: directory retry/invalidation cannot clear a repository error; only a newer directory error or an accepted successful repository derivation may replace it.
-- [`../../../../.agents/skills/crdt-storage/SKILL.md`](../../../../.agents/skills/crdt-storage/SKILL.md) — lifecycle changes must define and prove the applicable state-transition matrix and preserve recoverable error-as-state behavior.
+- [`../../../../docs/directory-state-reactivity.md`](../../../../docs/directory-state-reactivity.md) — the accepted repository lifecycle requires a directory error to remain visible while replacement repository derivation is pending and forbids clearing recoverable error state merely because retry/invalidation activity began. The explicit precedence table clarifies this existing contract; it does not introduce a new lifecycle owner or state mechanism.
+- [`../../../../.agents/skills/crdt-storage/SKILL.md`](../../../../.agents/skills/crdt-storage/SKILL.md) — recoverable subscription state must remain recoverable and applicable lifecycle transitions require focused proof.
 
-Risk: recovery UI can disappear and the repository can regress to loading or retained-content refresh state even though no replacement repository snapshot has been accepted. Repeated invalidation can therefore expose stale or misleading lifecycle state.
+Risk: repository error/recovery UI can disappear and regress to a spinner or retained stale content even though no replacement repository snapshot has succeeded. Repeated invalidation can therefore present a false recovery state.
 
-Required final state: implementation matches the canonical transition matrix. While `RepositoryState` is `error(E)`, directory `reading` and `ready`/replacement-derivation start preserve `error(E)`; a newer directory error may publish `error(E2)`, and only an accepted successful repository derivation may publish `ready(snapshot)`. Normal `ready -> reading -> refreshing` behavior remains unchanged.
+Required final state: while the current `RepositoryState` is `error(E)`, directory `reading` during the pending recovery attempt must preserve `error(E)`. A newer canonical directory error may replace it, and an accepted successful repository derivation may replace it with `ready(snapshot)`. Normal non-error `ready -> reading -> refreshing` behavior must remain unchanged. No new lifecycle state, flag, generation, token, lease, or coordinator is required.
 
-Verification: deterministic repository coordinator tests must cover the complete directory-to-repository transition matrix, including `error -> ready/replacement derivation pending -> reading`, stale/non-publishable settlement, newer-error replacement, and normal `ready -> reading -> refreshing` continuity.
+Verification: add deterministic coordinator proof for the missing sequence: establish a prior snapshot, publish directory `error(E)`, start a replacement derivation from `ready`, publish `reading` before it settles, and prove the same error remains visible and the stale/non-publishable settlement cannot clear it; then accept a newer ready input and prove replacement success reaches `ready`. Keep the already-accepted newer-error and normal `ready -> reading -> refreshing` proofs intact.
 
 ## Major issues
 
@@ -45,7 +46,8 @@ None.
 
 ## Items not required
 
-None.
+- Redesigning the repository state machine or introducing additional recovery state is not required.
+- Reworking already-accepted repository lifecycle tests outside the missing transition is not required.
 
 ## Unresolved questions
 
