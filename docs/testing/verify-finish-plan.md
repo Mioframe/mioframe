@@ -39,17 +39,30 @@ representative benchmark
 
 The PR is reviewed and accepted as the complete resulting system, not as a sequence of independently accepted partial architectures.
 
-## Branch and PR model
+## Branch, Git, and PR ownership
 
 Use one implementation branch for all remaining work and publish one final PR against the intended integration base.
 
-Within that branch:
+The **architect/integration owner**, not a coding or test-author agent, owns Git and GitHub lifecycle operations for this work:
+
+- create, select, switch, merge, rebase, or delete branches/worktrees;
+- stage, commit, amend, stash, reset, revert, cherry-pick, or otherwise mutate repository history/index state;
+- push/publish branch state;
+- create/update the PR and inspect exact-head CI;
+- choose commit boundaries used for review/history.
+
+Coding and test-author agents work only in the already-prepared workspace and own file edits plus task-relevant project commands. They must not run direct `git ...` commands, including read-only status/diff/log commands, to manage or inspect repository state. Project-owned commands such as `pnpm verify ...` may use Git internally as an implementation detail; that does not transfer Git ownership to the agent.
+
+Within the prepared workspace:
 
 - keep each pass bounded and independently understandable;
-- use separate commits when practical so review can inspect logical slices;
-- do not require each pass to become a separate PR;
+- leave pass results in the working tree and report them clearly for architect handoff;
+- do not require a pass commit as a completion condition;
+- do not create a separate PR per pass;
 - do not merge partial states into `develop` merely to begin the next pass;
 - do not redesign later passes because they share a PR with earlier ones.
+
+The architect may create logical commits between passes when useful, but commit structure is not part of the coding-agent task.
 
 A single PR does not mean a single agent context. Keep proof-author and implementation contexts separate according to `test-first`.
 
@@ -208,6 +221,8 @@ For every pass that adds or materially changes behavioral proof:
 7. if implementation disputes proof, return the conflict to the test owner/architect instead of changing acceptance criteria opportunistically.
 
 No separate test-author pass is required where existing proof remains faithful and unchanged.
+
+Neither test-author nor implementation contexts create commits or use direct Git commands as pass boundaries. Pass state is handed off through the prepared workspace plus the required report; Git integration remains architect-owned.
 
 ## Pass discipline
 
