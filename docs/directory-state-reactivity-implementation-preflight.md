@@ -2,7 +2,7 @@
 
 Status: **completed; implementation semantic review reopened by one active repository lifecycle blocker**.
 
-Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture. The earlier full-PR correction remains completed in `docs/directory-state-reactivity-final-review-correction.md`. A later audit found one additional implementation deviation from the already-accepted sticky repository-error contract; it is tracked in `src/shared/service/repositories/REVIEW.md` and does not reopen the two-coordinator architecture or this preflight's ownership decisions.
+Architecture authority: [`directory-state-reactivity.md`](./directory-state-reactivity.md). This record documents the implementation scope, pass order, removals, and proof ownership used for the current branch; it does not redefine the architecture. The earlier full-PR correction remains completed in `docs/directory-state-reactivity-final-review-correction.md`. A later audit found one additional implementation deviation from the already-accepted sticky repository-error contract; it is tracked in `src/shared/service/repositories/REVIEW.md`, with the coding handoff in `docs/directory-state-reactivity-sticky-error-correction.md`. This does not reopen the two-coordinator architecture or this preflight's ownership decisions.
 
 ## Source and readiness
 
@@ -161,6 +161,8 @@ Additional: existing `repositoriesService.test.ts` and `repositoryStorageFiles.t
 
 Prove transition matrix, derivation `<= 1`, latest pending input, stale/zero-demand suppression, zero second canonical listing, atomic IDs/init/classification, candidate concurrency `<= 4`, and tolerant malformed/unreadable candidate behavior.
 
+The active sticky-error correction must additionally prove `error -> ready/replacement derivation pending -> reading` keeps the same repository error visible until an accepted replacement derivation succeeds. See `docs/directory-state-reactivity-sticky-error-correction.md`.
+
 ### Document/Repo availability
 
 Primary: existing `useDocumentService.test.ts` plus repository service Repo tests.
@@ -211,4 +213,4 @@ Do not require a broad final local `pnpm verify` solely for coding-agent handoff
 
 ## Result
 
-Preflight: **completed**. The two-coordinator implementation is present on `refactor/directory-state-reactivity`; semantic acceptance is currently blocked only by the active repository sticky-error transition finding in `src/shared/service/repositories/REVIEW.md`. The architecture, ownership, state shape, public API, worker boundary, and previously accepted correction scopes remain unchanged. Exact-head GitHub CI becomes the final automatic merge gate after that finding is closed and the resulting PR is re-reviewed.
+Preflight: **completed**. The two-coordinator implementation remains the accepted implementation architecture. Semantic acceptance is currently blocked only by the sticky repository-error lifecycle deviation tracked in `src/shared/service/repositories/REVIEW.md`; the coding handoff is `docs/directory-state-reactivity-sticky-error-correction.md`. Exact-head GitHub CI resumes as the final automatic merge gate after that correction is implemented and semantically re-reviewed.
