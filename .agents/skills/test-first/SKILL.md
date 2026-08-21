@@ -5,7 +5,7 @@ description: 'Use whenever behavioral proof is added or materially changed. A de
 
 # Test-first and proof-independence workflow
 
-Follow `docs/testing/architecture.md`. This skill protects test quality when coding agents implement behavior. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
+Follow `docs/testing/architecture.md`. This skill protects proof independence when coding agents implement behavior. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane. The dedicated test author also follows `test-authoring` plus the selected proof-type skill; those instructions own test-quality mechanics.
 
 The central rules are:
 
@@ -36,7 +36,7 @@ Skipping a red phase never skips required proof from `TEST IMPACT`, durable owne
 
 ### Test author
 
-Use a fresh agent/subagent/session whose task is test/proof authoring only.
+Use a fresh agent/subagent/session whose task is test/proof authoring only. The test author must follow `test-authoring` and the proof-type skill selected by `TEST IMPACT`.
 
 The test author receives:
 
@@ -111,7 +111,7 @@ PROOF INTENT
 ## Workflow
 
 1. Resolve `TEST IMPACT` and the truthful primary proof owner before implementation.
-2. Start a fresh test-author agent/session.
+2. Start a fresh test-author agent/session and load `test-authoring` plus the selected proof-type skill.
 3. Resolve the expected result from an independent oracle and name at least one plausible incorrect observable result the proof must reject.
 4. Add/update the minimum faithful proof and any required proof-only fixture/ownership facts without implementing production behavior.
 5. When a meaningful red phase is required, run the owning verifier-managed lane against the pre-change production implementation.
