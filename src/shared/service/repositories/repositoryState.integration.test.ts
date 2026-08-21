@@ -1,13 +1,14 @@
 import { Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { Repo } from '@automerge/automerge-repo';
-import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
+import { encodePrimaryV3FileName } from '@shared/lib/automergeAdapter';
+import { encodeV3StorageWrapper } from '@shared/lib/automergeAdapter/wrapperCodecV3';
 import { MemoryFileSystem } from '@shared/lib/virtualFileSystem/MemoryFileSystem';
 import { VirtualFileSystem } from '@shared/lib/virtualFileSystem';
+import type { ChunkStorageKey } from '@shared/lib/automergeAdapter';
 import type { DirectoryEntries, DirectoryState } from '../fileSystem/fileSystemContracts';
 import type { RepositoryState } from './repositoryContracts';
 import { createRepositoryStateCoordinator } from './repositoryState';
-import { getDocumentStorageFiles } from './repositoryStorageFiles';
 
 /**
  * Real storage-boundary proof: this file intentionally does not mock `getRepositoryFacts` or
@@ -17,7 +18,7 @@ import { getDocumentStorageFiles } from './repositoryStorageFiles';
  * snapshot without a second canonical `vfs.readDirectory()` call.
  */
 
-const wait = async (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const SAMPLE_HEX_HASH = 'a'.repeat(64);
 
 describe('createRepositoryStateCoordinator real storage boundary', () => {
   it('derives repository facts from the supplied directory snapshot with zero additional canonical readDirectory() calls', async () => {
@@ -26,35 +27,15 @@ describe('createRepositoryStateCoordinator real storage boundary', () => {
     vfs.mount('/', new MemoryFileSystem());
     await vfs.createDirectory(path);
 
-    const repo = new Repo({ storage: createVFSAdapter(vfs, path) });
-    const documentId = repo.create({
-      name: 'Document',
-      type: 'document',
-      version: 1,
-      body: [],
-    }).documentId;
+    const documentId = new Repo().create({}).documentId;
+    const key: ChunkStorageKey = [documentId, 'snapshot', SAMPLE_HEX_HASH];
+    const fileName = encodePrimaryV3FileName(key);
 
-    // Poll the real boundary until Automerge has actually written a decodable storage file for
-    // this document (a bare non-empty directory listing can transiently include partial/pending
-    // writes). This setup read captures the "already-accepted directory snapshot" that a
-    // directory coordinator would have supplied; it is not part of the repository derivation path
-    // under test.
-    let hasStorageFile = false;
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      // eslint-disable-next-line no-await-in-loop -- polling real Automerge storage writes
-      const files = await getDocumentStorageFiles(vfs, path, documentId);
-      if (files.length > 0) {
-        hasStorageFile = true;
-        break;
-      }
-      // eslint-disable-next-line no-await-in-loop -- polling delay
-      await wait(25);
+    if (!fileName) {
+      throw new Error('Expected v3 filename');
     }
-    await repo.shutdown();
 
-    if (!hasStorageFile) {
-      throw new Error('Timed out waiting for repository storage files');
-    }
+    await vfs.writeFile(`${path}/${fileName}`, encodeV3StorageWrapper(key, new Uint8Array([1])));
 
     const snapshotEntries: DirectoryEntries = await vfs.readDirectory(path);
 
