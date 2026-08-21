@@ -38,7 +38,7 @@ This prevents renderer details, legacy code, current Mioframe demand, and duplic
 
 ## Standalone implementation before consumers
 
-Implementation consumes the fixed three contracts and exact installed `@m3e/web` public artifacts. It owns canonical Vue runtime, private family-local renderer adaptation, CSS token bridges, component-owned proof, and verifier-managed implementation feedback.
+Implementation consumes the fixed three contracts and exact installed `@m3e/web` public artifacts. It owns canonical Vue runtime, private family-local renderer adaptation, CSS token bridges, component-owned proof, and focused verifier-managed implementation feedback when useful.
 
 It does not inspect application consumers to shape the component.
 
@@ -115,11 +115,11 @@ The coding workflow must not select findings from `REVIEW.md` itself; that would
 
 ## Completion boundary
 
-A coding run is complete only when the three contracts are ready, no correction remains, standalone implementation has faithful proof, migration is complete or unnecessary, and repository-required local verification has satisfied the `verification` skill's final automatic handoff gate.
+A coding run is complete when the three contracts are ready, no correction remains, standalone implementation has faithful proof, and migration is complete or unnecessary.
 
-Focused verifier commands are optional implementation/diagnostic feedback, not a separate Material completion checklist. Sandbox/container restrictions are execution-environment concerns, not operator work: coding workers use the repository-approved verifier approval/escalation path and report an exact environment blocker only when that path itself cannot run.
+Focused verifier commands are optional implementation/diagnostic feedback or narrow task-specific proof. They are not a mandatory final completion checklist, and coding workers do not reproduce the repository-wide automatic gate solely for handoff.
 
-Coding work then stops. The architect owns semantic review of the whole family/PR, shared-UI blast radius, roadmap truth, GitHub PR handling, exact-head CI review, and merge readiness.
+Coding work then stops. The architect owns semantic review of the whole family/PR, shared-UI blast radius, roadmap truth, GitHub PR handling, exact-head CI review, and merge readiness. GitHub CI on the exact published head is the automatic repository verification gate.
 
 ## Design constraints
 
@@ -127,6 +127,7 @@ Prefer this minimum workflow over adding more infrastructure:
 
 - no operator-authored handoffs;
 - no coding-agent final review stage;
+- no coding-agent final repository verification stage that duplicates CI;
 - no proof/status database;
 - no second compatibility model;
 - no generic adapter/token framework created for workflow convenience;

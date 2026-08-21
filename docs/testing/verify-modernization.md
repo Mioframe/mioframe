@@ -1,8 +1,8 @@
 # Verify modernization
 
-Status: Stage V1 implemented and architecture-reviewed. Final merge readiness is owned by exact-head GitHub CI after documentation changes.
+Status: V1, V2A, V2B, V3A, and V3B complete. V3C is active; V3C-A Lists proof ownership cleanup is architecture-ready in `docs/testing/v3c-visual-proof-ownership.md`.
 
-`docs/testing/architecture.md` remains the canonical testing policy. This document records the Stage V1 verifier modernization architecture, its implemented runtime contract, and the intentionally deferred optimization stages.
+`docs/testing/architecture.md` remains the canonical testing policy. This document records the verifier modernization architecture, implemented runtime contract, completed optimization stages, and current roadmap.
 
 ## Goal
 
@@ -67,6 +67,13 @@ Baseline measurements from `develop` workflow run 3556 on 2026-08-14 were approx
 
 These measurements show that TypeScript migration is primarily a maintainability change. It is not itself claimed as a performance optimization.
 
+After V3A/V3B, final exact-head CI run #3881 for PR #212 provides the current V3 baseline:
+
+- application E2E: 65 executions, about 6.3m Playwright / 7m15 verifier;
+- visual: 201 executions, about 7.1m Playwright / 8m21 verifier;
+- Storybook behavior: 76 tests, about 4m+;
+- visual is the longest current browser lane.
+
 ## Non-goals for Stage V1
 
 - Do not change which product paths select `skip`, `focused`, `full`, or `invalid` for a lane.
@@ -79,7 +86,9 @@ These measurements show that TypeScript migration is primarily a maintainability
 
 - `AGENTS.md` and `.agents/skills/verification/SKILL.md`: verifier workflow rules;
 - `docs/testing/architecture.md`: proof ownership and project-wide testing policy;
-- `docs/testing/migration-plan.md`: currently executable resolver/discovery state;
+- `docs/testing/storybook.md`: Storybook ownership and target placement;
+- `docs/testing/migration-plan.md`: currently executable resolver/discovery and migration authorization state;
+- `docs/testing/v3c-visual-proof-ownership.md`: current V3C proof-ownership cleanup architecture;
 - `scripts/verify.ts` and verifier-owned `scripts/lib/*.ts`: current verifier planning/execution/reporting implementation;
 - verifier-owned tests: current compatibility and regression proof;
 - `tsconfig.scripts.json`: native TypeScript tooling compiler contract;
@@ -140,35 +149,61 @@ Stage V1 requires:
 
 No new browser, visual, product E2E, mutation target, or performance benchmark is required solely by Stage V1. GitHub CI remains the authoritative exact-head merge gate.
 
-## Deferred stages
+## Roadmap
+
+### Stage V1 — native TypeScript verifier
+
+Status: **complete**.
+
+The implementation and preserved compatibility contract are recorded above.
 
 ### Stage V2 — planner precision
 
-After V1 is merged and timing/fallback data is observable, audit avoidable full-lane fallbacks, especially:
+Status: **complete**.
 
-- broad `src/shared/ui/` and `src/shared/lib/` application-E2E classification;
-- developer/playground paths that are not product bootstrap;
-- unmapped product owners that force full E2E;
-- visual relevance that treats docs, instructions, type-only files, or deterministic owner moves as full visual impact.
+- **V2A — application E2E planner precision:** infrastructure still selects full application E2E; explicit product source-to-scenario mappings select focused proof; unknown relevant source remains fail-closed to full; proof-only files do not inherit unrelated product mappings.
+- **V2B — visual planner precision:** safe exclusions distinguish proof/docs-only changes from runtime visual impact and separate Storybook preview dependencies from product/runtime relevance while preserving full visual fallback for unknown relevant impact.
 
-V2 must preserve the rule that unknown **relevant** impact fails closed to the full owning lane. It must not redefine proof ownership inside resolver code.
+V2 does not redefine proof ownership inside resolver code.
 
-### Stage V3 — execution performance
+### Stage V3 — execution performance and proof cost
+
+Status: **in progress; V3A and V3B complete, V3C active**.
 
 V3 optimizes both elapsed verification time and aggregate compute after planner precision is stable.
 
-Implemented V3 optimizations:
+Completed:
 
 - **V3A — application E2E project applicability:** source impact still chooses product specs, while each root application spec declares whether it requires desktop, mobile, or both Playwright projects. The audited matrix preserves the existing two projects, one application E2E invocation, one build, and serial execution while eliminating project executions that do not prove an additional platform contract. Metadata validation fails closed, and unclassified specs remain fail-safe to both projects for direct Playwright collection.
 - **V3B — Storybook build execution:** local automatic verification reuses one deterministic `storybook-static` prerequisite across selected Storybook behavior and visual proof through the explicit fail-closed `STORYBOOK_STATIC_SKIP_BUILD=1` internal child-process contract. GitHub implementation verification deliberately does **not** transfer that static output between runners: `verification-browser (storybook-behavior)` and `verification-browser (visual)` are self-contained lanes that both depend only on `autofix`, build the Storybook they need inside their own bounded Playwright execution, and may run in parallel immediately. Application E2E remains independent. The verifier owns the narrow `pnpm verify --only storybook-build --storybook-build-ci-fallback` mode for the case where static Storybook build proof is required but neither browser lane will run; that fallback invocation runs inside the already-provisioned `verification-static` job, so it adds no standalone runner/setup/install cycle and skips when a self-contained browser lane already supplies equivalent static-build proof. Standalone focused behavior/visual commands remain self-contained, and PR preview keeps its separate base-specific Storybook build. Risk-specific Storybook behavior stability diagnosis can use bounded `--repeat 2..20` together with explicit `--files`; it repeats the selected scope inside one verifier-managed behavior invocation and does not alter automatic planning or normal CI topology.
 
-Further V3 work should consider, in order:
+Current:
 
-- elimination of other repeated setup/proof where a deterministic result can be reused safely;
-- optimization of expensive necessary tests after duplicate work is removed;
-- additional jobs, workers, or parallelism only for irreducible remaining work when measured wall-clock benefit justifies the added aggregate resource cost and complexity.
+- **V3C — visual proof ownership cleanup:** correct legacy visual suites that contain browser behavior, component semantics, computed-style/token matrices, geometry, or duplicated proof. Each unique observable contract keeps one primary owner; visual retains bounded accepted appearance only. V3C-A starts with `tests/e2e/visual/shared-ui/md-list.spec.ts`; its architecture and measurement contract are in `docs/testing/v3c-visual-proof-ownership.md`.
+
+Next:
+
+- **V3D — optimize expensive necessary tests:** after V3C removes misowned/duplicated proof, remeasure the remaining bottlenecks and reduce mechanical cost without reducing fidelity. Start from the longest remaining necessary scenarios rather than broad test-runner changes.
+- **V3E — additional parallelism only by measurement:** add jobs/workers/sharding only for irreducible remaining work when measured wall-clock benefit justifies aggregate compute, local peak resources, and architectural complexity. If the gain is small, do not add it.
+
+V3 resource policy:
+
+1. remove unnecessary proof;
+2. remove duplicate setup/build/proof;
+3. optimize expensive necessary tests;
+4. add parallelism only for irreducible work after measurement.
 
 Do not optimize GitHub Actions only for runner elapsed time. Free CI capacity is still a project resource: compare both wall-clock time and total executions/compute, and prefer the simpler lower-resource solution when coverage is equivalent.
+
+### Stage V4 — remaining verifier capability gaps
+
+Status: **planned after V3**.
+
+- **V4A — automatic release-impact planning:** ordinary `pnpm verify` must automatically resolve release-sensitive changes to `skip | focused | full | invalid` proof for routing/base, PWA/service worker, manifest/channel isolation, production build configuration, release scripts/artifact assembly, and runtime dependency changes that affect the production artifact. `pnpm verify:release` remains the deliberate full release command.
+- **V4B — durable unit-test impact:** prefer directly changed tests, deterministic snapshot ownership, supported Vitest related resolution for source/test-support, and safe full-unit fallback when relevant impact cannot be resolved. Do not build a second dependency graph.
+- **V4C — persistent mutation targets:** select mutation from an explicit high-risk source/focused-test/risk-reason registry, not arbitrary source adjacency.
+
+Resolver shapes should converge on `skip | focused | full | invalid` only while a concrete V4 resolver is being changed and only when doing so reduces complexity. Do not create a separate architectural unification PR.
 
 ## Rejected approaches
 
@@ -177,22 +212,24 @@ Do not optimize GitHub Actions only for runner elapsed time. Free CI capacity is
 - Adding `tsx` or `ts-node`: rejected because the supported Node runtime executes the required erasable TypeScript directly.
 - Replacing verifier logic with Nx/Turborepo/a generic task runner: rejected because current requirements need repository-specific impact planning and explicit ownership.
 - Blindly increasing Playwright workers: rejected because application E2E shares origin-bound OPFS state and intentionally runs file-level work serially.
+- Moving the same unnecessary visual assertions unchanged into Storybook behavior: rejected because V3C must correct ownership and duplication, not merely move aggregate cost between lanes.
+- Generic `--dry-run`, arbitrary Playwright argument passthrough, generic `--env`, automatic sharding, permanent repeat runs, and additional workers/jobs without a measured requirement: not justified by current scenarios.
 
 ## Forbidden
 
-- Do not change lane-selection semantics in Stage V1.
 - Do not delete fail-closed or persisted-runtime compatibility behavior because TypeScript makes a path appear statically impossible.
-- Do not weaken tests, retries, flaky handling, lock guards, timeouts, or invalid-plan failures to make migration pass.
+- Do not weaken tests, retries, flaky handling, lock guards, timeouts, or invalid-plan failures to make migration or optimization pass.
 - Do not add raw child-command alternatives that bypass `verify`.
 - Do not add another persistent dependency graph or generic verification DSL.
 - Do not migrate unrelated scripts solely to make all of `scripts/` TypeScript.
-- Do not claim a performance improvement from the TypeScript migration itself.
+- Do not claim a performance improvement without before/after measurement.
+- Do not accept a retry-pass/flaky classification as green proof.
 
-## Stage V1 review status
+## Historical Stage V1 review status
 
 - Architecture and ownership: reviewed; no remaining architecture blocker identified.
 - Runtime contract: Node `>=24.12.0 <25`, aligned across repository metadata, typings, and CI setup.
 - Compatibility regressions found during review: corrected with focused regression proof.
-- Version policy: PATCH bump to `0.3.14` applied for this tooling/refactor PR.
-- Documentation: synchronized to the implemented runtime and source paths in this PR.
-- Merge gate: exact-head GitHub CI must be green after the final documentation commit before merge readiness can be approved.
+- Version policy: PATCH bump to `0.3.14` applied for the Stage V1 tooling/refactor PR.
+- Documentation: synchronized to the implemented runtime and source paths in that PR.
+- Merge gate: exact-head GitHub CI remains required for every current PR before merge readiness can be approved.

@@ -733,4 +733,46 @@ describe('MDListItem', () => {
       expect(wrapper.element.tagName.toLowerCase()).toBe('a');
     });
   });
+
+  // Structural DOM composition (which interactive surface, if any, owns the shared
+  // MDStateLayer child) is a narrow foundation-wiring contract that does not need a real
+  // browser: happy-dom renders MDStateLayer's own DOM structure faithfully even though it
+  // cannot resolve its computed appearance (see MDList.browser.spec.ts for the real
+  // rendered-overlay proof).
+  describe('MDStateLayer mounting', () => {
+    it('does not mount a shared state layer for a static row', () => {
+      const inListWrapper = mountListItem({}, { inList: true });
+      const standaloneWrapper = mountListItem({});
+
+      expect(inListWrapper.find('.md-state-layer').exists()).toBe(false);
+      expect(standaloneWrapper.find('.md-state-layer').exists()).toBe(false);
+    });
+
+    it('mounts the shared state layer as a direct child of the root for a standalone single-action row', () => {
+      const wrapper = mountListItem({ mode: 'single-action', onAction: vi.fn() });
+      const stateLayers = wrapper.findAll('.md-state-layer');
+
+      expect(stateLayers).toHaveLength(1);
+      expect(stateLayers[0]?.element.parentElement).toBe(wrapper.element);
+      expect(wrapper.find('.md-list-item__primary-action .md-state-layer').exists()).toBe(false);
+    });
+
+    it('mounts the shared state layer only inside the primary action for an in-list single-action row', () => {
+      const wrapper = mountListItem({ mode: 'single-action', onAction: vi.fn() }, { inList: true });
+
+      expect(wrapper.findAll('.md-list-item__primary-action .md-state-layer')).toHaveLength(1);
+    });
+
+    it('mounts the shared state layer only inside the primary action for a multi-action row, keeping the trailing action independent', () => {
+      const wrapper = mountListItem(
+        { mode: 'multi-action', onAction: vi.fn() },
+        { inList: true, slots: { trailingAction: '<button type="button">Edit</button>' } },
+      );
+      const primaryAction = wrapper.get('.md-list-item__primary-action');
+      const trailingAction = wrapper.get('.md-list-item__trailing-action');
+
+      expect(primaryAction.findAll('.md-state-layer')).toHaveLength(1);
+      expect(trailingAction.find('.md-state-layer').exists()).toBe(false);
+    });
+  });
 });

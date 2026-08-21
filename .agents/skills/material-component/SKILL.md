@@ -105,11 +105,11 @@ API runs first. Token and behavior may use completed `contract.ts` only as the s
 
 Follow the root rules and `.agents/skills/verification/SKILL.md`; do not define a second Material-specific verification protocol or environment model.
 
-Focused `pnpm verify --only ...` commands are optional implementation/diagnostic feedback. Before a coding worker hands edited repository state back, it must satisfy the repository-required final automatic `pnpm verify` gate unless the `verification` skill permits an exact partial/environment-blocked result.
+Focused `pnpm verify --only ...` commands are optional implementation/diagnostic feedback or narrow task-specific proof. Material coding workers do not run a mandatory final automatic repository verification solely for handoff.
 
 Verifier invocation, permission handling, and environment failures are owned exclusively by the `verification` skill. Do not preflight verifier internals or ask the operator to run verifier commands.
 
-Exact-head GitHub CI remains architect-owned and does not replace required local proof or the coding-agent handoff gate.
+Exact-head GitHub CI is architect-owned and is the final automatic repository verification gate.
 
 ## Completion
 
@@ -117,9 +117,9 @@ The coding workflow is complete only when:
 
 - `contract.ts`, `tokens.css`, and `BEHAVIOR.md` are ready and the resolver has no contract route;
 - no semantic correction remains;
-- implementation returned `complete` under its runtime/proof/verifier gate;
+- implementation returned `complete` for runtime and required component-owned proof;
 - migration returned `complete` or `not-required`;
-- no known in-scope blocker remains.
+- no known in-scope coding blocker remains.
 
 An active current owner-local `REVIEW.md` with `Verdict: blocked` remains known blocker state until architect re-review. Legacy `Verdict: compliant` evidence is not current review state.
 
@@ -138,7 +138,7 @@ standalone implementation: complete | blocked | unchanged | not-run
 migration: complete | not-required | blocked | unchanged | not-run
 pending semantic correction: none | <owner and scope>
 operator observations: none | <status>
-local verification: <final automatic pnpm verify result plus any useful focused feedback>
+local feedback: none | <focused verifier-managed proof/diagnostics actually used>
 remaining blocker: none | active architect review requires re-review/routing | <exact blocker>
 next action: hand to architect | rerun material-component <name> | <genuine external action>
 ```
@@ -157,3 +157,4 @@ next action: hand to architect | rerun material-component <name> | <genuine exte
 - Reintroducing a coding-agent Material review stage.
 - Letting m3e, legacy code, or current consumer demand define Material contracts.
 - Updating roadmap/PR/CI/merge status as coding-agent completion.
+- Requiring a final broad local verification run solely to duplicate CI.
