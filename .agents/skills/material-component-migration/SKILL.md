@@ -42,7 +42,7 @@ You may inspect consumers and legacy implementation because they are the migrati
 6. Remove replaced legacy implementation/exports/proof only after every consumer has a valid destination.
 7. Remove old family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` artifacts when that family has fully moved to the current contract/runtime shape.
 8. Leave unrelated families untouched.
-9. Use focused verifier feedback only when useful while migrating, then satisfy the repository-required final automatic `pnpm verify` gate before returning edited migration state to the orchestrator.
+9. Use focused verifier feedback only when useful while migrating or when a concrete migration risk requires narrow proof. Do not run broad automatic repository verification solely for handoff.
 
 If the family was already migrated and an architect correction changes only standalone implementation/tokens while preserving the public consumer usage/defaults, the orchestrator should skip this worker entirely.
 
@@ -62,7 +62,7 @@ Use `needs-architect` only for a real product/composition ownership decision tha
 
 ## Proof
 
-As applicable verify:
+As applicable prove in the repository:
 
 - consumers compile against the canonical root API;
 - legacy-to-canonical event/state translation preserves product behavior;
@@ -72,7 +72,7 @@ As applicable verify:
 
 Do not duplicate standalone Material behavior/token tests at the product layer.
 
-Follow the root rules and `.agents/skills/verification/SKILL.md`; verifier invocation/environment handling is owned only by that skill, and exact-head GitHub CI remains architect-owned. Do not add Material-specific verifier environment handling or ask the operator to run verifier commands.
+Follow the root rules and `.agents/skills/verification/SKILL.md`; verifier invocation/environment handling is owned only by that skill, and exact-head GitHub CI is the architect-owned final automatic repository gate. Do not add Material-specific verifier environment handling or ask the operator to run verifier commands.
 
 ## Report
 
@@ -83,7 +83,7 @@ consumers inventoried: <summary>
 consumers migrated: <summary>
 product behavior preserved: yes | blocked
 legacy ownership removed: yes | no | not-applicable
-local verification: <final automatic pnpm verify result plus any useful focused feedback>
+local feedback: none | <focused verifier-managed proof/diagnostics actually used>
 required return owner: none | api-contract | token-contract | behavior-contract | implementation | architect
 remaining blocker: none | <exact blocker>
 result: complete | blocked | return-to-api-contract | return-to-token-contract | return-to-behavior-contract | return-to-implementation | needs-architect
@@ -99,3 +99,4 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Migrating unrelated families for cleanup.
 - Asking the operator to run verifier commands.
 - Updating roadmap, PR, CI, review, or merge status.
+- Running a final broad local verification gate solely to duplicate CI.

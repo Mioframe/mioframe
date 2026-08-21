@@ -77,6 +77,38 @@ describe('MDList', () => {
     expect(onUpdateModelValue).toHaveBeenCalledWith('one');
   });
 
+  it('does not set aria-multiselectable for a single-selection list', () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList aria-label="Options" selection-mode="single">
+            <MDListSelectionItem label-text="One" value="one" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    expect(wrapper.get('.md-list').attributes('aria-multiselectable')).toBeUndefined();
+  });
+
+  it('sets aria-multiselectable=true for a multiple-selection list', () => {
+    const wrapper = mount(
+      {
+        components: { MDList, MDListSelectionItem },
+        template: `
+          <MDList aria-label="Options" selection-mode="multiple">
+            <MDListSelectionItem label-text="One" value="one" />
+          </MDList>
+        `,
+      },
+      { attachTo: document.body },
+    );
+
+    expect(wrapper.get('.md-list').attributes('aria-multiselectable')).toBe('true');
+  });
+
   it('keeps selection-list DOM safe when an item is missing a value', () => {
     const wrapper = mount(
       {

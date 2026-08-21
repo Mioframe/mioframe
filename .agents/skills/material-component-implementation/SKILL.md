@@ -154,22 +154,20 @@ Browser/visual proof owns observable renderer results such as accessible role/na
 
 A screenshot alone is not proof of fixed numeric geometry or interaction semantics. Selector state alone is not proof of required visual state. Coverage should be proportional: shared renderer paths may share proof; materially different state/configuration/token grammars need observable coverage.
 
-## Verification and completion gate
+## Verification and completion
 
 Follow the root rules and `.agents/skills/verification/SKILL.md`.
 
-Use focused `pnpm verify --only ...` commands only when useful as implementation/diagnostic feedback. Do not mechanically assemble a final checklist of focused lanes.
-
-Before returning edited implementation/proof as `complete`, run the repository-required final automatic `pnpm verify` without `--full`. Verifier invocation and environment handling are owned exclusively by the verification skill; do not preflight verifier internals or ask the operator to run verifier commands. If the verification skill permits only a partial/environment-blocked result, do not claim a fully verified `complete` handoff.
+Use focused `pnpm verify --only ...` commands only when useful as implementation/diagnostic feedback or when a concrete contract requires narrow risk-specific proof. Do not mechanically assemble a final checklist and do not run broad automatic repository verification solely for handoff.
 
 Implementation may return `complete` only when all four are true:
 
 1. runtime satisfies all three fixed contracts and the root-default token cascade model;
-2. every required observable contract/cascade path has faithful proof;
-3. repository-required local verification completed successfully, including any risk-specific proof selected by the automatic plan or useful focused feedback;
-4. no known in-scope blocker remains.
+2. every required observable contract/cascade path has faithful proof in the repository;
+3. any narrow implementation-specific verification needed to establish a concrete risk has been completed or its exact blocker is reported;
+4. no known in-scope coding blocker remains.
 
-Missing or failing required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI remains architect-owned and does not replace local proof or the final coding-agent verification gate.
+Missing or failing required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI is architect-owned and is the final automatic repository verification gate.
 
 ## Return
 
@@ -189,7 +187,7 @@ Otherwise report:
 MATERIAL IMPLEMENTATION RESULT
 family: <canonical family>
 standalone component: complete | blocked
-local verification: <final automatic pnpm verify result plus any useful focused feedback>
+local feedback: none | <focused verifier-managed proof/diagnostics actually used>
 contract correction owner: none | api-contract | token-contract | behavior-contract
 contract finding: none | <exact finding>
 architecture escalation: none | <exact decision>
@@ -212,5 +210,6 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Adding alias styling classes solely to attach public tokens.
 - Treating source CSS wiring or selector state as rendered proof.
 - Asking the operator to run verifier commands.
-- Claiming `complete` with required proof unrun or failing.
+- Claiming `complete` with required task-specific proof unrun or failing.
 - Rewriting already-correct work on resume without an exact defect.
+- Running a final broad local verification gate solely to duplicate CI.
