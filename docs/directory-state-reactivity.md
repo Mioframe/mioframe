@@ -1,6 +1,6 @@
 # Directory state reactivity architecture
 
-Status: **ready** on current `develop`. PR #211 is merged at `b264c816fda35205459a24840d9dcf8412cd121f`; affected filesystem, repository, document, recovery, and dead-surface assumptions were re-checked.
+Status: **ready** on current `develop` (`9427fa4aea0b4fea0c72ea4ef4dd8d94711d6121`). PR #211 remains the foundational recovery/topology baseline at `b264c816fda35205459a24840d9dcf8412cd121f`; affected filesystem, repository, document, recovery, and dead-surface assumptions were re-checked after the branch was synchronized.
 
 ## Goal
 
@@ -12,19 +12,21 @@ One reliable reactive flow for directory-backed repository state, bounded on slo
 - narrow worker-safe contracts;
 - no duplicated derived facts.
 
-## Confirmed current facts
+## Baseline facts used for the decision
 
-- current filesystem reactivity can overlap Promise-backed `vfs.readDirectory()` calls; unsubscribe does not physically cancel them;
-- directory results are currently name-sorted;
-- repository facts and visible entries currently have separate reactive lifecycles;
-- repository v3 discovery is a second async phase and existing storage policy bounds candidate reads to `4`;
-- expected candidate failures are tolerant: unreadable candidate -> skip + bounded diagnostic, `FileNotFound` race -> skip, malformed wrapper -> no fact;
-- `DocumentService` and Repo gating depend on repository document IDs; Repo reuse and 60-second idle lifecycle are established behavior;
-- #211 recovery identity is `{ spaceName, recoveryKey }`; starting a retry must not transiently erase the current recovery target;
-- #211 topology queue owns topology-sensitive mutation/settlement only, not ordinary reads;
-- provider `watch()` is invalidation, not arbitrary external filesystem observation; Google Drive convergence remains provider-specific;
-- starter-example directory pre-inspection is best-effort; authoritative collision handling is `createDirectory` + `FileExists` retry;
-- `entities/directory/useDirectory` and mounted root-directory read state have no confirmed production consumer after #211.
+At the approval baseline before this architecture was implemented:
+
+- filesystem reactivity could overlap Promise-backed `vfs.readDirectory()` calls; unsubscribe did not physically cancel them;
+- directory results were name-sorted;
+- repository facts and visible entries had separate reactive lifecycles;
+- repository v3 discovery was a second async phase and existing storage policy bounded candidate reads to `4`;
+- expected candidate failures were tolerant: unreadable candidate -> skip + bounded diagnostic, `FileNotFound` race -> skip, malformed wrapper -> no fact;
+- `DocumentService` and Repo gating depended on repository document IDs; Repo reuse and 60-second idle lifecycle were established behavior;
+- #211 recovery identity was `{ spaceName, recoveryKey }`; starting a retry must not transiently erase the current recovery target;
+- #211 topology queue owned topology-sensitive mutation/settlement only, not ordinary reads;
+- provider `watch()` was invalidation, not arbitrary external filesystem observation; Google Drive convergence remained provider-specific;
+- starter-example directory pre-inspection was best-effort; authoritative collision handling was `createDirectory` + `FileExists` retry;
+- `entities/directory/useDirectory` and mounted root-directory read state had no confirmed production consumer after #211.
 
 ## Non-goals / unchanged
 
@@ -284,7 +286,7 @@ Consumers must prove:
 
 Browser/visual proof is required only if implementation actually changes interaction/appearance. #211 browser recovery proof remains owned by #211. Provider-convergence proof remains provider-specific.
 
-Implementation preflight resolves exact test/spec paths and impact metadata. Final coding handoff uses normal `pnpm verify`; exact-head GitHub CI remains the repository execution gate.
+Implementation preflight resolves exact test/spec paths and impact metadata. Required task-specific proof must exist in the repository; coding agents may use focused verifier-managed checks when useful. Broad automatic local verification is not a coding-agent handoff gate. Exact-head GitHub CI is the architect-owned final automatic repository gate.
 
 ## Forbidden
 
@@ -304,7 +306,7 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Fin
 - topology queue around reads;
 - `fsNodeStat`, polling, convergence policy, candidate-concurrency increase, or Repo lifecycle change.
 
-## Implementation readiness
+## Readiness
 
 - #211 dependency: resolved;
 - ownership/source of truth/state/API/lifecycle/error/consumer contracts: resolved;
@@ -313,4 +315,4 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Fin
 - proof ownership and unchanged scope: resolved;
 - unresolved architecture blockers: none;
 - architecture verdict: **ready**;
-- implementation verdict: **ready for implementation-preflight**.
+- implementation: present on `refactor/directory-state-reactivity`; remaining acceptance work is tracked by owner-local `REVIEW.md` and does not reopen this architecture.
