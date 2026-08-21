@@ -1163,12 +1163,26 @@ describe('buildCommands visual lane (visualRisk integration)', () => {
     expect(entry.reason).toBe('empty visual scope');
   });
 
-  it('excludes a changed colocated *.visual.spec.ts file from the unit-tests vitest scope', () => {
+  it('routes a changed colocated *.visual.spec.ts file to its real scan-owner tests in the unit-tests vitest scope, without ever treating the spec itself as Vitest source', () => {
     const commands = buildCommands(
       ['src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts'],
       { fullMode: false },
     );
-    requireSkippedEntry(commands, 'unit-tests');
+    const entry = requireRunEntry(commands, 'unit-tests');
+
+    expect(entry.args).toEqual([
+      'exec',
+      'vitest',
+      'related',
+      'playwright.lanes.test.ts',
+      'scripts/lib/visualRisk.test.ts',
+      'src/readRecoveryImportBoundary.test.ts',
+      '--run',
+      '--reporter=verbose',
+    ]);
+    expect(entry.args).not.toContain(
+      'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts',
+    );
   });
 });
 

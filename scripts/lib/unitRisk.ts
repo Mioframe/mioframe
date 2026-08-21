@@ -6,7 +6,12 @@ import type { ChangedPath } from './changedPaths.ts';
 /**
  * One explicit unit-test file-as-data relation: a repository input consumed
  * by its owning test(s) outside the ordinary module/import relation (so
- * Vitest's own `related` resolution cannot discover it).
+ * Vitest's own `related` resolution cannot discover it). Covers both a
+ * direct fixed-path read (mechanism 3), runtime/tool-driven config discovery
+ * (mechanism 4, e.g. ESLint's own cwd-based config resolution), and an exact
+ * existence/absence contract (mechanism 6) -- all three are structurally the
+ * same "exact source -> exact owning test(s)" relation; only the reason the
+ * relation exists differs, which is documented per entry below.
  */
 export interface UnitFileAsDataMapping {
   /** Exact repository-relative source path (not a prefix). */
@@ -18,16 +23,25 @@ export interface UnitFileAsDataMapping {
 /**
  * Confirmed exact file-as-data relations. Each entry was verified against
  * real repository behavior: `vitest related <source>` alone does not
- * discover the owning test (the source is consumed via `readFileSync`/`?raw`
- * outside the import graph), and each owning test was confirmed to actually
- * read that exact source. This is a small unit-specific external-input map,
- * not a general dependency registry -- see
- * `docs/testing/verify-target-architecture.md` "Exact file-as-data mappings".
+ * discover the owning test, and each owning test was confirmed to actually
+ * consume that exact source outside the import graph. This is a small
+ * unit-specific external-input map, not a general dependency registry -- see
+ * `docs/testing/verify-unit-impact-correction.md` decision #4 (exact
+ * external ownership) and #6 (audit population/mechanism classification).
  */
 export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
   {
     source: 'PRIVACY.md',
     tests: ['src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts'],
+  },
+  // Runtime/tool-discovered external ownership (mechanism 4):
+  // eslint.config.test.ts constructs `new ESLint({ cwd: import.meta.dirname })`
+  // and lints in-memory code snippets against eslint.config.mjs's real rules;
+  // there is no ES `import` of eslint.config.mjs anywhere in that test --
+  // ESLint's own runtime loads the config file by cwd-based discovery.
+  {
+    source: 'eslint.config.mjs',
+    tests: ['eslint.config.test.ts'],
   },
   {
     source: '.github/workflows/release.yml',
@@ -43,6 +57,11 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
       'scripts/release/buildDateWorkflow.test.mjs',
       'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
       'scripts/release/materializePrVersionWorkflow.test.mjs',
+      // scripts/verify.test.ts's "verification-release CI job timeout
+      // envelope" describe block directly fs.readFileSync's this exact
+      // workflow file to extract and assert the verification-release job's
+      // timeout-minutes envelope.
+      'scripts/verify.test.ts',
     ],
   },
   {
@@ -58,9 +77,16 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
     source: '.gitignore',
     tests: ['scripts/agentEnvironment.test.mjs'],
   },
+  // scripts/release/viteBuildDate.test.mjs is deliberately NOT mapped here:
+  // it has a real `import viteConfig from '../../vite.config.ts';` ES
+  // import, so it is reached only through ordinary Vitest related
+  // resolution of vite.config.ts itself (passed through below as ordinary
+  // source), never duplicated in external metadata -- see
+  // verify-unit-impact-correction.md decision #4 ("an import-reachable
+  // owner being redundantly required through external metadata").
   {
     source: 'vite.config.ts',
-    tests: ['config/viteConfigFixtureImport.test.ts', 'scripts/release/viteBuildDate.test.mjs'],
+    tests: ['config/viteConfigFixtureImport.test.ts'],
   },
   // CSS read directly (readFileSync) by these tests, never imported by them.
   {
@@ -70,6 +96,14 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
       'src/shared/lib/md/index.test.ts',
       'src/shared/ui/material/foundation/tokens.test.ts',
     ],
+  },
+  // Exact existence/absence ownership (mechanism 6): tokens.test.ts asserts
+  // this legacy path does NOT exist. The source is not expected to exist on
+  // disk -- that is exactly the forbidden-path contract this mapping must
+  // catch if the path is ever resurrected.
+  {
+    source: 'src/shared/lib/md/tokens.css',
+    tests: ['src/shared/ui/material/foundation/tokens.test.ts'],
   },
   {
     source: 'src/shared/ui/material/foundation/tokens.css',
@@ -112,6 +146,26 @@ export const UNIT_FILE_AS_DATA_MAPPINGS: readonly UnitFileAsDataMapping[] = [
     tests: ['src/shared/ui/State/MDStateLayer.test.ts'],
   },
 ];
+
+/**
+ * One bounded repository-scan ownership relation (mechanism 5): a Vitest
+ * test whose own deterministic scan predicate observes a population of
+ * repository paths outside the import graph and outside a single exact
+ * source mapping -- for example a boundary test that recursively reads
+ * every non-test source file under a directory, or a registry-validation
+ * test that lists a directory's files against a static registry. Each
+ * `matchesPath` predicate mirrors the real scanning production code exactly
+ * (confirmed by direct read, not inferred), per
+ * `docs/testing/verify-unit-impact-correction.md` decision #5. This is a
+ * small set of narrow local rules, not a generated per-file mapping and not
+ * a general dependency graph.
+ */
+export interface UnitScanOwner {
+  /** Exact owning Vitest test file path. */
+  test: string;
+  /** True when `filePath` is part of this test's real bounded scan population. */
+  matchesPath: (filePath: string) => boolean;
+}
 
 /** Resolved unit-impact plan, discriminated by `mode`. */
 // `relatedInputs` is present on every variant (empty outside `focused`),
@@ -167,7 +221,7 @@ function isExistingFile(filePath: string): boolean {
 }
 
 function uniqSorted(values: readonly string[]): string[] {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+  return [...new Set(values)].sort();
 }
 
 // Playwright-owned proof inputs only; never Vitest-owned regardless of
@@ -241,6 +295,110 @@ function isUnitRelevantByShape(filePath: string): boolean {
   return isTestShapedPath(filePath) || isOrdinaryUnitSourcePath(filePath);
 }
 
+const MATERIAL_ROOT_PREFIX = 'src/shared/ui/material/';
+const FEATURES_ROOT_PREFIX = 'src/features/';
+const RENDERER_BOUNDARY_EXTENSIONS = ['.css', '.vue', '.ts', '.mts', '.tsx'];
+const COMPONENT_TOKENS_CSS_PATTERN = /^src\/shared\/ui\/material\/components\/[^/]+\/tokens\.css$/;
+const STORYBOOK_BEHAVIOR_CENTRAL_PREFIX = 'tests/e2e/storybook/';
+const COLOCATED_BROWSER_SPEC_SUFFIX = '.browser.spec.ts';
+const COLOCATED_VISUAL_SPEC_SUFFIX = '.visual.spec.ts';
+const APP_E2E_SPEC_DIR_PREFIX = 'tests/e2e/';
+
+// src/readRecoveryImportBoundary.test.ts and
+// src/features/fileSystemAccessImportBoundary.test.ts both recursively
+// readFile every non-test .ts/.vue file under their respective root,
+// excluding any path whose name contains ".test." (confirmed by direct read
+// of collectProductionFiles/collectFeatureFiles).
+function isNonTestBoundaryScanPath(filePath: string, prefix: string): boolean {
+  return (
+    filePath.startsWith(prefix) &&
+    (filePath.endsWith('.ts') || filePath.endsWith('.vue')) &&
+    !filePath.includes('.test.')
+  );
+}
+
+// scripts/lib/e2eRisk.test.ts and scripts/lib/e2eProjectApplicability.test.ts
+// each validate their registry against a NON-recursive readdirSync of
+// tests/e2e/*.spec.ts direct children only (findAppE2ESpecFiles/
+// findRootAppE2ESpecFiles), never the nested storybook/visual/release
+// subdirectories.
+function isRootAppE2ESpecPath(filePath: string): boolean {
+  if (!filePath.startsWith(APP_E2E_SPEC_DIR_PREFIX) || !filePath.endsWith('.spec.ts')) {
+    return false;
+  }
+
+  return !filePath.slice(APP_E2E_SPEC_DIR_PREFIX.length).includes('/');
+}
+
+/**
+ * Confirmed bounded repository-scan owners. Each `matchesPath` predicate was
+ * verified against the real scanning production code, not just the
+ * consuming test file -- see `docs/testing/verify-unit-impact-correction.md`
+ * decision #5 for the full audit.
+ */
+export const UNIT_SCAN_OWNERS: readonly UnitScanOwner[] = [
+  {
+    test: 'src/readRecoveryImportBoundary.test.ts',
+    matchesPath: (filePath) => isNonTestBoundaryScanPath(filePath, 'src/'),
+  },
+  {
+    test: 'src/features/fileSystemAccessImportBoundary.test.ts',
+    matchesPath: (filePath) => isNonTestBoundaryScanPath(filePath, FEATURES_ROOT_PREFIX),
+  },
+  // rendererBoundary.test.ts's collectRuntimeFiles recursively scans
+  // src/**/*.{css,vue,ts,mts,tsx} outside src/shared/ui/material/** with NO
+  // ".test." exclusion at all (confirmed by direct read) -- unlike the two
+  // scans above.
+  {
+    test: 'src/shared/ui/material/rendererBoundary.test.ts',
+    matchesPath: (filePath) =>
+      filePath.startsWith('src/') &&
+      !filePath.startsWith(MATERIAL_ROOT_PREFIX) &&
+      RENDERER_BOUNDARY_EXTENSIONS.some((extension) => filePath.endsWith(extension)),
+  },
+  // foundation/tokens.test.ts's getComponentTokenSources() does a
+  // non-recursive readdirSync of src/shared/ui/material/components and reads
+  // each entry's exact tokens.css when present -- a single path segment,
+  // exact filename, non-recursive.
+  {
+    test: 'src/shared/ui/material/foundation/tokens.test.ts',
+    matchesPath: (filePath) => COMPONENT_TOKENS_CSS_PATTERN.test(filePath),
+  },
+  // playwright.lanes.test.ts scans the complete current Playwright spec
+  // population it enumerates across all four lanes -- functionally the same
+  // population isPlaywrightOnlyProofPath already recognizes.
+  {
+    test: 'playwright.lanes.test.ts',
+    matchesPath: isPlaywrightOnlyProofPath,
+  },
+  {
+    test: 'scripts/lib/e2eRisk.test.ts',
+    matchesPath: isRootAppE2ESpecPath,
+  },
+  {
+    test: 'scripts/lib/e2eProjectApplicability.test.ts',
+    matchesPath: isRootAppE2ESpecPath,
+  },
+  // storybookBehaviorRisk.test.ts's validateStorybookBehaviorScenarioRegistry
+  // scans BOTH the recursive legacy tests/e2e/storybook/**/*.spec.ts tree AND
+  // the recursive colocated src/**/*.browser.spec.ts tree.
+  {
+    test: 'scripts/lib/storybookBehaviorRisk.test.ts',
+    matchesPath: (filePath) =>
+      (filePath.startsWith(STORYBOOK_BEHAVIOR_CENTRAL_PREFIX) && filePath.endsWith('.spec.ts')) ||
+      (filePath.startsWith('src/') && filePath.endsWith(COLOCATED_BROWSER_SPEC_SUFFIX)),
+  },
+  // visualRisk.test.ts's findColocatedVisualSpecFiles() scans only the
+  // recursive colocated src/**/*.visual.spec.ts tree; the legacy central
+  // tests/e2e/visual/** subtree is full-lane-fallback only, not a
+  // registry-coverage scan (confirmed by full read of visualRisk.ts).
+  {
+    test: 'scripts/lib/visualRisk.test.ts',
+    matchesPath: (filePath) =>
+      filePath.startsWith('src/') && filePath.endsWith(COLOCATED_VISUAL_SPEC_SUFFIX),
+  },
+];
+
 interface RegistryValidation {
   valid: boolean;
   errors: string[];
@@ -287,16 +445,48 @@ function validateFileAsDataMappings(
   return { valid: errors.length === 0, errors: uniqSorted(errors) };
 }
 
+function validateScanOwners(
+  scanOwners: readonly UnitScanOwner[],
+  fileExists: (filePath: string) => boolean,
+): RegistryValidation {
+  const errors: string[] = [];
+  const seenTests = new Set<string>();
+
+  for (const owner of scanOwners) {
+    if (seenTests.has(owner.test)) {
+      errors.push(`unit scan owner ${owner.test} is registered more than once`);
+    }
+
+    seenTests.add(owner.test);
+
+    if (!isTestShapedPath(owner.test)) {
+      errors.push(`unit scan owner ${owner.test} is not a Vitest-owned test path`);
+      continue;
+    }
+
+    if (!fileExists(owner.test)) {
+      errors.push(`unit scan owner ${owner.test} references missing test ${owner.test}`);
+    }
+  }
+
+  return { valid: errors.length === 0, errors: uniqSorted(errors) };
+}
+
 /**
  * Resolve the unit-impact mode for the given status-aware changed paths, in
- * priority order: invalid (file-as-data registry failed self-validation),
- * full (unit-infrastructure risk, runtime-relevant `package.json`, or a
- * deleted/renamed unit-relevant path whose safe surviving ownership cannot
- * be established), focused (direct changed tests, file-as-data relations,
- * and/or ordinary source/support paths handed to Vitest's own related-test
- * resolution), or skip (no unit-relevant changes). Deleted/renamed status
- * must be consumed from `changedPaths` because removed/moved dependencies
- * cannot be resolved safely from the current filesystem alone.
+ * priority order: invalid (file-as-data or scan-owner registry failed
+ * self-validation), full (unit-infrastructure risk, runtime-relevant
+ * `package.json`, or a deleted/renamed unit-relevant path whose safe
+ * surviving ownership cannot be established), focused (direct changed tests,
+ * file-as-data relations, bounded scan-owner relations, and/or ordinary
+ * source/support paths handed to Vitest's own related-test resolution), or
+ * skip (no unit-relevant changes). Deleted/renamed status must be consumed
+ * from `changedPaths` because removed/moved dependencies cannot be resolved
+ * safely from the current filesystem alone. Bounded scan-owner relations are
+ * evaluated for every status (including deletions), because a deleted path
+ * still changes the real repository population its owning scan test
+ * observes, even when the same path is not otherwise unit-relevant by shape
+ * (for example a deleted Playwright spec).
  * @param changedPaths Status-aware changed paths from `changedPaths.ts`.
  * @param [options] Resolution options.
  * @returns Plan with `mode`, candidate `relatedInputs` when focused, and
@@ -311,9 +501,14 @@ export function resolveUnitPlan(
   }: ResolveUnitPlanOptions = {},
 ): UnitPlan {
   const registryValidation = validateFileAsDataMappings(fileAsDataMappings, fileExists);
+  const scanOwnerValidation = validateScanOwners(UNIT_SCAN_OWNERS, fileExists);
 
-  if (!registryValidation.valid) {
-    return { mode: 'invalid', relatedInputs: [], reasons: registryValidation.errors };
+  if (!registryValidation.valid || !scanOwnerValidation.valid) {
+    return {
+      mode: 'invalid',
+      relatedInputs: [],
+      reasons: uniqSorted([...registryValidation.errors, ...scanOwnerValidation.errors]),
+    };
   }
 
   const fullReasons: string[] = [];
@@ -335,10 +530,21 @@ export function resolveUnitPlan(
     }
   };
 
+  const checkScanOwners = (filePath: string): void => {
+    for (const owner of UNIT_SCAN_OWNERS) {
+      if (owner.matchesPath(filePath)) {
+        relatedInputs.add(owner.test);
+        focusedReasons.push(`bounded scan owner ${owner.test} <- ${filePath}`);
+      }
+    }
+  };
+
   for (const change of changedPaths) {
     if (change.status === 'renamed') {
       checkInfrastructureTrigger(change.oldPath);
       checkInfrastructureTrigger(change.newPath);
+      checkScanOwners(change.oldPath);
+      checkScanOwners(change.newPath);
 
       if (isUnitRelevantByShape(change.oldPath) || isUnitRelevantByShape(change.newPath)) {
         fullReasons.push(
@@ -350,6 +556,7 @@ export function resolveUnitPlan(
     }
 
     checkInfrastructureTrigger(change.path);
+    checkScanOwners(change.path);
 
     if (change.status === 'deleted') {
       if (isUnitRelevantByShape(change.path)) {
