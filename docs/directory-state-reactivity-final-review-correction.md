@@ -100,7 +100,7 @@ If correction 1 exposes a production defect, stop broadening the patch: fix only
 ### Directory owner cleanup
 
 - Contract: repository instructions match current ownership and obsolete public entry point is removed.
-- Primary proof: instruction compatibility/static validation plus focused type-check when useful.
+- Primary proof: repository instruction/static validation and type-check when materially useful.
 - Runtime/browser proof: not required.
 
 ### Repository TSDoc
@@ -122,14 +122,19 @@ If correction 1 exposes a production defect, stop broadening the patch: fix only
 
 ## Verification
 
-Use the smallest verifier-managed checks that materially prove the correction. Expected useful checks are:
+Use the smallest verifier-managed checks that materially prove the correction. The risk-specific proof should normally use:
 
 ```text
 pnpm verify --only unit-tests --files src/entities/repository/useRepository.test.ts
-pnpm verify --only type-check --files src/entities/repository/useRepository.test.ts src/entities/directory src/shared/service/repositories/repositoriesService.ts
 ```
 
-Run instruction/static verification through the repository verifier when needed for the `AGENTS.md` correction. Do not run broad `pnpm verify`, `--full`, or release verification solely for coding-agent handoff. Exact-head GitHub CI remains architect-owned after semantic re-review.
+A project type-check may be used if useful after the barrel removal:
+
+```text
+pnpm verify --only type-check
+```
+
+Do not mechanically run static labels for comment/AGENTS-only edits merely for handoff, and do not run broad `pnpm verify`, `--full`, or release verification solely for coding-agent completion. Exact-head GitHub CI remains architect-owned after semantic re-review.
 
 ## Forbidden
 
