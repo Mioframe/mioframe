@@ -315,5 +315,5 @@ Implementation preflight resolves exact test/spec paths and impact metadata. Req
 - proof ownership and unchanged scope: resolved;
 - unresolved architecture blockers: none;
 - architecture verdict: **ready**;
-- implementation semantic review: **ready**; no active owner-local `REVIEW.md` findings remain;
-- final automatic acceptance gate: exact-head GitHub CI, architect-owned.
+- implementation semantic review: **blocked by active owner-local PR findings**; the architecture itself remains unchanged;
+- final automatic acceptance gate: exact-head GitHub CI, architect-owned after those findings are closed.
