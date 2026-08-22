@@ -150,14 +150,14 @@ The semantic matrix remains useful for closed lanes, but release rows are provis
 
 Confirmed closed examples:
 
-| Case | Unit | Visual | App E2E | Storybook behavior | Mutation |
-| --- | --- | --- | --- | --- | --- |
-| `AGENTS.md` | skip | skip | skip | skip | skip |
-| feature source | focused/related as owned | skip | mapped scenario where owned | skip | explicit only |
-| Material component | focused | focused | full | focused | explicit only |
-| root `tests/e2e/*.spec.ts` | inventory owners | skip | focused direct spec | skip | skip |
-| nested arbitrary `tests/e2e/other/*.spec.ts` | no root app inventory owner | skip | skip | skip | skip |
-| `scripts/lib/appE2EPaths.ts` | related as applicable | skip | full infrastructure | skip | skip |
+| Case                                         | Unit                        | Visual  | App E2E                     | Storybook behavior | Mutation      |
+| -------------------------------------------- | --------------------------- | ------- | --------------------------- | ------------------ | ------------- |
+| `AGENTS.md`                                  | skip                        | skip    | skip                        | skip               | skip          |
+| feature source                               | focused/related as owned    | skip    | mapped scenario where owned | skip               | explicit only |
+| Material component                           | focused                     | focused | full                        | focused            | explicit only |
+| root `tests/e2e/*.spec.ts`                   | inventory owners            | skip    | focused direct spec         | skip               | skip          |
+| nested arbitrary `tests/e2e/other/*.spec.ts` | no root app inventory owner | skip    | skip                        | skip               | skip          |
+| `scripts/lib/appE2EPaths.ts`                 | related as applicable       | skip    | full infrastructure         | skip               | skip          |
 
 Release examples that must be re-proved after correction:
 
