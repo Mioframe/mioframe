@@ -1,6 +1,6 @@
 # Database virtualization browser proof
 
-Status: **shared-API + native-table capability gate passed; production database migration may begin planning**.
+Status: **behavioral capability contracts implemented; stability gate blocked by known intermittent shared `surfaceOffset` and database anchor proofs**.
 
 The browser gate proves the selected `useVirtualCollection` boundary plus Mioframe-owned native-table integration risks. Passing DOM layout assertions alone is not sufficient when the contract being claimed is virtual measurement geometry.
 
@@ -131,7 +131,20 @@ Examples:
 - a derived row-range × column-range product does **not** prove mounted-cell DOM by itself;
 - visible anchor viewport position before/after an above-viewport resize proves scroll-correction behavior.
 
+A known intermittent failure is failed proof. A later clean rerun does not make the contract green; correct the test-authoring/runtime race and prove deterministic behavior without sleeps, force, broad retries, timeout inflation, or weakened semantics.
+
 Do not inspect TanStack private caches or instances to make capability proof pass.
+
+## Current stability blocker
+
+The current implementation has produced an intermittent failure in each proof owner:
+
+- shared: non-zero `surfaceOffset` deep-scroll/geometry tolerance scenario;
+- database: above-viewport resize anchor-stability scenario.
+
+Both later passed on a clean rerun, which is diagnostic evidence only. These contracts remain blocked until their browser geometry snapshot/settling conditions are deterministic.
+
+The public `vItem` rename is accepted and is not implicated by these failures.
 
 ## Shared API failure threshold
 
@@ -142,7 +155,7 @@ The shared abstraction is blocked if making it work requires any of:
 - arbitrary TanStack option passthrough;
 - generic rendering components;
 - consumer-specific database/table knowledge;
-- a broader API than the contract in `docs/virtualization-library.md`.
+- a broader API than the contract in `src/shared/ui/virtualization/README.md`.
 
 If direct TanStack would become simpler than the shared public contract after required behavior is implemented, stop and report the concrete cause instead of growing the abstraction.
 
@@ -186,11 +199,12 @@ Record the outcome in `docs/database-virtualization-collection-api-result.md`:
 Production migration preflight may start only when:
 
 - shared `useVirtualCollection` proof passes using public geometry, without a second geometry/lifecycle system;
-- non-zero `surfaceOffset`, leading/trailing geometry, and source-value semantics pass;
+- non-zero `surfaceOffset`, leading/trailing geometry, and source-value semantics pass deterministically;
 - database native-table proof passes in Chromium;
 - Firefox dynamic row/column measurement passes with real `MDTable` geometry and public virtual size assertions;
 - deep vertical and deep horizontal offsets are both proven;
-- row grow/shrink and above-viewport anchor correction work;
+- row grow/shrink and above-viewport anchor correction work deterministically;
 - column remount minimum is proven after widening content is removed;
 - **actual rendered logical data-cell DOM**, plus row/column DOM, is directly proven bounded;
-- logical accessibility semantics pass.
+- logical accessibility semantics pass;
+- no required browser contract is known intermittent.
