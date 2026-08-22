@@ -1,8 +1,8 @@
 # Verify release-impact static cleanup
 
-Status: **ready**.
+Status: **implemented and architect-reviewed**.
 
-This is the final narrow cleanup handoff for Pass E in PR #216. The release-impact architecture in `docs/testing/verify-release-impact-correction.md` is implemented and accepted semantically. Do not redesign it.
+This is the completed narrow cleanup for Pass E in PR #216. The release-impact architecture in `docs/testing/verify-release-impact-correction.md` is implemented and accepted semantically; this cleanup changed only proof/static compliance.
 
 ## Goal
 
@@ -10,114 +10,82 @@ Make the accepted Pass E proof/static surface satisfy repository checks without 
 
 ## Scope
 
-Allowed files:
+Changed files:
 
 ```text
 scripts/lib/releaseRisk.test.ts
 scripts/lib/releaseRisk.ts
 ```
 
-No other production/test file is required.
+No other production/test file was required.
 
-## Current findings
+## Final state
 
-### 1. Obsolete test-author scaffolding
+### Obsolete test-author scaffolding
 
-`scripts/lib/releaseRisk.test.ts` still contains an unused `ReleasePlanOptionsWithReleaseSpecTestOverrides` type alias/import scaffolding after production added the real replacement seams.
+Removed the obsolete options alias/wrapper/local duplicate inventory shape left from the RED phase. The proof now uses the production resolver's replacement-only seams directly.
 
-Remove the obsolete scaffolding. Use the production `ResolveReleasePlanOptions` surface directly where needed.
+### Unknown release-check runtime proof
 
-### 2. Unknown release-check proof violates static policy
-
-The accepted proof must continue to verify:
+The accepted proof still verifies:
 
 ```text
 runtime exact mapping contains a check outside RELEASE_IMPACT_CHECKS
 → resolveReleasePlan() returns mode: invalid
 ```
 
-The current test expresses the corrupted runtime value through prohibited type assertions. Rewrite only the test-data construction so the malformed runtime value reaches the public resolver without `as`, `as unknown as`, angle-bracket assertions, or weakening the production `ReleaseImpactCheck` type.
-
-The production contract remains:
+The malformed runtime value is created without a TypeScript type assertion by mutating a valid typed array with `Object.defineProperty`. Production typing remains:
 
 ```ts
 NarrowReleaseMapping.checks: readonly ReleaseImpactCheck[]
 ```
 
-Do not change it to `string[]` or add a production escape hatch solely for the test.
+No production escape hatch or weakened type was introduced.
 
-Use the smallest lint-compliant runtime-data construction available in the existing test environment. The oracle is runtime validation, not TypeScript assignability.
+### Diagnostic cleanup
 
-### 3. Unnecessary diagnostic conversion
+Removed the unnecessary `String(check)` conversion from the invalid-check diagnostic without changing validation semantics or diagnostic meaning.
 
-In `scripts/lib/releaseRisk.ts`, runtime invalid-check diagnostics currently use an unnecessary `String(check)` conversion.
+### RED-phase comments
 
-Remove only the unnecessary conversion in a lint-compliant way while preserving the same diagnostic meaning and validation behavior.
+Historical comments claiming the replacement inventory seams were not yet implemented were removed/reworded. Current comments describe the existing replacement-only seams.
 
-### 4. Stale RED-phase comments
+## Acceptance result
 
-Remove/rewrite comments in `scripts/lib/releaseRisk.test.ts` that still claim:
+- all accepted Pass E assertions remain present and semantically unchanged;
+- unknown runtime release-check value still proves `mode: invalid`;
+- no type assertion is used to construct that malformed runtime value;
+- `NarrowReleaseMapping.checks` remains `readonly ReleaseImpactCheck[]`;
+- obsolete inventory-seam scaffolding is removed;
+- stale RED-phase comments are gone;
+- release-impact architecture and ownership are unchanged.
 
-- the inventory override seams are waiting for production to add them;
-- the current resolver ignores those options.
+## Verification evidence
 
-Final comments should describe the current replacement-only test seams, not historical RED state.
+Coding-agent focused feedback:
 
-## Must not change
+```text
+pnpm verify --only unit-tests --files scripts/lib/releaseRisk.test.ts scripts/lib/releaseRisk.ts
+→ passed
 
-- `RELEASE_SPEC_EXECUTION_INVENTORY` API or membership;
-- release spec ownership;
-- production Vite config ownership;
-- bounded release-spec scan;
-- invalid/focused/full/skip semantics;
-- managed-update grouping/order/labels;
-- artifact/release-smoke command construction;
-- release timeout behavior;
-- CI/workflow topology;
-- any accepted test input or expected planner result;
-- the two separate verifier-output findings in `scripts/REVIEW.md`.
+pnpm verify --fix-only --files scripts/lib/releaseRisk.test.ts scripts/lib/releaseRisk.ts
+→ passed
 
-## Acceptance criteria
-
-1. Every existing Pass E assertion remains present and semantically unchanged.
-2. Unknown runtime release-check value still proves `mode: invalid`.
-3. No type assertion is used to express that corrupted runtime value.
-4. `NarrowReleaseMapping.checks` remains `readonly ReleaseImpactCheck[]`.
-5. Obsolete inventory-seam test scaffolding is removed.
-6. Stale RED-phase comments are gone.
-7. The unnecessary production `String(check)` conversion is gone without behavior change.
-8. No release-impact architecture or ownership changes.
-9. Focused unit proof passes.
-10. Focused static checks pass for the two touched files.
-
-## Verification
-
-Use focused verifier-managed feedback only:
-
-```bash
-pnpm verify --only unit-tests --files \
-  scripts/lib/releaseRisk.test.ts \
-  scripts/lib/releaseRisk.ts
-
-pnpm verify --fix-only --files \
-  scripts/lib/releaseRisk.test.ts \
-  scripts/lib/releaseRisk.ts
+pnpm verify --only type-check
+→ passed
 ```
 
-If `--fix-only` changes files mechanically, inspect the resulting touched scope and rerun the same focused command.
+Architect exact-head observation on `feb02590a5697131d89a480ab60ee11267b75505`, workflow `verify #4048`:
 
-Run `pnpm verify --only type-check` only if the cleanup changes TypeScript surface in a way that makes it useful.
+- autofix: passed;
+- format: passed;
+- Oxlint: passed;
+- ESLint: passed;
+- type-check: passed;
+- unit tests: passed.
 
-Do not run broad `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, browser proof, Storybook, visual, or mutation as a completion ritual. Exact-head CI remains architect-owned.
+Remaining workflow lanes are not Pass E cleanup acceptance criteria and are not final merge evidence because later output-contract/documentation work will change the authoritative head.
 
-## Forbidden
+## Closure
 
-- direct Git/GitHub commands from coding/test contexts;
-- edits to `docs/testing/**`, any `REVIEW.md`, `AGENTS.md`, or skills;
-- new architecture/registry/helper abstractions;
-- weakening/removing the unknown-check assertion;
-- changing production release-impact behavior;
-- changing inventory membership;
-- changing release mappings;
-- changing CI/workflow;
-- fixing verifier-output findings in this pass.
+Pass E release-impact architecture and its proof/static cleanup are closed. Reopen only if new repository evidence contradicts the accepted execution inventory, release-spec population validation, production Vite boundary, or runtime mapping validation.
