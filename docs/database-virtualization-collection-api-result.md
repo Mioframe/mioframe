@@ -1,8 +1,8 @@
 # Database virtualization collection API result
 
-Status: **Ready**.
+Status: **not ready; architecture and public API accepted, capability stability proof blocked by known intermittent browser failures**.
 
-Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/database-virtualization-collection-api-preflight.md`, `docs/virtualization-library.md`, `docs/database-virtualization.md`, `docs/database-virtualization-browser-proof.md`.
+Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/database-virtualization-collection-api-preflight.md`, `src/shared/ui/virtualization/README.md`, `docs/database-virtualization.md`, `docs/database-virtualization-browser-proof.md`.
 
 ## Architecture status
 
@@ -30,7 +30,7 @@ Accepted:
 
 ## Existing corrected evidence
 
-The final verifier run for this correction reported:
+A clean focused run reported:
 
 | Project                             | Spec(s)                                                     | Tests | Outcome   |
 | ----------------------------------- | ----------------------------------------------------------- | ----: | --------- |
@@ -38,27 +38,30 @@ The final verifier run for this correction reported:
 | `chromium`                          | database `DatabaseVirtualizationCapability.browser.spec.ts` |    10 | 10 passed |
 | `firefox-virtualization-capability` | database spec only                                          |    10 | 10 passed |
 
-Total reported result: **30/30 passed**, with no flaky/retried outcomes in the final run. Type-check, Storybook build (`storybook-build`), ESLint, Oxlint, and format were also reported green for this correction diff.
+The same current implementation also produced an earlier failed focused run in which the required non-zero-`surfaceOffset` shared geometry proof and the database above-viewport anchor proof failed intermittently before a later clean rerun.
 
-These results close the final proof gap described below.
+Repository policy does not accept a later clean run as proof that a known intermittent failure is green. These failures therefore remain an active stability blocker until their test-authoring/runtime cause is corrected and the required proof is deterministic.
+
+Type-check for the `vItem` rename passed. The rename itself is accepted and is not implicated by the two geometry failures.
 
 ## Contracts accepted by review
 
-The following previous findings are closed:
+The following behavior/architecture findings remain accepted:
 
 | Contract                                                                                                | Review status |
 | ------------------------------------------------------------------------------------------------------- | ------------- |
+| Public directive property is `vItem`; no `measure` compatibility alias                                 | ACCEPTED      |
 | Valid in-bounds `undefined` source value                                                                | ACCEPTED      |
 | Vertical grow/shrink updates public `item.size`                                                         | ACCEPTED      |
 | Horizontal growth updates public `item.size`                                                            | ACCEPTED      |
 | Stable-key remap followed by resize updates public geometry at the new index                            | ACCEPTED      |
-| Non-zero `surfaceOffset` keeps public geometry collection-relative                                      | ACCEPTED      |
+| Non-zero `surfaceOffset` contract and collection-relative geometry                                      | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
 | Deep `leadingSize`/`trailingSize`/`totalSize` relationship                                              | ACCEPTED      |
 | Real `MDTable` row grow/shrink with public row size in Chromium/Firefox                                 | ACCEPTED      |
 | Body-driven native column growth with public column size                                                | ACCEPTED      |
 | Column remount minimum after widening content is removed while unmounted                                | ACCEPTED      |
 | Deep vertical/horizontal logical geometry                                                               | ACCEPTED      |
-| Above-viewport row resize anchor stability                                                              | ACCEPTED      |
+| Above-viewport row resize anchor behavior                                                               | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
 | Native table accessibility semantics                                                                    | ACCEPTED      |
 | Dedicated fixed-size wrapper as physical capability scroll root                                         | ACCEPTED      |
 | Phantom min-content spacer normalization                                                                | ACCEPTED      |
@@ -85,21 +88,32 @@ Both the initial state and the state after deep 2D scrolling (`scrollTop`/`scrol
 - actual mounted logical-cell DOM count stays below the generous bound of 900;
 - actual mounted logical-cell DOM count stays far below the 5,000 × 300 (1,500,000) logical cross product, at both ranges.
 
-The obsolete `db-virt-mounted-cells` derived output was removed from `DatabaseVirtualizationCapabilityFixture.vue`; it had no remaining diagnostic value once the test counts actual DOM directly.
+The obsolete `db-virt-mounted-cells` derived output was removed from `DatabaseVirtualizationCapabilityFixture.vue`.
 
-No discrepancy between actual mounted logical-cell DOM and the settled row × column intersection was observed at either range in the final verifier run.
+## Active stability blocker
+
+Two required capability tests are currently known to be intermittent:
+
+1. `VirtualCollectionCapability.browser.spec.ts` — the non-zero `surfaceOffset` geometry scenario can fail a scroll/geometry tolerance assertion before passing on a later rerun.
+2. `DatabaseVirtualizationCapability.browser.spec.ts` — the above-viewport resize anchor scenario can fail before passing on a later rerun.
+
+The current tests sample live browser geometry after conditions that are not sufficient to prove the complete geometry snapshot has settled. The correction must make these proofs deterministic without sleeps, force, broad retries, timeout inflation, weakened tolerances, or private TanStack state.
+
+A clean exact-head CI run is still required after the stability correction, but CI passing once does not by itself erase a known intermittent proof failure.
 
 ## Documentation status
 
-All source-of-truth status statements below are updated in this same correction so no document continues to say the capability is `pending` while this result says `Ready`:
+Current state:
 
-- shared API implementation/browser proof: passed;
-- native-table capability: passed;
-- production database migration: not started, ready to begin planning;
-- product performance profiling/acceptance: pending production migration (unchanged — this remains a separate, later stage).
+- shared virtualization architecture/public API: accepted;
+- `vItem` rename: accepted;
+- shared/database capability behavior: implemented and manually demonstrated;
+- capability stability proof: blocked by the two known intermittent browser tests above;
+- production database migration: not started and remains blocked on deterministic capability proof;
+- product performance profiling/acceptance: pending production migration.
 
 ## Final verdict
 
-**Ready.**
+**Not ready.**
 
-No architecture redesign was required. Production migration preflight may proceed; production database migration implementation itself remains a separate, not-yet-started stage.
+No architecture redesign is required. Correct the two browser-proof stability defects, then rerun the focused capability proof and exact-head CI. Production database migration preflight remains blocked until the required browser proof is deterministic.
