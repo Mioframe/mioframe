@@ -1,128 +1,109 @@
 # Database virtualization profiling and analysis plan
 
-Status: **research plan; virtualization and `@tanstack/vue-virtual` are fixed decisions; baseline not yet captured; secondary optimizations unresolved**.
+Status: **research plan; virtualization, TanStack engine, and native-table-first integration are fixed; baseline not yet captured; secondary optimizations unresolved**.
 
-This document defines controlled performance investigation for large database rendering. `docs/database-virtualization.md` owns database rendering architecture; `docs/virtualization-library.md` owns the reusable TanStack-backed virtualization contract.
+`docs/virtualization-library.md` owns the generic axis contract. `docs/database-virtualization.md` owns database rendering architecture. This document owns controlled evidence.
 
-Profiling does **not** decide whether to virtualize or which engine to use. It has four jobs:
+Profiling has four jobs:
 
-1. quantify the current defect and scale curve;
-2. verify the selected Mioframe/TanStack integration under required dynamic geometry;
-3. establish stable acceptance evidence for the virtualized implementation;
-4. decide whether any optimization beyond bounded rendering is justified.
+1. quantify the current defect and scaling curve;
+2. prove the selected Mioframe/TanStack adapter behavior;
+3. prove the selected native-table database integration;
+4. determine whether any optimization beyond bounded rendering is justified.
 
-## Core measurement model
+Profiling does **not** decide whether to virtualize, which engine to use, or whether to invent a different rendering architecture unless a focused capability proof demonstrates that the accepted native-table integration is impossible.
 
-Do not reduce the problem to one end-to-end stopwatch value. Keep three proof layers separate:
+## Core evidence model
 
-1. **Structural scalability** — how mounted work grows as logical rows/columns grow.
-2. **Responsiveness** — how long the main thread remains unavailable after the real user interaction.
-3. **Attribution** — when needed, identify worker, script/reactivity, DOM, style/layout, paint, or measurement cost.
+Keep three proof classes separate.
 
-Structural bounded-rendering proof is the strongest persistent contract because it is much less hardware-sensitive than wall-clock timing.
+### Structural scalability
 
-Final rendering invariant:
+Prove mounted work does not scale with total logical collection size after virtualization.
 
-> For a fixed viewport and overscan policy, mounted UI work is bounded independently of total logical row and column count.
+Primary invariant:
+
+> For fixed viewport and overscan, mounted expensive UI is bounded independently of total logical rows and columns.
+
+### Responsiveness
+
+Measure how long the real view-switch interaction prevents the main thread from processing another task/frame.
+
+### Attribution
+
+Only when needed, identify whether remaining cost is in:
+
+- worker query computation;
+- worker→main delivery;
+- Vue/reactive/component setup;
+- DOM insertion;
+- style/layout;
+- paint/composite;
+- virtualization measurement/reflow.
+
+Structural proof is the strongest persistent regression contract because it is substantially less hardware-sensitive than wall-clock timing.
 
 ## Principles
 
-- measure the current implementation before production rendering changes;
-- use deterministic generated data and record the exact data shape;
-- use a real browser for geometry, scrolling, ResizeObserver, long-task, and responsiveness evidence;
-- keep fixture creation outside the measured action window;
-- measure interaction timing from inside the page, not Playwright command round-trip time;
-- keep expensive tracing off ordinary timing runs;
-- do not optimize a layer until measurements show it is material;
-- do not promote noisy timing numbers to CI budgets before variance is known;
+- measure current implementation before production rendering changes;
+- use deterministic data and record its exact shape;
+- use a real browser for geometry, scrolling, ResizeObserver, accessibility, and responsiveness evidence;
+- keep fixture generation/import outside the measured action window;
+- measure interaction time from inside the page;
+- keep expensive CDP tracing out of ordinary timing samples;
 - never hide slow samples with retries, sleeps, timeout inflation, or selective deletion;
-- stop pre-virtualization scale growth before an obviously unbounded implementation OOMs the renderer.
+- stop pre-virtualization scale growth before an already-proven unbounded renderer OOMs;
+- optimize only a measured remaining bottleneck after virtualization.
 
-## Existing path under test
+## Controlled browser environment
 
-```text
-real view-selection interaction
-    ↓
-DatabaseViewWidget / DatabaseViewLayout
-    ↓
-useDatabaseData
-    ↓
-worker filteredIdList
-    ↓
-filter + sort + complete ordered item IDs
-    ↓
-worker/main delivery
-    ↓
-Vue reactive update
-    ↓
-DatabaseDataTable
-    ↓
-all rows × all properties
-    ↓
-cell setup/subscriptions
-    ↓
-DOM + style + layout + paint
-```
+Use the existing production-equivalent Vite build/preview Playwright path.
 
-When relevant, attribution must distinguish:
+Performance research runs:
 
-- worker query computation;
-- worker-to-main delivery;
-- Vue/component/reactive setup;
-- DOM creation/insertion;
-- style/layout;
-- paint/composite;
-- TanStack-backed measurement/reflow after virtualization.
-
-## Controlled environment
-
-Use the existing Playwright application path and production-equivalent built/previewed app.
-
-For performance research runs:
-
-- Chromium only for timing/CDP attribution;
+- Chromium;
 - one worker;
 - retries disabled;
-- Playwright trace/video/screenshots disabled during successful measured samples;
-- one documented browser build, OS/container image, viewport, and command per comparison series;
-- fresh context/page for independent dataset cases;
+- Playwright trace/video/screenshots disabled for successful measured samples;
+- fixed documented browser build, OS/container, viewport, and command for a comparison series;
+- fresh context/page per independent dataset case;
 - cold first switch reported separately from warmed repeated switches.
 
-Normal product correctness still follows the repository desktop/mobile applicability model. A mobile-sized viewport is a controlled layout/interaction constraint, not a physical-mobile CPU benchmark.
+Normal product correctness still follows repository desktop/mobile applicability. A mobile-sized viewport is a controlled layout constraint, not a physical mobile CPU simulation.
 
-A fixed CPU-throttling factor may be used only as a secondary comparative sensitivity run, with throttled and unthrottled results reported separately.
+Optional CPU throttling may be used only as a secondary comparative sensitivity run with the same factor for baseline/candidate and separate reporting.
 
 ## Deterministic large-document setup
 
-Do not create tens of thousands of rows or hundreds of properties through UI loops.
+Do not create tens of thousands of rows through UI loops.
 
 Preferred setup:
 
 1. deterministically generate a current-schema Mioframe database JSON document;
-2. validate it through current production schema/builders;
-3. import it through the existing document-import boundary, or use the narrowest existing repository test setup with equivalent valid persisted state;
-4. open the database in a short filtered default view;
-5. perform only the measured action — switching to the full view — through the real user UI.
+2. validate through current production schema/builders;
+3. import through the existing document-import boundary, or the narrowest equivalent valid persisted-state test boundary;
+4. open the document in a short filtered view;
+5. perform the measured short→full view switch through real UI.
 
-The fixture contains both views before opening:
+Fixture contains before open:
 
-- short filtered view: approximately 20 rows;
-- full view: same dataset without the restrictive filter.
+- short filtered view: about 20 rows;
+- full view over the same dataset.
 
-Dataset metadata recorded per case:
+Record per case:
 
 - deterministic seed/IDs/content;
 - rows/columns;
 - property types;
 - sparse/dense ratio;
-- relation fan-out where applicable;
+- relation fan-out where used;
 - filter/sort definitions;
-- sentinels near beginning/middle/end;
+- beginning/middle/end sentinels;
 - variable-size content shape.
 
-Setup/import time is recorded separately and excluded from responsiveness metrics.
+Setup/import time is excluded from switch responsiveness metrics.
 
-Do not add a production debug/seeding API solely for performance tests.
+Do not add a production debug/seeding API solely for profiling.
 
 ## Dataset matrix
 
@@ -142,7 +123,7 @@ Do not add a production debug/seeding API solely for performance tests.
 | R4 | 30,000 | 8 | required final baseline |
 | R5 | 100,000 | 8 | post-fix stress only if useful |
 
-R4 is mandatory for the final solution. The current implementation may hit a safety stop before it; that is a valid baseline result.
+R4 is mandatory for final solution. Current implementation may hit a safety stop before it; that is valid evidence.
 
 ### Column scale
 
@@ -151,10 +132,10 @@ R4 is mandatory for the final solution. The current implementation may hit a saf
 | C1 | 100 | 10 | control |
 | C2 | 100 | 50 | horizontal growth |
 | C3 | 100 | 100 | large-column baseline |
-| C4 | 100 | 300 | target-like column count |
-| C5 | 100 | 1,000 | post-fix stress/integration proof |
+| C4 | 100 | 300 | target-like columns |
+| C5 | 100 | 1,000 | post-fix stress |
 
-Column content must vary in width so fixed-size assumptions cannot accidentally pass.
+Include varying headers and body content widths.
 
 ### Combined logical grid
 
@@ -162,259 +143,274 @@ Column content must vary in width so fixed-size assumptions cannot accidentally 
 | --- | ---: | ---: | --- | --- |
 | G1 | 30,000 | 300 | sparse/default-heavy | prove bounded rendering for 9,000,000 logical intersections |
 
-Do not require the current unvirtualized implementation to complete G1. G1 is mandatory once bounded rendering exists.
+Do not require unvirtualized implementation to complete G1. G1 is mandatory once bounded rendering exists.
 
-Optional later stress only if G1 is healthy and the result answers a real question:
+Optional later stress only when useful:
 
 - 100,000 × 1,000 sparse logical grid.
 
-### Dense storage cases
+### Dense data cases
 
-Keep storage/data traversal separate from logical-grid rendering:
+Keep logical-grid rendering separate from persisted-value density:
 
-- 30,000 × 8 representative stored properties;
-- 3,000 × 100 representative stored properties.
+- 30,000 × 8 representative stored values;
+- 3,000 × 100 representative stored values.
 
-Do not create millions of persisted values unless later evidence puts CRDT/storage density in scope.
+Do not create millions of persisted values without evidence that CRDT/storage density belongs in scope.
 
-### Dynamic-content case
+### Dynamic content / relation case
 
 Include separately:
 
 - variable-height strings;
-- at least one relation property;
-- deep row and deep column;
-- post-mount height change through supported edit/expansion behavior;
-- columns with materially different measured width requirements.
+- at least one recursive relation value;
+- deep row and deep property;
+- post-mount content-height change;
+- body content that can widen a currently visible column;
+- representative nested relation horizontal scrolling.
+
+Large nested-relation fan-out is not a separate target unless later evidence makes it one.
 
 ## Pre-virtualization stop conditions
 
-Stop increasing a baseline series when any of these occurs:
+Stop scaling current full-render implementation when any occurs:
 
 - renderer crash/OOM;
 - one switch-associated main-thread block exceeds 5 seconds;
-- a predeclared DOM/cell safety ceiling is reached after the O(N×P) trend is already clear;
-- the browser cannot process the measurement sentinel/control channel within the research timeout;
-- memory growth makes the next scale step unsafe.
+- declared DOM/cell safety ceiling is reached after O(N×P) growth is unambiguous;
+- measurement sentinel/control channel cannot run within research timeout;
+- memory makes next step unsafe.
 
-Record the last completed and first failed/aborted cases. Do not weaken the stop condition merely to force a nominal 30k/300-column baseline through an already-proven unbounded renderer.
+Record last completed and first failed/aborted cases. Do not weaken stop rules only to force a nominal scale number.
 
 ## Lightweight responsiveness harness
 
-Install the harness before the measured interaction.
+Install before the measured interaction.
 
-### Measurement start
+### Start marker
 
-Attach a one-shot capture-phase listener to the actual view-selection element and record `performance.now()` at real click dispatch.
+Attach a one-shot capture-phase listener to the actual view selection action and record browser `performance.now()` at click dispatch.
 
-Do not use Playwright-side timestamps or `locator.click()` duration as the primary metric.
+Do not use Playwright command duration as primary timing.
 
 ### Event-loop yield
 
-At interaction start, schedule a `MessageChannel` callback or equivalent next-task primitive.
+Schedule a `MessageChannel` callback at interaction start.
 
-`eventLoopYieldMs` = elapsed time until that callback runs.
+`eventLoopYieldMs` = elapsed time until it can execute.
 
-This is the primary freeze metric because it directly measures how long the click task plus microtasks prevent the browser from processing another task.
+This is the primary freeze metric.
 
 ### Frame opportunity
 
-Schedule `requestAnimationFrame` markers and record:
-
-- first frame opportunity after the switch;
-- optionally a second frame marker for a stable follow-up observation.
-
-Do not label rAF as exact paint completion.
+Schedule `requestAnimationFrame` markers and record first frame opportunity, optionally a second follow-up frame. Do not call rAF exact paint completion.
 
 ### Long tasks
 
-Use `PerformanceObserver('longtask')` and collect only entries overlapping the bounded measurement window.
+Use `PerformanceObserver('longtask')` inside the bounded switch window.
 
 Record:
 
-- max long-task duration;
+- max duration;
 - count;
 - total duration.
 
-Use the same 50 ms browser long-task concept already used by Mioframe performance metrics.
+Use the same 50 ms long-task concept already used by Mioframe metrics.
 
-### Target view usable
+### Target usable
 
-Define a deterministic browser-visible completion condition without sleeps, for example:
+Define a deterministic no-sleep condition such as:
 
 - full view selected;
-- expected first visible row/cell exists and is actionable;
-- target scroll-container geometry exists.
+- expected first visible row/cell actionable;
+- target scroll/table geometry established.
 
-Record `switchToUsableMs` separately from `eventLoopYieldMs`.
+Record `switchToUsableMs` separately from main-thread yield.
 
 ## Structural measurements
 
 Record where relevant:
 
 - logical rows/columns;
-- mounted rows;
+- mounted data rows;
+- mounted property headers;
 - mounted data cells;
-- mounted headers/columns;
-- visible/overscan range sizes after virtualization;
-- total DOM node delta when useful.
+- visible/overscan ranges;
+- total DOM delta when useful.
 
-Permanent browser proof after virtualization should establish that, for a fixed viewport/geometry class:
+Persistent proof after virtualization must show, for fixed viewport/geometry:
 
-- row count can grow by orders of magnitude without proportional mounted-row growth;
-- column count can grow by orders of magnitude without proportional mounted-column/cell growth;
-- combined logical grid size does not materialize the full matrix.
+- orders-of-magnitude more rows do not proportionally increase mounted rows;
+- more properties do not proportionally increase mounted headers/cells;
+- combined logical grid does not materialize its cross product.
 
-Prefer observable DOM bounds over assertions on private TanStack internals.
+Assert observable DOM/product structure, not private TanStack internals.
 
-## Attribution with Chromium CDP
+## Chromium attribution
 
-Use CDP only for selected diagnostic runs.
+Use CDP only for selected diagnostic cases.
 
-### Low-overhead metric deltas
+### `Performance.getMetrics`
 
-Collect available `Performance.getMetrics` immediately before/after selected switch windows and store the full metric map. Treat metric names as diagnostic browser data, not a stable Mioframe contract.
+Collect full metric maps immediately before/after selected switch windows. Treat metric names as diagnostic data, not Mioframe public contracts.
 
-### Short DevTools trace
+### Short `Tracing` window
 
-When attribution remains unclear, record a narrow CDP `Tracing` window around the real switch.
+When attribution is still unclear, trace only the bounded interaction and classify:
 
-Use it to classify:
-
-- renderer/event-dispatch tasks;
-- JavaScript execution;
-- style recalculation;
-- layout;
+- renderer/event tasks;
+- JS;
+- style/layout;
 - paint/composite;
 - worker activity when represented.
 
-Raw trace is task-specific diagnostic evidence, not a permanent test contract.
+Raw trace remains task-specific evidence.
 
-### Playwright trace
+Playwright trace is for test debugging, not CPU/layout profiling, and stays disabled during measured samples.
 
-Playwright trace is useful for test debugging, not CPU/layout profiling. Keep it disabled during measured performance samples because tracing itself adds overhead.
+## Shared TanStack adapter proof
 
-## Worker/service analysis
+This validates `docs/virtualization-library.md` independently of database presentation.
 
-Do not redesign the worker API during baseline collection.
+Prove in a real browser:
 
-Measure separately when needed:
+- 10,000+ logical items with bounded mounted items;
+- variable vertical sizes;
+- variable horizontal sizes;
+- repeated post-mount resize;
+- deep `scrollToIndex`;
+- stable correction when an earlier item resizes;
+- `scrollMargin` with content before the virtual surface;
+- start/end scroll padding;
+- cleanup/remount and scroll-root replacement;
+- two axes sharing one scroll root.
 
-1. deterministic service scaling for filter-only, sort-only, and filter+sort where cleanly separable;
-2. output count/order checksums/sentinels;
-3. browser switch profile to see whether worker time is material;
-4. narrow temporary research instrumentation or CDP attribution only if needed.
+If this proof fails, correct adapter misuse first. Reopen engine selection only for a blocking incompatibility requiring substantial Mioframe virtualization machinery.
 
-Node/Vitest timing is useful for algorithmic scaling, not as a substitute for real browser Worker timing.
+## Native-table database capability proof
 
-Only consider worker indexes, batching, paging, or range protocols after evidence shows the current complete-result contract is a material bottleneck.
+This proof closes the remaining implementation gate in `docs/database-virtualization.md`.
 
-## Selected TanStack integration proof
-
-`@tanstack/vue-virtual` is already selected by `docs/virtualization-library.md`.
-
-This proof validates the Mioframe adapter and required browser behavior; it does not compare alternative libraries.
-
-### Vertical dynamic axis
+### Vertical native-table virtualization
 
 Prove:
 
-- 10,000+ logical items with bounded DOM;
-- different initial heights;
-- DOM measurement after mount;
-- repeated post-mount resize;
-- deep `scrollToIndex`;
-- stable viewport when an item before the viewport changes size;
-- bounded overscan.
+- top and bottom spacer rows represent virtual extent without normal table borders/padding;
+- only viewport+overscan logical rows mount;
+- `<tr>` dynamic `measureElement` works with current table styles;
+- relation/wrapped content can change row height after mount;
+- correction remains stable when an earlier row changes height.
 
-### Horizontal dynamic axis
+### Horizontal native-table virtualization
 
-Prove the equivalent contract for variable widths.
+Prove:
 
-### Consumer-supplied size path
+- left/right spacer columns preserve horizontal offsets;
+- only viewport+overscan property headers/cells mount;
+- visible header and body use exactly the same property range;
+- native table layout lets currently mounted body content influence the corresponding header width;
+- horizontal `measureElement(<th>)` observes that final column width;
+- the TanStack stable-key size from a prior mount can be used as the remount minimum so ordinary scrolling does not cause repeated shrink/regrow;
+- responsive max constraints can intentionally cap/re-measure without corrupting offsets;
+- optional presentation filler can preserve fill-to-viewport behavior without becoming a logical property.
 
-Prove Mioframe `setItemSize` correctly maps to TanStack `resizeItem` and updates horizontal geometry without creating a competing measurement source.
+This proof decides exact CSS mechanics, not architecture. If a specific spacer/filler CSS technique fails, try the simplest equivalent native-table technique before abandoning native markup.
 
-### Two-axis composition
+### Sticky surfaces and scroll geometry
 
-With one shared scroll container prove:
+Prove:
 
-- independent vertical/horizontal ranges;
-- deep row and deep column reachable;
-- mounted cells bounded by viewport area;
-- column-size changes reflow/remeasure visible rows;
-- row-size changes update vertical geometry;
-- no hidden full-grid measurement render;
-- acceptable anchoring during size correction.
+- top-level database continues to use existing `.database-view` physical scroll root;
+- `DatabaseViewLayout` observes that real root rather than the table element;
+- virtual surface `scrollMargin` stays correct when content above table appears/disappears;
+- sticky header works with vertical virtual padding;
+- sticky action column remains reachable with horizontal virtual padding;
+- deep navigation uses appropriate scroll padding so sticky surfaces do not hide targets.
 
-### Failure handling
+### Editing lifecycle
 
-If a proof fails:
+Prove current cell-local edit owner can deterministically:
 
-1. verify whether Mioframe used the supported TanStack contract correctly;
-2. correct adapter misuse first;
-3. contain a narrow engine limitation at the adapter boundary when that does not introduce a second virtualization algorithm;
-4. reopen the dependency decision only if required behavior would otherwise force Mioframe to own substantial general-purpose virtualization machinery.
+1. capture draft;
+2. commit/close on relevant scroll or view switch;
+3. do so before virtual DOM eviction of the anchor cell;
+4. preserve Escape cancellation semantics.
 
-## Dynamic column-sizing research
+If event/update ordering cannot guarantee this, record the failure and lift only active edit-session state to the nearest truthful database presentation owner. Do not add generic virtualizer pinning first.
 
-Horizontal virtualization cannot know exact intrinsic requirements from never-rendered cells. Database semantics must therefore be explicit.
+### Accessibility
 
-Prototype:
+With partial DOM and spacer rows/cells prove:
 
-1. unseen column starts from provisional estimate;
-2. header/rendered cells report current requirements;
-3. database-owned discovered width updates ephemeral column state;
-4. hidden rows/columns are never mounted only for sizing;
-5. width changes reflow and remeasure visible rows;
-6. deep scrolling remains anchored;
-7. repeated scrolling does not cause destructive width oscillation.
+- native table semantics remain exposed;
+- spacer/fill elements are absent from meaningful accessibility structure;
+- `aria-rowcount` reflects header + logical rows;
+- visible logical rows expose correct `aria-rowindex`;
+- `aria-colcount` reflects logical properties plus action column when present;
+- visible property/action cells expose correct logical `aria-colindex`;
+- removal of current list/listitem overrides does not regress required interactions.
 
-Decide before database implementation preflight:
+### Nested relation topology
 
-- grow-only vs shrink behavior within a view/session;
-- reset boundary;
-- whether property identity retains discovered width across filter/sort changes;
-- min/max policy;
-- content-shrink behavior;
-- viewport-resize behavior.
+Prove representative recursive relation rendering with:
 
-Do not persist widths without a separate product requirement.
+- inherited parent vertical scroll root;
+- current relation-local horizontal scroll surface when horizontal overflow exists;
+- independent axis margins relative to their roots;
+- parent row remeasurement when nested relation content changes;
+- no interference between parent and nested virtual ranges.
+
+Exact ref/provide/prop plumbing is implementation-preflight detail.
+
+## Worker/service analysis
+
+Do not redesign worker API during baseline.
+
+Measure when material:
+
+1. deterministic filter-only/sort-only/filter+sort scaling where separable;
+2. output count/order checksums/sentinels;
+3. browser switch profile for actual contribution;
+4. narrow research instrumentation/CDP only if needed.
+
+Node/Vitest timing is for algorithmic scaling, not a replacement for browser Worker timing.
+
+Only consider indexes, batching, paging, or range protocols after evidence shows the current complete-result contract is a material remaining bottleneck.
 
 ## Cell reactive/subscription analysis
 
-Multiple observable reads per editable cell are known from source inspection. Do not optimize them merely because they exist.
+Known repeated cell reads are not sufficient reason to change architecture.
 
-After bounded rendering exists, measure:
+After bounded rendering, measure:
 
 - mounted cells;
-- scripting cost when a fresh visible range mounts;
-- scripting cost scrolling into unseen ranges;
+- script cost mounting a fresh range;
+- script cost scrolling into unseen ranges;
 - edit responsiveness;
 - subscription/query counts only through a non-invasive test seam if useful.
 
 Decision:
 
-- acceptable visible-range cost → keep current read contracts;
-- material cost → design the narrowest owner-correct optimization;
-- no generic batch API without measured need.
+- acceptable → keep current read contracts;
+- material → design the narrowest owner-correct optimization;
+- no generic batch API without evidence.
 
 ## Repetition and statistics
 
 For timing comparisons:
 
-- fresh context/page per independent dataset case;
-- cold switch reported separately;
-- small fixed warm-up/pilot to estimate variance;
-- one fixed repetition count for baseline/candidate comparison;
-- median and worst sample at minimum;
-- identical browser/environment/viewport/dataset/throttling between comparisons;
+- fresh context/page per independent case;
+- cold switch separate;
+- small pilot to estimate variance;
+- same fixed repetition count baseline vs candidate;
+- median and worst at minimum;
+- identical browser/environment/viewport/dataset/throttling;
 - raw samples retained;
-- no sample deletion without an independently demonstrated unrelated cause.
+- no unexplained sample deletion.
 
 ## Result artifact
 
-Emit machine-readable result JSON containing at least:
+Emit machine-readable JSON containing at least:
 
 ```text
 commit/ref
@@ -423,7 +419,7 @@ viewport/project
 CPU throttling
 case ID
 rows/columns/density/property mix/filter/sort
-cold or warm
+cold/warm
 
 eventLoopYieldMs
 firstFrameOpportunityMs
@@ -434,94 +430,69 @@ longTaskTotalMs
 mountedRows
 mountedColumns
 mountedCells
-available CDP metric deltas
-memory/heap data when available
+available CDP deltas
+memory/heap when available
 trace artifact reference when collected
 ```
 
-A small summarizer may aggregate results for architecture review. Do not turn it into a general benchmark framework.
+A small task-specific summarizer may aggregate results. Do not build a generic benchmark framework.
 
 ## Comparison order
 
-Evaluate complexity incrementally:
-
 1. current unvirtualized baseline;
-2. selected TanStack-backed bounded virtualization;
+2. accepted TanStack/native-table bounded virtualization;
 3. rerun identical cases;
-4. only then analyze cell read/subscription cost if still material;
-5. only then analyze worker/query/transfer changes if still material.
-
-This order prevents unrelated performance work from being bundled into the required virtualization change.
-
-## Secondary optimization decision tree
-
-### A. Virtualized visible-range setup is still expensive
-
-Profile and reduce only proven duplicate/unnecessary cell work.
-
-### B. Worker filter/sort dominates 30k behavior
-
-Design a worker-owned query optimization while preserving virtualization and current data ownership.
-
-### C. Worker-to-main delivery is material
-
-Quantify before changing the query contract. Any range protocol must explicitly resolve ordering, invalidation, source of truth, and cancellation.
-
-### D. Dynamic measurement/layout dominates
-
-Simplify database sizing/integration before adding caches or new state. Fixed dimensions are not an allowed escape hatch.
-
-### E. No material bottleneck remains
-
-Stop optimizing.
+4. analyze visible-range cell cost only if still material;
+5. analyze worker/query/transfer only if still material;
+6. stop when no material bottleneck remains.
 
 ## Research targets
 
-Until variance is characterized, use as research targets rather than permanent CI budgets:
+Until variance is characterized, treat as research targets rather than permanent CI budgets:
 
 - no switch-associated main-thread block above **100 ms**;
-- preferred individual main-thread slices at or below **50 ms**;
-- mounted rows independent of total row count for a fixed viewport/geometry class;
-- mounted columns/cells independent of total column count for a fixed viewport/geometry class.
+- preferred individual slices at or below **50 ms**;
+- mounted rows independent of total rows for fixed viewport/geometry;
+- mounted columns/cells independent of total columns for fixed viewport/geometry.
 
-A wall-clock number becomes a persistent regression gate only when repeated controlled runs show useful signal and acceptable variance.
+Wall-clock metrics become persistent gates only after repeated controlled runs show useful signal and acceptable variance. Structural bounded-rendering assertions should remain permanent regardless.
 
-Structural bounded-rendering contracts should become persistent browser assertions regardless of whether absolute timing is promoted.
+## Final correctness around performance
 
-## Correctness around the performance scenario
+A faster solution is invalid unless it still proves:
 
-A faster implementation is invalid unless the product flow still proves:
-
-- exact filtered membership;
-- exact sorted order;
-- short → full → short switching;
-- no stale rows/cells from the previous view;
+- exact filter membership;
+- exact sort order;
+- short→full→short switching;
+- no stale old-view cells;
 - deep vertical/horizontal scrolling;
-- sentinel row/column correctness;
-- editing a deep visible item;
-- dynamic size changes remain correct after remeasurement;
-- acceptable scroll stability during size correction;
-- final focus/edit lifecycle contract.
+- sentinel row/property correctness;
+- inline editing without silent draft loss;
+- dynamic row/column measurement correctness;
+- sticky actions/header behavior;
+- representative recursive relation behavior;
+- logical accessibility counts/indices.
 
-## Research exit criteria
+## Exit criteria
 
-Before database virtualization implementation preflight is complete:
+### Before production implementation preflight closes
 
-- row-scale baseline or safe scale-to-failure boundary recorded;
-- column-scale baseline or safe scale-to-failure boundary recorded;
-- main-thread freeze quantified with in-page responsiveness metrics;
-- enough attribution exists to distinguish material worker vs main-thread/layout cost;
-- selected TanStack integration passes vertical, horizontal, consumer-size, two-axis, resize, and anchoring proof;
-- dynamic column-sizing semantics are chosen;
-- focus/edit lifecycle semantics are chosen;
-- exact shared/database test owners and paths are selected.
+- safe current row/column scale baseline or scale-to-failure boundary recorded;
+- main-thread freeze quantified;
+- shared TanStack adapter proof passes;
+- native-table vertical/horizontal measurement proof passes;
+- scroll-margin/sticky proof passes;
+- edit lifecycle proof passes or the narrow fallback owner is selected;
+- accessibility proof passes;
+- representative nested relation topology passes;
+- exact production/test files are selected.
 
-Before final performance acceptance:
+### Before final performance acceptance
 
-- G1 (`30,000 × 300`) succeeds with bounded rendering;
-- structural mounted-work invariants are proven;
-- worker compute/delivery is classified as acceptable or assigned a separately measured architecture change;
-- visible-range cell cost is classified after virtualization;
-- final performance budgets and persistent-vs-task-specific proof are decided.
+- G1 (`30,000 × 300`) succeeds with bounded mounted work;
+- structural invariants are persistent browser assertions;
+- worker compute/delivery is classified acceptable or receives a separately justified architecture change;
+- visible-range cell cost is classified;
+- timing budgets are finalized only where stable.
 
-Virtualization and TanStack engine selection are not reopened by ordinary profiling results. Only demonstrated incompatibility with the required virtualization contract can reopen the engine decision; all other findings affect database policy or evidence-gated secondary optimization.
+Virtualization, TanStack, and native-table-first ownership are not reopened by ordinary timing results. Only a demonstrated capability incompatibility can reopen the relevant integration decision; all other findings feed evidence-gated secondary optimization.
