@@ -92,8 +92,8 @@ const columns = useVirtualCollection(colIds, {
   overscan: 4,
 });
 
-const vVirtualRow = rows.measure;
-const vVirtualColumn = columns.measure;
+const vVirtualRow = rows.vItem;
+const vVirtualColumn = columns.vItem;
 
 const totalColumns = computed(() => columns.items.value.length + 2);
 

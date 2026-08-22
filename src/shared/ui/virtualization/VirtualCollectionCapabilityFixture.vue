@@ -128,7 +128,7 @@ const collection = useVirtualCollection(source, {
   surfaceOffset: () => props.surfaceOffset,
 });
 
-const vMeasure = collection.measure;
+const vItem = collection.vItem;
 
 const viewportStyle = computed<CSSProperties>(() => ({
   overflow: 'auto',
@@ -227,7 +227,7 @@ function spacerStyle(size: number): CSSProperties {
           <li
             v-for="item in collection.items.value"
             :key="item.key"
-            v-measure="item"
+            v-item="item"
             class="virtual-collection-capability-fixture__item"
             :data-testid="`vcc-item-${item.key}`"
             :data-item-index="item.index"

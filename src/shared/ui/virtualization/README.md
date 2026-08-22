@@ -53,7 +53,7 @@ const rows = useVirtualCollection(sourceRows, {
   estimateSize: 40,
 });
 
-const vVirtualRow = rows.measure;
+const vVirtualRow = rows.vItem;
 ```
 
 ```vue
@@ -143,7 +143,7 @@ interface UseVirtualCollectionResult<T, TKey extends VirtualCollectionKey> {
   totalSize: Readonly<ComputedRef<number>>;
   leadingSize: Readonly<ComputedRef<number>>;
   trailingSize: Readonly<ComputedRef<number>>;
-  measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
+  vItem: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
 }
 ```
 
@@ -201,12 +201,12 @@ Presentation geometry only. Consumers may express it as spacer elements, padding
 
 The library does not prescribe a spacer strategy.
 
-### `measure`
+### `vItem`
 
 A per-instance Vue directive. Apply it directly to the consumer-owned element whose physical size represents one virtual item.
 
 ```ts
-const vVirtualRow = rows.measure;
+const vVirtualRow = rows.vItem;
 ```
 
 ```vue

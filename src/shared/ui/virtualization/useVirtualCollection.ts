@@ -56,12 +56,12 @@ export interface UseVirtualCollectionResult<T, TKey extends VirtualCollectionKey
    * actual measurement-owning element and delegates to engine measurement. Apply it directly to
    * the consumer-owned element that renders one virtual item.
    */
-  measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
+  vItem: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
 }
 
 /**
  * Mioframe-private TanStack `indexAttribute`. Consumers never read or write this attribute; the
- * returned `measure` directive owns it exclusively as the measurement identity marker.
+ * returned `vItem` directive owns it exclusively as the measurement identity marker.
  */
 const MIOFRAME_VIRTUAL_INDEX_ATTRIBUTE = 'data-mioframe-virtual-index';
 
@@ -142,7 +142,7 @@ export function useVirtualCollection<T, TKey extends VirtualCollectionKey>(
     virtualizer.value.measureElement(el);
   }
 
-  const measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>> = {
+  const vItem: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>> = {
     mounted(el, binding) {
       applyMeasurement(el, binding.value);
     },
@@ -156,6 +156,6 @@ export function useVirtualCollection<T, TKey extends VirtualCollectionKey>(
     totalSize,
     leadingSize,
     trailingSize,
-    measure,
+    vItem,
   };
 }

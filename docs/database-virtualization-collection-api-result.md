@@ -12,7 +12,7 @@ Accepted:
 
 - `@tanstack/vue-virtual` remains the engine;
 - `useVirtualCollection` is the only Mioframe virtualization API;
-- public surface remains `items`, `totalSize`, `leadingSize`, `trailingSize`, `measure`;
+- public surface remains `items`, `totalSize`, `leadingSize`, `trailingSize`, `vItem`;
 - no TanStack instance/types are exposed;
 - no second observer/cache/range/anchor engine exists;
 - database capability consumes only the shared API and uses actual `MDTable`;

@@ -93,7 +93,7 @@ const rows = useVirtualCollection(itemIdList, {
   surfaceOffset: tableOffset,
 });
 
-const vVirtualRow = rows.measure;
+const vVirtualRow = rows.vItem;
 ```
 
 Database renders only `rows.items` and applies `v-virtual-row="row"` to each real `<tr>`.
@@ -115,7 +115,7 @@ const columns = useVirtualCollection(properties, {
   surfaceOffset: tableHorizontalOffset,
 });
 
-const vVirtualColumn = columns.measure;
+const vVirtualColumn = columns.vItem;
 ```
 
 Database uses exactly the same `columns.items` range for `<th>` and every mounted data row.
