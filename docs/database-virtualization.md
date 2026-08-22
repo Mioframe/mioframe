@@ -1,8 +1,8 @@
 # Database virtualization
 
-Status: **architecture accepted; shared `useVirtualCollection` API capability passed; native-table-first capability passed; ready for production database migration planning; secondary optimizations evidence-gated**.
+Status: **architecture accepted; shared `useVirtualCollection` API and native-table behavior implemented; capability stability proof pending; production database migration remains blocked; secondary optimizations evidence-gated**.
 
-This document is the architecture source of truth for large database rendering. Shared virtualization API is defined in `docs/virtualization-library.md`; browser capability proof is in `docs/database-virtualization-browser-proof.md`; performance evidence is in `docs/database-virtualization-profiling.md`.
+This document is the architecture source of truth for large database rendering. Shared virtualization API is defined in `src/shared/ui/virtualization/README.md`; browser capability proof is in `docs/database-virtualization-browser-proof.md`; performance evidence is in `docs/database-virtualization-profiling.md`.
 
 ## Goal
 
@@ -234,6 +234,8 @@ The database proof must cover:
 - actual `MDTable` border/layout geometry in Chromium and Firefox;
 - native table semantics and logical ARIA metadata.
 
+All required browser contracts must also be deterministic. A known intermittent failure blocks the gate even if a later rerun passes.
+
 ## Product proof after capability gate
 
 Production migration must then prove:
@@ -268,6 +270,8 @@ After bounded rendering, rerun profiling. Only measured remaining bottlenecks ma
 
 ## Readiness
 
-Architecture: **ready**. Shared collection API capability and native-table capability proof have both **passed**; see `docs/database-virtualization-collection-api-result.md` for final counts and evidence, including direct actual mounted logical data-cell DOM proof.
+Architecture: **ready**. Shared collection API behavior and native-table behavior are implemented and manually demonstrated, and the public API including `vItem` is accepted.
 
-Production database migration planning/implementation is the next stage and has **not started**. This document does not claim production migration is complete.
+Capability proof: **not ready** because the required shared non-zero-`surfaceOffset` browser proof and database above-viewport anchor proof are currently known intermittent. See `docs/database-virtualization-collection-api-result.md`.
+
+Production database migration planning/implementation remains blocked until those two proof stability defects are corrected. Production migration has **not started**.
