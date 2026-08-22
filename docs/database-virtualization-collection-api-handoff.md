@@ -1,99 +1,48 @@
-# Database virtualization collection API final correction handoff
+# Database virtualization collection API capability handoff
 
-Status: **ready**.
+Status: **completed**.
+
+This document records the completed implementation handoff for the shared `useVirtualCollection` capability and database native-table proof. The final evidence and verdict are in `docs/database-virtualization-collection-api-result.md`.
 
 ## Goal
 
-Close the last capability-proof gap without changing the accepted `useVirtualCollection` architecture, public API, native-table model, or production database code.
+Establish one minimal shared `useVirtualCollection` API over `@tanstack/vue-virtual`, prove the database native-table model against that public API, and close the capability gate before production database migration.
 
-Production database migration remains blocked until this final correction passes review.
+## Accepted architecture
 
-## Confirmed accepted state
+- `useVirtualCollection` is the only Mioframe virtualization API.
+- Consumers own rendering and DOM topology.
+- The shared layer owns collection mapping, collection-relative geometry, and a per-instance measurement directive only.
+- TanStack remains the sole owner of ranges, measurement observation/cache, offsets, and scroll correction.
+- Database composes independent row and property collections and keeps native table semantics.
+- No generic list/table/grid component, second geometry engine, observer, cache, registry, or range coordinator was introduced.
 
-The following are already accepted and must not be reopened in this correction:
+## Completed capability proof
 
-- `useVirtualCollection` is the only Mioframe virtualization API;
-- consumers do not import TanStack or bind its measurement API directly;
-- no second observer/cache/range/anchor engine exists;
-- valid in-bounds `undefined` source values are supported;
-- grow/shrink and stable-key remap are proven through public virtual geometry;
-- non-zero `surfaceOffset`, `leadingSize`, `trailingSize`, and `totalSize` are proven;
-- database row/column measurement is proven through public geometry and real `MDTable` geometry;
-- column remount minimum is proven after widening body content is removed;
-- above-viewport resize anchor behavior is proven in Chromium and Firefox;
-- the dedicated fixed-size wrapper is the accepted physical scroll root for the capability fixture;
-- the phantom min-content spacer normalization remains accepted;
-- the current browser corpus reports 10 shared Chromium + 10 database Chromium + 10 database Firefox tests passing.
+The capability stage proved:
 
-## Remaining blocker
+- bounded large single-axis collection rendering;
+- public item/value/key/index mapping;
+- dynamic grow/shrink through public virtual geometry;
+- stable-key remap measurement at the new index;
+- non-zero `surfaceOffset` with collection-relative extents;
+- valid in-bounds `undefined` source values;
+- actual `MDTable` row/column dynamic geometry in Chromium and Firefox;
+- deep vertical and horizontal virtualization;
+- column remount minimum after widening content is removed;
+- above-viewport resize anchor stability;
+- native table accessibility semantics;
+- bounded actual mounted logical `<td>` DOM at initial and deep 2D ranges, with no retained/duplicated cells outside the settled row × column intersection.
 
-The current bounded-cell test does not count actual mounted logical data-cell DOM.
+The dedicated fixed-size wrapper remains the accepted physical scroll root for the capability fixture, and the phantom min-content spacer remains the accepted narrow native-table normalization.
 
-The fixture publishes:
+## Final state
 
-```text
-rows.items.length * columns.items.length
-```
+- Shared virtualization architecture: **accepted**.
+- Shared collection API capability: **passed**.
+- Database native-table capability: **passed**.
+- Capability blockers: **none**.
+- Production database migration: **not implemented**; this is the next separate stage.
+- Product performance profiling/acceptance: **pending production migration**.
 
-and the test asserts that derived value. This proves bounded virtual ranges, but not the required observable contract that the real mounted logical `<td>` set is bounded and contains no retained/duplicated cells outside those ranges.
-
-The proof owner is `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts`.
-
-## Required correction
-
-At both the initial range and after deep two-dimensional scrolling:
-
-1. count actual mounted logical data-cell DOM using the real database-cell selector, excluding spacer cells;
-2. read current mounted row and column counts;
-3. prove the actual logical-cell DOM count is bounded by a generous viewport/overscan-derived upper bound;
-4. prove it is far below the 5,000 × 300 logical cross product;
-5. prove actual mounted logical-cell DOM equals the expected current row-range × column-range intersection count once both axes have settled.
-
-The test must fail if extra logical data cells remain mounted even while the virtual row/column range outputs stay bounded.
-
-The fixture-level derived `db-virt-mounted-cells` output is not primary proof. Remove it if it has no remaining diagnostic value, or keep it only as a secondary diagnostic; do not use it instead of counting actual DOM.
-
-## Documentation correction
-
-After the actual-DOM proof passes, synchronize the status of:
-
-- `docs/virtualization-library.md`;
-- `docs/database-virtualization.md`;
-- `docs/database-virtualization-profiling.md`;
-- `docs/database-virtualization-browser-proof.md`;
-- `docs/database-virtualization-collection-api-result.md`.
-
-Final state must be unambiguous:
-
-- shared virtualization architecture: accepted;
-- shared collection API capability: passed;
-- database native-table capability: passed;
-- production database migration: not yet implemented;
-- product performance profiling/acceptance: still pending production migration.
-
-Do not leave any document saying the capability is pending after the final capability result is `Ready`.
-
-## Acceptance criteria
-
-- actual mounted logical `<td>` elements are counted directly at initial and deep 2D ranges;
-- actual logical-cell DOM count equals the settled current row × column intersection count;
-- actual logical-cell DOM remains bounded and far below the full logical cross product;
-- no production component changes;
-- no public API changes;
-- no new observer/cache/registry/range state;
-- existing corrected Chromium/Firefox geometry/accessibility proofs remain green;
-- capability/result/source-of-truth statuses agree.
-
-## Forbidden
-
-- changing the `useVirtualCollection` public API;
-- reopening accepted virtualization architecture;
-- exposing TanStack internals;
-- introducing independent measurement/geometry state;
-- changing production database rendering;
-- changing worker/query/paging/index behavior;
-- weakening tests with sleeps, force, broad retries, or timeout inflation.
-
-## Readiness
-
-Verdict: **ready for one final focused proof/documentation correction**.
+Do not use this completed handoff as an active coding task. New production migration work requires its own architecture/preflight based on `docs/database-virtualization.md` and the final capability result.
