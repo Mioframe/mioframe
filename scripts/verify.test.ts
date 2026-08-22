@@ -196,12 +196,17 @@ describe('resolvePlaywrightCommandTimeoutMs', () => {
 });
 
 describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
-  const playwrightBackedLabels = ['e2e', 'storybook-behavior', 'visual', 'release-smoke'];
+  const playwrightBackedLabels = [
+    'e2e',
+    'storybook-behavior',
+    'visual',
+    'artifact',
+    'release-smoke',
+  ];
   const unrelatedLabelsWithFixedLimits = {
     'e2e-install': 10 * 60 * 1000,
     mutation: 20 * 60 * 1000,
     build: 10 * 60 * 1000,
-    artifact: 8 * 60 * 1000,
     'storybook-build': 10 * 60 * 1000,
   };
 

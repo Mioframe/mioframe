@@ -208,7 +208,7 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   'storybook-build': 10 * 60 * 1000,
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
-  artifact: 8 * 60 * 1000,
+  artifact: PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   // Four sequential fresh-container sessions (see
   // scripts/release/managedUpdatesProof.mjs), each bounded by the same
