@@ -1,26 +1,28 @@
 # Verify modernization
 
-Status: **implementation complete; semantic review complete; exact-head PR CI pending**.
+Status: **implementation present; application-E2E discovery correction closed; release-impact and exact Vitest-discovery review findings remain open; PR CI pending**.
 
 Current finish branch: `refactor/verify-modernization-finish`.
 
 Synchronized `develop` baseline: `13ae220900a2a724c867b01b5eb1f045c2a1d857`.
 
-This document is the final-state record for the verifier-modernization program. Historical correction rounds and temporary review artifacts are intentionally not part of the durable contract. Architecture details remain owned by the canonical documents listed below; this file records the resulting implementation shape, representative benchmark, and stop decision.
+This document records the current verifier-modernization implementation shape, representative benchmark, accepted corrections, and remaining finish work. It is not a substitute for the canonical architecture documents.
 
 ## Authority
 
-- `docs/testing/architecture.md` — canonical project-wide testing policy;
-- `docs/testing/verify-target-architecture.md` — resolved verifier impact/planning architecture;
+- `docs/testing/architecture.md` — project-wide testing policy;
+- `docs/testing/verify-target-architecture.md` — verifier impact/planning architecture;
 - `docs/testing/verify-agent-output.md` — agent-facing output contract;
-- `docs/testing/verify-change-classification.md` — repository metadata/change-classification contract;
-- `docs/testing/verify-unit-impact-correction.md` — final unit-impact ownership amendment;
-- `docs/testing/verify-finish-plan.md` — finish packaging and pass order;
-- `.agents/skills/verification/SKILL.md` — verifier workflow and verification ownership.
+- `docs/testing/verify-change-classification.md` — repository metadata classification;
+- `docs/testing/verify-unit-impact-correction.md` — unit-impact ownership amendment;
+- `docs/testing/verify-app-e2e-discovery-correction.md` — implemented physical application-E2E discovery correction;
+- `docs/testing/verify-finish-plan.md` — current correction/integration order;
+- `scripts/lib/REVIEW.md` — active remaining source-level findings;
+- `.agents/skills/verification/SKILL.md` — verifier workflow.
 
 ## Goal
 
-`pnpm verify` should be fast enough for focused implementation feedback while remaining fail-closed for uncertain impact.
+`pnpm verify` selects the smallest reliable proof while remaining fail-closed for uncertain impact:
 
 ```text
 known irrelevant change
@@ -29,172 +31,101 @@ known irrelevant change
 known affected contract
 → focused proof
 
-unknown but potentially significant impact
+unknown significant impact
 → full affected lane / invalid
 
-normal agent-facing execution
+normal agent-facing run
 → bounded progress + bounded actionable result
 → detailed diagnostics in logs / --verbose
 
 explicit full/release request
-→ complete project/release proof
+→ complete project/release gate
 ```
 
-The same impact semantics serve local focused feedback and exact-head GitHub CI. Coding/test agents own implementation and task-specific proof; the architect owns PR publication, exact-head CI inspection, semantic review, and merge readiness.
+Exact-head GitHub CI remains the authoritative automatic merge gate.
 
-For CI performance, optimize merge critical path before aggregate compute. Independent proof owners stay parallel unless measured evidence justifies serialization.
+## Implemented architecture
 
-## Completed foundations
+### Pass A — bounded output
 
-### V1 — native TypeScript verifier
+Implemented:
 
-Complete. Verifier entry points run under the repository Node/TypeScript contract with established planning, locking, failure handling, timing, and `.verify/logs/**` persistence.
+- child stdout/stderr captured under `.verify/logs/**` by default;
+- compact running/completion lines;
+- bounded heartbeat with verifier-owned liveness only;
+- failure reason prefers verifier-owned invalid/blocking/timeout facts and otherwise the exit code;
+- exact log/rerun pointer retained;
+- `--verbose` changes presentation only.
 
-### V2 — planner precision
+No active review finding currently reopens Pass A.
 
-Complete.
+### Pass B — repository metadata classification
 
-- application E2E uses explicit product-scenario ownership with fail-closed full fallback;
-- visual planning distinguishes owner-local focused proof from broad fallback;
-- planner results use explicit `skip | focused | full | invalid` semantics;
-- confirmed non-runtime repository metadata no longer inherits browser proof merely because of directory location;
-- runtime Markdown such as `PRIVACY.md` and `docs/user/**` remains runtime-owned.
+`isNonRuntimeRepositoryMetadataPath()` is a narrow positive fact. Confirmed metadata includes `AGENTS.md`, `.agents/**`, `docs/testing/**`, and `src/shared/ui/material/docs/**`.
 
-### V3 — execution/proof cost
+Runtime Markdown remains runtime-owned:
 
-Complete for the modernization scope.
+- `docs/user/**` → Help;
+- `PRIVACY.md` → privacy content.
 
-Application E2E project applicability and Storybook/visual ownership reduce redundant browser execution while keeping the behavior and visual lanes independent in CI.
+There is no global Markdown exclusion.
 
-PR #213 (`9427fa4aea0b4fea0c72ea4ef4dd8d94711d6121`) established the latest pre-finish Lists/browser baseline:
-
-```text
-visual Playwright executions: 201 → 87
-visual + Storybook browser executions: 277 → 221
-
-Application E2E: ~8m22s verifier lane
-Storybook behavior: ~4m22s verifier lane
-Visual: ~5m30s verifier lane
-Storybook static build inside a browser lane: ~2m17s
-```
-
-These are historical measured baselines, not claims about final PR CI latency.
-
-## Finish implementation A–G
-
-One branch / one PR contains the following bounded passes:
-
-```text
-Pass A — bounded agent-facing output
-Pass B — repository metadata/change classification
-Pass C — durable unit impact
-Pass D — explicit mutation ownership
-Pass E — release impact planning
-Pass F — exact-head CI integration
-Pass G — representative benchmark / finish validation
-```
-
-### Pass A — bounded agent-facing output
-
-Implemented contract:
-
-- normal child stdout/stderr stays in `.verify/logs/**`;
-- normal output shows compact check progress and a bounded long-check heartbeat;
-- heartbeat contains verifier-owned liveness only and never repeats arbitrary child output;
-- failure summary prefers verifier-owned blocking/invalid/timeout facts and otherwise reports the exit code;
-- detailed raw output remains in the exact log and opt-in `--verbose` mode;
-- success output remains compact.
-
-No arbitrary output-tail inference is used as a default failure reason.
-
-### Pass B — repository metadata/change classification
-
-`isNonRuntimeRepositoryMetadataPath()` is a narrow positive fact used only where browser lane ownership would otherwise be inherited too broadly.
-
-Confirmed metadata:
-
-- any `AGENTS.md`;
-- `.agents/**`;
-- `docs/testing/**`;
-- `src/shared/ui/material/docs/**`.
-
-Not globally classified as metadata:
-
-- arbitrary source-adjacent `README.md`, `ARCHITECTURE.md`, `DESIGN.md`, or similar Markdown;
-- `docs/user/**`;
-- `PRIVACY.md`.
-
-There is no global `*.md` exclusion.
-
-### Pass C — durable unit impact
+### Pass C — unit impact
 
 Owner: `scripts/lib/unitRisk.ts`.
 
-The final model separates **Vitest test discovery** from **Vitest dependency-input eligibility** and uses seven ownership mechanisms:
+Current mechanisms:
 
 1. direct changed Vitest test;
-2. ordinary import/module ownership delegated to `vitest related`;
-3. exact non-import repository input ownership;
-4. runtime/tool-discovered ownership;
-5. bounded repository-scan ownership;
+2. ordinary module/support input delegated to `vitest related`;
+3. exact non-import repository input;
+4. runtime/tool-discovered external input;
+5. bounded repository scan ownership;
 6. exact existence/absence ownership;
-7. unit-global/status-unsafe fallback.
+7. unit-global/status-unsafe full fallback.
 
-Ordinary current-tree source/support inputs are repository-wide by supported file shape. The verifier does not build or persist a second module graph.
+Exact external ownership is additive and status-aware for add/modify/delete/rename. The verifier does not build a second import graph.
 
-Exact external ownership is additive and status-aware:
+Known bounded scan owners include the source import-boundary tests, Material renderer/token scans, Playwright lane inventory, app-E2E registry/applicability inventory, Storybook behavior inventory, and visual colocated inventory.
 
-- added/modified fixed-path inputs select their exact owners;
-- deleted fixed-path inputs still select surviving owners;
-- renames evaluate both old and new path contracts;
-- source existence is not required merely to recognize a deterministic fixed-path owner.
+#### Closed physical-discovery correction
 
-Bounded scan ownership mirrors the owning test's real population. Current scan owners include:
+The application Playwright lane is now physically root-only:
 
-- `src/readRecoveryImportBoundary.test.ts`;
-- `src/features/fileSystemAccessImportBoundary.test.ts`;
-- `src/shared/ui/material/rendererBoundary.test.ts`;
-- `src/shared/ui/material/foundation/tokens.test.ts` component-token scan;
-- `playwright.lanes.test.ts`;
-- `scripts/lib/e2eRisk.test.ts`;
-- `scripts/lib/e2eProjectApplicability.test.ts`;
-- `scripts/lib/storybookBehaviorRisk.test.ts`;
-- `scripts/lib/visualRisk.test.ts`.
+```text
+tests/e2e/*.spec.ts
+```
 
-The `playwright.lanes.test.ts` inventory is deliberately narrower than the general Playwright-only exclusion predicate. It owns exactly:
+`playwright.config.ts` enforces this with:
 
-- direct `tests/e2e/*.spec.ts` application specs;
-- `tests/e2e/storybook/**/*.spec.ts`;
-- `tests/e2e/visual/**/*.spec.ts`;
-- `tests/e2e/release/**/*.spec.ts`;
-- `src/**/*.browser.spec.ts`;
-- `src/**/*.visual.spec.ts`.
+```text
+testDir: ./tests/e2e
+testMatch: **/tests/e2e/*.spec.ts
+```
 
-A hypothetical `tests/e2e/other/example.spec.ts` remains Playwright-only proof for ordinary-Vitest exclusion, but it is **not** attributed to `playwright.lanes.test.ts` because that test does not enumerate that subtree.
+Project `testIgnore` now owns only desktop/mobile applicability; redundant Storybook/visual/release subtree ignores were removed.
 
-Post-sync semantic audit result: **new external relations: none**.
+A fresh independent real-collector proof invokes Playwright `--list` against the real config. Pre-fix RED collected both a nested `tests/e2e/other/example.spec.ts` probe and a root `tests/e2e/example.test.mjs` probe. Post-fix GREEN collects `appSmoke.spec.ts` and excludes both probes plus existing Storybook/visual/release specs.
 
-The synchronized directory/repository-state implementation introduced no new external repository-observation mechanism requiring an exact mapping or bounded scan owner.
+Therefore the root-only E2E scenario/applicability inventories and `playwright.lanes.test.ts` root application scan now match physical Playwright collection rather than merely agreeing locally.
 
-### Pass D — explicit mutation ownership
+#### Remaining Pass C review finding
+
+Direct Vitest test discovery still needs one local correction: `isTestShapedPath()` must exactly match the real `vitest.config.ts` include matrix. In particular, `src/**/*.test.mjs` and `config/**/*.test.mjs` must not be treated as direct Vitest tests.
+
+### Pass D — mutation
 
 Owner: `scripts/lib/mutationTargets.ts`.
 
-Mutation testing is explicit high-risk opt-in, not adjacency inference.
+Mutation is explicit high-risk opt-in. One registry is shared by verifier planning and Stryker configuration. Registered source/owning-test changes select exact targets; unregistered adjacency does not create mutation work; full/release verification does not automatically add mutation.
 
-Each registry entry has:
+No active review finding currently reopens Pass D.
 
-- exact mutable source;
-- exact owning unit proof;
-- concrete high-risk reason.
-
-Current accepted registry contains seven audited targets. A registered source or owning test selects the exact mutation source; unregistered adjacency skips mutation. Registry/Stryker semantic changes revalidate all registered targets or fail invalid. Full/release verification does not automatically add mutation.
-
-### Pass E — source-impact release planning
+### Pass E — release impact
 
 Owner: `scripts/lib/releaseRisk.ts`.
 
-The source-impact release checks are:
+Six source-impact contracts remain:
 
 ```text
 release-config
@@ -205,21 +136,13 @@ release-smoke
 managed-updates
 ```
 
-`release-version` remains separate PR/release policy and is not inferred from changed source.
+`release-version` is independent PR/release policy.
 
-Known release ownership selects the smallest confirmed checks. Unknown significant changes inside a confirmed release-sensitive boundary fail closed to all six source-impact checks. Runtime/unknown `package.json` and `pnpm-lock.yaml` remain conservative; version-only `package.json` does not create source-impact release work.
+The current release planner remains **under correction** after PR-level review. `scripts/lib/REVIEW.md` records the active consumer-model blocker: release execution infrastructure is incompletely owned, while some Vitest/type-only files are over-selected. Pass E benchmark rows are therefore provisional until that correction is closed.
 
-The proven publisher chain remains:
+### Pass F — CI integration
 
-```text
-scripts/pages/lib/releasePublish.mjs
-→ scripts/pages/lib/releaseDescriptor.mjs
-→ src/shared/service/appUpdate/releaseWireContract.ts
-```
-
-### Pass F — exact-head CI integration
-
-Implementation verification remains parallel after `autofix`:
+Implemented topology remains:
 
 ```text
 autofix
@@ -231,139 +154,102 @@ autofix
    └─ release-version
 ```
 
-`verification-release` directly follows `autofix` and runs:
+`verification-release` starts directly after `autofix` and runs `pnpm verify --verbose --only release-impact`. Aggregate implementation verification requires it; `release-version` remains separate.
 
-```bash
-pnpm verify --verbose --only release-impact
-```
+The outer release-impact job timeout is 120 minutes, above the current verifier-owned sequential command envelope. No cross-job build artifact was introduced.
 
-The aggregate `verification` job requires static, E2E, Storybook browser, and release-impact lanes. `release-version` remains an independent merge gate.
+## Representative benchmark
 
-The release-impact job timeout is 120 minutes. The verifier-owned sequential timeout envelope for a worst-case full source-impact selection is approximately 103 minutes (`build` 10m + `artifact` 8m + `release-smoke` 17m + `managed-updates` 68m), leaving an outer allowance for checkout/install/setup rather than allowing GitHub to terminate a healthy run before verifier-owned timeout handling.
-
-No cross-job build artifact is introduced by this finish scope.
-
-## Pass G — final representative benchmark
-
-The following table records the final planner result for the canonical representative classes plus the distinct Pass C ownership mechanisms. Planner timing is the measured local resolver time recorded during the final benchmark. It is not CI wall-clock time.
+Planner timing below is historical local resolver timing from the final pre-review benchmark; it is not CI wall-clock time. Rows affected by the active release consumer correction must be refreshed after Pass E is fixed.
 
 | Case | Unit | Visual | App E2E | Storybook behavior | Mutation | Release | Local planner time |
 | --- | --- | --- | --- | --- | --- | --- | ---: |
 | `AGENTS.md` | skip | skip | skip | skip | skip | skip | ~14ms |
 | unclassified `src/shared/ui/Example/README.md` | skip | full | full | skip | skip | skip | ~6ms |
-| local entity `src/entities/document/model/document.ts` | focused: source + scan owners | skip | full | skip | skip | skip | ~6ms |
-| file-as-data `PRIVACY.md` | focused: privacy-pane owner | skip | skip | skip | skip | skip | ~6ms |
-| deleted ordinary source `src/entities/foo/foo.ts` | full status-safe fallback | skip | full | skip | skip | skip | ~5ms |
-| feature `src/features/documentCreate/index.ts` | focused: source + scan owners | skip | focused: `repositoryFlows.spec.ts` | skip | skip | skip | ~5ms |
-| Material `MDButton.vue` | focused: source + scan owner | focused visual | full | focused behavior | skip | skip | ~5ms |
-| Material `button/tokens.css` | focused: source + component-token scan owner | focused visual | full | focused behavior | skip | skip | ~6ms |
-| registered mutation `reorderArray.ts` | focused | skip | full | focused behavior | focused exact source | skip | ~5ms |
-| unregistered adjacent `reorderGestureProfile.ts` | focused | skip | focused product E2E | skip | skip | skip | ~6ms |
-| managed-update/PWA `src/sw.ts` | focused | skip | full | skip | skip | focused: artifact + managed-updates | ~5ms |
+| local entity source | focused + scan owners | skip | full | skip | skip | skip | ~6ms |
+| `PRIVACY.md` | focused privacy owner | skip | skip | skip | skip | skip | ~6ms |
+| deleted ordinary source | full status-safe fallback | skip | full | skip | skip | skip | ~5ms |
+| feature source | focused + scan owners | skip | focused product E2E | skip | skip | skip | ~5ms |
+| Material component | focused | focused visual | full | focused behavior | skip | skip | ~5ms |
+| Material tokens CSS | focused + token scan | focused visual | full | focused behavior | skip | skip | ~6ms |
+| registered mutation source | focused | skip | full | focused behavior | focused exact | skip | ~5ms |
+| unregistered adjacent source | focused | skip | focused product E2E | skip | skip | skip | ~6ms |
+| `src/sw.ts` | focused | skip | full | skip | skip | focused artifact + managed-updates | ~5ms |
 | `pnpm-lock.yaml` | full | full | full | full | skip | full six checks | ~3ms |
 | verifier tooling `scripts/verify.ts` | focused | full | full | full | skip | full six checks | ~3ms |
-| root imported `postcss.config.js` | focused source; real resolver selects `config/postcss.config.test.ts` | skip | skip | skip | skip | skip | ~6ms |
-| runtime-discovered `eslint.config.mjs` | focused source + `eslint.config.test.ts` | skip | skip | skip | skip | skip | ~5ms |
-| root app inventory `tests/e2e/appSmoke.spec.ts` | focused inventory owners, never the spec itself | skip | focused direct spec | skip | skip | skip | ~6ms |
-| added forbidden `src/shared/lib/md/tokens.css` | focused source + existence owner + renderer scan | full | full | skip | skip | skip | ~5ms |
-| `vite.config.ts` after redundant mapping removal | focused source + direct-read owner; real resolver still selects `viteBuildDate.test.mjs` | full | full | skip | skip | full six checks | ~5ms |
+| `postcss.config.js` | focused; real related owner | skip | skip | skip | skip | skip | ~6ms |
+| `eslint.config.mjs` | focused + runtime-discovered owner | skip | skip | skip | skip | skip | ~5ms |
+| root app `tests/e2e/appSmoke.spec.ts` | focused inventory owners; spec never ordinary Vitest input | skip | focused direct spec | skip | skip | skip | ~6ms |
+| forbidden legacy tokens path | focused existence + scan owners | full | full | skip | skip | skip | ~5ms |
+| `vite.config.ts` | focused + direct-read owner; real import owner retained | full | full | skip | skip | full six checks (provisional pending Pass E correction) | ~5ms |
 
-### Real unit resolver evidence
+### Real delegated-resolver evidence
 
-The unit planner delegates ordinary dependency selection to Vitest, so representative mechanisms were also proven through the real focused verifier rather than planner assertions alone.
-
-Confirmed final cases:
+Confirmed focused unit evidence includes:
 
 - `postcss.config.js` → real `vitest related` selects `config/postcss.config.test.ts`;
-- `vite.config.ts` → after removing the redundant exact owner, real related resolution still selects `scripts/release/viteBuildDate.test.mjs` through its import;
-- `eslint.config.mjs` → planner adds `eslint.config.test.ts`, which executes successfully despite no ES import from the test to the config;
-- `.github/workflows/verify.yml` → all five confirmed direct owners execute, including `scripts/verify.test.ts`;
-- `src/features/documentCreate/index.ts` → the feature boundary scan owner executes additively;
-- `src/shared/ui/material/components/button/tokens.css` → both the ordinary import owner and `foundation/tokens.test.ts` scan owner execute;
-- `tests/e2e/appSmoke.spec.ts` → focused invocation passes only `playwright.lanes.test.ts`, `scripts/lib/e2eProjectApplicability.test.ts`, and `scripts/lib/e2eRisk.test.ts` to Vitest; all selected owners are green, and the Playwright spec itself never becomes an ordinary Vitest input;
-- post-sync `src/shared/service/fileSystem/directoryState.ts` → real invocation keeps ordinary source ownership plus the two applicable boundary scan owners; the recorded run selected 54 Vitest files / 680 tests and passed.
+- `vite.config.ts` → real related resolution still selects `scripts/release/viteBuildDate.test.mjs` after redundant external metadata removal;
+- `eslint.config.mjs` → planner-added `eslint.config.test.ts` executes despite no ES import;
+- `.github/workflows/verify.yml` → all confirmed direct owners execute;
+- feature source → feature boundary scan owner executes additively;
+- Material component tokens → ordinary import owner + token scan owner execute;
+- `tests/e2e/appSmoke.spec.ts` → unit invocation selects only the lane/E2E inventory owners and remains green;
+- post-sync directory-state source → ordinary source + applicable boundary scan owners execute.
 
-### Status-aware and scan-boundary refresh
+### Application-E2E physical discovery refresh
 
-Final correction-specific evidence:
+The previous hypothetical nested-subtree benchmark is now grounded in real Playwright collection rather than only unit planner output:
 
-| Case | Final unit result | Local planner time |
-| --- | --- | ---: |
-| deleted `.github/workflows/verify.yml` | focused: all five surviving exact owners | ~1.0ms |
-| rename `PRIVACY.md` → `PRIVACY.archived.md` | focused: old-path privacy owner retained | ~0.2ms |
-| `tests/e2e/appSmoke.spec.ts` | focused: lane + E2E registry/applicability inventory owners; real invocation green | ~0.2ms |
-| hypothetical `tests/e2e/other/example.spec.ts` | unit skip: outside every bounded unit inventory scan; never ordinary Vitest input | ~0.1ms |
-| post-sync `src/shared/service/fileSystem/directoryState.ts` | focused: source + `readRecoveryImportBoundary.test.ts` + `rendererBoundary.test.ts` | ~0.1ms |
+| Case | Physical app collection | Unit inventory ownership |
+| --- | --- | --- |
+| `tests/e2e/appSmoke.spec.ts` | collected | lane + E2E registry/applicability inventory owners |
+| temporary `tests/e2e/other/example.spec.ts` | not collected | no root-app inventory owner; never ordinary Vitest input |
+| temporary `tests/e2e/example.test.mjs` | not collected by app config | Vitest ownership only according to Vitest include contract |
+| existing Storybook/visual/release nested specs | not collected by app config | their own bounded inventory owners only |
 
-Deleted/renamed `.gitignore` is covered by deterministic status-aware planner proof and retains `scripts/agentEnvironment.test.mjs` as its surviving exact owner.
+Pre-fix real collector RED reported both temporary probes as collected; post-fix collector GREEN excludes them. This closes the application-E2E silent-inventory gap.
 
-## Accepted conservative selection
+### Status-aware exact ownership refresh
 
-The final benchmark contains no known silent verifier false negative.
+Previously confirmed cases remain valid:
 
-The following conservative selection is intentional:
+- deleted `.github/workflows/verify.yml` retains all surviving exact owners;
+- rename `PRIVACY.md → PRIVACY.archived.md` retains the old-path privacy owner;
+- deleted/renamed `.gitignore` retains `scripts/agentEnvironment.test.mjs`;
+- unsafe ordinary source deletion/rename still fails closed to full unit.
 
-- `pnpm-lock.yaml` and verifier infrastructure may select full affected lanes because they can change execution/runtime semantics broadly;
-- `src/readRecoveryImportBoundary.test.ts` genuinely scans every non-test `src/**/*.{ts,vue}` path;
-- `src/shared/ui/material/rendererBoundary.test.ts` genuinely scans `src/**/*.{css,vue,ts,mts,tsx}` outside `src/shared/ui/material/**`;
-- Playwright specs **inside the real inventory population of a bounded unit owner** select that inventory test in addition to their browser-lane proof. Root app specs additionally select E2E registry/applicability inventory tests; Storybook/visual colocated specs select their applicable registry/discovery owners;
-- arbitrary nested `tests/e2e/<other-subtree>/*.spec.ts` does **not** select `playwright.lanes.test.ts` merely because it is under `tests/e2e/**`; it remains excluded from ordinary Vitest ownership by the separate Playwright-only predicate;
-- adding the currently forbidden `src/shared/lib/md/tokens.css` fails closed in visual/application E2E while unit proof narrowly selects its existence/absence owner.
+## Current accepted / provisional selection
 
-These are either truthful ownership of already-existing scans or intentional fail-closed behavior. No broad selection is retained merely to preserve historical test counts.
+Accepted:
 
-## Output and liveness acceptance
+- conservative full impact for lockfile/verifier infrastructure where execution semantics are broad;
+- real repository scan owners select their actual scanned population;
+- root application specs select their app inventory proof in addition to browser proof;
+- arbitrary nested `tests/e2e/<other-subtree>/*.spec.ts` is neither app-collected nor attributed to the root application inventory;
+- forbidden legacy token-path changes retain exact existence proof.
 
-Default verifier behavior is bounded:
+Provisional pending Pass E correction:
 
-- routine child output is captured in `.verify/logs/**`;
-- long checks emit verifier-owned heartbeat with elapsed time, owned timeout, and exact log path;
-- default failure detail reports a trustworthy verifier-owned reason when available, otherwise the exit code;
-- raw output is available through the detailed log and `--verbose`;
-- focused rerun commands are emitted through the supported verifier CLI.
+- release selections for release runner/config/proof-only/type-only files;
+- any benchmark claim that Pass E has no known false positive/negative.
 
-No retry-pass/flaky result is accepted as green proof.
+## Remaining finish work
+
+1. Close the release-impact consumer-model blocker in `scripts/lib/REVIEW.md`.
+2. Make direct Vitest test discovery exactly match `vitest.config.ts`.
+3. Clean stale temporary-review/RED comments and inaccurate visual TSDoc without changing behavior.
+4. Architect refreshes only benchmark rows invalidated by those corrections.
+5. Run one full semantic PR-level diff review.
+6. Remove resolved `REVIEW.md` artifacts.
+7. Publish PR and inspect exact-head CI.
+8. Record actual CI critical path / merge latency and give merge-readiness verdict.
 
 ## CI critical path / merge latency
 
 **Pending exact-head PR CI.**
 
-No final CI wall-clock or merge-latency number is recorded before the PR exists. The architect will record/assess the actual exact-head run rather than extrapolate from local planner timing.
+No final CI wall-clock claim is made before the published final head runs.
 
-Pass C added only in-process impact-planner work and focused unit ownership; it added no new CI job, browser worker, shard, artifact pipeline, or benchmark infrastructure.
+## Stop rule
 
-## Exit criterion
-
-Verifier infrastructure modernization stops when all of the following remain true on the final PR head:
-
-1. every expensive proof lane has reliable impact selection;
-2. known ownership selects focused proof;
-3. proven irrelevant impact skips;
-4. unknown significant impact uses full affected lane or invalid;
-5. there is no known broad false positive such as `AGENTS.md -> full E2E`;
-6. ordinary `pnpm verify` has no known required proof it can silently miss;
-7. unit impact uses Vitest related resolution plus explicit external/scan ownership and status-safe fallback;
-8. mutation ownership is explicit high-risk opt-in;
-9. source-impact release proof is separate from release-version policy;
-10. normal output is bounded, live, and actionable;
-11. exact-head CI uses the same planner semantics;
-12. release impact runs as an independent parallel CI lane;
-13. known flakes are absent;
-14. the representative benchmark identifies no remaining verifier-infrastructure correctness or critical-path problem requiring another modernization pass.
-
-Once exact-head CI confirms the final head, **stop verifier infrastructure modernization**. Further parallelism, sharding, shared artifacts, task runners, dependency graphs, or benchmark infrastructure require a separate measured need and architecture decision.
-
-## Explicitly deferred
-
-Do not start automatically:
-
-- additional verifier/CI parallelism beyond the dedicated release lane;
-- split release-impact jobs;
-- Storybook/release cross-job artifact reuse;
-- more Playwright workers or sharding;
-- Nx/Turbo or another task runner;
-- a generic dependency graph;
-- a universal cross-lane path/test registry;
-- broad legacy-suite cleanup;
-- speculative E2E optimization;
-- permanent benchmark/metrics infrastructure.
+Verifier modernization stops only after the remaining semantic findings are closed, the final benchmark matches the resulting tree, the full PR-level review is clean, and exact-head CI succeeds. Further infrastructure/parallelism/sharding/task-runner work then requires a separate measured need.
