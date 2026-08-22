@@ -1,17 +1,17 @@
 # Database virtualization profiling and analysis plan
 
-Status: **research plan; virtualization and TanStack are fixed; direct native-table integration capability pending; secondary optimizations evidence-gated**.
+Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; native-table capability pending; secondary optimizations evidence-gated**.
 
-`docs/database-virtualization.md` owns rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
+`docs/virtualization-library.md` owns the shared API. `docs/database-virtualization.md` owns database rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
 
 ## Goals
 
 1. quantify the current unvirtualized freeze and scale-to-failure boundary;
-2. prove structural bounded rendering after the direct TanStack database migration;
+2. prove structural bounded rendering after database migration to `useVirtualCollection`;
 3. measure real short-filtered -> full-view responsiveness;
 4. identify whether any optimization beyond bounded rendering is justified.
 
-Profiling does not decide whether to create a shared virtualization wrapper. The architecture explicitly rejects that abstraction until a second real production consumer exists.
+The capability fixture is not a timing benchmark. Generic shared proof exists only to protect the public collection/measurement contract; product performance is measured on the real database.
 
 ## Core evidence
 
@@ -106,13 +106,18 @@ Persistent assertions should protect observable mounted DOM counts, not TanStack
 
 G1 must not materialize the logical cross product.
 
-## Browser geometry capability vs performance
+## Shared capability vs product performance
 
-The focused capability fixture in `src/entities/databaseData` is not a timing benchmark. It proves direct TanStack/native-table correctness in Chromium and Firefox.
+`src/shared/ui/virtualization` browser proof protects only:
 
-Performance acceptance uses the real product after migration.
+- bounded single-axis collection rendering;
+- item/value/key mapping;
+- directive-backed dynamic measurement;
+- leading/trailing extent correctness.
 
-Do not maintain generic list/grid virtualization benchmarks or tests merely because TanStack supports them.
+Do not attach durable wall-clock budgets to the shared primitive and do not build generic list/grid benchmark infrastructure.
+
+Database native-table capability proves browser geometry in Chromium/Firefox. Performance acceptance uses the real product after migration.
 
 ## Product correctness around performance
 
@@ -132,7 +137,7 @@ The faster implementation is invalid unless it preserves:
 
 ## Secondary optimization order
 
-After direct TanStack/native-table bounded rendering:
+After `useVirtualCollection`/native-table bounded rendering:
 
 1. rerun identical performance cases;
 2. if visible-range cell setup is material, optimize only that owner;
@@ -163,7 +168,7 @@ Do not create a generic benchmark framework.
 
 Before production migration implementation:
 
-- direct database native-table capability from `docs/database-virtualization-browser-proof.md` passes and is reviewed.
+- shared collection API + database native-table capability from `docs/database-virtualization-browser-proof.md` passes and is reviewed.
 
 Before final performance acceptance:
 
