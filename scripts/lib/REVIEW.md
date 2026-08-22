@@ -6,8 +6,7 @@ Verdict: blocked
 
 - Complete current `develop...refactor/verify-modernization-finish` verifier-modernization result.
 - Pass A/B/C/D/E/F remain accepted.
-- Application-E2E discovery was re-reviewed across physical config, planner/spec/support classification, scenario/applicability validation, unit scan ownership, and real collector proof.
-- The previously assigned local correction completed before the architecture redo; compatible changes are retained as partial implementation.
+- Application-E2E discovery was re-reviewed after the architecture redo across the new shared path owner, physical Playwright config, planner/spec/support classification, scenario/applicability validation, unit scan ownership, TypeScript project boundary, and independent real collector proof.
 
 ## Blockers
 
@@ -15,26 +14,15 @@ None.
 
 ## Major issues
 
-### M1 — application-E2E root-spec ownership is still duplicated
+None.
 
-Owner: verifier application-E2E discovery contract.
+## Resolved in current review
 
-Already corrected and accepted:
+### M1 — duplicated application-E2E root-spec ownership
 
-- `e2eRisk.ts:isAppE2ESpecPath()` is direct-root only;
-- arbitrary nested `*.spec.ts` is neither app spec nor app support;
-- nested ordinary helper remains conservative app support;
-- collector probes are collision-safe and exactly cleaned up.
+Resolved and architect-reviewed.
 
-Remaining architectural problem:
-
-- `scripts/lib/appE2EPaths.ts` does not exist;
-- `playwright.config.ts` still owns literal canonical root/testMatch facts;
-- `e2eProjectApplicability.ts` still has its own root constants/predicate;
-- `unitRisk.ts` still has another root predicate;
-- `e2eRisk.ts` still owns its own canonical directory facts rather than consuming one owner.
-
-The accepted architecture requires one pure owner exposing only:
+`scripts/lib/appE2EPaths.ts` is now the single narrow production/verifier owner of:
 
 ```text
 APP_E2E_SPEC_DIR
@@ -42,36 +30,53 @@ APP_E2E_TEST_MATCH
 isRootAppE2ESpecPath()
 ```
 
-and migration of all four consumers to it. A local planner patch alone is no longer sufficient because repeated drift has already demonstrated that duplicated ownership is the cause.
+`playwright.config.ts`, `e2eRisk.ts`, `e2eProjectApplicability.ts`, and `unitRisk.ts` consume that owner; their replaced private canonical root predicates/constants were removed.
 
-Additional behavior/proof gaps inside this same correction:
+The new module remains pure and verifier-only. Product scenario mappings, project applicability data, Storybook/visual/release ownership, and unit-impact semantics were not moved into it.
 
-1. `isAppE2ESupportPath('tests/e2e/example.test.ts')` is currently true because support excludes `.spec.ts` but not direct Vitest-style `.test.ts`; final contract requires false while preserving `*.testUtils.ts` support.
-2. `validateE2EScenarioRegistry()` does not generally require every scenario/standalone entry to be a root app spec; an existing non-root Storybook/release/arbitrary spec can be accepted when it exists and root registry coverage otherwise remains complete.
-3. `scripts/lib/appE2EPaths.ts` is not yet classified as full application-E2E infrastructure.
-4. The filtered real-collector proof currently supplies only the nested probe and expects `No tests found`. Final proof should supply a real root app spec plus the nested probe, succeed, collect the root spec, and still exclude the nested probe.
+The previously remaining behavioral gaps are also closed:
 
-Required final state: implement `docs/testing/verify-app-e2e-discovery-correction.md` as written, preserve the already-correct local planner/probe-safety behavior, close the four gaps above, and remove duplicate production ownership.
+- nested app specs remain no-selection;
+- ordinary nested helpers remain conservative support;
+- direct `*.test.ts`/`*.test.mjs` proof does not become app support;
+- legitimate `*.testUtils.ts` helper behavior is preserved;
+- scenario/standalone metadata rejects non-root specs;
+- applicability remains root-only;
+- changing `appE2EPaths.ts` selects full application E2E;
+- the new module does not gain visual/Storybook/release ownership.
 
-Verification: fresh test-author proof for the still-red `.test.ts` support, non-root scenario metadata, and new infrastructure-owner contracts; independent real collector proof; preservation proof for planner/applicability/unit behavior.
-
-## Resolved
+Focused unit proof and type-check passed. The `tsconfig.node.json` inclusion is a required TypeScript project-boundary dependency because `playwright.config.ts` imports the verifier-owned path/applicability modules; it does not introduce another runtime owner.
 
 ### M2 — collector probe state ownership
 
-Resolved. `playwright.lanes.test.ts` now uses unique invocation-owned paths, `mkdtempSync`, exclusive `wx` creation, tracked exact file cleanup, and non-recursive removal only of its own created directory. Do not reopen or revert this design.
+Resolved and architect-reviewed.
+
+`playwright.lanes.test.ts` uses unique invocation-owned paths, `mkdtempSync`, exclusive `wx` creation, tracked exact cleanup, and removal only of its own temporary directory. The filtered real collector now receives both a real root app spec and the nested probe, succeeds, collects the root spec, and still excludes the nested probe.
+
+The real collector remains independent of the shared path predicate as its expected-value oracle.
 
 ## Minor issues
 
-### m1 — stale source/test comments
+### m1 — three source/test comments still describe superseded mechanics
 
-After M1 only:
+Owner: verifier source/test comments.
 
-- correct old ordinary-source wording in `unitRisk.test.ts`;
-- correct release-spec wording in `e2eRisk.ts`;
-- correct stale rolling-buffer wording in `verify.ts`.
+Problem:
 
-No executable behavior or assertions change solely for this cleanup.
+1. `scripts/lib/unitRisk.test.ts` still says `config/tooling.json` is ordinary-source eligible because of an old `src/config/scripts` prefix check, while ordinary dependency-input eligibility is now repository-wide by supported source shape.
+2. `scripts/lib/e2eRisk.ts` says release specs run through `playwright.release.config.ts` / `pnpm verify --full`; source-impact release selection can also run the owning release checks without a full verifier invocation.
+3. `scripts/verify.ts` says the bounded rolling output buffer is further excerpted by `getFailureReason`; accepted failure fallback no longer infers a reason from arbitrary output tails and instead uses verifier-owned semantic facts or exit code + log/rerun pointers.
+
+Basis:
+
+- root `AGENTS.md`: durable comments/TSDoc must describe current mechanisms and obsolete wording should be removed with replaced logic;
+- `docs/testing/verify-unit-impact-correction.md`, `verify-release-impact-correction.md`, and `verify-agent-output.md`: final accepted contracts.
+
+Risk: maintenance guidance contradicts correct executable behavior.
+
+Required final state: rewrite only those comments/TSDoc to describe current mechanisms. No executable behavior, test assertions, planner ownership, command behavior, or workflow semantics change.
+
+Verification: source inspection plus focused formatting/lint only if useful.
 
 ## Accepted risks
 
@@ -80,13 +85,16 @@ None.
 ## Items not required
 
 - Do not reopen Pass A/B/C/D/E/F.
-- Do not revert root-only `e2eRisk` planner behavior.
-- Do not revert collision-safe collector probes.
-- Do not generalize the new app-E2E owner into a cross-lane registry/glob framework.
-- Do not redesign CI, retries, workers, timeouts, scenario mappings, or applicability data.
+- Do not reopen the application-E2E architecture without new repository evidence.
+- Do not change app-E2E path ownership, scenarios, applicability data, collector behavior, or probe setup during the comment cleanup.
+- Do not redesign CI, retries, workers, timeouts, release ownership, or verifier output behavior.
+
+## Unresolved questions
+
+None.
 
 ## NEXT CORRECTION
 
-Owner: `scripts/lib/appE2EPaths.ts` and its four application-E2E verifier/config consumers.
+Owner: source/test comments only.
 
-Implement the ready single-owner architecture on top of the accepted local fix; do not repeat the already-green nested-spec correction.
+Perform the three behavior-preserving wording corrections above, then run the final complete PR-level semantic review. No behavioral coding work remains currently known.
