@@ -1,192 +1,132 @@
 # Database virtualization browser proof
 
-Status: **required capability gate before database production migration**.
+Status: **required direct-integration capability gate before production database migration**.
 
-This document separates browser-layout capability from later product integration proof.
+The previous shared-adapter proof is superseded. The browser gate now tests only Mioframe-owned database integration risks while using `@tanstack/vue-virtual` directly.
 
-- Capability proof answers: can the selected TanStack adapter and native-table-first DOM model satisfy required dynamic geometry in supported browsers?
-- Product proof answers: does the real database preserve editing, relations, toolbar, sticky actions, filtering/sorting, and performance after migration?
+## Why this proof exists
 
-Do not clone product behavior into synthetic capability fixtures merely to move the gate earlier.
+TanStack owns generic virtualization behavior. Mioframe must prove only the parts created by its table integration:
 
-## Confirmed browser risk
+- native table flow with partial DOM;
+- virtual spacer rows/columns;
+- dynamic `<tr>` / `<th>` measurement;
+- deep two-axis offsets;
+- current `MDTable` border/layout behavior;
+- partial-DOM accessibility semantics.
 
-Current TanStack virtualized table examples dynamically measure rows but explicitly avoid their `<tr>` measurement path in Firefox because Firefox can report table border height differently. TanStack examples also commonly use semantic table tags with virtualization-compatible CSS grid/flex/positioned-row layout.
+Do not duplicate TanStack list/grid tests.
 
-Mioframe requires dynamic row height, so a Firefox fixed-estimate fallback is not acceptable.
+## Required fixture
 
-Native table flow remains the preferred minimum design, but production database migration is blocked until the focused capability proof below passes.
+Use one deterministic Storybook fixture under `src/entities/databaseData`.
+
+Requirements:
+
+- import `useVirtualizer` directly from `@tanstack/vue-virtual`;
+- use real `MDTable` rather than an approximate copied table style, so Firefox proof exercises the current `border-collapse: separate`, cell borders, sticky header and row decoration risk;
+- synthetic row/property data only;
+- no worker, service, persistence, routing, editor, relation, or toolbar product behavior;
+- sufficiently large logical size to exercise deep vertical and horizontal virtualization (target fixture: at least 5,000 rows × 300 columns);
+- one physical scroll root for this capability fixture.
+
+TanStack-required `data-index` is a private fixture/database implementation detail and may be bound directly.
 
 ## Required browser matrix
 
-Capability proof:
+- Chromium: complete direct database capability proof.
+- Firefox: same geometry/accessibility capability spec because native table row measurement is the known engine risk.
 
-- Chromium: complete shared adapter + native-table geometry proof;
-- Firefox: focused dynamic row/column measurement, virtual padding, deep scrolling, and accessibility proof.
+Keep the Firefox Playwright project narrowly matched to the database capability spec only.
 
-Performance timing remains Chromium-controlled. Cross-engine capability proof protects correctness/geometry, not identical wall-clock numbers.
+Performance wall-clock comparison remains Chromium-controlled and belongs to later profiling.
 
-WebKit is not added mechanically. Add a narrow smoke only if current supported-browser policy or a demonstrated WebKit-specific risk requires it during production migration.
+## Required contracts
 
-## Stage A — shared adapter capability
+### Structural bounded rendering
 
-Use the actual production `src/shared/ui/virtualization/useVirtualAxis` adapter with deterministic Storybook fixtures.
+For fixed viewport/overscan:
+
+- mounted data rows remain bounded while logical rows are in the thousands;
+- mounted property headers/cells remain bounded while logical columns are in the hundreds;
+- no logical rows × columns cross product is materialized.
+
+### Vertical geometry
 
 Prove:
 
-- 10,000+ logical items with bounded mounted items;
-- vertical and horizontal axes;
-- dynamic sizes and repeated post-mount resize;
-- stable `getItemKey` behavior across index remapping;
-- Mioframe measurement binding associates logical `index + element` without exposing TanStack `data-index` conventions;
-- unmount/ref cleanup does not retain stale observed elements;
-- deep `scrollToIndex`;
-- `scrollMargin` when the virtual surface starts after other content;
-- `scrollPaddingStart` / `scrollPaddingEnd` for occluded deep targets;
-- acceptable scroll correction when an item before the viewport changes size;
-- two axes sharing one scroll root;
-- a narrow fixture where two axes use different roots.
+- top/bottom spacer rows preserve total virtual extent;
+- deep scroll reaches rows near the end without mounting predecessors;
+- dynamic mounted row growth updates geometry;
+- the same row can shrink again and geometry/offsets update;
+- resizing a mounted row above the viewport does not produce an unacceptable full-row anchor jump;
+- behavior works with the real `MDTable` border/layout model in Chromium and Firefox.
 
-Do not test TanStack private internals. Assert Mioframe-owned observable geometry and adapter behavior.
+Fixed-height Firefox fallback is not acceptable.
 
-## Stage B — native-table capability prototype
+### Horizontal geometry
 
-Use a deterministic synthetic database-like Storybook fixture under the `databaseData` owner. It must use `useVirtualAxis`, semantic table tags, synthetic rows/properties, and no worker/service/database persistence.
+Prove:
 
-First prove the selected model:
+- left/right spacer columns preserve horizontal extent;
+- deep horizontal scroll reaches a property near the end of a large logical property set;
+- visible header/body use the same property range;
+- mounted body content can widen its corresponding `<th>` through native table layout;
+- TanStack-measured width is reused as the remount minimum so ordinary horizontal scroll does not shrink/regrow a discovered column;
+- spacer-column phantom min-content technique, if still needed, produces the correct deep offset in both engines.
 
-- native `<table>/<thead>/<tbody>/<tr>/<th>/<td>` flow;
-- top/bottom spacer rows;
-- left/right spacer columns;
-- dynamic `<tr>` vertical measurement;
-- dynamic `<th>` horizontal measurement;
-- native layout from currently mounted body cells;
-- shared horizontal row/header range;
-- logical ARIA row/column counts and indices;
-- presentation spacers absent from logical accessibility semantics.
+Live shrink of a previously discovered column width is intentionally **not** a capability requirement. Column width may remain grow-only for the current table lifetime; a full remount may rediscover it.
 
-### Row measurement
+### Accessibility
 
-In Chromium and Firefox compare virtualizer geometry with observable rendered row geometry for:
+With partial DOM prove:
 
-- one-line rows;
-- wrapped multi-line rows;
-- rows whose visible cells have different heights;
-- post-mount expansion/shrink;
-- current border/pseudo-row styling equivalent to the production table risk.
+- native table semantics remain exposed;
+- table logical row/column counts are complete;
+- visible logical row/column indices match full-data positions, including after deep scrolling;
+- virtual spacers are absent from logical accessibility semantics;
+- ARIA grid conversion is unnecessary.
 
-Required result:
+## Failure threshold
 
-- measured size matches consumed table-flow size closely enough that virtual offsets do not drift;
-- repeated resize updates total/range geometry;
-- top/bottom padding stays correct;
-- deep scroll does not accumulate visible offset error.
+Native table flow is blocked only if one of the required contracts cannot be made reliable in Chromium/Firefox without substantial custom geometry machinery.
 
-### Firefox resolution order
+A narrow CSS/native-table normalization such as a spacer phantom box is acceptable. A second offset algorithm, per-cell measurement cache, independent ResizeObserver, or manual range engine is not.
 
-If Firefox native `<tr>` measurement differs:
+If native flow is blocked, stop and return evidence for architecture review. Do not implement the fallback rendering model in the same task.
 
-1. determine whether table border/pseudo-element CSS is the cause and normalize it if possible without changing required appearance/semantics;
-2. if necessary, use a narrow size-reading callback at the shared adapter boundary that changes only how the mounted element's real size is read while TanStack still owns observation, offsets, cache, and correction;
-3. expose such a generic measurement callback only if this current capability proof requires it;
-4. do not add an independent ResizeObserver, element-size cache, or manual `resizeItem` state.
+## Deferred to production migration
 
-Using only estimates for dynamic Firefox rows is forbidden.
+Do not clone these into the capability fixture:
 
-### Column measurement
+- actual `.database-view` scroll-margin wiring;
+- sticky action-column product behavior;
+- active edit eviction/view-switch handling;
+- nested relation roots;
+- toolbar/after relocation;
+- real filter/sort/view-switch scenarios;
+- desktop/mobile product composition;
+- wall-clock performance targets.
 
-Prove in both required engines:
+## Evidence result
 
-- visible body content participates in native column layout;
-- corresponding visible `<th>` reflects the rendered column width;
-- horizontal measurement observes width changes caused by body content;
-- left/right virtual spacers preserve deep horizontal offsets;
-- remount minimum based on the current measured virtual item prevents ordinary shrink/regrow oscillation;
-- a responsive max constraint can intentionally reduce/re-measure width without corrupting offsets.
+Record the new direct-integration outcome in `docs/database-virtualization-direct-integration-result.md`:
 
-If native auto-layout cannot provide stable behavior, change only the database presentation model before considering per-cell geometry caches.
+- resolved TanStack/Playwright/browser versions;
+- exact passing/failing contracts;
+- any narrow native-table normalization retained;
+- whether native-table-first remains accepted;
+- unresolved blockers.
 
-## Accessibility capability
-
-For partial DOM prove with the lowest faithful real-browser accessibility surface:
-
-- native table semantics remain present;
-- full logical `aria-rowcount` / `aria-colcount` are exposed;
-- visible logical rows/columns expose correct `aria-rowindex` / `aria-colindex`;
-- presentation spacers/fill cells do not become logical data;
-- no ARIA `grid` conversion is required.
-
-## Native-table failure threshold
-
-Do not abandon native table flow for cosmetic inconvenience or a narrow CSS/measurement normalization.
-
-Treat native flow as blocked only when a required contract cannot be made reliable in Chromium and Firefox without substantial custom geometry machinery, for example:
-
-- spacer rows cannot maintain correct deep offsets with dynamic heights;
-- row size cannot be normalized to actual consumed height;
-- spacer columns plus native layout cannot maintain stable measured widths;
-- required accessibility semantics cannot coexist with bounded rendering.
-
-## Fallback DOM model
-
-If native flow is blocked, preserve the rest of the architecture and change only database presentation:
-
-1. keep semantic table tags where possible;
-2. use virtualization-compatible CSS layout for sections/rows/cells, including grid/flex/positioned rows where needed;
-3. keep TanStack as the only range/measurement engine;
-4. keep stable keys, explicit scroll roots, service/worker contracts, and product ownership unchanged;
-5. preserve logical table accessibility metadata.
-
-A fully custom div/ARIA-grid model is a last resort and requires a new architecture decision.
-
-## Product integration proof after capability gate
-
-Do not implement these in synthetic capability fixtures. They belong to the real database migration:
-
-- actual `.database-view` top-level scroll root and table `scrollMargin` wiring;
-- actual sticky header/action behavior;
-- actual `EditableInlineValue` draft capture on virtual eviction and view switch;
-- actual relation/nested-view axis-root wiring;
-- toolbar/`after` movement out of table semantics;
-- full/filtered membership and sorting;
-- desktop/mobile product behavior;
-- performance measurements and `30,000 × 300` bounded-rendering acceptance.
-
-If the production integration reveals a new geometry fact that invalidates the capability architecture, stop and update architecture rather than adding workaround layers.
-
-## Proof placement
-
-The capability preflight fixes exact paths. Intended ownership:
-
-- shared adapter Storybook fixture/spec: `src/shared/ui/virtualization`;
-- native-table synthetic fixture/spec: `src/entities/databaseData`;
-- existing Storybook behavior lane remains Chromium authoritative for ordinary reusable proof;
-- a narrowly scoped Firefox project is added only for the virtualization capability specs, not for the entire Storybook suite.
-
-Do not create a second general browser-test framework.
-
-## Evidence recording
-
-Record capability outcome in `docs/database-virtualization-capability-result.md` with:
-
-- exact TanStack version installed;
-- browser/version for Chromium and Firefox;
-- pass/fail for each required contract;
-- any narrow adapter/browser normalization introduced;
-- whether native table flow is accepted or fallback DOM architecture is required;
-- unresolved blockers, if any.
-
-Do not turn this result document into a benchmark framework or copy raw traces into repository docs.
+Do not carry forward the previous shared-adapter pass/fail claims as proof of this revised architecture.
 
 ## Exit criterion
 
-Production database migration may begin only when:
+Production migration preflight may start only when:
 
-- shared adapter capability passes;
-- native-table capability passes in Chromium;
-- Firefox has a proven dynamic row-measurement path without fixed-size assumptions;
-- no selected path requires a second Mioframe virtualization engine/cache;
-- capability result records `ready`;
-- database production-migration preflight is then written against the proven DOM/measurement path.
-
-If native flow fails but the semantic-table CSS-layout fallback passes, update `docs/database-virtualization.md` to select that fallback before production migration.
+- direct database capability passes in Chromium;
+- Firefox dynamic row measurement passes with real `MDTable` geometry;
+- deep vertical and deep horizontal offsets are both proven;
+- row grow/shrink works;
+- bounded 2D DOM and logical accessibility semantics pass;
+- no second Mioframe geometry engine/cache is introduced.
