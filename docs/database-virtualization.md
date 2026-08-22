@@ -1,62 +1,55 @@
 # Database virtualization
 
-Status: **architecture accepted; native-table-first integration selected; capability proof pending; secondary optimizations evidence-gated**.
+Status: **architecture revised; direct TanStack integration selected; native-table-first capability proof pending; secondary optimizations evidence-gated**.
 
-This document is the architecture source of truth for large database rendering. `docs/virtualization-library.md` owns the reusable TanStack-backed axis. `docs/database-virtualization-browser-proof.md` owns browser capability gates. `docs/database-virtualization-profiling.md` owns performance evidence.
+This document is the architecture source of truth for large database rendering. Dependency policy is in `docs/virtualization-library.md`; browser capability proof is in `docs/database-virtualization-browser-proof.md`; performance evidence is in `docs/database-virtualization-profiling.md`.
 
 ## Goal
 
-Make database rendering scale to at least 30,000 rows and very large property counts without multi-second main-thread blocking, while preserving current data, filtering, sorting, editing, relation, and table behavior.
+Make database rendering scale to at least 30,000 rows and very large property counts without multi-second main-thread blocking while preserving filter/sort correctness, editing, relations, table semantics, and mobile/desktop usability.
 
 Primary invariant:
 
 > Mounted expensive UI is bounded by viewport and overscan, not by total logical rows or columns.
 
-Mounted cells therefore scale approximately with `visibleRows × visibleColumns`, never `allRows × allColumns`.
-
 ## Accepted architecture
 
-- `@tanstack/vue-virtual` is the selected engine and is imported only by `src/shared/ui/virtualization`.
-- Shared exposes one headless `useVirtualAxis`; database composes one vertical and one horizontal axis.
-- Native HTML table semantics are the preferred database rendering model.
+- `@tanstack/vue-virtual` is used directly by `entities/databaseData`.
+- Database owns one vertical and one horizontal TanStack virtualizer.
+- No shared Mioframe virtualization wrapper exists while database is the only confirmed production consumer.
+- Native `<table>` flow remains the preferred rendering model.
 - Rows and properties are both virtualized.
-- Row height and column width are dynamic; fixed dimensions are not a correctness contract.
-- TanStack runtime measurement keyed by stable domain IDs is the only virtual geometry source of truth.
-- Database does not maintain parallel row-height or column-width caches.
-- Top-level database keeps its existing physical scroll surface; no table-only nested scrollbar is added.
-- Axis scroll roots are explicit presentation dependencies, never discovered heuristically.
-- Service/worker remains the source of truth for ordered row membership and filtering/sorting.
-- Non-virtualization performance changes require measured evidence after bounded rendering exists.
+- TanStack is the only virtual geometry engine/cache.
+- Database does not keep parallel row-height or column-width maps.
+- Service/worker remains canonical for row membership/order/filter/sort.
+- Secondary worker/query/subscription optimizations require evidence after bounded rendering exists.
 
 ## Ownership
 
 | Owner | Responsibility |
 | --- | --- |
-| `shared/ui/virtualization` | TanStack adapter, one-axis ranges, measurements, estimates, overscan, scroll correction, deep navigation. |
-| `entities/databaseData` | Native table DOM, two-axis cell composition, spacer DOM, table-specific size constraints, logical row/column accessibility metadata, sticky action-cell integration. |
-| database widgets | Physical scroll-root wiring, toolbar/after composition, inline edit lifecycle, relation/nested-view composition. |
+| `entities/databaseData` | Direct TanStack setup, native table DOM, two-axis composition, spacer DOM, database sizing policy, logical table accessibility, sticky action-cell integration. |
+| database widgets | Physical scroll-root wiring, toolbar/after composition, edit lifecycle, relation/nested-view composition. |
 | service/worker | Canonical filter/sort/order/data contracts. |
-| `shared/ui/Table` | Existing presentation primitive only; no virtualization responsibility. |
+| `shared/ui/Table` | Existing table presentation only; no virtualization responsibility. |
 
-Do not move database-specific editing, relation, sizing policy, sticky behavior, or product composition into shared virtualization.
+External vendor imports are allowed in the entity implementation; internal FSD dependencies still follow `entities -> shared`.
 
 ## Source of truth
 
-- rows/order: existing worker/service ordered item IDs;
-- properties/order: existing database property/view contract;
-- values: existing database document state;
+- logical rows/order: existing worker/service item IDs;
+- logical properties/order: current view/property contract;
+- values: database document state;
 - vertical geometry: TanStack measurement cache keyed by `DatabaseItemId`;
 - horizontal geometry: TanStack measurement cache keyed by `DatabasePropertyId`;
-- scroll roots: widget/composition DOM refs;
-- inline edit draft: current edit owner until committed/cancelled.
+- scroll root: explicit widget/composition DOM owner;
+- inline draft: current edit owner until commit/cancel.
 
-Virtual geometry is ephemeral presentation state and is never persisted into Automerge or database view state.
+Virtual geometry is ephemeral and is never persisted.
 
 ## Rendering model
 
-Initial database integration keeps semantic table tags and native table flow.
-
-Conceptually:
+Use semantic table tags and native table flow first:
 
 ```text
 <table>
@@ -64,7 +57,7 @@ Conceptually:
     [left virtual spacer]
     [visible property columns]
     [right virtual spacer]
-    [optional fill spacer]
+    [optional fill]
     [action column]
   </colgroup>
 
@@ -72,244 +65,172 @@ Conceptually:
     [left spacer]
     [visible property headers]
     [right spacer]
-    [fill spacer]
+    [fill]
     [sticky action header]
   </thead>
 
   <tbody>
     [top virtual spacer row]
-    [visible logical rows]
+    [visible rows]
     [bottom virtual spacer row]
   </tbody>
 </table>
 ```
 
-Presentation-only spacers contain no product UI and are excluded from accessibility semantics.
+Virtual spacer DOM is presentation-only and hidden from accessibility semantics.
 
-Do not absolutely position rows or replace the table with a div grid unless the focused browser capability proof demonstrates that native table flow cannot satisfy required geometry in supported browsers without substantial custom measurement logic.
+If a focused browser proof shows native flow cannot satisfy required geometry without substantial custom machinery, the first fallback is semantic table tags with virtualization-compatible CSS grid/flex/positioning. Do not jump directly to a div/ARIA-grid implementation.
 
-If native flow fails, the first fallback is semantic table tags with virtualization-compatible CSS grid/flex/positioned-row layout. Shared virtualization, service ownership, stable keys, and product contracts do not change.
+## Direct TanStack integration
+
+Use TanStack's normal Vue API locally. Vendor conventions such as `data-index`, `measureElement`, `getVirtualItems`, `getTotalSize`, `scrollMargin`, and `scrollToIndex` remain private database implementation details.
+
+Do not wrap these merely to rename them.
+
+If `DatabaseDataTable.vue` becomes materially unreadable, a database-local helper such as `useDatabaseVirtualization.ts` may be extracted. It must remain specific to the current database rendering problem and must not become a generic axis/grid API.
 
 ## Dynamic row sizing
 
-A mounted logical row has one DOM measurement owner: its `<tr>`.
+Each mounted logical row is measured from its real `<tr>`.
 
-```text
-<tr> rendered height
-       ↓
-vertical useVirtualAxis measurement binding
-       ↓
-TanStack measurement/cache/correction
-```
+Rows must support both growth and shrink after mount. Visible-column changes, wrapping, relation content, and editing may change row height. TanStack owns measurement updates and scroll correction.
 
-When visible columns, wrapping, relation content, or editing change row height, browser measurement updates vertical geometry.
-
-There is no database row-height cache and no attempt to calculate a maximum height from columns that are not mounted. A row may grow or shrink as currently rendered content changes; scroll correction must remain acceptably stable.
+There is no row-height cache outside TanStack and no attempt to pre-measure hidden columns.
 
 ## Dynamic column sizing
 
-A visible logical property uses its `<th>` as the horizontal measurement owner.
+Each visible property uses its `<th>` as the horizontal measurement owner. Native table layout aggregates mounted header/body content before TanStack reads the resulting width.
 
-Native table layout aggregates the header and currently mounted body cells into the rendered column width:
+Exact intrinsic width across never-rendered rows is not required.
 
-```text
-mounted header + body cells
-          ↓
-native table layout
-          ↓
-visible <th> width
-          ↓
-horizontal useVirtualAxis measurement binding
-          ↓
-TanStack measurement cache by DatabasePropertyId
-```
-
-Exact intrinsic width across never-rendered rows is not a contract; that would require hidden full-dataset measurement.
-
-Progressive discovery rules:
+Column sizing policy is intentionally simple:
 
 1. unseen property starts from an estimate;
-2. when mounted, native table layout determines its current width;
-3. horizontal measurement records that width under the stable property key;
-4. later wider mounted content may enlarge and remeasure it;
-5. previously measured size is used as the remount minimum so ordinary scrolling does not repeatedly shrink/regrow the column;
-6. an explicit responsive maximum may intentionally constrain and remeasure it;
-7. no separate authoritative width map exists in database code.
+2. mounted native table layout discovers a width;
+3. TanStack caches it by stable property ID;
+4. later wider mounted content may grow it;
+5. cached `virtualColumn.size` may be used as the remount `min-width` so normal horizontal scrolling does not shrink/regrow columns;
+6. live shrink of a previously discovered column width is **not** a required contract in this work;
+7. a full table/presentation remount may start geometry discovery again.
 
-Exact min/max CSS values are implementation tuning, not architecture.
+Do not add a responsive-reset protocol or parallel width map without a current product requirement.
 
 ## Two-axis composition
 
 ```text
-ordered item IDs ----> vertical useVirtualAxis -----+
-                                                     +--> visible cell intersections
-property IDs --------> horizontal useVirtualAxis ---+
+item IDs ----> row virtualizer ------+
+                                      +--> visible cell intersections
+properties --> column virtualizer ---+
 ```
 
-Only intersections of the current row and property ranges instantiate expensive cell UI/reactive reads.
+Only current row/column intersections instantiate expensive cells.
 
-There is no production `useVirtualGrid` or matrix owner in shared UI.
+No generic grid coordinator is introduced.
 
 ## Scroll topology
 
 ### Top-level database
 
-`DatabaseViewWidget`'s existing `.database-view { overflow: auto }` remains the physical two-dimensional scroll root.
+Existing `.database-view { overflow: auto }` remains the physical two-dimensional scroll root. `DatabaseViewLayout` must stop treating `DatabaseDataTable` itself as the scroll owner.
 
-The widget supplies that element explicitly to the database layout. `DatabaseViewLayout` must stop treating `DatabaseDataTable` as the scroll owner.
+The production integration may use TanStack `scrollMargin`/scroll padding directly where the table surface is offset within that root or sticky surfaces occlude navigation.
 
-The table can begin after other content in the same root, so each applicable axis receives the table surface offset through `scrollMargin`. Sticky occlusion used by deep navigation is represented through `scrollPaddingStart`/`scrollPaddingEnd`.
+### Lifetime rule
 
-### Nested relation view
+A virtualizer instance and its scroll-root identity have the same lifetime. Do not design arbitrary live scroll-root replacement.
 
-Nested relation composition may use different roots by axis:
+If composition replaces the physical scroll root, recreate/remount the owning virtualization instance.
 
-- vertical axis may participate in the containing database/document scroll flow;
-- horizontal axis may use the relation presentation's local overflow surface;
-- roots and surface offsets are passed explicitly;
-- no `closest()`/computed-style scroll-parent discovery is part of the contract.
+### Nested relations
 
-The exact prop/provide/ref wiring is an implementation-preflight detail for the production migration.
+Nested relation root wiring remains a production-integration concern. Pass the truthful roots explicitly; do not discover them through `closest()` or computed-style heuristics.
 
 ## Sticky action column
 
-The action column is not a database property and is not part of horizontal virtualizer count.
-
-It remains mounted for every mounted logical row, sticky at the trailing edge, and separately sized by its own presentation content. Property virtualization controls only database property cells.
+The action column is not a logical database property and is excluded from horizontal virtualizer count. It remains mounted for every mounted row and stays sticky at the trailing edge.
 
 ## Toolbar / `after`
 
-The current `after` slot is widget composition, not table data.
+The current `after` slot is widget composition, not table data. Production migration moves it out of `<tfoot>` and composes it beside the table.
 
-During production migration, move it out of `<tfoot>` and compose it beside `DatabaseDataTable` in the widget/layout owner. This keeps virtual spacers, row/column counts, and accessibility semantics limited to actual table content.
+Do not add virtualization responsibility to `MDTable`.
 
-No generic `MDTable` virtualization mode is introduced.
+## Inline editing
 
-## Inline editing and focus
+Virtualization owns geometry only.
 
-Shared virtualization owns geometry only. It does not own focus, edit state, pinning, or overlays.
+Required behavior:
 
-Current inline editor state is cell-local and its overlay is anchored to cell DOM. Target behavior:
+- ordinary scrolling does not close an editor while its cell remains mounted;
+- Escape remains cancel;
+- before virtual eviction destroys an editing cell, its current draft must be captured/resolved so it is not silently lost;
+- view switch resolves active edit before old-view cells disappear;
+- no generic pinning/range-extractor abstraction is introduced first.
 
-- ordinary scrolling does **not** close the editor while its cell remains mounted;
-- Escape preserves explicit cancel semantics;
-- if virtualization is about to destroy the editing cell, the current draft must be captured and resolved before destruction so it is never silently lost;
-- a view switch resolves the active edit before old-view cells disappear;
-- persistence may complete asynchronously after the draft has been captured;
-- no hidden offscreen editor/focused DOM is retained merely to preserve focus.
-
-Preferred minimum implementation is to use the current cell edit owner and its unmount/lifecycle boundary. If real-browser proof shows commit/capture ordering cannot be made deterministic there, lift only the active edit-session state to the nearest truthful database widget/presentation owner.
-
-Do **not** add generic virtualizer pinning/range-extractor APIs unless a later current requirement proves them necessary.
-
-A focused but non-editing cell may lose browser focus when it leaves the virtual range. Spreadsheet-style offscreen focus persistence or arrow-key navigation is outside this work.
+Prefer current cell-local ownership. Lift only the active edit session if real product proof shows cell-local lifecycle cannot resolve eviction deterministically.
 
 ## Accessibility
 
-Preserve native `<table>/<thead>/<tbody>/<tr>/<th>/<td>` semantics.
+Preserve native table semantics and remove current `role="list"` / `role="listitem"` overrides in the virtualized target.
 
-Remove the current `role="list"` / `role="listitem"` overrides in the virtualized target.
+- `aria-rowcount` = header + logical rows;
+- `aria-colcount` = logical properties + action column when present;
+- row index `i` uses `aria-rowindex = i + 2`;
+- property index `j` uses `aria-colindex = j + 1`;
+- action cells use trailing logical column index;
+- virtual spacer/fill DOM is `aria-hidden`/otherwise absent from logical semantics.
 
-Because only a subset of logical cells exists in DOM:
+Do not introduce ARIA grid/spreadsheet keyboard behavior.
 
-- table `aria-rowcount` = header row + logical data rows;
-- table `aria-colcount` = logical property columns + action column when present;
-- data row at logical zero-based index `i` exposes `aria-rowindex = i + 2`;
-- property header/cell at logical zero-based index `j` exposes `aria-colindex = j + 1`;
-- action cells use the logical trailing column index;
-- virtual spacer/fill DOM is presentation-only and hidden from the accessibility tree.
+## Capability gate before production migration
 
-Do not convert to ARIA `grid` or introduce spreadsheet keyboard behavior without a separate product requirement.
+The earlier shared-adapter capability stage is superseded. Before production migration, run one direct database-oriented native-table capability proof using `@tanstack/vue-virtual` directly.
 
-## Measurement lifecycle
+It must prove only integration risks Mioframe owns:
 
-Stable keys are identity; index is current position.
-
-- vertical key: `DatabaseItemId`;
-- horizontal key: `DatabasePropertyId`.
-
-Filter/sort/reorder/view changes update index-to-key mapping. Matching stable keys may retain TanStack measurements while the virtualizer instance remains mounted. New keys start from estimates. Unmount releases runtime geometry.
-
-Do not add manual global cache resets unless browser proof demonstrates a correctness requirement that stable keys plus DOM remeasurement cannot satisfy.
-
-## Shared UI blast radius
-
-Initial shared-library work adds only `src/shared/ui/virtualization`, its public entry point, dependency, and focused proof.
-
-Database-specific spacer/border/layout overrides stay in `entities/databaseData`. Existing `MDTable`, `MDList`, and Material components are not changed merely to host virtualization.
-
-## Capability gate before database migration
-
-Before production `DatabaseDataTable` migration, prove the selected shared adapter and native-table geometry with isolated deterministic fixtures:
-
-- dynamic vertical/horizontal measurement;
-- stable-key remapping;
-- deep `scrollToIndex`;
-- `scrollMargin`/scroll padding;
-- one shared scroll root and a narrow different-roots case;
+- bounded row/column/cell DOM at large logical size;
 - native spacer rows/columns;
-- `<tr>` and `<th>` measurement behavior;
-- deep offset stability;
-- Chromium and Firefox correctness, including Firefox table-row measurement risk;
-- logical ARIA counts/indices with presentation spacers.
+- deep vertical and deep horizontal offsets;
+- dynamic row grow **and shrink**;
+- body-driven dynamic column growth and remount stability;
+- actual `MDTable` border/layout geometry in Chromium and Firefox;
+- native table semantics and logical ARIA metadata.
 
-This gate deliberately does **not** clone production editor, relation business state, toolbar, or worker behavior into test fixtures. Those are proven during the real product migration.
+Do not add generic list/grid fixtures or tests for TanStack's own API behavior.
 
-## Product proof during database migration
+## Product proof after capability gate
 
-The production migration must then prove through the real application/owners:
+Production migration must then prove:
 
-- short filtered → full large view switching;
+- short filtered -> full large view switching;
 - exact filter/sort membership/order;
 - bounded mounted rows/columns/cells;
-- deep vertical/horizontal scroll;
-- actual sticky header/action behavior;
-- actual inline edit eviction/view-switch behavior;
-- representative relation nesting/root wiring;
-- toolbar/after composition outside table semantics;
+- deep vertical/horizontal scrolling;
+- actual `.database-view` scroll root and sticky header/action behavior;
+- edit eviction/view-switch behavior;
+- representative relation nesting;
+- toolbar/after outside table semantics;
 - desktop/mobile correctness;
-- controlled performance targets from `docs/database-virtualization-profiling.md`.
+- controlled performance targets from profiling plan.
 
 ## Secondary optimization gate
 
-After bounded rendering exists, rerun profiling. Only then consider:
-
-1. visible-range cell read/subscription changes;
-2. worker filter/sort changes;
-3. worker-to-main transfer changes;
-4. paging/range protocols;
-5. new indexes/caches.
-
-Every additional optimization requires a measured cause and its own owner/proof. If no material bottleneck remains, stop optimizing.
+After bounded rendering, rerun profiling. Only measured remaining bottlenecks may justify cell subscription, worker/query/transfer, paging, indexes, or caches.
 
 ## Forbidden
 
-- direct TanStack imports outside `shared/ui/virtualization`;
-- custom row/column offset or scroll-anchor algorithms in database code;
-- duplicate authoritative row/column geometry maps;
+- `src/shared/ui/virtualization` or another generic wrapper without a second current consumer;
+- custom offset/range/anchor algorithms;
+- independent ResizeObserver or geometry cache;
 - hidden full-dataset measurement;
-- fixed-size correctness assumptions;
-- generic grid/pinning abstractions without a current requirement;
+- generic `VirtualGrid`/pinning APIs;
 - heuristic scroll-parent discovery;
-- toolbar controls represented as data-table rows;
-- ARIA-grid conversion without a product requirement;
-- worker/query/batching/index changes without measured evidence;
-- weakening browser/performance proof with sleeps, retries, force, or timeout inflation.
+- toolbar controls as table rows;
+- worker/query/batching/index changes without evidence;
+- sleeps, force, broad retries, or timeout inflation in proof.
 
-## Implementation readiness
+## Readiness
 
-### Shared adapter + capability proof
+Architecture: **ready for direct database-oriented capability correction**.
 
-Architecture: **ready**.
-
-The next implementation step is the focused capability handoff/preflight in `docs/database-virtualization-capability-handoff.md` and `docs/database-virtualization-capability-preflight.md`.
-
-### Production database migration
-
-Architecture: **accepted**, but implementation is intentionally gated on capability proof. After the gate passes, run a new production-migration preflight against the proven DOM/measurement path.
-
-### Secondary optimizations
-
-Status: **not architected; evidence-gated**.
-
-Overall verdict: **architecture is ready for shared-adapter/native-table capability implementation; production database migration starts only after that proof is reviewed**.
+Production migration remains gated on that proof and its review.
