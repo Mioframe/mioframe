@@ -4,45 +4,46 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #216 release-impact planning and execution ownership against the current release/build implementation, release Playwright corpus, and accepted verifier target architecture.
-- Current `releaseRisk.ts`, production Vite/PWA build inputs, release proof grouping, and fail-closed validation behavior.
+- PR #216 release-impact planning and execution ownership after the `releaseSpecInventory.ts` architecture correction.
+- Shared release-spec inventory, real artifact/release-smoke command construction, managed-update grouping, exhaustive release-spec validation, production Vite/PWA configuration ownership, runtime mapping validation, and current proof/static feedback.
 
 ## Blockers
 
-### B1 — Release-impact ownership is not closed over the actual release-sensitive population
+None.
 
-Owner: `scripts/lib/releaseRisk.ts` plus the release-spec execution inventory shared with real runners.
+The previous B1 semantic ownership blocker is resolved by the current implementation:
 
-Problem: the release-impact planner can silently return `skip` for current production PWA/build inputs that the accepted architecture explicitly requires it to own. `vite.config.ts` imports and executes `config/plugins/pwa.ts` for production release builds, but the current planner has no exact or bounded production-config relation for that file.
-
-The same implementation does not close release Playwright ownership over actual execution:
-
-- a new unrecognized `tests/e2e/release/**/*.spec.ts` can fall through to `skip`;
-- a new `managedUpdates*.spec.ts` is classified as `managed-updates` from its filename even though `managedUpdatesProof.mjs` executes only fixed spec arrays;
-- artifact/release-smoke spec paths are duplicated between runner command literals and planner mappings;
-- exact-mapping validation does not reject a check value outside `RELEASE_IMPACT_CHECKS`.
-
-Evidence:
-
-- [`../../docs/testing/verify-target-architecture.md`](../../docs/testing/verify-target-architecture.md) requires production PWA/build configuration actually consumed by `vite.config.ts`, fail-closed unknown significant release ownership, unknown-check validation, and no silently missed required proof.
-- [`../../vite.config.ts`](../../vite.config.ts) consumes `config/plugins`, `config/alias.ts`, `config/tooling.json`, and related production-build support.
-- [`../../config/plugins/pwa.ts`](../../config/plugins/pwa.ts) owns production manifest, Workbox/cache isolation, managed worker selection, `injectManifest`/`generateSW`, and service-worker artifact semantics.
-- [`releaseRisk.ts`](./releaseRisk.ts) currently has no bounded production-Vite support relation, uses a `managedUpdates*.spec.ts` filename heuristic, and does not validate check identity.
-- [`../release/managedUpdatesProof.mjs`](../release/managedUpdatesProof.mjs) executes four fixed spec groups.
-- [`../verify.ts`](../verify.ts) separately hard-codes artifact and release-smoke spec arguments.
-- [`../../playwright.config.ts`](../../playwright.config.ts) builds application E2E with `VITE_DISABLE_PWA=1`, so app E2E cannot substitute for production PWA release proof.
-
-Risk: production artifact/update changes can bypass `verification-release`, and release-spec files can be falsely reported as owned or silently remain unexecuted. This violates the verifier's fail-closed contract.
-
-Required final state is resolved in [`../../docs/testing/verify-release-impact-correction.md`](../../docs/testing/verify-release-impact-correction.md). Do not patch this finding with additional filename/path examples. The repeated-correction stop rule has already been triggered.
+- `scripts/release/releaseSpecInventory.ts` is the shared pure release-spec membership owner;
+- `scripts/verify.ts`, `scripts/release/managedUpdatesProof.mjs`, and `scripts/lib/releaseRisk.ts` consume that inventory;
+- the planner validates the bounded `tests/e2e/release/**/*.spec.ts` population exhaustively and rejects unowned/conflicting/missing inventory state;
+- filename-based `managedUpdates*.spec.ts` ownership is removed;
+- `config/alias.ts`, `config/vueCustomElements.ts`, and non-proof `config/plugins/**` select the production-build release consumers;
+- unknown exact-mapping check values are rejected;
+- `scripts/release/releaseSpecInventory.ts` itself fails closed to all six source-impact checks.
 
 ## Major issues
 
-None.
+### M1 — Required Pass E proof does not satisfy repository static checks
+
+Owner: `scripts/lib/releaseRisk.test.ts` with one adjacent warning in `scripts/lib/releaseRisk.ts`.
+
+The semantic implementation is acceptable, but exact-head CI run `verify #4038` fails in `autofix` before verification lanes can run:
+
+- Oxlint: unused `ReleasePlanOptionsWithReleaseSpecTestOverrides` type alias in `scripts/lib/releaseRisk.test.ts`;
+- ESLint: the unknown-release-check proof uses prohibited type assertions (`as unknown as` / equivalent cast path) under `@typescript-eslint/consistent-type-assertions`;
+- Oxlint also reports an unnecessary `String(check)` conversion in the production invalid-mapping diagnostic.
+
+The test must continue to prove that corrupted runtime mapping data containing a check outside `RELEASE_IMPACT_CHECKS` resolves `invalid`; do not delete or weaken that assertion. Express the runtime corruption without a type assertion and remove now-obsolete test-author scaffolding. The production diagnostic cleanup must not change validation semantics.
+
+Verification after correction: focused `unit-tests` for `releaseRisk.test.ts` / `releaseRisk.ts`, focused static/fix-only feedback as useful, and type-check only if needed. Exact-head CI remains architect-owned.
 
 ## Minor issues
 
-None in this owner. The separate verifier-output minor findings remain in `scripts/REVIEW.md` and are intentionally out of scope for this correction.
+### m1 — Test-author RED comments are stale after implementation
+
+`scripts/lib/releaseRisk.test.ts` still says the inventory override seams are "until production adds them" and that the current resolver "ignores the options". Those statements were true only during RED; the production resolver now owns both seams. Rewrite/remove the historical wording while preserving the independent local oracle and assertions.
+
+The separate verifier-output findings remain in `scripts/REVIEW.md` and are intentionally out of scope here.
 
 ## Accepted risks
 
@@ -50,10 +51,12 @@ None.
 
 ## Items not required
 
-- No generic dependency graph/test registry.
-- No new release check or CI job.
-- No Playwright/managed-update scheduling redesign.
-- No benchmark work until semantic corrections are accepted.
+- No release-impact architecture redesign.
+- No inventory API change.
+- No new release mapping or production-config boundary change.
+- No managed-update grouping change.
+- No CI/workflow change.
+- No benchmark work until Pass E and the separate output findings are closed.
 
 ## Unresolved questions
 
@@ -61,35 +64,23 @@ None.
 
 ## NEXT CORRECTION
 
-Owner: release-impact execution/selection boundary.
+Owner: Pass E proof/static cleanup only.
 
-Ready architecture handoff:
-
-- `docs/testing/verify-release-impact-correction.md`
-- status: `ready`
-
-Implementation scope:
-
-```text
-new scripts/release/releaseSpecInventory.ts
-scripts/release/managedUpdatesProof.mjs
-scripts/lib/releaseRisk.ts
-scripts/verify.ts
-```
-
-Primary proof scope:
+Allowed scope:
 
 ```text
 scripts/lib/releaseRisk.test.ts
-scripts/release/managedUpdatesProof.test.mjs
-scripts/verify.test.ts
+scripts/lib/releaseRisk.ts
 ```
 
-Required pass order:
+Required final state:
 
-1. fresh independent test-author proof;
-2. separate implementation context against accepted assertions;
-3. focused unit/type feedback only;
-4. return to architect for complete Pass E owner-boundary review.
+1. preserve every accepted Pass E assertion and production behavior;
+2. remove the unused obsolete test-only type alias/import scaffolding;
+3. prove unknown runtime release-check rejection without type assertions;
+4. remove the unnecessary `String(check)` conversion without changing the diagnostic meaning;
+5. update stale RED-phase comments to final-state wording;
+6. focused unit/static feedback passes;
+7. return to architect for Pass E closure review.
 
-Do not combine the two `scripts/REVIEW.md` output minors into this pass.
+Do not combine the two `scripts/REVIEW.md` output minors into this cleanup.
