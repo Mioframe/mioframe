@@ -1,6 +1,6 @@
 # Virtual collection
 
-Status: **architecture accepted; `@tanstack/vue-virtual` selected; minimal shared collection API selected; implementation/browser capability proof passed**.
+Status: **architecture and public API accepted; `@tanstack/vue-virtual` selected; implementation complete; browser capability behavior implemented, stability proof pending**.
 
 This README is the source of truth for Mioframe's reusable virtualization library in `src/shared/ui/virtualization`.
 
@@ -8,7 +8,7 @@ Database-specific rendering architecture, capability evidence, and performance w
 
 - [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md) — database integration architecture;
 - [`docs/database-virtualization-browser-proof.md`](../../../../docs/database-virtualization-browser-proof.md) — browser capability contract;
-- [`docs/database-virtualization-collection-api-result.md`](../../../../docs/database-virtualization-collection-api-result.md) — accepted capability result;
+- [`docs/database-virtualization-collection-api-result.md`](../../../../docs/database-virtualization-collection-api-result.md) — current capability result;
 - [`docs/database-virtualization-profiling.md`](../../../../docs/database-virtualization-profiling.md) — product performance plan.
 
 ## Purpose
@@ -324,6 +324,8 @@ Because the API owns real browser measurement binding, its contract is protected
 
 The proof covers bounded mounted work, current item mapping, grow/shrink remeasurement, stable-key/index remapping, non-zero `surfaceOffset`, deep leading/trailing geometry, valid `undefined` source values, and remount behavior.
 
+The current non-zero-`surfaceOffset` scenario is known intermittent: one focused run failed a deep-scroll/geometry tolerance assertion before a later clean rerun. By repository policy this remains failed proof until its browser geometry settling/snapshot condition is corrected deterministically. Do not solve it with sleeps, retries, timeout inflation, or weaker semantics.
+
 Database-specific native `<table>` proof is intentionally owned by `src/entities/databaseData` rather than this library.
 
 ## Forbidden implementation drift
@@ -338,8 +340,10 @@ Database-specific native `<table>` proof is intentionally owned by `src/entities
 
 ## Readiness
 
-Architecture: **ready**.
+Architecture and public API: **ready**. The `vItem` directive naming is accepted; no compatibility alias is required because production consumers have not migrated yet.
 
-`useVirtualCollection` implementation and browser capability proof: **passed**. See [`docs/database-virtualization-collection-api-result.md`](../../../../docs/database-virtualization-collection-api-result.md) for the accepted capability evidence.
+Implementation: **complete**.
 
-Production database migration is a separate consumer stage; see [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
+Browser capability proof: **not ready** because the required non-zero-`surfaceOffset` proof is currently known intermittent. See [`docs/database-virtualization-collection-api-result.md`](../../../../docs/database-virtualization-collection-api-result.md).
+
+Production database migration remains a separate consumer stage and is blocked on deterministic capability proof; see [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
