@@ -1,167 +1,53 @@
-# Database virtualization collection API final correction preflight
+# Database virtualization collection API capability preflight
 
-Status: **ready**.
+Status: **completed**.
 
-Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/virtualization-library.md`, `docs/database-virtualization.md`, and `docs/database-virtualization-browser-proof.md`.
+This document records the completed implementation preflight for the shared virtualization capability. The final evidence and verdict are in `docs/database-virtualization-collection-api-result.md`.
 
-## Goal
+## Scope that was implemented
 
-Close the final capability proof gap: assert bounded **actual mounted logical data-cell DOM**, then synchronize all capability status documents.
+The completed capability work covered:
 
-Do not change architecture, public API, production database rendering, or already accepted geometry behavior.
-
-## Confirmed current state
-
-Already implemented and accepted:
-
-- minimal shared `useVirtualCollection` API;
-- direct consumer-owned DOM with per-instance measurement directive;
+- the minimal shared `useVirtualCollection` public API;
+- per-instance measurement directive on consumer-owned elements;
+- ordinary-element shared browser proof;
+- database native-table proof using actual `MDTable`;
+- one vertical row collection and one horizontal property collection;
+- deterministic deep 2D geometry;
+- dynamic row and column measurement;
+- stable-key remap behavior;
+- non-zero `surfaceOffset`;
 - valid in-bounds `undefined` source values;
-- public-geometry grow/shrink and stable-key remap proof;
-- non-zero `surfaceOffset` and collection-relative extents;
-- real `MDTable` row/column dynamic measurement in Chromium and Firefox;
-- deep vertical/horizontal geometry;
-- column remount minimum after widening content is removed;
-- above-viewport anchor correction;
-- native accessibility semantics;
-- bounded virtual row and column ranges.
+- column remount width retention through public `size`;
+- above-viewport resize anchor stability;
+- native table accessibility semantics;
+- direct counting of actual mounted logical data-cell `<td>` DOM at initial and deep 2D ranges.
 
-Current browser result reports 30/30 passing tests, but the mounted-cell contract is still not faithfully proven because `db-virt-mounted-cells` is a computed `rows.items.length * columns.items.length` output rather than an actual DOM count.
+## Verified final state
 
-## Files to update
+The final capability browser corpus reported:
 
-Required implementation/proof:
+- Chromium shared capability: 10 passed;
+- Chromium database capability: 10 passed;
+- Firefox database capability: 10 passed;
+- total: 30/30 passed in the final clean run, with no accepted flaky/retry outcome.
 
-- `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts`
+The bounded-cell contract is proven from actual DOM via `[data-testid^="db-virt-cell-"]`, not from a derived row-range × column-range diagnostic. The obsolete derived mounted-cell output was removed from the fixture.
 
-Optional cleanup only if useful:
+No capability proof item remains pending.
 
-- `src/entities/databaseData/DatabaseVirtualizationCapabilityFixture.vue`
+## Architecture constraints preserved
 
-Required documentation:
+- no public `useVirtualCollection` expansion beyond the accepted contract;
+- no direct TanStack API exposure to consumers;
+- no independent `ResizeObserver`, measured-size cache, element registry, range engine, or scroll-anchor algorithm;
+- no generic `VirtualList`, `VirtualTable`, `VirtualGrid`, or two-axis coordinator;
+- no production database rendering changes in the capability stage;
+- no worker/query/paging/index changes.
 
-- `docs/database-virtualization-collection-api-result.md`
-- `docs/virtualization-library.md`
-- `docs/database-virtualization.md`
-- `docs/database-virtualization-profiling.md`
-- `docs/database-virtualization-browser-proof.md`
+## Stage transition
 
-Do not modify shared virtualization implementation unless the actual-DOM proof reveals a real defect. If it does, stop and report evidence rather than broadening scope.
+Capability preflight: **satisfied**.
+Capability result: **Ready**.
 
-## Actual mounted-cell proof
-
-Use the real logical database-cell DOM selector:
-
-```text
-[data-testid^="db-virt-cell-"]
-```
-
-Spacer cells do not use this selector and therefore remain excluded.
-
-At the initial range:
-
-1. wait until mounted row and column ranges are non-empty and settled;
-2. count actual matching logical `<td>` elements from the browser DOM;
-3. read current mounted row and column counts;
-4. assert actual logical-cell count equals `mountedRows * mountedColumns`;
-5. assert row/column counts remain under their existing generous bounds;
-6. assert actual logical-cell count remains under a generous viewport/overscan-derived bound and far below the 1,500,000 logical cross product.
-
-After deep two-dimensional scrolling:
-
-1. move both axes to a deep/end range using the existing deterministic programmatic scroll;
-2. wait until row/column ranges settle;
-3. count actual logical `<td>` DOM again;
-4. assert it equals the settled current row × column intersection count;
-5. assert the same bounded-work limits;
-6. keep existing deep logical-position assertions owned by their current tests.
-
-### Snapshot consistency
-
-Do not reintroduce torn-snapshot races.
-
-When comparing actual DOM cell count with mounted row/column output state, obtain one browser-side self-consistent snapshot or poll until:
-
-```text
-actualCells === mountedRows * mountedColumns
-```
-
-Then assert the bounds on that settled snapshot.
-
-Do not use arbitrary sleeps.
-
-## Fixture diagnostic output
-
-`db-virt-mounted-cells` is not valid primary evidence because it is derived from the same row/column range values under test.
-
-Preferred minimum solution: remove the output if no other proof uses it.
-
-If retained for diagnostics, the browser proof must still count actual logical `<td>` DOM independently and must not use the derived output to claim bounded mounted DOM.
-
-## Documentation final state
-
-Only after the corrected actual-DOM proof passes:
-
-### `docs/database-virtualization-collection-api-result.md`
-
-Record the final actual test count and change the bounded-cell row to state that real mounted logical `<td>` DOM was counted directly at initial and deep ranges. Final verdict may be `Ready` only when this passes.
-
-### `docs/virtualization-library.md`
-
-Status must say architecture and implementation/browser proof are accepted/passed. Production database migration remains a separate next stage.
-
-### `docs/database-virtualization.md`
-
-Status/readiness must say native-table capability passed and architecture is ready for production database migration planning/implementation. Do not claim production migration itself is complete.
-
-### `docs/database-virtualization-profiling.md`
-
-Status must say capability passed; product profiling/performance acceptance remains pending production migration.
-
-### `docs/database-virtualization-browser-proof.md`
-
-Status must say capability gate passed only after the actual-DOM correction. Keep the durable evidence rule that mounted data-cell proof means direct DOM count, not a derived range product.
-
-## TEST IMPACT
-
-Primary proof owner:
-
-- `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts` in Chromium and the narrow Firefox project.
-
-The same database spec runs in both required engines, so the actual mounted-cell assertion should remain engine-independent.
-
-No new shared browser test, unit test, or product E2E is required for this correction.
-
-## Verification
-
-Run at minimum:
-
-```bash
-pnpm verify --only type-check --files \
-  src/entities/databaseData/DatabaseVirtualizationCapabilityFixture.vue \
-  src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts
-
-pnpm verify --only storybook-behavior --files \
-  src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts \
-  src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts
-```
-
-Run applicable storybook-build/static, format, ESLint/Oxlint checks for touched files.
-
-Run final `pnpm verify` if focused verification does not cover the complete correction diff.
-
-Use actual final verifier output for test counts in the result document.
-
-## Forbidden
-
-- public API changes;
-- TanStack private-state assertions;
-- derived `rows * columns` output used as primary mounted-DOM proof;
-- independent observers/caches/registries/range algorithms;
-- production database migration;
-- worker/query/paging/index changes;
-- sleeps, force, broad retries, recovery loops, or timeout inflation.
-
-## Stop condition
-
-If actual DOM contains retained/duplicated logical data cells outside the current row × column intersection, record `not ready` and return the browser evidence for architecture review. Do not hide the discrepancy by changing the expected count.
+Production database migration is a new stage and is not covered by this preflight. Its implementation must start from the current production code, `docs/database-virtualization.md`, `docs/database-virtualization-profiling.md`, and `docs/database-virtualization-collection-api-result.md`, with a new migration-specific architecture/preflight before code edits.
