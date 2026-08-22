@@ -1,135 +1,126 @@
-# Database virtualization collection API handoff
+# Database virtualization collection API correction handoff
 
 Status: **ready**.
 
 ## Goal
 
-Replace the over-generalized `useVirtualAxis` wrapper with one minimal shared `useVirtualCollection` API that hides TanStack collection/measurement plumbing without owning rendering, then prove the database native-table model against that public API before production migration.
+Keep the accepted `useVirtualCollection` architecture and correct the capability proof so it demonstrates the shared geometry contract rather than only DOM resizing side effects.
 
-## Confirmed evidence
+Production database migration remains out of scope until this correction passes review.
 
-- Database virtualization requires two independent one-axis collections: rows and properties.
-- Direct TanStack use is mechanically simple but leaks engine-specific collection mapping, `data-index`, and `measureElement` wiring into consumers.
-- The previous `useVirtualAxis` abstraction mirrored TanStack too closely and added unnecessary validation/API concepts.
-- Vue directives are the narrowest fit for binding low-level measurement behavior to consumer-owned elements without adding wrapper DOM or constraining markup.
-- Current capability work already identified a native-table spacer min-content normalization that may remain useful.
-- Existing database production rendering remains unchanged and is still out of scope for this capability task.
+## Confirmed findings
 
-## Non-goals
+The current implementation boundary is accepted:
 
-- no production `DatabaseDataTable` migration;
-- no generic list/table/grid rendering component;
-- no functional/renderless component that clones consumer VNodes;
-- no worker/query/subscription/paging/index changes;
-- no product editor/relation/toolbar fixture;
-- no fallback DOM architecture implementation if native table fails.
+- `useVirtualCollection` is the only shared virtualization API;
+- consumers do not import TanStack or bind its measurement attributes;
+- no second observer/cache/range engine exists;
+- database uses the real `MDTable` through the shared API;
+- the dedicated wrapper scroll root is a valid native-table integration requirement.
 
-## Ownership
+The current proof is incomplete:
 
-| Layer | Capability-task ownership |
-| --- | --- |
-| shared | `src/shared/ui/virtualization` owns `useVirtualCollection` and its per-instance measurement directive. |
-| entity | `databaseData` owns native-table composition and table-specific capability proof using the shared API. |
-| widget/page | unchanged in this task. |
-| service/worker | unchanged. |
+1. dynamic grow/shrink tests assert only physical `boundingBox()` changes and therefore do not prove that public virtual geometry updated;
+2. stable-key remap proof similarly does not prove post-remap virtual geometry ownership;
+3. column remount stability leaves widened body content active, so native table layout can satisfy the assertion without the cached public `size` being effective;
+4. bounded 2D proof checks row/column counts but not mounted data-cell count;
+5. non-zero `surfaceOffset` and `trailingSize` are public contracts but are not proven;
+6. database browser proof requires acceptable anchor stability after an above-viewport row resize but does not currently prove it;
+7. `readValue()` incorrectly treats a valid `undefined` source value as an out-of-range index.
 
-## Source of truth
+## Architecture and ownership
 
-Consumer source collections and stable keys remain logical truth. TanStack owns virtual ranges, measured geometry, element observation, measurement cache, offsets, and scroll correction.
+No architecture change.
 
-Shared virtualization adds no second geometry state.
+- Shared virtualization owns only collection mapping, collection-relative geometry, and the per-instance measurement directive.
+- TanStack remains sole owner of observation, measured-size cache, ranges, offsets, and scroll correction.
+- Database owns table DOM, spacer DOM, column sizing policy, accessibility, and fixture scroll-root topology.
+- No explicit directive cleanup registry is required; engine-owned disconnected-element cleanup remains authoritative unless new browser evidence proves otherwise.
 
-## Public API
+## Required correction
 
-Implement the conceptual contract from `docs/virtualization-library.md`:
+### Shared implementation
 
-```ts
-useVirtualCollection(source, {
-  root,
-  key,
-  estimateSize,
-  axis?,
-  overscan?,
-  surfaceOffset?,
-})
-```
+Fix source bounds checking so `readonly T[]` may legally contain `undefined` values. Check index bounds explicitly instead of using `value === undefined` as the absence test.
 
-Result:
+Do not change the public API.
 
-```ts
-{
-  items,
-  totalSize,
-  leadingSize,
-  trailingSize,
-  measure,
-}
-```
+### Shared browser proof
 
-Each returned item contains only:
+Dynamic measurement assertions must prove public virtual geometry in addition to physical DOM geometry.
 
-```ts
-{
-  index,
-  key,
-  value,
-  offset,
-  size,
-}
-```
+For grow/shrink, observe at least one of:
 
-`measure` is a per-instance Vue directive applied to the consumer's actual measurement owner.
+- the affected returned item's public `size`;
+- a following item's public `offset`;
+- `totalSize`, `leadingSize`, or `trailingSize` where that directly represents the changed measurement.
 
-## Minimum sufficient design
+The assertion must fail if DOM content changes but TanStack measurement does not update.
 
-- keep `@tanstack/vue-virtual` as the engine dependency;
-- replace `useVirtualAxis` with `useVirtualCollection`;
-- expose source values directly in returned virtual items;
-- expose collection-relative leading/trailing/total geometry;
-- hide TanStack `data-index` and `measureElement` wiring inside the returned directive;
-- keep one small shared ordinary-element Storybook proof;
-- remove the old generic two-axis grid fixture/proof;
-- update the database capability fixture to consume only `useVirtualCollection` and use actual `MDTable`;
-- keep Firefox scoped only to database native-table capability.
+For stable-key reorder/remap:
 
-## Simpler alternative comparison
+- resize a stable item;
+- reorder so its index changes;
+- bring the same stable item back into range;
+- resize it again;
+- prove the public geometry for the item at its new current index updates correctly.
 
-Direct TanStack has fewer shared files but forces every consumer to repeat engine-specific source-index mapping and measurement binding.
+Add a non-zero `surfaceOffset` scenario and prove public `offset`/`leadingSize`/`trailingSize` stay collection-relative.
 
-The selected shared API is acceptable only because its public vocabulary is smaller than TanStack use and describes the consumer problem rather than the engine.
+Deep-scroll proof must verify both materially large `leadingSize` and meaningful/correct `trailingSize`, not only `leadingSize`.
 
-If implementation requires broad option passthrough, its own registry/observer/cache, or more public concepts than this contract, stop: direct TanStack becomes the simpler architecture.
+### Database browser proof
 
-## Acceptance
+Dynamic `<tr>` and `<th>` tests must prove the relevant public collection geometry changed, not only DOM `boundingBox()`.
 
-- no `useVirtualAxis` remains;
-- `useVirtualCollection` public API matches the narrow contract;
-- consumers do not bind `data-index` or call `measureElement`;
-- directive creates no wrapper DOM and owns no observer/cache/registry;
-- shared proof demonstrates bounded rendering, dynamic grow/shrink, stable-key remap, deep leading/trailing geometry, and remount behavior;
-- database proof uses actual `MDTable`, at least 5,000 × 300 logical scale, deep vertical and horizontal offsets, row grow/shrink, column grow/remount stability, and logical accessibility;
-- Chromium shared+database proof passes;
-- Firefox database proof passes without fixed row sizes or second geometry machinery.
+Column remount stability must:
 
-## Required result
+1. widen a mounted property through body content;
+2. prove public property `size` increased;
+3. scroll the property out of range;
+4. remove the widening body-content condition while it is unmounted;
+5. scroll it back into range;
+6. prove the returned public `size` used as `min-width` preserves the previously discovered width within tolerance.
 
-Create `docs/database-virtualization-collection-api-result.md` with exact dependency/browser versions, actual test counts/outcomes, contract matrix, retained native-table normalization, and final `ready`/`not ready` verdict.
+Count mounted data cells explicitly and prove the count remains bounded at the 5,000 × 300 logical fixture scale, including after deep 2D scrolling.
+
+Add an above-viewport row-resize scenario and prove scroll anchoring remains within the documented tolerance; do not require pixel-exact stability.
+
+### Result document
+
+Until these corrections pass, the capability result must remain `not ready` and production migration preflight must remain blocked.
+
+After correction, update exact test counts/outcomes and contract matrix from the final verifier run.
+
+## Acceptance criteria
+
+- public API unchanged;
+- `undefined` source entries are valid values when their index is in bounds;
+- grow/shrink proves public virtual geometry updates;
+- remap + second resize proves geometry follows the stable item at its new index;
+- `surfaceOffset` is proven with non-zero input and collection-relative public geometry;
+- deep shared proof validates both leading and trailing extent;
+- database row/column measurement proof validates public collection geometry;
+- column remount test removes the widening content before remount and still preserves width through public `size`;
+- mounted cell count is explicitly bounded;
+- above-viewport row resize proves acceptable anchor stability;
+- Chromium shared/database proof passes;
+- Firefox database proof passes for the corrected geometry assertions;
+- no second observer/cache/registry/range implementation is introduced.
 
 ## Forbidden
 
-- arbitrary TanStack option passthrough;
-- `VirtualList`, `VirtualTable`, `VirtualGrid`, or two-axis coordinator;
-- functional/renderless wrapper component for item measurement;
-- root directive/automatic scroll-parent discovery;
-- independent ResizeObserver, element registry, measurement cache, offset/range math, or scroll-anchor algorithm;
-- hidden full-dataset measurement;
-- production database migration;
-- sleeps, force, broad retries, or timeout inflation.
+- changing the public `useVirtualCollection` API to make tests easier;
+- exposing TanStack instance/types/private cache;
+- inspecting TanStack private measurement state in tests;
+- introducing an independent observer/cache/registry;
+- adding generic grid/rendering components;
+- changing production database rendering;
+- changing worker/query/paging/index behavior;
+- weakening proof with sleeps, force, broad retries, or timeout inflation.
 
 ## Readiness
 
-Architecture, ownership, public API, proof ownership, and stop conditions are resolved.
+Correction scope, ownership, and proof requirements are resolved.
 
-Unresolved blockers: **none for capability implementation**.
-
-Verdict: **ready**.
+Verdict: **ready for one focused correction round**.
