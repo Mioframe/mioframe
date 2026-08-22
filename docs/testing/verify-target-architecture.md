@@ -56,20 +56,20 @@ The existing verifier already has durable specialized planning for application E
 
 ## End-state ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `scripts/lib/changedPaths.ts` | repository change identity/status, base comparison, explicit-file scope |
-| `scripts/lib/repositoryMetadata.ts` | one narrow fact: positively known non-runtime repository metadata |
-| `scripts/lib/unitRisk.ts` | unit-test impact selection |
-| `scripts/lib/e2eRisk.ts` | centralized product E2E source-to-scenario ownership |
-| `scripts/lib/storybookBehaviorRisk.ts` | reusable Storybook browser behavior impact |
-| `scripts/lib/storybookBuildRisk.ts` | Storybook static-build relevance |
-| `scripts/lib/visualRisk.ts` | visual proof ownership and fallback |
-| `scripts/lib/mutationTargets.ts` + mutation resolver | explicit high-risk mutation ownership only |
-| `scripts/lib/releaseRisk.ts` | source-impact selection among existing release contracts |
-| `scripts/verify.ts` | invocation orchestration, command construction, prerequisite/reuse handling, execution/reporting |
-| `.github/workflows/verify.yml` | CI execution placement only; preserve independent parallel proof lanes and aggregate their results |
-| exact-head GitHub CI | authoritative automatic repository merge gate |
+| Owner                                                | Responsibility                                                                                     |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `scripts/lib/changedPaths.ts`                        | repository change identity/status, base comparison, explicit-file scope                            |
+| `scripts/lib/repositoryMetadata.ts`                  | one narrow fact: positively known non-runtime repository metadata                                  |
+| `scripts/lib/unitRisk.ts`                            | unit-test impact selection                                                                         |
+| `scripts/lib/e2eRisk.ts`                             | centralized product E2E source-to-scenario ownership                                               |
+| `scripts/lib/storybookBehaviorRisk.ts`               | reusable Storybook browser behavior impact                                                         |
+| `scripts/lib/storybookBuildRisk.ts`                  | Storybook static-build relevance                                                                   |
+| `scripts/lib/visualRisk.ts`                          | visual proof ownership and fallback                                                                |
+| `scripts/lib/mutationTargets.ts` + mutation resolver | explicit high-risk mutation ownership only                                                         |
+| `scripts/lib/releaseRisk.ts`                         | source-impact selection among existing release contracts                                           |
+| `scripts/verify.ts`                                  | invocation orchestration, command construction, prerequisite/reuse handling, execution/reporting   |
+| `.github/workflows/verify.yml`                       | CI execution placement only; preserve independent parallel proof lanes and aggregate their results |
+| exact-head GitHub CI                                 | authoritative automatic repository merge gate                                                      |
 
 `verify.ts` must stop being the place where unit/mutation ownership is inferred inline. It may compose already-resolved plans and reuse prerequisites, but ownership belongs to the specialized resolver.
 
@@ -726,25 +726,25 @@ Stop verifier infrastructure work when the exit criterion passes. Only measured 
 
 # End-state acceptance matrix
 
-| Change class | Expected expensive proof |
-| --- | --- |
-| `AGENTS.md` / repository testing docs | no browser/release/mutation proof solely from metadata |
-| arbitrary source-adjacent Markdown outside confirmed metadata roots | preserve fail-closed owning-lane behavior; no basename-wide skip |
-| ordinary source with unit imports | Vitest related unit proof |
-| source with no unit owner | no fabricated unit work; other owning lanes remain independent |
-| external unit file-as-data input | exact mapped unit owner |
-| deleted/moved unit source/support | conservative full unit when old relation cannot be resolved |
-| normal feature source with mapped product scenario | related unit + focused app E2E as independently applicable |
-| shared unknown E2E-relevant runtime source | full app E2E |
-| owner-local UI behavior source | focused Storybook behavior |
-| visual owner/source | focused/full visual according to current visual ownership |
-| Storybook build config/story | static Storybook build according to existing planner |
-| registered high-risk mutation source/test | exact mutation target |
-| unregistered source with adjacent tests | no mutation |
-| release build/PWA/publisher/update source | exact release contract(s), full source-impact release fallback when ownership unknown; execute in parallel CI release lane |
-| version-only `package.json` | no runtime/release expansion from version field alone; independent release-version policy still applies |
-| runtime dependency / lockfile change | conservative affected expensive lanes including release impact |
-| explicit `pnpm verify:release` | complete full project/release gate; mutation excluded as today |
+| Change class                                                        | Expected expensive proof                                                                                                   |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md` / repository testing docs                               | no browser/release/mutation proof solely from metadata                                                                     |
+| arbitrary source-adjacent Markdown outside confirmed metadata roots | preserve fail-closed owning-lane behavior; no basename-wide skip                                                           |
+| ordinary source with unit imports                                   | Vitest related unit proof                                                                                                  |
+| source with no unit owner                                           | no fabricated unit work; other owning lanes remain independent                                                             |
+| external unit file-as-data input                                    | exact mapped unit owner                                                                                                    |
+| deleted/moved unit source/support                                   | conservative full unit when old relation cannot be resolved                                                                |
+| normal feature source with mapped product scenario                  | related unit + focused app E2E as independently applicable                                                                 |
+| shared unknown E2E-relevant runtime source                          | full app E2E                                                                                                               |
+| owner-local UI behavior source                                      | focused Storybook behavior                                                                                                 |
+| visual owner/source                                                 | focused/full visual according to current visual ownership                                                                  |
+| Storybook build config/story                                        | static Storybook build according to existing planner                                                                       |
+| registered high-risk mutation source/test                           | exact mutation target                                                                                                      |
+| unregistered source with adjacent tests                             | no mutation                                                                                                                |
+| release build/PWA/publisher/update source                           | exact release contract(s), full source-impact release fallback when ownership unknown; execute in parallel CI release lane |
+| version-only `package.json`                                         | no runtime/release expansion from version field alone; independent release-version policy still applies                    |
+| runtime dependency / lockfile change                                | conservative affected expensive lanes including release impact                                                             |
+| explicit `pnpm verify:release`                                      | complete full project/release gate; mutation excluded as today                                                             |
 
 # Exit criterion
 

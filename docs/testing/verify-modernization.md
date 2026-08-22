@@ -194,27 +194,27 @@ autofix
 
 This matrix records semantic selection, not CI wall-clock evidence.
 
-| Case | Unit | Visual | App E2E | Storybook behavior | Mutation | Release |
-| --- | --- | --- | --- | --- | --- | --- |
-| `AGENTS.md` | skip | skip | skip | skip | skip | skip |
-| source-adjacent unknown Markdown | skip | full | full | skip | skip | skip |
-| feature source | focused + scan owners | skip | focused product E2E where mapped | skip | skip | skip |
-| Material component | focused | focused | full | focused | explicit only | skip |
-| `src/sw.ts` | focused | skip | full | skip | skip | artifact + managed-updates |
-| `pnpm-lock.yaml` | full | full | full | full | skip | full six |
-| `scripts/verify.ts` | focused | full | full | full | skip | full six |
-| `scripts/playwrightContainer.ts` | ordinary unit ownership as applicable | full | full | full | skip | artifact + release-smoke + managed-updates |
-| root app `tests/e2e/appSmoke.spec.ts` | focused inventory owners | skip | focused direct spec | skip | skip | skip |
-| nested `tests/e2e/other/example.spec.ts` | no root-app inventory owner | skip | skip | skip | skip | skip |
-| nested `tests/e2e/other/helper.ts` | ordinary unit ownership as applicable | skip | full support fallback | skip | skip | skip |
-| `scripts/lib/appE2EPaths.ts` | related/unit ownership as applicable | skip | full infrastructure | skip | skip | skip |
-| `scripts/e2eReleaseContainer.mjs` | ordinary unit ownership as applicable | n/a | n/a | n/a | skip | artifact + release-smoke + managed-updates |
-| `playwright.release.config.ts` | ordinary unit/config ownership as applicable | n/a | n/a | n/a | skip | artifact + release-smoke + managed-updates |
-| `scripts/release/artifactServer.mjs` | ordinary unit ownership as applicable | n/a | n/a | n/a | skip | artifact + release-smoke + managed-updates |
-| `tests/e2e/helpers.ts` | ordinary unit ownership as applicable | n/a | full app support | n/a | skip | artifact + release-smoke + managed-updates |
-| release unit proof `*.test.mjs` | direct Vitest proof | n/a | n/a | n/a | skip | skip |
-| release fixture `*.d.mts` | static/type ownership | n/a | n/a | n/a | skip | skip |
-| unknown executable release fixture | ordinary ownership as applicable | n/a | n/a | n/a | skip | full six |
+| Case                                     | Unit                                         | Visual  | App E2E                          | Storybook behavior | Mutation      | Release                                    |
+| ---------------------------------------- | -------------------------------------------- | ------- | -------------------------------- | ------------------ | ------------- | ------------------------------------------ |
+| `AGENTS.md`                              | skip                                         | skip    | skip                             | skip               | skip          | skip                                       |
+| source-adjacent unknown Markdown         | skip                                         | full    | full                             | skip               | skip          | skip                                       |
+| feature source                           | focused + scan owners                        | skip    | focused product E2E where mapped | skip               | skip          | skip                                       |
+| Material component                       | focused                                      | focused | full                             | focused            | explicit only | skip                                       |
+| `src/sw.ts`                              | focused                                      | skip    | full                             | skip               | skip          | artifact + managed-updates                 |
+| `pnpm-lock.yaml`                         | full                                         | full    | full                             | full               | skip          | full six                                   |
+| `scripts/verify.ts`                      | focused                                      | full    | full                             | full               | skip          | full six                                   |
+| `scripts/playwrightContainer.ts`         | ordinary unit ownership as applicable        | full    | full                             | full               | skip          | artifact + release-smoke + managed-updates |
+| root app `tests/e2e/appSmoke.spec.ts`    | focused inventory owners                     | skip    | focused direct spec              | skip               | skip          | skip                                       |
+| nested `tests/e2e/other/example.spec.ts` | no root-app inventory owner                  | skip    | skip                             | skip               | skip          | skip                                       |
+| nested `tests/e2e/other/helper.ts`       | ordinary unit ownership as applicable        | skip    | full support fallback            | skip               | skip          | skip                                       |
+| `scripts/lib/appE2EPaths.ts`             | related/unit ownership as applicable         | skip    | full infrastructure              | skip               | skip          | skip                                       |
+| `scripts/e2eReleaseContainer.mjs`        | ordinary unit ownership as applicable        | n/a     | n/a                              | n/a                | skip          | artifact + release-smoke + managed-updates |
+| `playwright.release.config.ts`           | ordinary unit/config ownership as applicable | n/a     | n/a                              | n/a                | skip          | artifact + release-smoke + managed-updates |
+| `scripts/release/artifactServer.mjs`     | ordinary unit ownership as applicable        | n/a     | n/a                              | n/a                | skip          | artifact + release-smoke + managed-updates |
+| `tests/e2e/helpers.ts`                   | ordinary unit ownership as applicable        | n/a     | full app support                 | n/a                | skip          | artifact + release-smoke + managed-updates |
+| release unit proof `*.test.mjs`          | direct Vitest proof                          | n/a     | n/a                              | n/a                | skip          | skip                                       |
+| release fixture `*.d.mts`                | static/type ownership                        | n/a     | n/a                              | n/a                | skip          | skip                                       |
+| unknown executable release fixture       | ordinary ownership as applicable             | n/a     | n/a                              | n/a                | skip          | full six                                   |
 
 ## Delegated-resolver evidence
 

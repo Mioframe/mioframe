@@ -184,23 +184,23 @@ Do not turn arbitrary root config files or broad scanned directories into full-u
 
 ## Acceptance matrix
 
-| Mechanism | Representative case | Planner ownership | Required evidence |
-| --- | --- | --- | --- |
-| direct changed Vitest test | `scripts/lib/unitRisk.test.ts` | select test itself | focused unit invocation |
-| direct discovery negative | `src/example.test.mjs` | not direct test | owner-validation negative |
-| unsupported test-shaped ordinary input | `src/example.test.mjs` | pass source to `vitest related` | planner overcorrection guard |
-| ordinary import dependency | `postcss.config.js` | pass source to `vitest related` | real related owner selected |
-| cross-root ordinary import | `vite.config.ts → viteBuildDate.test.mjs` | source only | real related owner selected |
-| `tests/e2e/**` ordinary helper | managed release fixture helper | pass helper | real related owner selected |
-| exact repository read | workflow YAML | exact owners | focused owner invocation |
-| exact delete/rename | workflow / `PRIVACY.md` / `.gitignore` | retain deterministic old/new owner | status-aware planner proof |
-| runtime discovery | `eslint.config.mjs` | exact owner | planner-added owner executes |
-| exact absence | forbidden legacy token path | exact owner | owner executes |
-| bounded source scan | source import-boundary tests | scan owner | representative scanned change |
-| bounded Material token scan | component `tokens.css` | token scan owner | representative token change |
-| root app inventory | `tests/e2e/appSmoke.spec.ts` | lane + registry/applicability inventory owners; never spec itself | real app collector + focused unit invocation |
-| outside app inventory | nested arbitrary app spec candidate | no root-app inventory owner; never ordinary Vitest input | root-only collector/planner negative |
-| unit-global infrastructure | `vitest.config.ts` etc. | full unit | planner proof |
+| Mechanism                              | Representative case                       | Planner ownership                                                 | Required evidence                            |
+| -------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------- |
+| direct changed Vitest test             | `scripts/lib/unitRisk.test.ts`            | select test itself                                                | focused unit invocation                      |
+| direct discovery negative              | `src/example.test.mjs`                    | not direct test                                                   | owner-validation negative                    |
+| unsupported test-shaped ordinary input | `src/example.test.mjs`                    | pass source to `vitest related`                                   | planner overcorrection guard                 |
+| ordinary import dependency             | `postcss.config.js`                       | pass source to `vitest related`                                   | real related owner selected                  |
+| cross-root ordinary import             | `vite.config.ts → viteBuildDate.test.mjs` | source only                                                       | real related owner selected                  |
+| `tests/e2e/**` ordinary helper         | managed release fixture helper            | pass helper                                                       | real related owner selected                  |
+| exact repository read                  | workflow YAML                             | exact owners                                                      | focused owner invocation                     |
+| exact delete/rename                    | workflow / `PRIVACY.md` / `.gitignore`    | retain deterministic old/new owner                                | status-aware planner proof                   |
+| runtime discovery                      | `eslint.config.mjs`                       | exact owner                                                       | planner-added owner executes                 |
+| exact absence                          | forbidden legacy token path               | exact owner                                                       | owner executes                               |
+| bounded source scan                    | source import-boundary tests              | scan owner                                                        | representative scanned change                |
+| bounded Material token scan            | component `tokens.css`                    | token scan owner                                                  | representative token change                  |
+| root app inventory                     | `tests/e2e/appSmoke.spec.ts`              | lane + registry/applicability inventory owners; never spec itself | real app collector + focused unit invocation |
+| outside app inventory                  | nested arbitrary app spec candidate       | no root-app inventory owner; never ordinary Vitest input          | root-only collector/planner negative         |
+| unit-global infrastructure             | `vitest.config.ts` etc.                   | full unit                                                         | planner proof                                |
 
 ## Proof result
 

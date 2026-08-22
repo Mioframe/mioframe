@@ -102,12 +102,12 @@ Storybook build stays unchanged. Its existing explicit relevance set already mea
 
 ## Browser-related lane audit
 
-| Lane | Current metadata defect | Required action |
-| --- | --- | --- |
-| application E2E | yes — broad runtime-domain relevance | apply narrow metadata exclusion; add explicit `docs/user/**` Help mapping |
-| Storybook behavior | yes — owner-directory containment can inherit metadata | apply narrow metadata exclusion before owner-local resolution |
-| visual | yes — blanket `.md` exclusion is both over-broad and inconsistent | remove blanket Markdown exclusion; apply narrow metadata predicate |
-| Storybook build | no — explicit infrastructure/story relevance only | no change; preserve existing planner |
+| Lane               | Current metadata defect                                           | Required action                                                           |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| application E2E    | yes — broad runtime-domain relevance                              | apply narrow metadata exclusion; add explicit `docs/user/**` Help mapping |
+| Storybook behavior | yes — owner-directory containment can inherit metadata            | apply narrow metadata exclusion before owner-local resolution             |
+| visual             | yes — blanket `.md` exclusion is both over-broad and inconsistent | remove blanket Markdown exclusion; apply narrow metadata predicate        |
+| Storybook build    | no — explicit infrastructure/story relevance only                 | no change; preserve existing planner                                      |
 
 This audit is the boundary of PR 1. A browser-related planner is not modified merely to make APIs uniform.
 
@@ -133,19 +133,19 @@ No shared UI production code changes. The relevant blast radius is verifier sele
 
 ## Acceptance matrix
 
-| Changed path | Required browser impact |
-| --- | --- |
-| `src/shared/ui/material/AGENTS.md` | no app E2E / Storybook behavior / visual solely from this path |
-| `.agents/skills/verification/SKILL.md` | no browser lane solely from this path |
-| `docs/testing/architecture.md` | no browser lane solely from this path |
-| `src/shared/ui/material/docs/component-contract.md` | no browser lane solely from this path |
+| Changed path                                                                                                   | Required browser impact                                                  |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/shared/ui/material/AGENTS.md`                                                                             | no app E2E / Storybook behavior / visual solely from this path           |
+| `.agents/skills/verification/SKILL.md`                                                                         | no browser lane solely from this path                                    |
+| `docs/testing/architecture.md`                                                                                 | no browser lane solely from this path                                    |
+| `src/shared/ui/material/docs/component-contract.md`                                                            | no browser lane solely from this path                                    |
 | source-adjacent `README.md` / `ARCHITECTURE.md` / `DESIGN.md` / `REVIEW.md` outside a confirmed docs-only root | preserve existing fail-closed lane behavior; do not classify by basename |
-| `docs/user/README.md` or any `docs/user/**/*.md` | focused Help application E2E |
-| `PRIVACY.md` | not metadata; no artificial browser mapping added in this PR |
-| `src/shared/ui/**.css` | preserve existing browser relevance/fallback |
-| unknown non-test runtime asset in a broad E2E domain | preserve full app-E2E fallback |
-| stories/tests/browser specs/visual specs | preserve current lane-specific ownership |
-| Storybook-build explicit config/story path | preserve existing static-build selection |
+| `docs/user/README.md` or any `docs/user/**/*.md`                                                               | focused Help application E2E                                             |
+| `PRIVACY.md`                                                                                                   | not metadata; no artificial browser mapping added in this PR             |
+| `src/shared/ui/**.css`                                                                                         | preserve existing browser relevance/fallback                             |
+| unknown non-test runtime asset in a broad E2E domain                                                           | preserve full app-E2E fallback                                           |
+| stories/tests/browser specs/visual specs                                                                       | preserve current lane-specific ownership                                 |
+| Storybook-build explicit config/story path                                                                     | preserve existing static-build selection                                 |
 
 ## Risk matrix
 

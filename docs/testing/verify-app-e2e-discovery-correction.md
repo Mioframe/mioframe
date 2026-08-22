@@ -35,9 +35,9 @@ scripts/lib/appE2EPaths.ts
 with exactly three public exports:
 
 ```ts
-APP_E2E_SPEC_DIR
-APP_E2E_TEST_MATCH
-isRootAppE2ESpecPath(filePath)
+APP_E2E_SPEC_DIR;
+APP_E2E_TEST_MATCH;
+isRootAppE2ESpecPath(filePath);
 ```
 
 Final semantics:
@@ -62,14 +62,14 @@ This additional abstraction is justified by observed ownership drift, not hypoth
 
 ## Final ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `scripts/lib/appE2EPaths.ts` | canonical application-E2E root/path-shape contract only |
-| `playwright.config.ts` | physical Playwright execution using that contract |
-| `scripts/lib/e2eRisk.ts` | product/source → app scenario planning and direct-spec/support classification |
-| `scripts/lib/e2eProjectApplicability.ts` | app spec → desktop/mobile applicability |
-| `scripts/lib/unitRisk.ts` | unit-impact ownership of repository scans; consumes the shared root-spec predicate |
-| `playwright.lanes.test.ts` | independent real-collector/lane proof; never source of truth |
+| Owner                                    | Responsibility                                                                     |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `scripts/lib/appE2EPaths.ts`             | canonical application-E2E root/path-shape contract only                            |
+| `playwright.config.ts`                   | physical Playwright execution using that contract                                  |
+| `scripts/lib/e2eRisk.ts`                 | product/source → app scenario planning and direct-spec/support classification      |
+| `scripts/lib/e2eProjectApplicability.ts` | app spec → desktop/mobile applicability                                            |
+| `scripts/lib/unitRisk.ts`                | unit-impact ownership of repository scans; consumes the shared root-spec predicate |
+| `playwright.lanes.test.ts`               | independent real-collector/lane proof; never source of truth                       |
 
 No product/FSD ownership changed.
 
@@ -172,20 +172,20 @@ The previous destructive fixed-path proof defect is closed.
 
 ## Acceptance matrix
 
-| Path / change | Final application-E2E result |
-| --- | --- |
-| `tests/e2e/appSmoke.spec.ts` | root app spec; collect + focused direct selection |
-| another direct `tests/e2e/*.spec.ts` | root app spec; must enter scenario/applicability ownership |
-| `tests/e2e/other/example.spec.ts` | not app spec/support; no app selection |
-| `tests/e2e/other/helper.ts` | non-spec support; conservative full app E2E |
-| `tests/e2e/example.test.ts` | not app spec/support |
-| `tests/e2e/example.test.mjs` | not app E2E; Vitest when applicable |
-| `tests/e2e/storybook/**` | Storybook behavior only |
-| `tests/e2e/visual/**` | visual only |
-| `tests/e2e/release/**` | release only |
-| scenario registry references nested existing spec | invalid |
-| applicability registry references nested existing spec | invalid |
-| `scripts/lib/appE2EPaths.ts` changes | full application E2E only |
+| Path / change                                          | Final application-E2E result                               |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| `tests/e2e/appSmoke.spec.ts`                           | root app spec; collect + focused direct selection          |
+| another direct `tests/e2e/*.spec.ts`                   | root app spec; must enter scenario/applicability ownership |
+| `tests/e2e/other/example.spec.ts`                      | not app spec/support; no app selection                     |
+| `tests/e2e/other/helper.ts`                            | non-spec support; conservative full app E2E                |
+| `tests/e2e/example.test.ts`                            | not app spec/support                                       |
+| `tests/e2e/example.test.mjs`                           | not app E2E; Vitest when applicable                        |
+| `tests/e2e/storybook/**`                               | Storybook behavior only                                    |
+| `tests/e2e/visual/**`                                  | visual only                                                |
+| `tests/e2e/release/**`                                 | release only                                               |
+| scenario registry references nested existing spec      | invalid                                                    |
+| applicability registry references nested existing spec | invalid                                                    |
+| `scripts/lib/appE2EPaths.ts` changes                   | full application E2E only                                  |
 
 ## Proof result
 
