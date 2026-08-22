@@ -6,8 +6,8 @@ Verdict: blocked
 
 - Complete current `develop...refactor/verify-modernization-finish` verifier-modernization result.
 - Pass A output, Pass B metadata classification, Pass C unit impact/direct Vitest discovery, Pass D mutation ownership, Pass E release-impact, and Pass F CI topology were re-read against their current canonical contracts.
-- Application-E2E physical discovery was re-reviewed end-to-end across `playwright.config.ts`, `e2eRisk.ts`, applicability/registry ownership, `playwright.lanes.test.ts`, unit scan ownership, and verifier command composition.
-- Architect-owned Pass A/status/benchmark documentation found stale during this review has already been aligned; the remaining minor items below are source/test comments only.
+- Application-E2E discovery was re-reviewed end-to-end across physical collection, planner classification, scenario/applicability validation, unit scan ownership, real collector proof, and verifier command composition.
+- Repeated application-E2E correction drift triggered the root `AGENTS.md` stop rule; architecture has been redone in `docs/testing/verify-app-e2e-discovery-correction.md` and is ready for implementation.
 
 ## Blockers
 
@@ -15,56 +15,55 @@ None.
 
 ## Major issues
 
-### M1 — app-E2E changed-spec classification is still broader than the physical root-only lane
+### M1 — application-E2E root-spec population has duplicated production ownership and has drifted
 
-Owner: `scripts/lib/e2eRisk.ts`.
+Owner: verifier application-E2E discovery contract.
 
-Problem: `isAppE2ESpecPath()` still treats any non-Storybook/non-visual/non-release `tests/e2e/**/*.spec.ts` path as an application spec. Therefore an arbitrary nested path such as `tests/e2e/other/example.spec.ts` is classified as a focused app-E2E spec and `resolveAppE2EPlan()` returns it in `specs`. The verifier then passes focused `appE2EPlan.specs` directly to `pnpm e2e:container`.
+Problem: the invariant `application E2E = direct tests/e2e/*.spec.ts only` is independently represented by `playwright.config.ts`, `e2eRisk.ts`, `e2eProjectApplicability.ts`, and `unitRisk.ts`. These implementations have already drifted across multiple correction rounds: physical Playwright collection and applicability/unit inventories are root-only, while `e2eRisk.ts:isAppE2ESpecPath()` still accepts arbitrary nested non-reserved `tests/e2e/**/*.spec.ts` paths.
 
-The physical application lane is intentionally root-only through `playwright.config.ts` `testMatch: '**/tests/e2e/*.spec.ts'`; the architecture explicitly says an arbitrary nested spec is not application E2E. CLI file filtering must not create a planner population broader than the configured collector.
+A local `e2eRisk.ts` fix would repair the current symptom but preserve the duplicated ownership pattern that caused the repeated mismatch. The architecture has therefore been redesigned to use one narrow pure owner `scripts/lib/appE2EPaths.ts` for only the root directory, Playwright testMatch, and root-spec predicate. Scenario mappings remain separately owned.
 
 Evidence:
 
-- [`e2eRisk.ts`](./e2eRisk.ts) — `isAppE2ESpecPath()` excludes reserved subtrees but does not require a direct child; `resolveAppE2EPlan()` adds every matching changed spec to `focusedSpecs`.
-- [`../../playwright.config.ts`](../../playwright.config.ts) — physical application `testMatch` is root-only.
-- [`../verify.ts`](../verify.ts) — focused app plans become `createE2ECommand(appE2EPlan.specs, ...)`.
-- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — durable contract requires one root-only population across collector and planner.
+- [`e2eRisk.ts`](./e2eRisk.ts) — current `isAppE2ESpecPath()` accepts nested non-reserved specs; its registry scan is independently non-recursive.
+- [`e2eProjectApplicability.ts`](./e2eProjectApplicability.ts) — contains a separate private root-app predicate and non-recursive inventory.
+- [`unitRisk.ts`](./unitRisk.ts) — contains another private root-app predicate for bounded scan ownership.
+- [`../../playwright.config.ts`](../../playwright.config.ts) — physical application collection is root-only `**/tests/e2e/*.spec.ts`.
+- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — ready redesigned architecture and accepted three-export shared owner.
 
 Basis:
 
-- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — direct `tests/e2e/*.spec.ts` only.
-- [`../../.agents/skills/implementation-preflight/SKILL.md`](../../.agents/skills/implementation-preflight/SKILL.md) — impact planners delegated to a real resolver must match that resolver's truthful population.
+- [`../../AGENTS.md`](../../AGENTS.md) — repeated ownership drift after correction rounds requires returning to architecture instead of patching forward.
+- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — one canonical production path contract is now the accepted architecture.
 
-Risk: the verifier can claim focused application-E2E proof for a file the configured app lane cannot collect, reintroducing planner/discovery drift at the boundary this modernization is intended to make truthful.
+Risk: planner, physical collector, metadata validation, and unit impact can disagree again even after another local fix; verifier output may claim proof for paths that the real app lane cannot execute.
 
-Required final state: application-spec recognition in `e2eRisk.ts` must match the root-only corpus used by `playwright.config.ts`, scenario-registry discovery, and project-applicability discovery. A nested unassigned `*.spec.ts` must not become an app spec or an app support file merely because it is under `tests/e2e/`. Real non-spec nested support may remain conservatively app-owned. Reserved Storybook/visual/release ownership remains unchanged.
+Required final state: add the ready `scripts/lib/appE2EPaths.ts` owner and migrate all production/verifier consumers named by the architecture to it. `e2eRisk` must reject nested app specs and must not reclassify them as support; real nested non-spec helpers remain conservative support. Scenario and applicability metadata must reject non-root app specs. The new path-contract module itself is full application-E2E infrastructure.
 
-Verification: fresh independent test-author proof with root positive, arbitrary nested spec negative, nested ordinary support preservation, reserved-lane negatives, and a real Playwright collector/filter probe showing the delegated app collector remains root-only when a nested path is supplied as a filter.
+Verification: fresh independent test-author proof from the architecture TEST IMPACT, including meaningful nested-spec planner RED, metadata negatives, existing helper preservation, and real Playwright collector/filter proof. Review must also confirm duplicate production predicates were actually removed rather than wrapped.
 
-### M2 — real-collector proof can overwrite or delete legitimate repository paths
+### M2 — real-collector proof does not safely own its mutable repository probes
 
 Owner: `playwright.lanes.test.ts`.
 
-Problem: the collector proof writes fixed paths `tests/e2e/other/example.spec.ts` and `tests/e2e/example.test.mjs`, then unconditionally removes the entire `tests/e2e/other` directory and the root test file in `finally`.
-
-`tests/e2e/**/*.test.mjs` is a supported Vitest population, and nested E2E support directories may exist independently of application spec discovery. The current proof can overwrite and/or recursively delete valid repository content.
+Problem: the existing collector proof writes fixed repository paths and recursively deletes a generic `tests/e2e/other` directory. A future legitimate `tests/e2e/**/*.test.mjs` file or nested E2E support directory could be overwritten/deleted by unit proof.
 
 Evidence:
 
-- [`../../playwright.lanes.test.ts`](../../playwright.lanes.test.ts) — fixed probe creation and recursive fixed-directory cleanup.
-- [`../../vitest.config.ts`](../../vitest.config.ts) — `tests/e2e/**/*.test.mjs` is a real Vitest include class.
-- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — now explicitly requires collision-safe proof-owned probes and exact cleanup.
+- [`../../playwright.lanes.test.ts`](../../playwright.lanes.test.ts) — fixed probe paths and recursive fixed-directory cleanup.
+- [`../../vitest.config.ts`](../../vitest.config.ts) — `tests/e2e/**/*.test.mjs` is a supported Vitest population.
+- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — ready architecture requires unique proof-owned probes, exclusive creation, and exact cleanup.
 
 Basis:
 
-- [`../../.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md) — tests own controlled input/state and must not corrupt shared mutable repository state.
-- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — collector-proof safety contract.
+- [`../../.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md) — tests must own controlled mutable inputs and remain independently runnable without corrupting shared state.
+- [`../../docs/testing/verify-app-e2e-discovery-correction.md`](../../docs/testing/verify-app-e2e-discovery-correction.md) — collector probe isolation contract.
 
-Risk: running unit proof can silently mutate legitimate checkout content and make subsequent proof unreliable or destructive.
+Risk: running unit proof can mutate legitimate checkout content and invalidate later proof.
 
-Required final state: collector probes use collision-safe proof-owned paths, never overwrite pre-existing content, and remove only paths created by that test. The proof still exercises one nested `*.spec.ts`, one direct-root default Playwright `*.test.*`, and real collection without browser/server launch.
+Required final state: use collision-safe unique test-owned paths; never overwrite a pre-existing file; recursively remove only a unique directory created by that invocation; keep real collector and filtered-collector semantics.
 
-Verification: fresh test-author context for the materially changed proof, direct review of creation/cleanup isolation, and focused unit execution of `playwright.lanes.test.ts`.
+Verification: fresh test-author context for the materially changed proof, direct review of creation/cleanup ownership, and focused unit execution of the real collector proof.
 
 ## Minor issues
 
@@ -72,27 +71,21 @@ Verification: fresh test-author context for the materially changed proof, direct
 
 Owner: verifier source/test comments.
 
-Problem: architect-owned docs/status are now aligned, but these source/test comments remain inaccurate:
+Problem:
 
 - `scripts/lib/unitRisk.test.ts` says `config/tooling.json` matches an old `src/config/scripts` ordinary-source prefix check even though ordinary dependency-input eligibility is repository-wide;
 - `scripts/lib/e2eRisk.ts` describes release specs as running through `pnpm verify --full`, although ordinary source-impact release selection also exists;
 - `scripts/verify.ts` says `getFailureReason` excerpts the rolling output buffer even though accepted failure fallback no longer infers from output tails.
 
-Evidence:
-
-- [`unitRisk.test.ts`](./unitRisk.test.ts) — `config/tooling.json` audit rationale.
-- [`e2eRisk.ts`](./e2eRisk.ts) — release-spec TSDoc.
-- [`../verify.ts`](../verify.ts) — rolling-buffer return comment near `runCommand()`.
-
 Basis:
 
-- [`../../AGENTS.md`](../../AGENTS.md) — durable comments/TSDoc should describe current mechanisms and obsolete wording should be removed with replaced logic.
+- [`../../AGENTS.md`](../../AGENTS.md) — durable comments/TSDoc must describe current mechanisms.
 
-Risk: maintenance guidance contradicts the executable final design even though behavior is correct.
+Risk: maintenance guidance contradicts the executable design.
 
-Required final state: rewrite those comments to describe current mechanisms only. No executable behavior, planner ownership, assertions, or command semantics change.
+Required final state: rewrite those comments only after the behavioral architecture correction, without changing executable behavior or assertions.
 
-Verification: source inspection plus focused formatting/lint if useful.
+Verification: source inspection plus focused format/lint if useful.
 
 ## Accepted risks
 
@@ -100,13 +93,13 @@ None.
 
 ## Items not required
 
-- Do not reopen Pass A verifier output behavior; its canonical document is now aligned with the accepted implementation.
-- Do not reopen Pass B repository-metadata classification.
-- Do not reopen Pass C unit-impact architecture/direct Vitest discovery.
+- Do not reopen Pass A output behavior.
+- Do not reopen Pass B metadata classification.
+- Do not reopen Pass C unit-impact/direct Vitest discovery beyond migrating its duplicated root-app predicate to the new shared owner.
 - Do not reopen Pass D mutation architecture.
-- Do not reopen Pass E release-impact consumer ownership without new evidence.
+- Do not reopen Pass E release-impact ownership.
 - Do not redesign CI topology, release timeout budgets, Storybook build reuse, or release-version policy.
-- Do not introduce a generic Playwright discovery registry or shared glob framework to fix M1/M2.
+- Do not generalize the new app-E2E path owner into a cross-lane registry/glob/path framework.
 
 ## Unresolved questions
 
@@ -114,8 +107,8 @@ None.
 
 ## NEXT CORRECTION
 
-Owner: application-E2E discovery/selection proof (`scripts/lib/e2eRisk.ts`, `scripts/lib/e2eRisk.test.ts`, `playwright.lanes.test.ts`).
+Owner: `scripts/lib/appE2EPaths.ts` and its application-E2E verifier/config consumers.
 
-Finding: complete the selected root-only application-E2E architecture across planner classification and make its real-collector proof collision-safe. A nested unassigned spec must not be selected as an app spec/support path, real nested non-spec support must not be accidentally suppressed, and proof probes must never overwrite/delete pre-existing repository content.
+Finding: implement the ready architecture in `docs/testing/verify-app-e2e-discovery-correction.md`: replace duplicate production root-app path facts with the narrow shared owner, align planner/metadata/unit consumers, and make the independent real-collector probes collision-safe.
 
-Affected scope: `scripts/lib/e2eRisk.ts`, `scripts/lib/e2eRisk.test.ts`, `playwright.lanes.test.ts`, existing root-only application discovery/applicability proof. Remaining comment-only cleanup stays separate after this behavioral correction.
+Affected scope: new `scripts/lib/appE2EPaths.ts`, `playwright.config.ts`, `scripts/lib/e2eRisk.ts`, `scripts/lib/e2eProjectApplicability.ts`, `scripts/lib/unitRisk.ts`, their focused unit proof, and `playwright.lanes.test.ts`. Comment-only cleanup remains downstream.
