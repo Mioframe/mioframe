@@ -1,17 +1,17 @@
 # Database virtualization profiling and analysis plan
 
-Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; capability behavior implemented but stability proof pending; real product profiling/performance acceptance remains pending production migration; secondary optimizations evidence-gated**.
+Status: **research plan; virtualization architecture and capability proof are accepted; real product profiling/performance acceptance remains pending production migration; secondary optimizations evidence-gated**.
 
 `src/shared/ui/virtualization/README.md` owns the shared API. `docs/database-virtualization.md` owns database rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
 
 ## Goals
 
 1. quantify the current unvirtualized freeze and scale-to-failure boundary;
-2. prove structural bounded rendering after database migration to `useVirtualCollection`;
+2. prove structural bounded rendering after production database migration to `useVirtualCollection`;
 3. measure real short-filtered -> full-view responsiveness;
 4. identify whether any optimization beyond bounded rendering is justified.
 
-The capability fixture is not a timing benchmark. Generic shared proof exists only to protect the public collection/measurement contract; product performance is measured on the real database.
+The capability fixture is not a timing benchmark. Generic shared proof protects the public collection/measurement contract; product performance is measured on the real database.
 
 ## Core evidence
 
@@ -62,8 +62,6 @@ Record seed, rows, columns, density, property mix, filter/sort, sentinels, and v
 
 ## Dataset matrix
 
-Required scale series:
-
 | Case |   Rows | Columns | Purpose                                            |
 | ---- | -----: | ------: | -------------------------------------------------- |
 | S0   |    100 |       8 | control                                            |
@@ -102,28 +100,30 @@ Record:
 - mounted data cells;
 - visible/overscan ranges where useful as diagnostics.
 
-Persistent assertions should protect observable mounted DOM counts, not TanStack private internals.
+Persistent assertions protect observable mounted DOM counts, not TanStack private internals.
 
 G1 must not materialize the logical cross product.
 
 ## Shared capability vs product performance
 
-`src/shared/ui/virtualization` browser proof protects only:
+The accepted shared/browser capability already proves:
 
 - bounded single-axis collection rendering;
 - item/value/key mapping;
 - directive-backed dynamic measurement;
-- leading/trailing extent correctness.
+- non-zero surface-offset and leading/trailing geometry;
+- deterministic native-table row/column geometry in Chromium/Firefox;
+- bounded actual mounted database-cell DOM in the capability fixture.
+
+The risk-specific stability diagnostic reported **300/300 executions passed** with no retries or flaky classification after correcting the two geometry proof races.
 
 Do not attach durable wall-clock budgets to the shared primitive and do not build generic list/grid benchmark infrastructure.
 
-Database native-table capability proves browser geometry in Chromium/Firefox. Performance acceptance uses the real product after migration.
-
-A capability behavior contract is not considered ready while its browser proof is known intermittent; the current `surfaceOffset` and above-viewport anchor stability defects must be resolved before production migration starts.
+Performance acceptance uses the real product after migration.
 
 ## Product correctness around performance
 
-The faster implementation is invalid unless it preserves:
+A faster implementation is invalid unless it preserves:
 
 - exact filter membership and sort order;
 - short -> full -> short switching;
@@ -139,7 +139,7 @@ The faster implementation is invalid unless it preserves:
 
 ## Secondary optimization order
 
-After `useVirtualCollection`/native-table bounded rendering:
+After production bounded rendering:
 
 1. rerun identical performance cases;
 2. if visible-range cell setup is material, optimize only that owner;
@@ -170,8 +170,8 @@ Do not create a generic benchmark framework.
 
 Before production migration implementation:
 
-- shared collection API + database native-table capability from `docs/database-virtualization-browser-proof.md` passes deterministically and is reviewed;
-- no required capability browser contract is known intermittent.
+- shared collection API + database native-table capability from `docs/database-virtualization-browser-proof.md` is accepted and deterministic — **satisfied**;
+- production migration architecture/preflight resolves real owners, root topology, edit lifecycle, relations, toolbar/after, and product proof.
 
 Before final performance acceptance:
 
