@@ -1,6 +1,6 @@
 # Virtualization library
 
-Status: **architecture accepted; implementation preflight pending capability proof**.
+Status: **architecture accepted; `@tanstack/vue-virtual` selected; integration proof and implementation preflight pending**.
 
 This document is the architecture source of truth for Mioframe's reusable viewport virtualization infrastructure. Database-specific integration and performance investigation are owned by `docs/database-virtualization.md` and `docs/database-virtualization-profiling.md`.
 
@@ -8,20 +8,36 @@ This document is the architecture source of truth for Mioframe's reusable viewpo
 
 Provide one small, upper-layer-independent virtualization primitive that keeps mounted UI work bounded by viewport and overscan for very large scrollable collections whose item dimensions may differ and may change after mount.
 
-Current consumers justify all capabilities in this contract:
+Current requirements justify the complete initial contract:
 
 - the database needs vertical virtualization for many rows;
 - the database needs horizontal virtualization for many properties;
 - row heights are dynamic;
 - column widths are dynamic and require consumer-owned aggregation from header/cell measurements;
 - both axes share one database scroll container;
-- future list/card presentations may reuse the same one-axis primitive without importing database semantics.
+- future list/card presentations must be able to reuse the same one-axis primitive without importing database semantics.
 
-## Architecture decision
+## Accepted architecture
 
-The shared library owns **one virtual-axis primitive**.
+The shared library owns **one virtual-axis primitive** implemented as a narrow Mioframe adapter over **`@tanstack/vue-virtual`**.
 
-Do not add a separate virtual-grid engine or presentation components.
+```text
+@tanstack/vue-virtual
+         ↓
+shared/ui/virtualization
+         ↓
+   useVirtualAxis
+      ↓       ↓
+ future 1D   database
+collections    ↓
+          vertical axis
+               +
+          horizontal axis
+```
+
+Do not add a second virtualization algorithm or a separate generic grid engine.
+
+A two-dimensional grid is composition of two independent axes against the same scroll element:
 
 ```text
 1D list                  database grid
@@ -33,7 +49,36 @@ useVirtualAxis           useVirtualAxis(vertical)
                          database-owned composition
 ```
 
-A two-dimensional grid is composition of two independent axes against the same scroll element. If future requirements prove that cross-axis behavior itself needs generic ownership, that is a later architecture decision; it is not required now.
+If a future requirement proves that cross-axis behavior itself needs generic ownership, that is a later architecture decision. It is not required by the current database contract.
+
+## Engine decision
+
+`@tanstack/vue-virtual` is the selected virtualization engine.
+
+The selection is based on required current capabilities provided by TanStack Virtual:
+
+- Vue integration through `useVirtualizer`;
+- vertical and horizontal virtualization;
+- stable `getItemKey` support;
+- provisional `estimateSize` values for unmeasured items;
+- dynamic DOM measurement through `measureElement`;
+- programmatic item size updates through the engine's `resizeItem` capability;
+- `scrollToIndex` for deep navigation;
+- overscan and total-size/range geometry;
+- supported scroll-position adjustment when measured sizes change.
+
+The integration proof is no longer a library-selection experiment. Its purpose is to verify that Mioframe can consume these capabilities through the narrow adapter defined here under the actual Vue/browser/database geometry we require.
+
+Reconsider the dependency only if that proof demonstrates a blocking incompatibility that would force Mioframe to own substantial virtualization machinery such as:
+
+- an offset/index tree;
+- a second range algorithm;
+- independent resize-observation scheduling;
+- independent scroll-anchor/correction logic;
+- hidden full-content measurement;
+- another general-purpose dynamic-size engine.
+
+A normal integration quirk or narrow adapter mapping is not sufficient reason to replace the selected engine.
 
 ## Ownership
 
@@ -41,13 +86,14 @@ A two-dimensional grid is composition of two independent axes against the same s
 
 Owns:
 
-- adapter to the selected headless virtualization engine;
-- virtual range calculation exposure;
-- provisional size estimates;
+- the only production import boundary for `@tanstack/vue-virtual`;
+- mapping Mioframe's virtual-axis contract to TanStack Virtual;
+- virtual-range exposure;
+- provisional estimates;
 - dynamic measured-size updates;
-- scroll-offset correction/anchoring supplied by the engine;
+- engine-backed scroll correction/anchoring;
 - overscan;
-- deep index navigation;
+- deep-index navigation;
 - lifecycle and cleanup of engine/browser observation owned by the adapter;
 - domain-agnostic public types.
 
@@ -70,17 +116,17 @@ Consumers own:
 - scroll-container placement and CSS/layout;
 - actual item markup;
 - dimension estimates appropriate to the presentation;
-- any aggregation needed to turn several DOM measurements into one logical-axis item size;
+- aggregation needed to turn several DOM measurements into one logical-axis item size;
 - focus, selection, editing, keyboard behavior, and accessibility semantics;
-- reset boundaries when their presentation meaning changes.
+- reset boundaries when presentation meaning changes.
 
-For the database, these responsibilities stay in `entities/databaseData`.
+For the database, these responsibilities remain in `entities/databaseData`.
 
 ## Source of truth and state
 
 The logical item collection remains consumer-owned.
 
-The virtualizer owns only ephemeral geometry derived from:
+The virtualizer owns only ephemeral presentation geometry derived from:
 
 - item count;
 - stable keys;
@@ -91,13 +137,13 @@ The virtualizer owns only ephemeral geometry derived from:
 
 Measurements are runtime presentation state. They are never database/view/document state and are not persisted by the shared library.
 
-The library must not become a second source of truth for ordering or membership.
+The virtualizer must never become a second source of truth for item ordering or membership.
 
 ## Public API
 
-The public surface should stay at one composable plus small domain-agnostic types.
+The initial public surface is one composable plus small domain-agnostic types.
 
-Conceptual API:
+Conceptually:
 
 ```ts
 useVirtualAxis(options)
@@ -110,14 +156,14 @@ Required options:
 - `getScrollElement()` — current scroll element or null before mount;
 - `orientation` — `vertical` or `horizontal`;
 - `estimateSize(index)` — provisional size for an item not yet authoritatively measured;
-- `overscan` — optional consumer-tunable overscan with a narrow shared default if capability testing supports one.
+- `overscan` — optional consumer-tunable overscan with a narrow shared default if integration testing supports one.
 
 Required returned capabilities:
 
 - `virtualItems` — current ordered virtual range;
-- `totalSize` — estimated/measured full axis extent;
-- `measureElement(element)` — register/update an item from its rendered DOM size;
-- `setItemSize(index, size)` — supply an authoritative size calculated by a consumer-owned measurement coordinator;
+- `totalSize` — estimated/measured full-axis extent;
+- `measureElement(element)` — register/update an item from rendered DOM size;
+- `setItemSize(index, size)` — Mioframe-facing name for supplying an authoritative consumer-calculated size; the adapter maps this to TanStack Virtual's `resizeItem` capability;
 - `scrollToIndex(index, options?)` — make a logical item reachable without requiring preceding items to have rendered.
 
 Conceptual `VirtualItem` fields:
@@ -128,7 +174,7 @@ Conceptual `VirtualItem` fields:
 - `size`;
 - `end`.
 
-Exact Vue wrapper types and option-object syntax are resolved in implementation preflight against the selected engine. Do not expose third-party engine classes/types as Mioframe public API.
+Exact Vue/TypeScript signatures are finalized in implementation preflight. Do not expose TanStack `Virtualizer`, TanStack `VirtualItem`, TanStack option objects, or arbitrary option passthrough through the Mioframe public API.
 
 ## Dynamic-size contract
 
@@ -138,59 +184,59 @@ Fixed item size is never a correctness requirement.
 
 After authoritative measurement:
 
-- the measured size replaces the estimate for geometry;
+- measured size replaces the estimate for geometry;
 - an item may change size repeatedly;
-- changes must update total extent and virtual offsets;
-- changes before the viewport must preserve a stable visible anchor according to the selected engine's scroll-correction behavior;
+- size changes update total extent and virtual offsets;
+- changes before the viewport preserve a stable visible anchor using the selected engine's supported correction behavior;
 - no complete hidden collection may be mounted merely to discover sizes.
+
+The adapter must use TanStack's native measurement/correction mechanisms rather than recreating them in Mioframe.
 
 ## Measurement modes
 
-Two measurement paths are required because the current database needs both.
+Two measurement paths are required by the current database.
 
 ### Element measurement
 
-`measureElement(element)` is used when one DOM element corresponds to one logical axis item.
+`measureElement(element)` applies when one DOM element represents one logical axis item.
 
 Current database use:
 
 - a rendered database row is the logical vertical item;
-- its final height already includes the tallest/wrapped visible cell in that row;
-- resize observation can remeasure it when content or column width changes.
-
-This path should use the selected engine's native dynamic-measurement/ResizeObserver integration rather than a Mioframe-owned offset algorithm.
+- its rendered height includes wrapping and the tallest visible cell;
+- content or column-width changes may resize it after mount;
+- TanStack dynamic element measurement/ResizeObserver integration updates the vertical geometry.
 
 ### Consumer-supplied measurement
 
-`setItemSize(index, size)` is used when one logical axis item has no single authoritative DOM element.
+`setItemSize(index, size)` applies when one logical axis item has no single authoritative DOM element.
 
 Current database use:
 
-- a logical column width may be derived from its header and several currently rendered cells;
-- `entities/databaseData` owns that aggregation/policy;
-- after deriving the current width, it supplies the result to the horizontal virtual axis.
+- a logical column width may be derived from its header and currently rendered cells;
+- `entities/databaseData` owns that aggregation and presentation policy;
+- after deriving the current width, it supplies the authoritative axis size;
+- the shared adapter maps that update to TanStack `resizeItem`.
 
-The shared library does not know how that size was calculated.
+The shared library does not know how the size was calculated.
 
-Do not use DOM element measurement and consumer-supplied sizing concurrently as competing sources for the same logical axis item unless the selected engine explicitly defines a safe contract and a current consumer requires it. The database design should use row DOM measurement vertically and consumer-supplied column sizing horizontally.
+Do not use both measurement paths as competing sources for the same logical item unless a current consumer requires that behavior and the TanStack contract makes it safe. The database design uses row DOM measurement vertically and consumer-supplied column sizing horizontally.
 
 ## Stable identity
 
-`getItemKey` is required for large/dynamic collections. Index is position, not identity.
+`getItemKey` is required. Index represents position, not identity.
 
-The adapter must configure the engine to retain measurements according to stable keys where supported.
+The adapter must configure TanStack's stable-key capability from consumer keys rather than create a parallel key registry.
 
-Consumer responsibilities after reorder/filter/schema changes:
+Consumers remain responsible for:
 
-- current index-to-key mapping must remain accurate;
-- asynchronous consumer-owned measurements must be associated with the intended stable item before being applied;
-- removed items must not retain consumer-owned measurement state indefinitely.
-
-The shared API should not introduce a second key registry when the underlying engine can own measurement identity directly.
+- keeping index-to-key mapping accurate after reorder/filter/schema changes;
+- associating asynchronous consumer-owned measurements with the intended stable item;
+- releasing consumer-owned measurement state for removed items.
 
 ## Two-axis composition
 
-Database rendering uses one scroll element:
+Database rendering uses one physical scroll element:
 
 ```text
                          shared scroll element
@@ -206,9 +252,7 @@ Database rendering uses one scroll element:
 
 The shared library does not create or own the matrix.
 
-The consumer derives the rendered intersections from the two current ranges.
-
-Cross-axis effects stay consumer-owned. Example:
+Cross-axis effects remain consumer-owned. Example:
 
 ```text
 column width changes
@@ -217,7 +261,7 @@ visible cells reflow
        ↓
 row DOM heights change
        ↓
-row ResizeObserver / measureElement
+TanStack-backed measureElement
        ↓
 vertical axis updates
 ```
@@ -228,24 +272,20 @@ No shared grid coordinator is required for this flow.
 
 The consumer owns the physical scroll container.
 
-The adapter requires only `getScrollElement()` and must tolerate null before mount and cleanup on unmount.
-
-For two-axis use, both axes may reference the same container.
+Both axes may reference the same element. The adapter tolerates `null` before mount and owns cleanup on unmount.
 
 The library must not:
 
 - create nested scroll containers;
 - decide sticky headers/actions;
-- change overflow behavior outside its consumer;
-- own scroll restoration across product views.
+- change consumer overflow behavior;
+- own product-view scroll restoration.
 
 ## Scroll navigation and anchoring
 
-`scrollToIndex` is part of the current required API because virtualization removes deep offscreen items from the DOM and consumers need a supported way to reach them.
+`scrollToIndex` is part of the required API because offscreen logical items do not exist in the DOM.
 
-The library owns geometry-level navigation only. It does not own focus.
-
-Typical consumer sequence:
+The library owns geometry-level navigation only:
 
 ```text
 logical target selected
@@ -259,163 +299,155 @@ consumer DOM appears
 consumer may focus/select/edit it
 ```
 
-When measured sizes before the viewport change, the adapter should rely on the selected engine's supported scroll-adjustment mechanism. Do not implement a second Mioframe scroll-anchor algorithm unless capability testing proves the engine insufficient.
+Focus and editing remain consumer-owned.
+
+When measured sizes before the viewport change, the adapter uses TanStack's supported scroll-adjustment behavior. Do not introduce a second Mioframe scroll-anchor algorithm unless a demonstrated blocker cannot be resolved through the selected engine's supported contract.
 
 ## Rendering contract
 
 The library is headless.
 
-It must not expose `VirtualList.vue`, `VirtualTable.vue`, `VirtualGrid.vue`, or a render-prop component in the first implementation.
+Do not expose `VirtualList.vue`, `VirtualTable.vue`, `VirtualGrid.vue`, or a render-prop component in the initial implementation.
 
 Reasons:
 
-- current consumers need different DOM and accessibility semantics;
-- database table rendering and future list/card rendering are not the same presentation contract;
-- a composable keeps native/Material/product ownership with the truthful consumer;
+- current consumers require different DOM/accessibility semantics;
+- database table rendering and list/card rendering are different presentation contracts;
+- a composable keeps presentation ownership with the truthful consumer;
 - no current requirement needs a generic rendering component.
 
-## Engine boundary
+## Dependency boundary
 
-A mature headless engine is preferred. `@tanstack/vue-virtual` is the current candidate because its documented model includes:
+Only `src/shared/ui/virtualization` may import TanStack Virtual for this architecture.
 
-- vertical and horizontal virtualizers;
-- variable/dynamic sizes;
-- element measurement;
-- programmatic item resizing;
-- overscan;
-- stable item keys;
-- scroll-to-index;
-- scroll adjustment when measured sizes change.
+The adapter must not expose:
 
-Adoption is conditional on the capability experiment in `docs/database-virtualization-profiling.md`.
+- the engine instance;
+- engine-specific types;
+- engine-specific option names where Mioframe does not need them;
+- arbitrary third-party option passthrough.
 
-Accept the engine when Mioframe can implement this document as a thin adapter.
-
-Reject/reconsider it if correct behavior requires Mioframe to own substantial:
-
-- offset trees;
-- measurement scheduling;
-- resize observation infrastructure;
-- scroll correction;
-- hidden full-content measurement;
-- duplicate range algorithms.
-
-The adapter must not expose the engine instance, engine-specific virtual item type, engine option names, or arbitrary option passthrough. An unrestricted passthrough would make the wrapper meaningless and couple consumers to the dependency.
+This keeps the dependency replaceable and prevents TanStack semantics from becoming database or future-list APIs.
 
 ## Error and invalid-input behavior
 
 The virtualizer is presentation infrastructure, not a recoverable business service.
 
-Implementation preflight must define deterministic handling for programmer/configuration errors such as:
+Implementation preflight must define deterministic handling for programmer/configuration errors including:
 
 - negative count;
 - non-finite/non-positive authoritative sizes;
-- duplicate/unstable keys when detectable;
+- duplicate/unstable keys when detectably invalid;
 - out-of-range `scrollToIndex`/`setItemSize` calls.
 
-Prefer explicit development failure/warning or narrow normalization according to existing shared-UI conventions. Do not introduce a user-visible `DomainError` taxonomy for virtual geometry.
+Do not introduce a user-visible `DomainError` taxonomy for virtual geometry.
 
 ## Lifecycle
 
-The composable owns cleanup of the selected engine integration and observers registered by `measureElement`.
+The composable owns cleanup of TanStack integration and observations registered through its measurement path.
 
-Consumer-owned measurement coordinators own their own observers/state and cleanup.
+Consumer-owned measurement coordinators own their own state/observers and cleanup.
 
-Changing logical count/order must update virtual ranges without creating a parallel retained collection.
+Changing count/order updates virtual ranges without creating a retained duplicate logical collection.
 
-Measurement cache invalidation should be as narrow as the selected engine and current consumer require. Do not add a generic cache-generation/reset protocol before a confirmed scenario needs it.
+Do not add a generic measurement-cache generation/reset protocol until a confirmed consumer requires one.
 
 ## Accessibility and interaction
 
 The shared virtualizer owns no ARIA roles or keyboard semantics.
 
-Virtualization changes which items exist in the DOM, so consumers must explicitly handle:
+Consumers must explicitly own:
 
-- focus when a focused item is about to leave the range;
+- focus when a focused item leaves the virtual range;
 - keyboard navigation to an offscreen logical item;
-- accessibility count/index semantics when required by the rendered pattern;
-- editing/overlay ownership for virtualized items.
+- accessibility count/index semantics required by the rendered pattern;
+- editing and overlay ownership for virtualized items.
 
-Those are presentation-specific contracts and must not be guessed by the generic axis.
+## Required integration proof
 
-## Minimum proof
-
-### Shared reusable browser proof
-
-Because geometry, scrolling, ResizeObserver, and anchoring require a real browser, the shared adapter needs isolated reusable browser proof for:
+Because geometry, scrolling, ResizeObserver, and anchoring require a real browser, the adapter needs isolated reusable browser proof for the Mioframe/TanStack integration:
 
 - 10,000+ logical items with bounded DOM;
 - variable vertical sizes;
 - variable horizontal sizes;
 - post-mount resize;
 - `scrollToIndex` to a deep item;
-- size correction before viewport without unacceptable anchor jump;
-- consumer-supplied `setItemSize` updates;
+- size correction before the viewport without unacceptable anchor jump;
+- consumer-supplied `setItemSize` mapped through TanStack `resizeItem`;
 - cleanup/remount;
 - two independent axes using one scroll container in a test fixture, without adding a production grid abstraction.
 
-Do not duplicate third-party unit tests. Protect only Mioframe's adapter contract and integration behavior.
+Do not duplicate TanStack's own unit tests. Prove only Mioframe's adapter contract and the browser behavior on which current consumers depend.
 
-### Deterministic/component proof
+A failure in this proof is handled as follows:
 
-Use lower-level tests only for Mioframe-owned pure validation/API wiring that does not claim browser geometry.
+1. determine whether Mioframe misused the supported TanStack contract;
+2. if so, correct the adapter/integration;
+3. if a narrow TanStack limitation can be accommodated without new generic algorithms, document and contain it at the adapter boundary;
+4. reconsider the engine only if correct required behavior would otherwise require Mioframe to implement substantial virtualization machinery.
 
-### Database product proof
+## Database product proof
 
-Database-specific bounded cell counts, deep row/column scrolling, editing, view switching, correctness, and performance stay with the database architecture/profiling plan.
+Database-specific bounded cell counts, deep row/column scrolling, editing, view switching, correctness, dynamic column policy, and performance remain owned by the database architecture/profiling plan.
 
 ## Performance invariants
 
 For a fixed viewport and overscan:
 
-- mounted axis items must remain bounded as logical count grows;
-- range derivation/measurement must not require scanning or mounting every logical item on each scroll frame;
-- the shared layer must not introduce work proportional to the cross product of two axes;
+- mounted axis items remain bounded as logical count grows;
+- the Mioframe adapter does not scan or mount the complete logical collection on each scroll frame;
+- the shared layer introduces no work proportional to the cross product of two axes;
 - consumer-supplied size updates affect only the owning axis geometry.
 
-Absolute timing budgets are established by controlled profiling, not invented in this library contract.
+Absolute timing budgets are established by controlled database profiling, not invented in this library contract.
 
 ## Rejected alternatives
 
-- custom Mioframe virtualizer: unnecessary while a mature engine satisfies the contract;
-- fixed-size-only virtualizer: violates current content requirements;
-- separate `useVirtualGrid`: adds an abstraction without current cross-axis generic behavior;
-- generic `VirtualList`/`VirtualTable` components: mixes geometry with presentation semantics;
-- adding virtualization to `MDTable`/`MDList`: wrong ownership and excessive shared UI blast radius;
-- engine imports directly in `entities/databaseData`: prevents the required reusable lower-level ownership and spreads dependency semantics;
-- arbitrary third-party options passthrough: leaks dependency API and destroys the adapter boundary;
-- persisted measurement state: no current product requirement and creates another state source;
-- hidden full collection measurement: defeats bounded rendering.
+- custom Mioframe virtualizer — unnecessary ownership of solved infrastructure;
+- `vue-virtual-scroller` as the primary engine — more presentation/scroller-oriented than the required narrow headless-axis boundary;
+- VueUse `useVirtualList` — insufficient for the required dynamic two-axis contract;
+- TanStack Table — wrong responsibility; database/table state already has Mioframe owners;
+- direct TanStack imports in `entities/databaseData` — leaks dependency semantics and prevents one reusable lower boundary;
+- fixed-size-only virtualization — violates current content requirements;
+- separate `useVirtualGrid` — adds an abstraction without generic cross-axis behavior;
+- generic `VirtualList`/`VirtualTable` components — mixes geometry with presentation semantics;
+- virtualization added to `MDTable`/`MDList` — wrong ownership and excessive blast radius;
+- arbitrary TanStack options passthrough — destroys the adapter boundary;
+- persisted measurement state — no current product requirement;
+- hidden full-collection measurement — defeats bounded rendering.
 
 ## Shared UI blast radius
 
-Initial library introduction should:
+Initial introduction should:
 
-- add only `src/shared/ui/virtualization` and its public entry point/tests;
-- not modify existing `MDList`, `MDTable`, or Material components to establish the primitive;
+- add only `src/shared/ui/virtualization`, its public entry point, and its proof;
+- add `@tanstack/vue-virtual` as the selected dependency;
+- not modify existing `MDList`, `MDTable`, or Material components merely to establish the primitive;
 - gain the database as the first production consumer;
-- require consumer review only for code actually migrated to the new primitive.
+- require consumer review only for code actually migrated to the primitive.
 
 ## Implementation readiness
 
-Architecture decisions resolved:
+Resolved architecture decisions:
 
 - owner and dependency direction;
+- selected engine: `@tanstack/vue-virtual`;
 - one-axis abstraction instead of presentation/grid abstractions;
 - dynamic sizing contract;
-- two required measurement paths;
+- element and consumer-supplied measurement paths;
+- mapping of consumer-supplied size to TanStack `resizeItem`;
 - two-axis composition model;
 - scroll-container ownership;
 - navigation vs focus ownership;
 - persistence/state boundary;
 - engine encapsulation boundary;
-- required reusable browser proof.
+- required reusable browser proof;
+- conditions under which the engine decision may be reopened.
 
-Remaining preflight blockers before production code:
+Remaining preflight blockers before production implementation:
 
-- execute the focused candidate-engine capability experiment;
-- confirm the candidate supports both measurement paths and stable anchoring without substantial Mioframe algorithms;
-- resolve exact TypeScript/Vue signatures and invalid-input behavior against the confirmed dependency;
-- select exact test/spec paths according to current Storybook/browser-test migration policy.
+- execute the focused Mioframe/TanStack integration proof;
+- resolve exact TypeScript/Vue signatures and invalid-input behavior against the installed dependency;
+- select exact test/spec paths according to current testing/Storybook migration policy.
 
-Verdict for library architecture: **ready for capability proof and implementation preflight; production implementation starts only after those preflight blockers are resolved**.
+Verdict for library architecture: **accepted; selected engine fixed; ready for integration proof and implementation preflight**.
