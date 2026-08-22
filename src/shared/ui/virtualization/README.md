@@ -79,11 +79,7 @@ The consumer owns scroll-root CSS, spacer DOM, accessibility, selection, focus, 
 No extra API is required for rows that grow or shrink after mount. Apply the returned directive to the element whose real size owns the virtual item:
 
 ```vue
-<article
-  v-for="item in collection.items.value"
-  :key="item.key"
-  v-virtual-item="item"
->
+<article v-for="item in collection.items.value" :key="item.key" v-virtual-item="item">
   <ExpandableContent :value="item.value" />
 </article>
 ```
