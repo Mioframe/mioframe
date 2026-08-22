@@ -19,6 +19,8 @@ None.
 
 Owner: `scripts/lib/unitRisk.ts`.
 
+Canonical contract: `docs/testing/verify-unit-impact-correction.md`, decision 1.
+
 Problem: `isTestShapedPath()` accepts `.test.mjs` under all `src/`, `config/`, and `scripts/` prefixes, while the actual current Vitest include matrix is:
 
 ```text
@@ -43,7 +45,15 @@ Required final state:
 
 Risk: planner/registry validation can claim a direct Vitest proof owner that the actual test runner does not discover, violating the Pass C separation between test discovery and dependency-input eligibility.
 
-Verification for closure: focused unit planner proof and, where useful, one real Vitest discovery/related probe; no broad verification required.
+Closure proof:
+
+- fresh independent unit-test author context;
+- meaningful RED showing a `fileAsDataMappings` owner such as `src/example.test.mjs` or `config/example.test.mjs`, with the existing `fileExists` seam reporting it present, is incorrectly accepted as a Vitest-owned test path before the fix;
+- positive matrix proof for every supported direct-test class;
+- negative proof for unsupported `src/**/*.test.mjs`, `config/**/*.test.mjs`, Playwright `*.spec.ts`, and nearby root/non-owned shapes as applicable;
+- focused unit GREEN only; no broad verification required.
+
+Do not change the ordinary repository-wide dependency-input contract merely to fix direct-test discovery. An unsupported direct-test shape can still be an ordinary source/support input for `vitest related` when that mechanism truthfully applies.
 
 ## Minor issues
 
@@ -79,3 +89,20 @@ None.
 - Do not reopen mutation architecture.
 - Do not redesign verifier output or CI topology.
 - Do not introduce a generic dependency graph, cross-lane registry, release crawler, or additional CI jobs.
+
+## NEXT CORRECTION
+
+Owner: unit-impact direct Vitest discovery.
+
+Scope:
+
+- `scripts/lib/unitRisk.ts`;
+- `scripts/lib/unitRisk.test.ts`;
+- only directly required focused proof files if the accepted unit proof cannot otherwise express the contract.
+
+Contract:
+
+- `vitest.config.ts` plus `docs/testing/verify-unit-impact-correction.md` decision 1;
+- direct test discovery and ordinary dependency-input eligibility remain separate concepts.
+
+After M1 is closed, return to the architect for the behavior-preserving durable comment/TSDoc cleanup and final full PR-level review. Do not perform that cleanup opportunistically in the behavioral implementation context.
