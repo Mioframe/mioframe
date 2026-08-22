@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import appConfig from './playwright.config';
@@ -6,6 +7,7 @@ import storybookBehaviorConfig from './playwright.storybook.config';
 import visualConfig from './playwright.visual.config';
 import {
   DESKTOP_PROJECT_NAME,
+  getProjectIgnoredSpecs,
   MOBILE_PROJECT_NAME,
 } from './scripts/lib/e2eProjectApplicability.ts';
 
@@ -36,13 +38,15 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(visualConfig.respectGitIgnore).toBe(true);
   });
 
-  it('makes both application e2e projects ignore the storybook, visual, and release subtrees', () => {
-    // The shared subtree ignores live on projects[*].testIgnore, not a
-    // top-level appConfig.testIgnore (playwright.config.ts sets testIgnore
-    // per-project, mixing SHARED_TEST_IGNORE with each project's own
-    // getProjectIgnoredSpecs(...) applicability ignores) -- resolve each real
-    // project by name rather than duplicating E2E_PROJECT_APPLICABILITY's own
-    // registry contract, which is e2eProjectApplicability.test.ts's job.
+  it('keeps both application e2e projects testIgnore applicability-only, with no redundant storybook/visual/release subtree ignores', () => {
+    // docs/testing/verify-app-e2e-discovery-correction.md: once the top-level
+    // root-only testMatch owns the application/Storybook/visual/release lane
+    // boundary, projects[*].testIgnore must remain solely for desktop/mobile
+    // applicability exclusions -- it must not regain a second physical
+    // lane-boundary mechanism (a SHARED_TEST_IGNORE-shaped subtree list).
+    // Resolve each real project by name rather than duplicating
+    // E2E_PROJECT_APPLICABILITY's own registry contract, which is
+    // e2eProjectApplicability.test.ts's job.
     const desktopProject = appConfig.projects?.find(
       (project) => project.name === DESKTOP_PROJECT_NAME,
     );
@@ -50,12 +54,8 @@ describe('Playwright lane discovery stays disjoint', () => {
       (project) => project.name === MOBILE_PROJECT_NAME,
     );
 
-    expect(desktopProject?.testIgnore).toEqual(
-      expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),
-    );
-    expect(mobileProject?.testIgnore).toEqual(
-      expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),
-    );
+    expect(desktopProject?.testIgnore).toEqual(getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME));
+    expect(mobileProject?.testIgnore).toEqual(getProjectIgnoredSpecs(MOBILE_PROJECT_NAME));
   });
 
   it('does not give the storybook behavior, visual, or release configs a testIgnore of their own subtree', () => {
@@ -96,6 +96,77 @@ describe('Playwright lane discovery stays disjoint', () => {
     const allSpecs = [...applicationSpecs, ...storybookSpecs, ...visualSpecs, ...releaseSpecs];
 
     expect(new Set(allSpecs).size).toBe(allSpecs.length);
+  });
+});
+
+describe('real Playwright collector boundary (application config)', () => {
+  // docs/testing/verify-app-e2e-discovery-correction.md: the application
+  // ownership model is root-only `tests/e2e/*.spec.ts`, but the real
+  // `playwright.config.ts` has no `testMatch`, so Playwright's own default
+  // recursive discovery is currently broader than every local Mioframe
+  // predicate assumes. This proof exercises the real installed Playwright
+  // collector against the real config -- not a reimplementation of glob
+  // matching -- so it fails red while that gap is open, independently of
+  // whether validateE2EScenarioRegistry()/validateE2EProjectApplicability()/
+  // this file's own listFiles() scan agree with each other.
+  it('collects the real root app spec, but rejects a nested probe, a default test-shape probe, and existing storybook/visual/release specs', () => {
+    const nestedProbeDir = 'tests/e2e/other';
+    const nestedProbeSpec = `${nestedProbeDir}/example.spec.ts`;
+    const defaultShapeProbeSpec = 'tests/e2e/example.test.mjs';
+
+    try {
+      fs.mkdirSync(nestedProbeDir, { recursive: true });
+      fs.writeFileSync(
+        nestedProbeSpec,
+        "import { test } from '@playwright/test';\n\ntest('nested probe must not be collected by the application config', () => {});\n",
+      );
+      fs.writeFileSync(
+        defaultShapeProbeSpec,
+        "import { test } from '@playwright/test';\n\ntest('default test-shape probe must not be collected by the application config', () => {});\n",
+      );
+
+      const result = spawnSync(
+        process.execPath,
+        ['node_modules/@playwright/test/cli.js', 'test', '--list', '--config=playwright.config.ts'],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            // Any placeholder external base URL resolves appConfig's
+            // webServer to undefined (see playwright.config.ts), so
+            // collection stays browser/server-free.
+            PLAYWRIGHT_EXTERNAL_BASE_URL: 'http://127.0.0.1:1',
+          },
+        },
+      );
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+
+      const listing = result.stdout;
+
+      // 1. A real root application spec is collected.
+      expect(listing).toContain('appSmoke.spec.ts');
+
+      // 2 & 3. Must reject: with the current unfixed config (no testMatch),
+      // Playwright's default recursive discovery collects both a nested spec
+      // and a root default-Playwright `*.test.*` shape. Once the approved
+      // root-only testMatch (`**/tests/e2e/*.spec.ts`) lands, both of these
+      // controlled probes must disappear from the listing.
+      expect(listing).not.toContain('other/example.spec.ts');
+      expect(listing).not.toContain('example.test.mjs');
+
+      // 4, 5, 6. Existing nested Storybook/visual/release specs must never
+      // be collected by the application config either.
+      expect(listing).not.toContain('storybook/colorOwnership.spec.ts');
+      expect(listing).not.toContain('visual/shared-ui.spec.ts');
+      expect(listing).not.toContain('release/productionArtifactSmoke.spec.ts');
+    } finally {
+      fs.rmSync(nestedProbeSpec, { force: true });
+      fs.rmSync(nestedProbeDir, { recursive: true, force: true });
+      fs.rmSync(defaultShapeProbeSpec, { force: true });
+    }
   });
 });
 

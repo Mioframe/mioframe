@@ -6,8 +6,6 @@ import {
   MOBILE_PROJECT_NAME,
 } from './scripts/lib/e2eProjectApplicability.ts';
 
-const SHARED_TEST_IGNORE = ['storybook/**', 'visual/**', 'release/**'];
-
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.appPreview.port;
 const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
@@ -19,6 +17,12 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Root-only application collection: direct tests/e2e/*.spec.ts files only.
+  // See docs/testing/verify-app-e2e-discovery-correction.md -- this replaces
+  // the former SHARED_TEST_IGNORE subtree-exclusion mechanism as the single
+  // physical lane boundary between application e2e and the Storybook,
+  // visual, and release lanes.
+  testMatch: '**/tests/e2e/*.spec.ts',
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -54,7 +58,7 @@ export default defineConfig({
   projects: [
     {
       name: DESKTOP_PROJECT_NAME,
-      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME)],
+      testIgnore: getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME),
       use: {
         ...devices['Desktop Chrome'],
         channel: 'chromium',
@@ -62,7 +66,7 @@ export default defineConfig({
     },
     {
       name: MOBILE_PROJECT_NAME,
-      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(MOBILE_PROJECT_NAME)],
+      testIgnore: getProjectIgnoredSpecs(MOBILE_PROJECT_NAME),
       use: {
         ...devices['Pixel 5'],
         channel: 'chromium',
