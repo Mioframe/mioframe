@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **all known implementation/review findings closed; PR publication and exact-head CI remain**.
+Status: **PR #216 is blocked by one verifier execution-contract finding: the `artifact` release check has an outer timeout shorter than its owning Playwright container deadline**.
 
 This document owns verifier-modernization packaging and final integration order. It does not redefine lane semantics owned by the architecture documents.
 
@@ -12,130 +12,134 @@ This document owns verifier-modernization packaging and final integration order.
 - `docs/testing/verify-change-classification.md` — repository metadata classification;
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact ownership correction;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed single-owner application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — closed release-impact correction;
-- `docs/testing/verify-modernization.md` — final implementation/selection status;
+- `docs/testing/verify-release-impact-correction.md` — closed release-impact selection/consumer ownership correction;
+- `docs/testing/verify-modernization.md` — implementation/selection status;
+- `scripts/REVIEW.md` — active PR-level review findings;
 - `.agents/skills/verification/SKILL.md`, `project-review`, `architect-handoff`, `implementation-preflight`, `test-first`, and `test-authoring` — workflow/proof rules.
 
 Architecture/status documents are architect-owned. Coding/test-author contexts must not edit them unless explicitly assigned.
 
-## Branch
-
-Finish branch:
+## Branch / PR
 
 ```text
-refactor/verify-modernization-finish
+branch: refactor/verify-modernization-finish
+PR: #216
+current reviewed head: bdd2131c8a6bd40db1a34e1ce8e0cc4c9d45884a
+base: develop
 ```
 
-Last confirmed `develop` merge base:
-
-```text
-13ae220900a2a724c867b01b5eb1f045c2a1d857
-```
-
-The branch was confirmed ahead of and not behind `develop` during final review. Re-check immediately before PR publication.
+Re-check the exact PR head and current `develop` before merge.
 
 ## Closed implementation scope
 
-### Pass A — agent-facing output
+The following remain closed and must not be reopened without new evidence:
 
-Closed. Default output is bounded; detailed diagnostics remain in `.verify/logs/**` / `--verbose`; heartbeats carry verifier-owned liveness only; failure fallback uses trusted semantic facts or exact exit code + log/rerun pointers rather than arbitrary output-tail inference.
+- Pass A — bounded agent-facing output;
+- Pass B — repository metadata classification;
+- Pass C — unit impact / exact Vitest discovery / real `vitest related` ownership;
+- single-owner application-E2E discovery architecture and collision-safe collector proof;
+- Pass D — explicit mutation ownership;
+- Pass E — release-impact **selection and consumer mapping**;
+- Pass F — parallel CI topology and independent `release-version` gate;
+- final stale-comment cleanup.
 
-### Pass B — repository metadata
+## Active blocker — artifact outer timeout
 
-Closed. `isNonRuntimeRepositoryMetadataPath()` remains a narrow positive classifier rather than a global documentation/Markdown exclusion.
-
-### Pass C — unit impact
-
-Closed. Direct Vitest discovery matches the real include matrix; ordinary dependency inputs are repository-wide and delegated to `vitest related`; exact external and bounded-scan ownership remains explicit and status-aware.
-
-### Application-E2E discovery ownership
-
-Closed after the architecture stop/rework.
-
-One pure verifier module owns the repeated root application-spec contract:
+The release-impact `artifact` command is:
 
 ```text
-scripts/lib/appE2EPaths.ts
-├─ APP_E2E_SPEC_DIR
-├─ APP_E2E_TEST_MATCH
-└─ isRootAppE2ESpecPath()
+pnpm e2e:release --label artifact tests/e2e/release/productionArtifactSmoke.spec.ts
+→ scripts/e2eReleaseContainer.mjs
+→ runPlaywrightInContainer(...)
 ```
 
-`playwright.config.ts`, `e2eRisk.ts`, `e2eProjectApplicability.ts`, and `unitRisk.ts` consume it. Replaced private predicates/constants are removed; scenario mappings and applicability data retain their original owners.
-
-The real Playwright collector remains independent. Test probes are collision-safe and invocation-owned; filtered collection proves a root spec remains collected while a nested probe cannot bypass `testMatch`.
-
-### Pass D — mutation
-
-Closed. Mutation remains explicit high-risk opt-in through one verifier/Stryker registry; adjacency is not ownership.
-
-### Pass E — release impact
-
-Closed. Six source-impact release checks use audited consumer ownership and conservative fallback; proof/type-only paths do not inherit runtime release ownership; exact mapping integrity is validated; `release-version` remains independent.
-
-### Pass F — CI topology
-
-Closed. Verification lanes remain parallel after autofix, release-impact and release-version stay independent, and no speculative cross-job artifact layer or extra task-runner infrastructure was introduced.
-
-### Final comment cleanup
-
-Closed. The three final stale comments were corrected without executable or assertion changes:
-
-- repository-wide ordinary unit-input wording in `unitRisk.test.ts`;
-- separately owned release-lane wording in `e2eRisk.ts`;
-- rolling-buffer/failure-reason wording in `verify.ts`.
-
-## Final semantic review
-
-The complete resulting `develop...refactor/verify-modernization-finish` scope was re-reviewed after the application-E2E architecture migration and final comment cleanup.
-
-Current findings:
+The shared Playwright container uses the canonical timeout from `config/tooling.json`:
 
 ```text
-blockers: 0
-major issues: 0
-minor issues: 0
-accepted risks: 0
+verification.playwrightContainer.timeoutSeconds = 900
 ```
 
-Before publishing the PR, remove the resolved temporary `scripts/lib/REVIEW.md`; no active review artifact may ship in the PR diff.
+`scripts/verify.ts` already defines the outer Playwright timeout contract as:
+
+```text
+container timeout + PLAYWRIGHT_COMMAND_OVERHEAD_MS
+= 15 minutes + 2 minutes
+= 17 minutes
+```
+
+That derived timeout is used by `e2e`, `storybook-behavior`, `visual`, and `release-smoke`, but `artifact` is incorrectly fixed at 8 minutes. The verifier can therefore terminate a valid artifact Playwright run before the owning container reaches its own bounded deadline.
+
+This is an execution-contract bug, not a release-impact ownership redesign.
+
+### Required final state
+
+- `COMMAND_TIMEOUT_MS_BY_LABEL.artifact` uses `PLAYWRIGHT_COMMAND_TIMEOUT_MS`;
+- timeout tests classify `artifact` as Playwright-container-backed, not as an unrelated fixed-limit command;
+- every Playwright-backed label remains strictly above the canonical 900-second container deadline;
+- the existing `verification-release` timeout-envelope proof is recalculated from the corrected command map;
+- `.github/workflows/verify.yml` remains at 120 minutes unless the corrected envelope proves it insufficient.
+
+With the current constants, the corrected verifier-owned worst-case release-impact envelope is:
+
+```text
+build          10m
+artifact       17m
+release-smoke  17m
+managed-updates 68m
+-------------------
+total         112m
+setup allowance 5m
+required      117m
+```
+
+The current 120-minute GitHub job deadline remains sufficient, so no workflow change is currently required.
+
+## Proof discipline
+
+This is a behavioral timeout-contract correction. Use a fresh test-author context before production changes.
+
+Meaningful RED:
+
+```text
+artifact is included in the Playwright-backed timeout population
+→ expected derived 17-minute timeout
+→ current production returns fixed 8-minute timeout
+```
+
+The implementation context then changes only the minimum production timeout assignment needed to satisfy the accepted proof.
+
+Do not manufacture additional release ownership or CI topology changes.
 
 ## Remaining order
 
 ```text
-1. remove resolved scripts/lib/REVIEW.md
-2. compare branch with current develop
-3. if still ahead/not behind, publish PR to develop
-4. apply exactly one version-impact label
-5. inspect exact-head CI
-6. if autofix/version materialization changes the head, review the new exact head and its new CI
-7. record actual CI critical path / merge latency
-8. give merge-readiness verdict
-9. squash merge only after the exact-head automatic gate is healthy
+1. fresh test-author correction for artifact timeout classification
+2. minimal scripts/verify.ts implementation correction
+3. focused verifier unit proof + type-check if useful
+4. architect reviews the exact correction and recalculated 120-minute envelope
+5. remove resolved scripts/REVIEW.md
+6. refresh verify-modernization.md / PR description to closed state
+7. require exact-head verification-release + aggregate verify CI
+8. if autofix changes head, review the new exact head and its CI
+9. record actual CI critical path / merge latency
+10. merge-readiness verdict
+11. squash merge only after the exact-head automatic gate is healthy
 ```
 
 ## PR / version policy
 
-This is an ordinary internal verification/tooling refactor into `develop`, with no user-facing product behavior change. Per `docs/release.md`, its release intent is:
+PR #216 remains an ordinary internal verification/tooling refactor into `develop` with release intent:
 
 ```text
 version:patch
 ```
 
-Same-repository CI owns materialization of the exact `package.json` PATCH version after the PR carries that label.
+Same-repository CI owns materialization of the exact `package.json` PATCH version.
 
 ## Exact-head rule
 
-The exact PR head is authoritative. If `autofix` materializes `package.json`, applies formatting, or otherwise pushes a new head:
-
-```text
-old CI result is obsolete
-→ inspect/review the new head
-→ require the new head's CI
-```
-
-Do not merge based on green checks from an earlier head.
+The exact PR head is authoritative. Any new review/correction/autofix commit invalidates earlier CI as a merge gate.
 
 ## Stop rule
 
-After exact-head CI is healthy and merge-readiness is established, stop verifier infrastructure modernization. Further jobs, sharding, cross-job artifacts, generic dependency graphs, task runners, universal registries, or speculative optimization require a separate measured need and architecture decision.
+After this blocker is closed, final semantic review remains clean, and exact-head CI succeeds, stop verifier infrastructure modernization. Further jobs, sharding, cross-job artifacts, generic dependency graphs, task runners, universal registries, or speculative optimization require a separate measured need and architecture decision.
