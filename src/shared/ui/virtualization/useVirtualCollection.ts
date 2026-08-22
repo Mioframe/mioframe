@@ -82,11 +82,11 @@ export function useVirtualCollection<T, TKey extends VirtualCollectionKey>(
   const readSource = (): readonly T[] => toValue(source);
 
   const readValue = (currentSource: readonly T[], index: number): T => {
-    const value = currentSource[index];
-    if (value === undefined) {
+    if (index < 0 || index >= currentSource.length) {
       throw new RangeError(`useVirtualCollection: no source entry at index ${index}`);
     }
-    return value;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- index validity is checked above independently of the value; noUncheckedIndexedAccess still widens this access to T | undefined even though a valid source value (including a legitimate `undefined`) exists.
+    return currentSource[index] as T;
   };
 
   const readSurfaceOffset = (): number => toValue(options.surfaceOffset ?? 0);

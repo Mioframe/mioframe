@@ -60,6 +60,10 @@ function growCol(): void {
     [index]: (bodyCellGrowth.value[index] ?? 0) + 1,
   };
 }
+function resetCol(): void {
+  const index = growColInput.value;
+  bodyCellGrowth.value = { ...bodyCellGrowth.value, [index]: 0 };
+}
 
 function rowLabel(index: number): string {
   const lines = 1 + (rowGrowth.value[index] ?? 0);
@@ -136,6 +140,9 @@ const viewportStyle: CSSProperties = {
       <button type="button" data-testid="db-virt-grow-col-button" @click="growCol">
         Grow column
       </button>
+      <button type="button" data-testid="db-virt-reset-col-button" @click="resetCol">
+        Reset column body content
+      </button>
     </div>
 
     <div
@@ -180,6 +187,7 @@ const viewportStyle: CSSProperties = {
               v-virtual-column="col"
               class="database-virtualization-capability-fixture__header-cell"
               :data-testid="`db-virt-header-cell-${col.key}`"
+              :data-col-size="col.size"
               :aria-colindex="col.index + 1"
               :style="columnMinWidthStyle(col)"
             >
@@ -212,6 +220,7 @@ const viewportStyle: CSSProperties = {
             v-virtual-row="row"
             class="database-virtualization-capability-fixture__row"
             :data-testid="`db-virt-row-${row.key}`"
+            :data-row-size="row.size"
             :aria-rowindex="row.index + 2"
           >
             <td aria-hidden="true" :style="{ width: `${columns.leadingSize.value}px` }" />
@@ -246,6 +255,9 @@ const viewportStyle: CSSProperties = {
 
     <output data-testid="db-virt-mounted-rows">{{ rows.items.value.length }}</output>
     <output data-testid="db-virt-mounted-cols">{{ columns.items.value.length }}</output>
+    <output data-testid="db-virt-mounted-cells">
+      {{ rows.items.value.length * columns.items.value.length }}
+    </output>
   </div>
 </template>
 

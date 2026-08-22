@@ -31,6 +31,14 @@ export const RemapAndDeepScroll: Story = {
   args: { axis: 'vertical', itemCount: 200 },
 };
 
+export const SurfaceOffset: Story = {
+  args: { axis: 'vertical', itemCount: 10000, surfaceOffset: 240 },
+};
+
+export const UndefinedSourceValue: Story = {
+  args: { axis: 'vertical', itemCount: 20, undefinedValueAt: 5 },
+};
+
 export const MountCycle: StoryObj = {
   render: () => ({
     components: { VirtualCollectionCapabilityFixture },
