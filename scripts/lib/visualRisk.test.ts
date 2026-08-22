@@ -402,14 +402,14 @@ describe('resolveVisualPlan global infrastructure', () => {
 });
 
 describe('resolveVisualPlan unmigrated visual owners', () => {
-  // Oracle: scripts/lib/REVIEW.md B2 -- MDButton is now a migrated visual
-  // owner (real src/shared/ui/material/components/button/MDButton.visual.spec.ts
-  // exists on develop), so it can no longer stand in for an "unmigrated"
-  // fixture without depending on real repository migration state. These
-  // cases use a deterministic synthetic path with an explicit empty
-  // `colocatedSpecFiles` override instead, so the fail-closed
-  // no-resolvable-owner contract stays valid regardless of which real
-  // components have gained or lost a colocated visual spec.
+  // MDButton is a migrated visual owner (real
+  // src/shared/ui/material/components/button/MDButton.visual.spec.ts exists
+  // on develop), so it cannot stand in for an "unmigrated" fixture without
+  // depending on real repository migration state. These cases use a
+  // deterministic synthetic path with an explicit empty `colocatedSpecFiles`
+  // override instead, so the fail-closed no-resolvable-owner contract stays
+  // valid regardless of which real components have gained or lost a
+  // colocated visual spec.
   const SYNTHETIC_UNMIGRATED_OWNER_DIR = 'src/shared/ui/material/components/syntheticUnmigrated';
 
   it('runs the full lane for a visual-relevant shared UI change with no resolvable colocated owner', () => {

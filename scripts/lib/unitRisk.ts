@@ -344,9 +344,9 @@ const RELEASE_CENTRAL_PREFIX = 'tests/e2e/release/';
 // `startsWith('tests/e2e/') && endsWith('.spec.ts')` check matches a spec at
 // ANY nesting depth under tests/e2e/ (e.g. a hypothetical
 // tests/e2e/other/**), broader than what the lane test itself actually
-// enumerates -- see docs/testing/verify-unit-impact-correction.md decision #5
-// and scripts/lib/REVIEW.md M1. isPlaywrightOnlyProofPath itself remains
-// unchanged for its separate ordinary-Vitest-exclusion responsibility.
+// enumerates -- see docs/testing/verify-unit-impact-correction.md decision #5.
+// isPlaywrightOnlyProofPath itself remains unchanged for its separate
+// ordinary-Vitest-exclusion responsibility.
 function isPlaywrightLaneInventoryScanPath(filePath: string): boolean {
   if (
     filePath.endsWith(COLOCATED_BROWSER_SPEC_SUFFIX) ||
@@ -404,8 +404,7 @@ export const UNIT_SCAN_OWNERS: readonly UnitScanOwner[] = [
   // playwright.lanes.test.ts scans exactly its six real enumerated
   // populations via its own dedicated narrow predicate -- see
   // isPlaywrightLaneInventoryScanPath above; deliberately NOT
-  // isPlaywrightOnlyProofPath, which is broader (see scripts/lib/REVIEW.md
-  // M1).
+  // isPlaywrightOnlyProofPath, which is broader.
   {
     test: 'playwright.lanes.test.ts',
     matchesPath: isPlaywrightLaneInventoryScanPath,
@@ -585,8 +584,7 @@ export function resolveUnitPlan(
   // to every relevant changed path side (added/modified/deleted, and both
   // old and new sides of a rename) so a deleted or renamed exact external
   // input never silently loses its surviving owner -- see
-  // docs/testing/verify-unit-impact-correction.md decision #4 and
-  // scripts/lib/REVIEW.md B1.
+  // docs/testing/verify-unit-impact-correction.md decision #4.
   const checkExactMapping = (filePath: string): void => {
     const mapping = fileAsDataMappings.find((entry) => entry.source === filePath);
 

@@ -54,7 +54,7 @@ const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
     path: 'scripts/release/buildArtifact.mjs',
     checks: ['artifact', 'build', 'managed-updates', 'release-smoke'],
   },
-  // buildArtifact.test.mjs is deliberately NOT mapped here (M1): it only
+  // buildArtifact.test.mjs is deliberately NOT mapped here: it only
   // imports buildArtifact.mjs's pure functions and injects mocked deps,
   // never invoking the real build pipeline, so it does not inherit
   // buildArtifact.mjs's release consumer set -- see isAppUpdateRuntimePath's
@@ -252,9 +252,9 @@ function isProofOrDeclarationOnlyPath(filePath: string): boolean {
 
 // Managed-update runtime boundary per docs/managed-pinned-updates.md;
 // directory-wide, not individually existence-validated. Ordinary unit
-// test/test-support/declaration files under this directory are excluded
-// (M1): they do not select managed-updates solely from the directory
-// prefix. In practice this exclusion is redundant with the loop-level
+// test/test-support/declaration files under this directory are excluded:
+// they do not select managed-updates solely from the directory prefix. In
+// practice this exclusion is redundant with the loop-level
 // isProofOrDeclarationOnlyPath check below (which runs first and already
 // `continue`s past this function for such paths), but is kept here so this
 // predicate stays correct in isolation.

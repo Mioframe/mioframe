@@ -160,10 +160,11 @@ export function isBroadVisualRelevantPath(filePath: string): boolean {
 }
 
 /**
- * Check whether a changed file is a safe non-visual proof/documentation
- * path that cannot affect Storybook rendering, regardless of which owner
- * directory it lives in: a colocated Vitest spec, a Storybook
- * browser-behavior spec, or plain Markdown documentation.
+ * Check whether a changed file is a safe non-visual proof path that cannot
+ * affect Storybook rendering, regardless of which owner directory it lives
+ * in: a colocated Vitest spec or a Storybook browser-behavior spec.
+ * Repository metadata such as plain Markdown documentation is excluded
+ * separately by {@link isNonRuntimeRepositoryMetadataPath}.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is a safe non-visual exclusion.
  */

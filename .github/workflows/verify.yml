@@ -335,10 +335,10 @@ jobs:
     # + release-smoke + managed-updates; release-config/publisher-node-import
     # carry no verifier-owned command timeout) already exceeds 100 minutes —
     # see the computed envelope in scripts/verify.test.ts "verification-release
-    # CI job timeout envelope" and .github/workflows/REVIEW.md B1. 120 minutes
-    # keeps this outer GitHub deadline safely above that envelope plus
-    # checkout/install/setup, so a healthy run is never cancelled before the
-    # verifier reaches its own owned timeout/diagnostic path.
+    # CI job timeout envelope". 120 minutes keeps this outer GitHub deadline
+    # safely above that envelope plus checkout/install/setup, so a healthy
+    # run is never cancelled before the verifier reaches its own owned
+    # timeout/diagnostic path.
     timeout-minutes: 120
     permissions:
       contents: read

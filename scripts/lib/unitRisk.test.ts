@@ -11,106 +11,26 @@ import type { ChangedPath } from './changedPaths.ts';
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 
 // Oracle: docs/testing/verify-target-architecture.md "Unit impact architecture"
-// (Goal through "Unit acceptance") plus scripts/lib/REVIEW.md's B1 finding,
-// which requires one COMPLETE bounded audit of the current Vitest-owned test
-// population for direct fixed-path repository-file reads (readFileSync/
-// readFile/new URL(<repo path>, import.meta.url)), not just the four
-// previously-seeded examples.
-//
-// B1 correction pass (docs/testing/verify-unit-impact-correction.md): this
-// pass corrected/added assertions for three previously-conflated concerns:
-// (1) ordinary current-tree module/style/support inputs are eligible for
-// Vitest `related` resolution repository-wide -- src/, config/, scripts/,
-// tests/e2e/, and repository root alike -- never restricted to the Vitest
-// test-discovery roots (new "repository-wide ordinary source widening"
-// describe block below, using real verified relations: root
-// postcss.config.js <- config/postcss.config.test.ts, root
-// playwright.config.ts <- playwright.lanes.test.ts, and
-// tests/e2e/release/fixtures/managedReleaseFixture.mjs <- its sibling
-// .test.mjs); (2) a file-as-data mapping is always additive to real ordinary
-// pass-through for the same source, never extension- or location-exclusive,
-// so every mapped source that is itself a plausible ordinary
-// module/style/support input (any UNIT_FILE_AS_DATA_MAPPINGS entry ending in
-// .ts/.vue/.mjs/.js/.json/.css) now also expects itself in relatedInputs
-// alongside its mapped owner(s) -- corrected below for vite.config.ts and
-// every mapped .css source; PRIVACY.md/.gitignore/.github workflow .yml
-// mappings are unaffected, since .md/.yml and extension-less paths are not
-// ordinary-source-eligible shapes; (3) the .gitignore -> agentEnvironment
-// mapping was independently re-verified against the real repository file
-// (see "repo test fixture sanity" in scripts/agentEnvironment.test.mjs,
-// which resolves and reads the real root .gitignore via
-// fileURLToPath-relative path resolution, not a temp/mkdtemp fixture) and
-// found still justified; no test change was needed for it.
-//
-// B2 correction pass (docs/testing/verify-unit-impact-correction.md, this
-// round; scripts/lib/REVIEW.md B1; docs/testing/REVIEW.md B1): the B1 pass
-// above covered exact non-import external ownership (mechanism 3) but left
-// four mechanisms unrepresented: runtime/tool-discovered external ownership
-// (mechanism 4), bounded repository-scan ownership (mechanism 5), exact
-// existence/absence ownership (mechanism 6), and two corrections to the
-// existing mechanism-3 mapping set. This round closes exactly those gaps,
-// re-verified against the CURRENT final-branch tree (not the original
-// baseline), per every real file cited below:
-// (1) `eslint.config.mjs -> eslint.config.test.ts` (mechanism 4): added as a
-//     new UNIT_FILE_AS_DATA_MAPPINGS entry. eslint.config.test.ts constructs
-//     `new ESLint({ cwd: import.meta.dirname })` and lints in-memory code
-//     snippets against eslint.config.mjs's real rules; there is no ES
-//     `import` of eslint.config.mjs anywhere in that test -- ESLint's own
-//     runtime loads the config file by cwd-based discovery. See "resolveUnitPlan
-//     runtime/tool-discovered external ownership (mechanism 4)" below.
-// (2) `.github/workflows/verify.yml` gains a fifth owner, `scripts/verify.test.ts`
-//     (mechanism 3, additive): that test's "verification-release CI job timeout
-//     envelope" describe block (`readVerificationReleaseTimeoutMinutes`) does a
-//     direct `fs.readFileSync(...'../.github/workflows/verify.yml'...)` to
-//     assert the `verification-release` job's `timeout-minutes` envelope --
-//     this owner was introduced during the finish branch itself, which is why
-//     the audit must use the current final tree rather than the original
-//     baseline. Corrected below in the existing
-//     "resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA_MAPPINGS)"
-//     describe block.
-// (3) `vite.config.ts`'s mapping LOSES `scripts/release/viteBuildDate.test.mjs`
-//     as an external owner (mechanism-3 correction; keeps only
-//     `config/viteConfigFixtureImport.test.ts`): viteBuildDate.test.mjs has a
-//     genuine `import viteConfig from '../../vite.config.ts';` ES import, so
-//     that relation is real ordinary pass-through Vitest related already
-//     resolves, not a file-as-data relation -- duplicating it in the mapping
-//     contradicts decision #4 ("an import-reachable owner being redundantly
-//     required through external metadata"). Corrected below in the existing
-//     "resolveUnitPlan file-as-data mapping selection (B1-corrected new
-//     relations)" describe block; pure planner assertions cannot prove
-//     viteBuildDate.test.mjs is STILL reachable once the mapping is gone, so
-//     that corrected test carries a comment requiring the implementer to
-//     additionally prove it with a real `vitest related vite.config.ts`
-//     invocation per verify-unit-impact-correction.md's "Real resolver probes
-//     are mandatory for delegated ownership".
-// (4) `src/shared/lib/md/tokens.css -> src/shared/ui/material/foundation/
-//     tokens.test.ts` (mechanism 6, new): tokens.test.ts declares
-//     `const LEGACY_TOKENS_PATH = './src/shared/lib/md/tokens.css';` and
-//     asserts `expect(existsSync(LEGACY_TOKENS_PATH)).toBe(false);` (the
-//     "removes the legacy mixed-owner token file" case) -- an exact
-//     existence/absence contract the mapping source itself is never expected
-//     to exist for. See "resolveUnitPlan exact existence/absence ownership
-//     (mechanism 6)" below.
-// (5) Bounded repository-scan ownership (mechanism 5, new): the nine scan
-//     owners the B1 pass explicitly deferred ("deliberately NOT mapped
-//     below") are now represented with narrow scan-predicate-derived tests in
-//     the new "resolveUnitPlan bounded repository-scan ownership (mechanism
-//     5)" describe block below, each verified against the real scanning
-//     production code (not just the test file that consumes it): the exact
-//     predicate every case relies on is documented inline at each scan-owner
-//     sub-describe.
-// (6) One existing test needed correction rather than addition: "resolves
-//     button/tokens.css alone to focused with only itself in relatedInputs"
-//     (mechanism-3 negative space) is still correct about there being no
-//     file-as-data MAPPING for that path, but the bounded-scan audit (5)
-//     above independently discovered that
-//     src/shared/ui/material/foundation/tokens.test.ts's own
-//     `getComponentTokenSources()` ALSO directly `readFileSync`s
-//     `src/shared/ui/material/components/button/tokens.css` (it is one of
-//     the scanned `components/*/tokens.css` files), so that test's exact
-//     `relatedInputs` expectation was incomplete and is corrected in place
-//     below to include the scan owner additively -- see the updated
-//     assertion in the same describe block.
+// (Goal through "Unit acceptance") plus
+// docs/testing/verify-unit-impact-correction.md, which requires one COMPLETE
+// bounded audit of the current Vitest-owned test population for direct
+// fixed-path repository-file reads (readFileSync/readFile/new URL(<repo
+// path>, import.meta.url)), and defines the seven unit-impact mechanisms this
+// suite exercises: (1) direct changed Vitest test, (2) ordinary
+// source/support input delegated to `vitest related` -- repository-wide,
+// never restricted to the Vitest test-discovery roots (src/, config/,
+// scripts/, tests/e2e/, and repository root alike; see "resolveUnitPlan
+// repository-wide ordinary source widening" below), (3) exact external
+// file-as-data ownership -- always additive to real ordinary pass-through for
+// the same source, never extension- or location-exclusive, so every mapped
+// source that is itself a plausible ordinary module/style/support input also
+// expects itself in relatedInputs alongside its mapped owner(s) (see
+// "resolveUnitPlan file-as-data mapping selection" describe blocks below;
+// PRIVACY.md/.gitignore/.github workflow .yml mappings are exempt, since
+// .md/.yml and extension-less paths are not ordinary-source-eligible shapes),
+// (4) runtime/tool-discovered ownership, (5) bounded repository-scan
+// ownership, (6) exact existence/absence ownership, and (7)
+// unit-global/status-unsafe fallback.
 //
 // Audit method: `grep -rn -E 'readFileSync|readFile\(|new URL\(' src config
 // scripts tests eslint.config.test.ts`, then every hit was read and verified
@@ -141,14 +61,13 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   tokens.test.ts`'s `getComponentTokenSources()` helper (every
 //   components/*/tokens.css under src/shared/ui/material/components) -- these
 //   are deliberately NOT mapped as exact per-file UNIT_FILE_AS_DATA_MAPPINGS
-//   entries, which remains correct; SUPERSEDED for the separate bounded-scan
-//   mechanism (5), which is a narrow scan-predicate-owner relation, not a
-//   per-file mapping -- see the B2 correction pass note above and the new
-//   "resolveUnitPlan bounded repository-scan ownership (mechanism 5)"
-//   describe block below, which represents exactly these four scans plus
-//   playwright.lanes.test.ts, scripts/lib/e2eRisk.test.ts, scripts/lib/
-//   e2eProjectApplicability.test.ts, scripts/lib/storybookBehaviorRisk.test.ts,
-//   and scripts/lib/visualRisk.test.ts;
+//   entries; instead each is a bounded repository-scan ownership relation
+//   (mechanism 5), a narrow scan-predicate-owner relation rather than a
+//   per-file mapping -- see the "resolveUnitPlan bounded repository-scan
+//   ownership (mechanism 5)" describe block below, which represents exactly
+//   these four scans plus playwright.lanes.test.ts, scripts/lib/e2eRisk.test.ts,
+//   scripts/lib/e2eProjectApplicability.test.ts,
+//   scripts/lib/storybookBehaviorRisk.test.ts, and scripts/lib/visualRisk.test.ts;
 // - `scripts/ciAutofix.test.ts`'s direct read of the real repository
 //   `package.json` (asserting `scripts['ci:autofix']`): package.json already
 //   has its own dedicated version-aware full-unit trigger
@@ -161,17 +80,15 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // Confirmed genuine direct fixed-path relations with NO real ES-import edge
 // reaching their reader (true file-as-data, requires an exact mapping):
 // - `.github/workflows/{verify,release,deploy-branch}.yml` -> the workflow-test
-//   owners (release.yml/deploy-branch.yml: the original two seeded owners,
-//   confirmed still correct; verify.yml: the original four seeded owners --
-//   including the direct `scripts/ciAutofix.test.ts` reader, two
+//   owners (release.yml/deploy-branch.yml: two owners; verify.yml: five
+//   owners, including the direct `scripts/ciAutofix.test.ts` reader, two
 //   `fs.readFileSync(...'.github/workflows/verify.yml'...)` call sites
-//   asserting on the autofix-commit step's exact content -- PLUS a fifth
-//   owner added this round, `scripts/verify.test.ts`: its "verification-release
-//   CI job timeout envelope" describe block's `readVerificationReleaseTimeoutMinutes`
-//   does its own direct `fs.readFileSync` of
-//   `.github/workflows/verify.yml` to extract and assert the
-//   `verification-release` job's `timeout-minutes` value against the summed
-//   worst-case release-impact envelope);
+//   asserting on the autofix-commit step's exact content, and
+//   `scripts/verify.test.ts`'s "verification-release CI job timeout envelope"
+//   describe block's `readVerificationReleaseTimeoutMinutes`, which does its
+//   own direct `fs.readFileSync` of `.github/workflows/verify.yml` to extract
+//   and assert the `verification-release` job's `timeout-minutes` value
+//   against the summed worst-case release-impact envelope);
 // - `PRIVACY.md` -> `src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts`
 //   (already seeded);
 // - `.gitignore` (root, outside src/config/scripts) ->
@@ -180,20 +97,19 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   asserts its content -- a real fixed repository path, not a temp fixture);
 // - `vite.config.ts` (root, outside src/config/scripts) ->
 //   `config/viteConfigFixtureImport.test.ts` ONLY (direct readFileSync, a
-//   true file-as-data relation the import graph cannot express regardless of
-//   any prefix fix). `scripts/release/viteBuildDate.test.mjs`'s own
-//   `import viteConfig from '../../vite.config.ts';` (confirmed by direct
-//   read, line 7) is a genuine ES import -- real ordinary-source pass-through
-//   once docs/testing/verify-unit-impact-correction.md decisions #2/#4 are
-//   implemented, since vite.config.ts is a plausible ordinary `.ts` module
-//   input repository-wide. B2 correction (this round): duplicating
-//   viteBuildDate.test.mjs in the exact mapping ALSO, alongside the real
-//   import relation, violates decision #4 ("an import-reachable owner being
-//   redundantly required through external metadata") -- it must be removed
-//   from UNIT_FILE_AS_DATA_MAPPINGS and left to Vitest related resolution
-//   alone. vite.config.ts itself must still additively pass through to
-//   Vitest related regardless -- see "selects only the direct root
-//   vite.config.ts external reader plus vite.config.ts itself" below;
+//   true file-as-data relation the import graph cannot express). By
+//   contrast, `scripts/release/viteBuildDate.test.mjs`'s own `import
+//   viteConfig from '../../vite.config.ts';` (confirmed by direct read,
+//   line 7) is a genuine ES import -- real ordinary-source pass-through,
+//   since vite.config.ts is a plausible ordinary `.ts` module input
+//   repository-wide. Duplicating viteBuildDate.test.mjs in the exact mapping
+//   too, alongside that real import relation, would violate decision #4 ("an
+//   import-reachable owner being redundantly required through external
+//   metadata"), so it is deliberately absent from UNIT_FILE_AS_DATA_MAPPINGS
+//   and reached only through Vitest related resolution. vite.config.ts itself
+//   still additively passes through to Vitest related regardless -- see
+//   "selects only the direct root vite.config.ts external reader plus
+//   vite.config.ts itself" below;
 // - `src/shared/lib/md/index.css` -> `config/postcss.config.test.ts`,
 //   `src/shared/lib/md/index.test.ts`, `src/shared/ui/material/foundation/
 //   tokens.test.ts` (all three readFileSync it directly; none import it);
@@ -228,91 +144,53 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   `config/tooling.json` itself matches isOrdinaryUnitSourcePath's `src/`/
 //   `config/`/`scripts/` prefix check, it is already passed to Vitest
 //   related resolution directly regardless of vite.config.ts;
-// - `src/shared/ui/material/components/button/tokens.css` (B1 case): `MDButton.vue`
+// - `src/shared/ui/material/components/button/tokens.css`: `MDButton.vue`
 //   has a real `import './tokens.css';` (plain JS side-effect import,
 //   confirmed by direct read, line 15), and `MDButton.test.ts` has a real
 //   `import MDButton from './MDButton.vue'` (line 5) -- a genuine two-hop
 //   import chain Vitest's related resolution can trace, even though the test
 //   ALSO happens to readFileSync the same CSS file directly for its own
-//   assertion. `.css` is already part of the current unitRisk.ts's
-//   ORDINARY_SOURCE_EXTENSIONS (confirmed by direct read), so the "no mapping
-//   needed" conclusion for THIS relation already passed against the current
-//   unfixed production module and is not part of the B1 defect. B2
-//   correction: this is a SEPARATE, independently discovered relation --
+//   assertion. `.css` is part of ORDINARY_SOURCE_EXTENSIONS (confirmed by
+//   direct read), so no exact mapping is needed for that relation. Separately,
 //   src/shared/ui/material/foundation/tokens.test.ts's own
 //   getComponentTokenSources() bounded scan (mechanism 5) ALSO directly reads
-//   this exact path, which the original B1 pass did not yet represent (that
-//   mechanism did not exist yet); the corrected test now expects BOTH the
-//   ordinary pass-through relation (already correct) AND the scan owner
-//   (newly required), so it now fails red against current unfixed production
-//   until mechanism 5 is implemented -- see "resolves button/tokens.css..."
-//   below.
+//   this exact path, so the resolved plan includes BOTH the ordinary
+//   pass-through relation AND the scan owner -- see "resolves
+//   button/tokens.css..." below.
 //
-// One open implementation note for the corrected unitRisk.ts, beyond adding
-// UNIT_FILE_AS_DATA_MAPPINGS rows (reported in full at handoff):
-// - `src/shared/ui/Card/MDCard.vue` is itself real ordinary `.vue` unit
-//   source under `src/` (MDCard.test.ts imports it directly) AND a
-//   file-as-data source MDStateLayer.test.ts reads without importing.
-//   resolveUnitPlan's current mapping branch does an early `continue` on a
-//   mapping match, which would silently suppress MDCard.vue's own ordinary
-//   related-input pass-through (dropping MDCard.test.ts) once a mapping is
-//   added. The corrected resolver must treat the mapping as ADDITIVE to
-//   ordinary-source pass-through for the same changed path, not a mutually
-//   exclusive first-match-wins branch, for a source that is genuinely both.
-//   This already passes against the current unfixed production module too
-//   (its mapping branch only special-cases CSS, not `.vue`); the same
-//   ADDITIVE treatment is required more broadly for every mapped CSS source
-//   (`isMappedCssSource` currently makes CSS mappings exclusive -- see the
-//   corrected CSS mapping tests above and the B1 correction pass note at the
-//   top of this file) and for every mapped source repository-wide once the
-//   `UNIT_RELEVANT_PREFIXES` restriction is removed (see the "repository-wide
-//   ordinary source widening" describe block below).
+// Design note: `src/shared/ui/Card/MDCard.vue` is itself real ordinary
+// `.vue` unit source under `src/` (MDCard.test.ts imports it directly) AND a
+// file-as-data source MDStateLayer.test.ts reads without importing.
+// resolveUnitPlan therefore treats an exact mapping match as ADDITIVE to
+// ordinary-source pass-through for the same changed path rather than a
+// mutually exclusive first-match-wins branch, for a source that is genuinely
+// both -- the same additive treatment applies to every mapped CSS source and
+// every mapped source repository-wide (see the "repository-wide ordinary
+// source widening" describe block below).
 //
-// resolveUnitPlan already exists but still has the B1 defects (prefix-
-// restricted ordinary-source eligibility, CSS-mapping exclusivity) AND the B2
-// defects (no runtime/tool-discovery mapping, no bounded-scan mechanism, a
-// missing verify.yml owner, a redundant vite.config.ts owner, no existence/
-// absence mapping); this suite is expected to show genuine assertion
-// failures against the current unfixed production module, not an
-// import-time failure. Do not weaken these assertions to make the current
-// unfixed production module pass.
+// Exact external ownership is a property of the repository path contract,
+// not of current file existence or changed-path status (decision #4 "Exact
+// external ownership is additive and status-aware"): the "resolveUnitPlan
+// status-aware exact external ownership" describe block below covers
+// deleted/renamed verify.yml, PRIVACY.md, and .gitignore (status-only proof
+// per verify-unit-impact-correction.md's "Real resolver probes" section,
+// since executing the real repository after deleting/renaming these
+// canonical inputs would be destructive), each with a fileExists-override
+// case proving current source existence is never required to recognize the
+// relation, plus one composition-safety case confirming full still dominates
+// a changeset that also carries a real exact-owner relation.
 //
-// B1/M1 status-aware + scan-boundary correction pass (this round;
-// scripts/lib/REVIEW.md B1 and M1; docs/testing/verify-unit-impact-correction.md
-// decision #4 "Exact external ownership is additive and status-aware" and
-// decision #5's Playwright-inventory row): confirmed by direct read of the
-// current resolveUnitPlan (scripts/lib/unitRisk.ts) that:
-// (1) B1 -- `fileAsDataMappings.find(...)` sits under the `// added |
-//     modified` comment, reached only after `deleted` already `continue`d
-//     past the ordinary isUnitRelevantByShape fallback and `renamed` already
-//     `continue`d even earlier; PRIVACY.md, .gitignore, and every
-//     .github/workflows/*.yml source is neither test-shaped nor an
-//     ORDINARY_SOURCE_EXTENSIONS shape, so a deleted/renamed exact-mapping
-//     source currently resolves `mode: 'skip'`, silently losing its
-//     surviving owner. New "resolveUnitPlan status-aware exact external
-//     ownership" describe block below covers deleted/renamed verify.yml,
-//     PRIVACY.md, and .gitignore (status-only proof per
-//     verify-unit-impact-correction.md's "Real resolver probes" section,
-//     since executing the real repository after deleting/renaming these
-//     canonical inputs would be destructive), each with a fileExists-override
-//     case proving current source existence is never required to recognize
-//     the relation, plus one composition-safety case confirming full still
-//     dominates a changeset that also carries a real exact-owner relation.
-// (2) M1 -- the current UNIT_SCAN_OWNERS entry for playwright.lanes.test.ts
-//     reuses `isPlaywrightOnlyProofPath` as its `matchesPath` (confirmed by
-//     direct read, including that function's own "functionally the same
-//     population isPlaywrightOnlyProofPath already recognizes" comment,
-//     which is the wrong claim this correction fixes), but
-//     isPlaywrightOnlyProofPath matches ANY `.spec.ts` file at arbitrary
-//     nesting depth under tests/e2e/ with no subtree restriction, over-broad
-//     relative to the six real populations playwright.lanes.test.ts's own
-//     filesystem scan enumerates. New "Must reject" case added to the
-//     existing "playwright.lanes.test.ts (scans the complete current
-//     Playwright spec population...)" describe block below, using
-//     tests/e2e/other/example.spec.ts: `.spec.ts`-shaped and under
-//     tests/e2e/, so it matches isPlaywrightOnlyProofPath and IS currently
-//     (incorrectly) selected, but is outside every one of the six real
-//     scanned sub-populations.
+// The UNIT_SCAN_OWNERS entry for playwright.lanes.test.ts uses a dedicated
+// narrow `matchesPath` predicate (isPlaywrightLaneInventoryScanPath) rather
+// than reusing `isPlaywrightOnlyProofPath`: the latter matches ANY `.spec.ts`
+// file at arbitrary nesting depth under tests/e2e/ with no subtree
+// restriction, broader than the six real populations
+// playwright.lanes.test.ts's own filesystem scan enumerates. The "Must
+// reject" case in the "playwright.lanes.test.ts" describe block below, using
+// tests/e2e/other/example.spec.ts, is the isolating proof: that path is
+// `.spec.ts`-shaped and under tests/e2e/, so it matches
+// isPlaywrightOnlyProofPath, but it is outside every one of the six real
+// scanned sub-populations, so it must not select playwright.lanes.test.ts.
 
 function added(filePath: string): ChangedPath {
   return { status: 'added', path: filePath };
@@ -446,20 +324,16 @@ describe('resolveUnitPlan registry validation', () => {
   });
 });
 
-// M1 correction (scripts/lib/REVIEW.md M1; docs/testing/verify-unit-impact-correction.md
-// decision 1 "Direct Vitest discovery is exact"): vitest.config.ts's real
-// `test.include` matrix (quoted verbatim in that decision) lists
-// `src/**/*.test.ts` and `config/**/*.test.ts` under those two roots --
-// never `src/**/*.test.mjs` or `config/**/*.test.mjs`. Only `scripts/**`
-// accepts both `.test.ts` and `.test.mjs`. The current (pre-fix)
-// isTestShapedPath instead accepts ANY of src/, config/, scripts/ with
-// EITHER `.test.ts` or `.test.mjs` (see UNIT_RELEVANT_PREFIXES), so it
-// wrongly treats these two shapes as Vitest-owned test modules. Both cases
-// below are expected to fail RED against the current unfixed production
-// module: validateFileAsDataMappings (via isTestShapedPath) currently
-// accepts these owning-test paths as valid, so with no changed paths the
-// plan resolves to 'skip' rather than 'invalid'.
-describe('resolveUnitPlan invalid owner via unsupported .test.mjs shape (M1)', () => {
+// docs/testing/verify-unit-impact-correction.md decision 1 "Direct Vitest
+// discovery is exact": vitest.config.ts's real `test.include` matrix (quoted
+// verbatim in that decision) lists `src/**/*.test.ts` and
+// `config/**/*.test.ts` under those two roots -- never `src/**/*.test.mjs` or
+// `config/**/*.test.mjs`. Only `scripts/**` accepts both `.test.ts` and
+// `.test.mjs`. isTestShapedPath mirrors this literally, so a mapping that
+// references either unsupported shape as an owning test must fail
+// `validateFileAsDataMappings` (via isTestShapedPath) and resolve `invalid`,
+// not `skip`.
+describe('resolveUnitPlan invalid owner via unsupported .test.mjs shape', () => {
   it('fails invalid when a referenced test path is src/**/*.test.mjs -- Vitest never discovers this shape (vitest.config.ts only includes src/**/*.test.ts under src/)', () => {
     const plan = resolveUnitPlan([], {
       fileAsDataMappings: [{ source: 'PRIVACY.md', tests: ['src/example.test.mjs'] }],
@@ -606,7 +480,7 @@ describe('resolveUnitPlan deletion and rename safety', () => {
 });
 
 describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA_MAPPINGS)', () => {
-  it('exposes exactly the B1/B2-corrected complete set of file-as-data mappings, no more and no less', () => {
+  it('exposes exactly the complete set of file-as-data mappings, no more and no less', () => {
     expect(UNIT_FILE_AS_DATA_MAPPINGS.map((mapping) => mapping.source).sort()).toEqual([
       '.github/workflows/deploy-branch.yml',
       '.github/workflows/release.yml',
@@ -659,14 +533,11 @@ describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA
     ]);
   });
 
-  it('selects all five confirmed workflow test owners for .github/workflows/verify.yml, including the direct ciAutofix.test.ts reader and the B2-added scripts/verify.test.ts reader', () => {
+  it('selects all five confirmed workflow test owners for .github/workflows/verify.yml, including the direct ciAutofix.test.ts reader and the scripts/verify.test.ts reader', () => {
     // scripts/verify.test.ts's "verification-release CI job timeout envelope"
     // describe block (readVerificationReleaseTimeoutMinutes) does a direct
     // fs.readFileSync of the real repository .github/workflows/verify.yml to
-    // assert the verification-release job's timeout-minutes envelope -- this
-    // owner was introduced on the finish branch itself (scripts/lib/REVIEW.md
-    // B1), so it is confirmed against the current tree, not the original
-    // baseline.
+    // assert the verification-release job's timeout-minutes envelope.
     const plan = resolveUnitPlan([modified('.github/workflows/verify.yml')]);
 
     expect(plan.mode).toBe('focused');
@@ -706,7 +577,7 @@ describe('resolveUnitPlan file-as-data mapping selection (real UNIT_FILE_AS_DATA
   });
 });
 
-describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relations)', () => {
+describe('resolveUnitPlan file-as-data mapping selection (additional relations)', () => {
   it('selects scripts/agentEnvironment.test.mjs for a .gitignore change (root file outside src/config/scripts; real fixed-path reader with no ES-import edge)', () => {
     const plan = resolveUnitPlan([modified('.gitignore')]);
 
@@ -714,7 +585,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     expect(plan.relatedInputs).toEqual(['scripts/agentEnvironment.test.mjs']);
   });
 
-  it('selects only the direct root vite.config.ts external reader plus vite.config.ts itself, now that the redundant scripts/release/viteBuildDate.test.mjs mapping is removed (B2 correction: verify-unit-impact-correction.md decision #4 forbids duplicating an import-reachable owner in external metadata -- scripts/release/viteBuildDate.test.mjs has a real "import viteConfig from \'../../vite.config.ts\';" ES import, confirmed by direct read, so it must be reached only through real Vitest related resolution of vite.config.ts itself, not a mapping entry)', () => {
+  it('selects only the direct root vite.config.ts external reader plus vite.config.ts itself, never the redundant scripts/release/viteBuildDate.test.mjs mapping (verify-unit-impact-correction.md decision #4 forbids duplicating an import-reachable owner in external metadata -- scripts/release/viteBuildDate.test.mjs has a real "import viteConfig from \'../../vite.config.ts\';" ES import, confirmed by direct read, so it is reached only through real Vitest related resolution of vite.config.ts itself, not a mapping entry)', () => {
     const plan = resolveUnitPlan([modified('vite.config.ts')]);
 
     expect(plan.mode).toBe('focused');
@@ -731,7 +602,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it("selects every confirmed direct reader of src/shared/lib/md/index.css, plus the CSS source itself as additive ordinary pass-through (mapped CSS must not suppress a real ordinary import consumer), plus the bounded-scan owner that also observes it (B2 correction: this path is a .css file outside src/shared/ui/material/**, so it falls inside src/shared/ui/material/rendererBoundary.test.ts's scanned population too)", () => {
+  it("selects every confirmed direct reader of src/shared/lib/md/index.css, plus the CSS source itself as additive ordinary pass-through (mapped CSS must not suppress a real ordinary import consumer), plus the bounded-scan owner that also observes it (this path is a .css file outside src/shared/ui/material/**, so it falls inside src/shared/ui/material/rendererBoundary.test.ts's scanned population too)", () => {
     const plan = resolveUnitPlan([modified('src/shared/lib/md/index.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -777,7 +648,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it('selects the direct reader of src/app/styles/styles.css, plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (B2 correction: outside src/shared/ui/material/**)', () => {
+  it('selects the direct reader of src/app/styles/styles.css, plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (outside src/shared/ui/material/**)', () => {
     const plan = resolveUnitPlan([modified('src/app/styles/styles.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -788,7 +659,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it('selects the direct reader of src/app/styles/base.css, plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (B2 correction: outside src/shared/ui/material/**)', () => {
+  it('selects the direct reader of src/app/styles/base.css, plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (outside src/shared/ui/material/**)', () => {
     const plan = resolveUnitPlan([modified('src/app/styles/base.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -799,7 +670,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it('selects the direct reader of src/shared/ui/Lists/listItemAnatomy.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (B2 correction: outside src/shared/ui/material/**)', () => {
+  it('selects the direct reader of src/shared/ui/Lists/listItemAnatomy.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (outside src/shared/ui/material/**)', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/Lists/listItemAnatomy.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -810,7 +681,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it('selects the direct reader of src/shared/ui/State/ripple.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (B2 correction: outside src/shared/ui/material/**)', () => {
+  it('selects the direct reader of src/shared/ui/State/ripple.css (MDStateLayer.test.ts cross-file opacity-alias assertions), plus the CSS source itself as additive ordinary pass-through, plus the bounded-scan owner that also observes it (outside src/shared/ui/material/**)', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/State/ripple.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -821,7 +692,7 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
     ]);
   });
 
-  it("selects the file-as-data owner, the ordinary-source owner, and both bounded-scan owners for src/shared/ui/Card/MDCard.vue (unlike the other two MDStateLayer.test.ts file-as-data sources, MDCard.vue is itself real .vue unit source with its own colocated MDCard.test.ts, reached only through ordinary related-input pass-through; the mapping must not suppress that real relation. B2 correction: this .vue path, outside src/features/ and outside src/shared/ui/material/**, additionally falls inside BOTH src/readRecoveryImportBoundary.test.ts's and src/shared/ui/material/rendererBoundary.test.ts's scanned populations)", () => {
+  it("selects the file-as-data owner, the ordinary-source owner, and both bounded-scan owners for src/shared/ui/Card/MDCard.vue (unlike the other two MDStateLayer.test.ts file-as-data sources, MDCard.vue is itself real .vue unit source with its own colocated MDCard.test.ts, reached only through ordinary related-input pass-through; the mapping must not suppress that real relation. This .vue path, outside src/features/ and outside src/shared/ui/material/**, additionally falls inside BOTH src/readRecoveryImportBoundary.test.ts's and src/shared/ui/material/rendererBoundary.test.ts's scanned populations)", () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/Card/MDCard.vue')]);
 
     expect(plan.mode).toBe('focused');
@@ -834,26 +705,19 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
   });
 });
 
-describe('resolveUnitPlan status-aware exact external ownership (scripts/lib/REVIEW.md B1; docs/testing/verify-unit-impact-correction.md decision #4 "Exact external ownership is additive and status-aware")', () => {
+describe('resolveUnitPlan status-aware exact external ownership (docs/testing/verify-unit-impact-correction.md decision #4 "Exact external ownership is additive and status-aware")', () => {
   // Confirmed by direct read of resolveUnitPlan's changed-path loop
-  // (scripts/lib/unitRisk.ts): the `fileAsDataMappings.find(...)` lookup sits
-  // under the `// added | modified` comment, reached only after an explicit
-  // `if (change.status === 'deleted') { ...; continue; }` early return and
-  // only for the non-`renamed` branch (renamed changes `continue` even
-  // earlier, right after checkInfrastructureTrigger/checkScanOwners, never
-  // falling through to the mapping lookup at all). PRIVACY.md, .gitignore,
-  // and every .github/workflows/*.yml mapping source is neither test-shaped
-  // (isTestShapedPath) nor an ORDINARY_SOURCE_EXTENSIONS shape
-  // (isOrdinaryUnitSourcePath), so the existing deleted/renamed
-  // isUnitRelevantByShape fallback that rescues ordinary sources (see
-  // "resolveUnitPlan deletion and rename safety" above) never rescues these
-  // either -- a deleted or renamed exact-mapping-only source currently falls
-  // all the way through to `mode: 'skip'`, silently dropping a real
-  // surviving Vitest owner. Every assertion below that exercises a
-  // deleted/renamed exact-mapping source is expected to fail red (wrong
-  // `mode`/`relatedInputs`) against the current unfixed resolveUnitPlan.
+  // (scripts/lib/unitRisk.ts): `checkExactMapping` is called for every
+  // relevant changed-path side (added/modified/deleted, and both old and new
+  // sides of a rename), not only under `added | modified`, so PRIVACY.md,
+  // .gitignore, and every .github/workflows/*.yml mapping source keeps its
+  // exact owner(s) even though none of those sources is test-shaped
+  // (isTestShapedPath) or an ORDINARY_SOURCE_EXTENSIONS shape
+  // (isOrdinaryUnitSourcePath), and so cannot be rescued by the deleted/
+  // renamed isUnitRelevantByShape fallback that covers ordinary sources (see
+  // "resolveUnitPlan deletion and rename safety" above).
 
-  it('deleted .github/workflows/verify.yml still selects all five surviving exact owners (Must reject: mode "skip", silently dropping every workflow-test owner)', () => {
+  it('deleted .github/workflows/verify.yml still selects all five surviving exact owners', () => {
     const plan = resolveUnitPlan([deleted('.github/workflows/verify.yml')]);
 
     expect(plan.mode).toBe('focused');
@@ -944,14 +808,14 @@ describe('resolveUnitPlan status-aware exact external ownership (scripts/lib/REV
     expect(plan.relatedInputs).toEqual(['scripts/agentEnvironment.test.mjs']);
   });
 
-  it('composition safety: a deleted exact-mapping source together with a deleted ordinary unit source in the same changeset still resolves full, so status-aware exact ownership never weakens the existing unsafe-deletion full-unit fallback (already true on the current unfixed resolver too -- this is a regression guard for the fix, not a red proof of the B1 defect itself)', () => {
+  it('composition safety: a deleted exact-mapping source together with a deleted ordinary unit source in the same changeset still resolves full, so status-aware exact ownership never weakens the unsafe-deletion full-unit fallback', () => {
     const plan = resolveUnitPlan([deleted('PRIVACY.md'), deleted('src/entities/foo/foo.ts')]);
 
     expect(plan.mode).toBe('full');
   });
 });
 
-describe('resolveUnitPlan repository-wide ordinary source widening (B1-corrected: dependency-input eligibility is not limited to src/config/scripts, and tests/e2e/** non-test helpers are eligible too)', () => {
+describe('resolveUnitPlan repository-wide ordinary source widening (dependency-input eligibility is not limited to src/config/scripts, and tests/e2e/** non-test helpers are eligible too)', () => {
   it('selects the real root postcss.config.js as ordinary source pass-through -- config/postcss.config.test.ts has a real "import postcssConfig from \'../postcss.config.js\'" edge to this exact root module; resolveUnitPlan only selects which paths to hand to Vitest related, it does not itself trace the import graph', () => {
     const plan = resolveUnitPlan([modified('postcss.config.js')]);
 
@@ -985,7 +849,7 @@ describe('resolveUnitPlan does not add an unnecessary mapping when a real import
     ).toBe(false);
   });
 
-  it('resolves button/tokens.css to focused with itself plus src/shared/ui/material/foundation/tokens.test.ts, via two DISTINCT real mechanisms rather than a mapping: MDButton.vue has a real "import \'./tokens.css\';" edge and MDButton.test.ts imports MDButton.vue (ordinary Vitest related pass-through, mechanism 2), AND tokens.test.ts\'s own getComponentTokenSources() directly readFileSync\'s every existing src/shared/ui/material/components/*/tokens.css, including this one (bounded repository-scan ownership, mechanism 5 -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" below). B2 correction: this assertion was originally narrower ("only itself in relatedInputs"), which was correct about there being no mechanism-3 MAPPING here, but incomplete once the mechanism-5 scan audit confirmed tokens.test.ts also directly observes this exact path', () => {
+  it('resolves button/tokens.css to focused with itself plus src/shared/ui/material/foundation/tokens.test.ts, via two DISTINCT real mechanisms rather than a mapping: MDButton.vue has a real "import \'./tokens.css\';" edge and MDButton.test.ts imports MDButton.vue (ordinary Vitest related pass-through, mechanism 2), AND tokens.test.ts\'s own getComponentTokenSources() directly readFileSync\'s every existing src/shared/ui/material/components/*/tokens.css, including this one (bounded repository-scan ownership, mechanism 5 -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" below); there is no mechanism-3 MAPPING for this path, so both relations must be produced independently', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/material/components/button/tokens.css')]);
 
     expect(plan.mode).toBe('focused');
@@ -1032,7 +896,8 @@ describe('resolveUnitPlan exact existence/absence ownership (mechanism 6)', () =
 describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () => {
   // Every scan predicate below was confirmed by directly reading the real
   // scanning production code (not just the test file that consumes it); see
-  // the B2 correction pass note at the top of this file for the full list.
+  // the "Confirmed genuine direct fixed-path relations" note at the top of
+  // this file for the full list.
   // This is the CONTRACT the corrected unitRisk.ts must mirror -- narrow
   // local rules, not per-file mappings, per
   // docs/testing/verify-unit-impact-correction.md decision #5.
@@ -1125,24 +990,18 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
   });
 
   describe('playwright.lanes.test.ts (scans the complete current Playwright spec population it enumerates: tests/e2e/*.spec.ts direct children (non-recursive), tests/e2e/storybook/**/*.spec.ts, tests/e2e/visual/**/*.spec.ts, tests/e2e/release/**/*.spec.ts, src/**/*.browser.spec.ts, and src/**/*.visual.spec.ts)', () => {
-    // M1 correction (scripts/lib/REVIEW.md): the current UNIT_SCAN_OWNERS
-    // entry for playwright.lanes.test.ts reuses `isPlaywrightOnlyProofPath`
-    // as its `matchesPath` (confirmed by direct read of scripts/lib/unitRisk.ts,
-    // whose own comment there calls this "functionally the same population
-    // isPlaywrightOnlyProofPath already recognizes" -- WRONG per this
-    // correction). isPlaywrightOnlyProofPath's real check is only
-    // `filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')`,
+    // The UNIT_SCAN_OWNERS entry for playwright.lanes.test.ts uses a
+    // DEDICATED narrow scan predicate (isPlaywrightLaneInventoryScanPath)
+    // matching exactly the six populations enumerated in this describe's
+    // title, not `isPlaywrightOnlyProofPath` -- that function's real check is
+    // only `filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')`,
     // with no subtree restriction at all, so it matches a `.spec.ts` file at
-    // ANY nesting depth under tests/e2e/ -- broader than the six real
-    // populations this test's own filesystem scan enumerates (listed in this
-    // describe's title). The corrected resolveUnitPlan must give
-    // playwright.lanes.test.ts a DEDICATED narrow scan predicate matching
-    // exactly those six populations, not a reused isPlaywrightOnlyProofPath
-    // reference, while isPlaywrightOnlyProofPath itself remains correct and
-    // unchanged for its separate ordinary-Vitest-exclusion responsibility
-    // (see isOrdinaryUnitSourcePath). The "Must reject: nested-subtree
-    // outside every real scanned population" case below is the proof that
-    // currently fails red under the over-broad reused predicate.
+    // ANY nesting depth under tests/e2e/, broader than the six real
+    // populations this test's own filesystem scan enumerates.
+    // isPlaywrightOnlyProofPath itself remains correct and unchanged for its
+    // separate ordinary-Vitest-exclusion responsibility (see
+    // isOrdinaryUnitSourcePath). The "Must reject: nested-subtree outside
+    // every real scanned population" case below is the isolating proof.
     it.each([
       ['tests/e2e/appSmoke.spec.ts'],
       ['tests/e2e/storybook/colorOwnership.spec.ts'],
@@ -1160,7 +1019,7 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
       },
     );
 
-    it('selects the scan owner for a DELETED Playwright spec too -- deleting a spec still changes the real population playwright.lanes.test.ts observes. The current unfixed production module instead resolves this to skip, because isUnitRelevantByShape explicitly excludes Playwright-only proof paths (isPlaywrightOnlyProofPath) from ever forcing a full-unit trigger on deletion; the corrected behavior must select the scan owner as a focused input instead. (tests/e2e/appSmoke.spec.ts is also root-level, so scripts/lib/e2eRisk.test.ts and scripts/lib/e2eProjectApplicability.test.ts are additionally selected via their own root-scan predicates -- see those describe blocks below; toContain is used here so this test asserts only the playwright.lanes.test.ts relation)', () => {
+    it('selects the scan owner for a DELETED Playwright spec too -- deleting a spec still changes the real population playwright.lanes.test.ts observes, so it must select the scan owner as a focused input even though isUnitRelevantByShape explicitly excludes Playwright-only proof paths (isPlaywrightOnlyProofPath) from ever forcing a full-unit trigger on deletion. (tests/e2e/appSmoke.spec.ts is also root-level, so scripts/lib/e2eRisk.test.ts and scripts/lib/e2eProjectApplicability.test.ts are additionally selected via their own root-scan predicates -- see those describe blocks below; toContain is used here so this test asserts only the playwright.lanes.test.ts relation)', () => {
       const plan = resolveUnitPlan([deleted('tests/e2e/appSmoke.spec.ts')]);
 
       expect(plan.mode).toBe('focused');
@@ -1175,7 +1034,7 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
       expect(plan.relatedInputs).not.toContain('playwright.lanes.test.ts');
     });
 
-    it("Must reject: does not select the scan owner for a path that IS .spec.ts-shaped and lives somewhere under tests/e2e/, but in a nested subtree OUTSIDE all six real scanned populations (M1 -- this is the critical case distinguishing the corrected narrow predicate from the over-broad isPlaywrightOnlyProofPath reuse: tests/e2e/other/example.spec.ts matches isPlaywrightOnlyProofPath's unrestricted `startsWith('tests/e2e/') && endsWith('.spec.ts')` check, so the CURRENT unfixed resolver incorrectly selects playwright.lanes.test.ts for it, even though the real test never enumerates a tests/e2e/other/** subtree -- only root tests/e2e/*.spec.ts direct children plus storybook/, visual/, and release/)", () => {
+    it("Must reject: does not select the scan owner for a path that IS .spec.ts-shaped and lives somewhere under tests/e2e/, but in a nested subtree OUTSIDE all six real scanned populations (this is the critical case distinguishing the narrow dedicated predicate from the over-broad isPlaywrightOnlyProofPath: tests/e2e/other/example.spec.ts matches isPlaywrightOnlyProofPath's unrestricted `startsWith('tests/e2e/') && endsWith('.spec.ts')` check, but the real test never enumerates a tests/e2e/other/** subtree -- only root tests/e2e/*.spec.ts direct children plus storybook/, visual/, and release/)", () => {
       const plan = resolveUnitPlan([modified('tests/e2e/other/example.spec.ts')]);
 
       expect(plan.relatedInputs).not.toContain('playwright.lanes.test.ts');
@@ -1290,7 +1149,7 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
 });
 
 describe('resolveUnitPlan direct test self-selection', () => {
-  it('selects an added test file that currently exists on disk, additive to the bounded-scan owner that also observes it (B2 correction: src/shared/ui/material/rendererBoundary.test.ts\'s scan has no ".test." exclusion and this path is outside src/shared/ui/material/**, so it falls inside that scan\'s population too -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
+  it('selects an added test file that currently exists on disk, additive to the bounded-scan owner that also observes it (src/shared/ui/material/rendererBoundary.test.ts\'s scan has no ".test." exclusion and this path is outside src/shared/ui/material/**, so it falls inside that scan\'s population too -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
     const plan = resolveUnitPlan([added('src/entities/foo/foo.test.ts')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1357,7 +1216,7 @@ describe('resolveUnitPlan direct test self-selection', () => {
   });
 });
 
-// M1 negative matrix (docs/testing/verify-unit-impact-correction.md decision
+// Negative matrix (docs/testing/verify-unit-impact-correction.md decision
 // 1): these assertions check the reason string rather than relatedInputs
 // emptiness, because an unsupported test shape may still be legitimately
 // selected as ordinary Vitest-related source input (mechanism 2, see
@@ -1367,7 +1226,7 @@ describe('resolveUnitPlan direct test self-selection', () => {
 // test module" (the 'changed unit test' reason produced by the direct-test
 // self-selection branch) is under test here.
 describe('resolveUnitPlan direct-test negative matrix (unsupported test-file shapes must never resolve through the "changed unit test" self-selection reason)', () => {
-  it('src/example.test.mjs is never self-selected as a direct test (Must reject: current unfixed isTestShapedPath wrongly accepts src/**/*.test.mjs -- expected RED pre-fix)', () => {
+  it('src/example.test.mjs is never self-selected as a direct test (isTestShapedPath must not accept src/**/*.test.mjs)', () => {
     const plan = resolveUnitPlan([modified('src/example.test.mjs')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1375,7 +1234,7 @@ describe('resolveUnitPlan direct-test negative matrix (unsupported test-file sha
     expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
   });
 
-  it('config/example.test.mjs is never self-selected as a direct test (Must reject: current unfixed isTestShapedPath wrongly accepts config/**/*.test.mjs -- expected RED pre-fix)', () => {
+  it('config/example.test.mjs is never self-selected as a direct test (isTestShapedPath must not accept config/**/*.test.mjs)', () => {
     const plan = resolveUnitPlan([modified('config/example.test.mjs')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1383,7 +1242,7 @@ describe('resolveUnitPlan direct-test negative matrix (unsupported test-file sha
     expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
   });
 
-  it('tests/e2e/example.test.ts is never self-selected as a direct test -- tests/e2e/** requires .test.mjs, not .test.ts (unchanged by the M1 fix; already GREEN pre-fix)', () => {
+  it('tests/e2e/example.test.ts is never self-selected as a direct test -- tests/e2e/** requires .test.mjs, not .test.ts', () => {
     const plan = resolveUnitPlan([modified('tests/e2e/example.test.ts')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1391,7 +1250,7 @@ describe('resolveUnitPlan direct-test negative matrix (unsupported test-file sha
     expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
   });
 
-  it('an arbitrary root example.test.ts is never self-selected as a direct test -- root only recognizes the two named special cases, eslint.config.test.ts and playwright.<name>.test.ts (unchanged by the M1 fix; already GREEN pre-fix)', () => {
+  it('an arbitrary root example.test.ts is never self-selected as a direct test -- root only recognizes the two named special cases, eslint.config.test.ts and playwright.<name>.test.ts', () => {
     const plan = resolveUnitPlan([modified('example.test.ts')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1400,20 +1259,18 @@ describe('resolveUnitPlan direct-test negative matrix (unsupported test-file sha
   });
 });
 
-// Overcorrection guard (the task's explicit "Must Reject" scenario): a fix
-// that merely stops treating src/**/*.test.mjs and config/**/*.test.mjs as
-// DIRECT TESTS must not also make them unit-IRRELEVANT. isTestShapedPath and
-// isOrdinaryUnitSourcePath are separate concerns (isOrdinaryUnitSourcePath
-// must not be touched by the M1 fix); a `.mjs` file under src/ or config/ is
-// still a plausible ordinary module/support input Vitest `related` can trace
-// (ORDINARY_SOURCE_EXTENSIONS includes '.mjs'), so it must keep resolving to
-// 'focused' with itself in relatedInputs, just via the ordinary-source-pass-
-// through reason instead of "changed unit test". No fileAsDataMappings
-// override is used -- the real UNIT_FILE_AS_DATA_MAPPINGS registry has no
-// entry for either path, so any relation observed here comes from
-// isOrdinaryUnitSourcePath alone, not external metadata.
+// Overcorrection guard: not treating src/**/*.test.mjs and config/**/*.test.mjs
+// as DIRECT TESTS must not also make them unit-IRRELEVANT. isTestShapedPath
+// and isOrdinaryUnitSourcePath are separate concerns; a `.mjs` file under
+// src/ or config/ is still a plausible ordinary module/support input Vitest
+// `related` can trace (ORDINARY_SOURCE_EXTENSIONS includes '.mjs'), so it
+// must keep resolving to 'focused' with itself in relatedInputs, just via the
+// ordinary-source-pass-through reason instead of "changed unit test". No
+// fileAsDataMappings override is used -- the real UNIT_FILE_AS_DATA_MAPPINGS
+// registry has no entry for either path, so any relation observed here comes
+// from isOrdinaryUnitSourcePath alone, not external metadata.
 describe('resolveUnitPlan overcorrection guard: an unsupported .test.mjs shape remains a truthful ordinary source input', () => {
-  it('a modified src/example.test.mjs still resolves focused with itself as the sole relatedInputs entry, via ordinary Vitest-related pass-through rather than "changed unit test" (mode/relatedInputs already pass pre-fix by coincidence -- both the buggy direct-test branch and the correct ordinary-source branch add exactly this one path; only the reason differs, which is RED pre-fix)', () => {
+  it('a modified src/example.test.mjs still resolves focused with itself as the sole relatedInputs entry, via ordinary Vitest-related pass-through rather than "changed unit test"', () => {
     const plan = resolveUnitPlan([modified('src/example.test.mjs')], {
       fileExists: EVERYTHING_EXISTS,
     });
@@ -1444,7 +1301,7 @@ describe('resolveUnitPlan ordinary source pass-through', () => {
     expect(plan.relatedInputs).toEqual(['config/tooling.json']);
   });
 
-  it('resolves an added src/** source file to focused with itself in relatedInputs, additive to the two bounded-scan owners that also observe it (B2 correction: src/readRecoveryImportBoundary.test.ts scans every non-test src/**/*.ts, and src/shared/ui/material/rendererBoundary.test.ts scans every src/**/*.ts outside src/shared/ui/material/** -- both match this path; see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
+  it('resolves an added src/** source file to focused with itself in relatedInputs, additive to the two bounded-scan owners that also observe it (src/readRecoveryImportBoundary.test.ts scans every non-test src/**/*.ts, and src/shared/ui/material/rendererBoundary.test.ts scans every src/**/*.ts outside src/shared/ui/material/** -- both match this path; see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
     const plan = resolveUnitPlan([added('src/entities/foo/foo.ts')]);
 
     expect(plan.mode).toBe('focused');
@@ -1462,7 +1319,7 @@ describe('resolveUnitPlan ordinary source pass-through', () => {
     expect(plan.relatedInputs).toEqual(['scripts/lib/someHelper.mjs']);
   });
 
-  it('resolves a modified .vue component to focused with itself, additive to the two bounded-scan owners that also observe it (B2 correction: same two scans as the src/entities/foo/foo.ts case above -- this path is outside both src/features/ and src/shared/ui/material/**)', () => {
+  it('resolves a modified .vue component to focused with itself, additive to the two bounded-scan owners that also observe it (same two scans as the src/entities/foo/foo.ts case above -- this path is outside both src/features/ and src/shared/ui/material/**)', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/MDButton/MDButton.vue')]);
 
     expect(plan.mode).toBe('focused');
@@ -1481,7 +1338,7 @@ describe('resolveUnitPlan ordinary source pass-through', () => {
   });
 });
 
-describe('resolveUnitPlan Playwright/browser/visual spec ownership (B2 correction: a Playwright spec path is still NEVER an ordinary Vitest input -- never self-selected, never forces full unit merely by being Playwright-shaped -- but is no longer invisible to unit planning once bounded-scan ownership (mechanism 5) is implemented: every path shape below now falls inside at least playwright.lanes.test.ts\'s scanned population, so mode changes from the original "skip" to "focused" via scan-owner selection. This directly supersedes the four "does not select"/"does not force full" assertions that previously expected skip for these exact inputs -- see the "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" describe block above for the full per-owner breakdown', () => {
+describe('resolveUnitPlan Playwright/browser/visual spec ownership (a Playwright spec path is NEVER an ordinary Vitest input -- never self-selected, never forces full unit merely by being Playwright-shaped -- but is not invisible to unit planning: every path shape below falls inside at least playwright.lanes.test.ts\'s scanned population (bounded-scan ownership, mechanism 5), so mode resolves "focused" via scan-owner selection -- see the "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" describe block above for the full per-owner breakdown', () => {
   it('never adds a colocated *.browser.spec.ts change to relatedInputs itself, though it does select the scan owner(s) that observe it', () => {
     const plan = resolveUnitPlan([modified('src/shared/ui/Foo/Foo.browser.spec.ts')]);
 
@@ -1577,7 +1434,7 @@ describe('resolveUnitPlan composition and non-erasure', () => {
     expect(plan.mode).toBe('invalid');
   });
 
-  it('merges relatedInputs across two independently focused-relevant paths, deduplicated and sorted (B2 correction: src/entities/foo/foo.ts additionally pulls in its two bounded-scan owners -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
+  it('merges relatedInputs across two independently focused-relevant paths, deduplicated and sorted (src/entities/foo/foo.ts additionally pulls in its two bounded-scan owners -- see "resolveUnitPlan bounded repository-scan ownership (mechanism 5)" above)', () => {
     const plan = resolveUnitPlan([added('src/entities/foo/foo.ts'), added('config/tooling.json')]);
 
     expect(plan.mode).toBe('focused');

@@ -597,10 +597,9 @@ export function formatFailureDetailLines(detail: FailureDetail): string[] {
  * or the verifier's own timeout), then the exit code. Deliberately never
  * infers a reason from arbitrary captured output: a real error can be
  * followed by unrelated trailing chatter, and no stable reporter-summary
- * contract exists for this yet, so an output-tail excerpt is not trustworthy
- * proof of relevance (see `scripts/REVIEW.md` B1). Never returns the
- * complete unbounded output; detailed diagnostics remain in
- * `.verify/logs/**` and `--verbose`.
+ * contract exists across every child tool, so an output-tail excerpt is not
+ * trustworthy proof of relevance. Never returns the complete unbounded
+ * output; detailed diagnostics remain in `.verify/logs/**` and `--verbose`.
  * @param result Failed executed or pre-execution invalid command result.
  * @returns Bounded failure reason.
  */

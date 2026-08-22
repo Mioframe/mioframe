@@ -9,18 +9,15 @@ import {
   RELEASE_IMPACT_CHECKS,
   resolveReleasePlan,
   type ReleaseImpactCheck,
-  type ResolveReleasePlanOptions,
 } from './releaseRisk.ts';
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 
-// Oracle: docs/testing/verify-release-impact-correction.md -- the canonical,
-// already-accepted architecture amendment closing scripts/lib/REVIEW.md's B1
-// blocker ("release-impact ownership is not yet a closed truthful consumer
-// model") -- plus this suite's own independently re-traced current consumer
-// graph, established by direct reads of the real repository source during
-// test authoring (not taken on faith from the architecture doc or the task
-// handoff):
+// Oracle: docs/testing/verify-release-impact-correction.md -- the canonical
+// release-impact consumer-model architecture -- plus this suite's own
+// independently re-traced consumer graph, established by direct reads of the
+// real repository source (not taken on faith from the architecture doc
+// alone):
 //
 // Contract A -- real release execution inputs (confirmed by direct read):
 // - `scripts/verify.ts`'s `RELEASE_CHECK_COMMANDS` (read directly) shows
@@ -76,85 +73,70 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 //   either `releasePublish.mjs` or `releaseDescriptor.mjs` genuinely affects
 //   both the `publisher-node-import` proof and the `managed-updates` runtime
 //   fixture -- confirming the doc's "Publisher boundary" relation exactly:
-//   `managed-updates + publisher-node-import`, never the other four. This is
-//   a new exact narrow mapping, not yet in production (these two files
-//   currently only fall under the broad `scripts/pages/lib/` full fallback).
+//   `managed-updates + publisher-node-import`, never the other four.
 //
-// Contract B -- proof/type files are not release inputs (confirmed false
-// positives in the current production registry, read directly):
+// Contract B -- proof/type files are not release inputs:
 // - `scripts/release/validateReleaseConfig.test.mjs`,
 //   `managedUpdatesProof.test.mjs`, and
 //   `runManagedReleaseDataCompatibilityProof.test.mjs` are ordinary Vitest
 //   unit tests of their `.mjs` siblings' pure logic; none is invoked by any
-//   `RELEASE_CHECK_COMMANDS` entry. Current production wrongly narrow-maps
-//   all three to their sibling's release consumer set.
+//   `RELEASE_CHECK_COMMANDS` entry, so none inherits its sibling's release
+//   consumer set.
 // - `tests/e2e/release/fixtures/managedReleaseFixture.test.mjs` (read
 //   directly) imports only `materializeManagedRelease`/
 //   `mutateControllerWorkerBytes` from `managedReleaseFixture.mjs` under
-//   Vitest, never runs through a release Playwright spec. Current production
-//   wrongly narrow-maps it to `managed-updates`.
+//   Vitest, never runs through a release Playwright spec, so it does not map
+//   to `managed-updates`.
 // - `controllerArtifactIdentityFixture.d.mts`, `managedReleaseFixture.d.mts`,
 //   and `ordinaryBranchArtifactFixture.d.mts` (all read directly) are pure
 //   `export declare function ...` / `export type ...` ambient declarations
 //   with zero executable statements. `managedReleaseFixture.test.mjs`'s own
 //   import (read directly) resolves to the `.mjs` sibling, never the
 //   `.d.mts` file -- confirming no runtime spec or `.mjs` orchestrator ever
-//   imports a `.d.mts` path. Current production wrongly narrow-maps all
-//   three to their sibling's release consumer set.
+//   imports a `.d.mts` path, so none of the three inherits its sibling's
+//   release consumer set.
 // - `scripts/pages/lib/**/*.test.mjs` (representative: `releasePublish.test.mjs`,
 //   confirmed existing; `ghPagesBranch.test.mjs`, confirmed existing and
 //   deliberately NOT one of the architecture doc's own named examples, to
 //   prove the exclusion is a general test-shape rule and not a hand-copied
-//   list -- see "Must reject" below) currently inherit the broad
-//   `scripts/pages/lib/` full-lane prefix fallback and wrongly resolve
-//   `full`.
+//   list -- see "Must reject" below) must not inherit the broad
+//   `scripts/pages/lib/` full-lane prefix fallback.
 // - Must reject (bounded-audit sensitivity, beyond the architecture doc's own
 //   example set): `scripts/pages/lib/ghPagesBranch.test.mjs` must also
 //   resolve `skip`, proving the exclusion matches file shape
 //   (`*.test.mjs`/`*.d.mts`) generally rather than only the doc's named
 //   files.
 //
-// Contract C -- exact-mapping integrity fails closed: current production
-// only validates mapping-source existence (`fileExists`), never duplicate
-// sources or empty check lists, so a broken registry could silently drop
-// ownership via first-match resolution instead of failing `invalid`. Per the
+// Contract C -- exact-mapping integrity fails closed: `resolveReleasePlan`
+// validates mapping-source existence (`fileExists`), duplicate sources, and
+// empty check lists before planning, so a broken registry fails `invalid`
+// instead of silently dropping ownership via first-match resolution. Per the
 // architecture doc ("For independent validation proof, it is acceptable to
 // add a narrow test-only mapping override to `resolveReleasePlan()`
 // analogous to existing planner test seams") and the established convention
 // in `scripts/lib/unitRisk.ts` (`ResolveUnitPlanOptions.fileAsDataMappings`,
 // which fully REPLACES `UNIT_FILE_AS_DATA_MAPPINGS` for that call rather than
-// appending to it), this suite requires `resolveReleasePlan()` to accept a
-// new test-only option:
+// appending to it), `resolveReleasePlan()` accepts a test-only option:
 //
 //   exactMappingsOverride?: readonly { path: string; checks: readonly ReleaseImpactCheck[] }[]
 //
-// Behavior required: when provided, `exactMappingsOverride` REPLACES the
-// real `NARROW_EXACT_MAPPINGS` table entirely for that call (never appends),
+// When provided, `exactMappingsOverride` REPLACES the real
+// `NARROW_EXACT_MAPPINGS` table entirely for that call (never appends),
 // exactly mirroring `fileAsDataMappings`'s replace convention -- this lets a
 // test construct a deliberately duplicate/empty-checks table without
-// fighting the real (currently valid) registry. This option does not exist
-// in production yet, so `resolveWithMappingOverride` below casts it in; see
-// that helper's own comment. Do not remove the cast once the option is
-// implemented -- narrow the cast instead, since the option remains
-// production-owned test-only surface, never a public production API.
+// fighting the real (currently valid) registry. `ResolveReleasePlanOptions`
+// documents it as test-only surface that production callers must omit.
 //
 // This whole suite proves a planner correctness contract: given a changed
 // file path, does `resolveReleasePlan` select the exact release checks that
 // a real `RELEASE_CHECK_COMMANDS` execution chain actually consumes.
-// `scripts/lib/releaseRisk.ts` does not yet implement this corrected
-// consumer graph; every case documented above as "current production
-// wrongly ..." or "does not exist in production yet" is expected to fail
-// (red) against the current unfixed module -- that is the intended and
-// correct state for this handoff (see `scripts/lib/REVIEW.md` B1). Do not
-// weaken these assertions to make the current unfixed module pass.
 //
-// New relations beyond those named in the architecture doc/task prompt:
+// New relations beyond those named in the architecture doc:
 // none independently confirmed. The publisher-boundary relation
 // (`releasePublish.mjs`/`releaseDescriptor.mjs` -> `managed-updates +
 // publisher-node-import`) is named by the doc's "Publisher boundary"
-// section but was not yet implemented in production; this suite
-// independently confirmed it by reading the real imports above, as the doc
-// itself required.
+// section; this suite independently confirmed it by reading the real
+// imports above, as the doc itself required.
 //
 // `checks` arrays are asserted using this repo's established fixed
 // alphabetical (localeCompare) sort convention for both `focused` merges and
@@ -173,25 +155,20 @@ const ALL_CHECKS_SORTED = [
 
 /**
  * Calls `resolveReleasePlan` with the Contract C test-only
- * `exactMappingsOverride` seam this suite requires production to add (see
- * file header). Not yet implemented in `ResolveReleasePlanOptions` --
- * `resolveReleasePlan` currently ignores this unknown option key entirely
- * and falls back to the real (currently valid) registry, so a genuinely
- * broken override table below still incorrectly resolves `skip`/`focused`
- * instead of `invalid` until production adds real support. The cast
- * documents the exact shape/name the implementer must add: it REPLACES the
- * real table for this call, mirroring `unitRisk.ts`'s `fileAsDataMappings`
- * convention.
+ * `exactMappingsOverride` seam (see file header). It REPLACES the real
+ * `NARROW_EXACT_MAPPINGS` table for this call, mirroring `unitRisk.ts`'s
+ * `fileAsDataMappings` convention. The local `{ path; checks }[]` type keeps
+ * this helper decoupled from `NarrowReleaseMapping`'s exact export shape; the
+ * two remain structurally compatible, so no cast is needed.
+ * @param changedFiles Changed file paths to resolve a plan for.
+ * @param exactMappingsOverride Replacement narrow-mapping table for this call.
+ * @returns The resolved release plan.
  */
 function resolveWithMappingOverride(
   changedFiles: readonly string[],
   exactMappingsOverride: readonly { path: string; checks: readonly ReleaseImpactCheck[] }[],
 ) {
-  const options = { exactMappingsOverride } as ResolveReleasePlanOptions & {
-    exactMappingsOverride: readonly { path: string; checks: readonly ReleaseImpactCheck[] }[];
-  };
-
-  return resolveReleasePlan(changedFiles, options);
+  return resolveReleasePlan(changedFiles, { exactMappingsOverride });
 }
 
 describe('RELEASE_IMPACT_CHECKS', () => {
@@ -221,14 +198,12 @@ describe('resolveReleasePlan registry self-consistency (invalid mode, Contract C
     // scripts/release/buildArtifact.test.mjs is deliberately NOT in this
     // list: it is unit-only proof that mocks every dependency and never
     // invokes the real build pipeline, so it is not a registered narrow
-    // mapping (already correctly excluded in current production).
+    // mapping.
     'scripts/release/publisherWireContractImportProof.mjs',
     'scripts/release/managedUpdatesProof.mjs',
     'scripts/release/runManagedReleaseDataCompatibilityProof.mjs',
-    // Contract A additions: confirmed real release execution inputs, not
-    // yet registered as narrow mappings in current production (see file
-    // header) -- these cases are expected RED until the implementer adds
-    // them.
+    // Contract A: confirmed real release execution inputs, registered as
+    // narrow mappings (see file header).
     'scripts/e2eReleaseContainer.mjs',
     'scripts/playwrightContainer.ts',
     'playwright.release.config.ts',
@@ -246,8 +221,7 @@ describe('resolveReleasePlan registry self-consistency (invalid mode, Contract C
     'tests/e2e/release/fixtures/managedReleaseFixture.mjs',
     'tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts',
     'tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.mjs',
-    // Publisher boundary additions (see file header) -- not yet registered
-    // in current production; expected RED until the implementer adds them.
+    // Publisher boundary (see file header): registered narrow mappings.
     'scripts/pages/lib/releasePublish.mjs',
     'scripts/pages/lib/releaseDescriptor.mjs',
   ])(
@@ -280,16 +254,12 @@ describe('resolveReleasePlan registry self-consistency (invalid mode, Contract C
   });
 });
 
-describe('resolveReleasePlan exact-mapping integrity fails closed (Contract C, requires new exactMappingsOverride test seam)', () => {
+describe('resolveReleasePlan exact-mapping integrity fails closed (Contract C, exactMappingsOverride test seam)', () => {
   // Must reject: a resolver that silently drops a mapped check instead of
   // failing `invalid` before first-match planning. Every case here
   // constructs a deliberately broken override table (see
   // resolveWithMappingOverride's own comment for why this REPLACES rather
-  // than appends to the real table) and is expected RED until production
-  // implements `exactMappingsOverride`: today the option is silently
-  // ignored, so resolveReleasePlan falls back to the real, currently-valid
-  // registry and returns `skip` (no changed files matched) instead of
-  // `invalid`.
+  // than appends to the real table).
   it('fails invalid for an empty source path in the mapping table', () => {
     const plan = resolveWithMappingOverride([], [{ path: '', checks: ['release-config'] }]);
 
@@ -432,11 +402,8 @@ describe('resolveReleasePlan Contract A -- real release execution inputs select 
   it.each(['scripts/e2eReleaseContainer.mjs', 'scripts/playwrightContainer.ts'])(
     'selects artifact, managed-updates, and release-smoke for the real browser execution runner %s (never the other three)',
     (filePath) => {
-      // Confirmed missing release execution inputs (scripts/lib/REVIEW.md B1
-      // #1): both files are the real execution chain every artifact/
+      // Both files are the real execution chain every artifact/
       // release-smoke/managed-updates check runs through (see file header).
-      // Current production has no mapping for either, so this resolves
-      // `skip` today -- genuine RED.
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('focused');
@@ -447,10 +414,9 @@ describe('resolveReleasePlan Contract A -- real release execution inputs select 
   it.each(['playwright.release.config.ts', 'scripts/release/artifactServer.mjs'])(
     'selects only artifact, managed-updates, and release-smoke for %s (never all six)',
     (filePath) => {
-      // Confirmed over-broad full-lane mapping (scripts/lib/REVIEW.md B1
-      // #2): both are release-Playwright-execution-specific, never consumed
-      // by release-config/build/publisher-node-import. Current production
-      // maps both to the full six via FULL_LANE_EXACT_FILES -- genuine RED.
+      // Both are release-Playwright-execution-specific, never consumed by
+      // release-config/build/publisher-node-import, so neither belongs in
+      // FULL_LANE_EXACT_FILES's full-six mapping.
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('focused');
@@ -459,16 +425,14 @@ describe('resolveReleasePlan Contract A -- real release execution inputs select 
   );
 
   it('selects artifact, managed-updates, and release-smoke for tests/e2e/helpers.ts (its confirmed real release-spec importers, never skip)', () => {
-    // Confirmed shared release-spec support omitted from the previous audit
-    // (scripts/lib/REVIEW.md B1 #3). Grepped every real `from '.*helpers'`
-    // import (not mere text mentions) across tests/e2e/release/*.spec.ts:
-    // the real importers are productionArtifactSmoke.spec.ts (artifact),
+    // Grepped every real `from '.*helpers'` import (not mere text mentions)
+    // across tests/e2e/release/*.spec.ts: the real importers are
+    // productionArtifactSmoke.spec.ts (artifact),
     // firstUserAndReturningUserSmoke.spec.ts (release-smoke), and
     // managedUpdatesActivationUi.spec.ts / managedUpdatesRecovery.spec.ts /
     // managedReleaseDataCompatibility.spec.ts (managed-updates).
     // managedUpdatesCrossEngineLifecycle.spec.ts only mentions
-    // "tests/e2e/helpers.ts" in a comment and does not import it. Current
-    // production has no mapping at all -- genuine RED (resolves skip today).
+    // "tests/e2e/helpers.ts" in a comment and does not import it.
     const plan = resolveReleasePlan(['tests/e2e/helpers.ts']);
 
     expect(plan.mode).toBe('focused');
@@ -575,17 +539,16 @@ describe('resolveReleasePlan Contract A -- real release execution inputs select 
   it.each(['scripts/pages/lib/releasePublish.mjs', 'scripts/pages/lib/releaseDescriptor.mjs'])(
     'selects exactly managed-updates and publisher-node-import for the real publisher-boundary file %s (never the other four; a scripts/pages/lib/ narrow-mapped file must not fall to the broad prefix fallback)',
     (filePath) => {
-      // "Also verify and update" (task prompt): confirmed by direct read --
-      // publisherWireContractImportProof.mjs imports releasePublish.mjs,
-      // which imports releaseDescriptor.mjs, directly (publisher-node-import
-      // terminus); tests/e2e/release/fixtures/managedReleaseFixture.mjs (a
+      // Confirmed by direct read: publisherWireContractImportProof.mjs
+      // imports releasePublish.mjs, which imports releaseDescriptor.mjs,
+      // directly (publisher-node-import terminus);
+      // tests/e2e/release/fixtures/managedReleaseFixture.mjs (a
       // managed-updates-owned fixture imported by every managedUpdates*.spec.ts
       // spec except managedUpdatesControllerArtifactIdentity.spec.ts, which
       // uses a different fixture) imports publishManagedRelease from
-      // releasePublish.mjs directly (managed-updates runtime consumer).
-      // Neither file has a narrow mapping in current production yet -- both
-      // currently fall under the broad scripts/pages/lib/ full-lane prefix
-      // fallback and resolve `full` -- genuine RED.
+      // releasePublish.mjs directly (managed-updates runtime consumer). Both
+      // files have their own narrow mapping, so neither falls to the broad
+      // scripts/pages/lib/ full-lane prefix fallback.
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('focused');
@@ -604,9 +567,7 @@ describe('resolveReleasePlan Contract B -- proof/type-only files are not release
     (filePath) => {
       // A unit test does not inherit the release consumer set of the
       // implementation it tests (docs/testing/verify-release-impact-correction.md
-      // "Proof/type files incorrectly promoted to release inputs"). Current
-      // production wrongly narrow-maps all three to their sibling's release
-      // consumer set -- genuine RED.
+      // "Proof/type files incorrectly promoted to release inputs").
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('skip');
@@ -615,8 +576,6 @@ describe('resolveReleasePlan Contract B -- proof/type-only files are not release
   );
 
   it("selects nothing for buildArtifact.test.mjs (unit-only proof that mocks every dependency and never invokes the real build pipeline; must not inherit buildArtifact.mjs's release consumer set)", () => {
-    // Already correctly excluded in current production (not registered as a
-    // narrow mapping); kept as a regression guard.
     const plan = resolveReleasePlan(['scripts/release/buildArtifact.test.mjs']);
 
     expect(plan.mode).toBe('skip');
@@ -628,8 +587,7 @@ describe('resolveReleasePlan Contract B -- proof/type-only files are not release
     // .mjs sibling under Vitest, never a tests/e2e/release/**.spec.ts. Also
     // must not fall into the unmapped-fixture full-lane fallback merely by
     // directory (docs/testing/verify-release-impact-correction.md requires
-    // proof/type exclusions to be evaluated before that fallback). Current
-    // production wrongly narrow-maps this to managed-updates -- genuine RED.
+    // proof/type exclusions to be evaluated before that fallback).
     const plan = resolveReleasePlan(['tests/e2e/release/fixtures/managedReleaseFixture.test.mjs']);
 
     expect(plan.mode).toBe('skip');
@@ -646,9 +604,8 @@ describe('resolveReleasePlan Contract B -- proof/type-only files are not release
       // Confirmed by direct read: every one of these three files contains
       // only `export declare function ...` / `export type ...` with zero
       // executable statements, and no real spec/.mjs file imports a .d.mts
-      // path (confirmed by grep). Current production wrongly narrow-maps
-      // all three to their sibling .mjs's release consumer set -- genuine
-      // RED.
+      // path (confirmed by grep), so none inherits its sibling .mjs's
+      // release consumer set.
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('skip');
@@ -666,9 +623,9 @@ describe('resolveReleasePlan Contract B -- proof/type-only files are not release
   ])(
     'selects nothing for the ordinary unit test %s (must not inherit the broad scripts/pages/lib/ full-lane prefix fallback)',
     (filePath) => {
-      // Confirmed existing real files (ls scripts/pages/lib/). Current
-      // production has no proof/type exclusion evaluated before
-      // FULL_LANE_PREFIXES, so both currently resolve `full` -- genuine RED.
+      // Confirmed existing real files (ls scripts/pages/lib/); the
+      // proof/type exclusion is evaluated before FULL_LANE_PREFIXES, so
+      // neither falls to the broad prefix fallback.
       const plan = resolveReleasePlan([filePath]);
 
       expect(plan.mode).toBe('skip');
@@ -681,10 +638,8 @@ describe('resolveReleasePlan excludes unit-only appUpdate proof from the directo
   // Every importer of these three .testUtils.ts files is itself an ordinary
   // Vitest unit test (confirmed by repository-wide grep during test
   // authoring): none is a tests/e2e/release/** spec or a .mjs release
-  // orchestrator script, so none is a real release-check input. This
-  // exclusion is already correctly implemented in current production
-  // (isAppUpdateRuntimePath excludes isUnitProofOnlyPath); kept here as a
-  // regression guard, not a red case.
+  // orchestrator script, so none is a real release-check input.
+  // isAppUpdateRuntimePath excludes isUnitProofOnlyPath to enforce this.
   it.each([
     'src/shared/service/appUpdate/controllerState.test.ts',
     'src/shared/service/appUpdate/updateReconciliation.test.ts',

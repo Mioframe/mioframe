@@ -101,14 +101,13 @@ describe('Playwright lane discovery stays disjoint', () => {
 
 describe('real Playwright collector boundary (application config)', () => {
   // docs/testing/verify-app-e2e-discovery-correction.md: the application
-  // ownership model is root-only `tests/e2e/*.spec.ts`, but the real
-  // `playwright.config.ts` has no `testMatch`, so Playwright's own default
-  // recursive discovery is currently broader than every local Mioframe
-  // predicate assumes. This proof exercises the real installed Playwright
-  // collector against the real config -- not a reimplementation of glob
-  // matching -- so it fails red while that gap is open, independently of
-  // whether validateE2EScenarioRegistry()/validateE2EProjectApplicability()/
-  // this file's own listFiles() scan agree with each other.
+  // ownership model is root-only `tests/e2e/*.spec.ts`, enforced by the real
+  // `playwright.config.ts`'s top-level `testMatch: '**/tests/e2e/*.spec.ts'`.
+  // This proof exercises the real installed Playwright collector against the
+  // real config -- not a reimplementation of glob matching -- so it stays
+  // truthful to the physical lane boundary independently of whether
+  // validateE2EScenarioRegistry()/validateE2EProjectApplicability()/this
+  // file's own listFiles() scan agree with each other.
   it('collects the real root app spec, but rejects a nested probe, a default test-shape probe, and existing storybook/visual/release specs', () => {
     const nestedProbeDir = 'tests/e2e/other';
     const nestedProbeSpec = `${nestedProbeDir}/example.spec.ts`;
@@ -149,11 +148,9 @@ describe('real Playwright collector boundary (application config)', () => {
       // 1. A real root application spec is collected.
       expect(listing).toContain('appSmoke.spec.ts');
 
-      // 2 & 3. Must reject: with the current unfixed config (no testMatch),
-      // Playwright's default recursive discovery collects both a nested spec
-      // and a root default-Playwright `*.test.*` shape. Once the approved
-      // root-only testMatch (`**/tests/e2e/*.spec.ts`) lands, both of these
-      // controlled probes must disappear from the listing.
+      // 2 & 3. Must reject: the root-only testMatch
+      // (`**/tests/e2e/*.spec.ts`) must exclude both a nested spec and a
+      // root default-Playwright `*.test.*` shape from the listing.
       expect(listing).not.toContain('other/example.spec.ts');
       expect(listing).not.toContain('example.test.mjs');
 

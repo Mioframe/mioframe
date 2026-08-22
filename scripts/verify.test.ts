@@ -244,8 +244,7 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
 // `await runCommand`, never `Promise.all`). So the worst-case wall-clock
 // budget the GitHub Actions job timeout must cover is the SUM of every
 // selected release check's own verifier-owned command timeout, not just the
-// longest single check (`managed-updates`) in isolation. See
-// .github/workflows/REVIEW.md, blocker B1.
+// longest single check (`managed-updates`) in isolation.
 describe('verification-release CI job timeout envelope', () => {
   // Reuses the plain-text job-block-extraction pattern already established
   // for workflow assertions elsewhere in this repo (see
@@ -1719,8 +1718,8 @@ describe('formatFailureDetailLines', () => {
 
 // Per docs/testing/verify-agent-output.md "Failure-detail extraction": prefer
 // a verifier-owned reason, then a structured/stable reporter summary (none
-// implemented for this finish PR — see scripts/REVIEW.md B1's "Items not
-// required"), then exit code — and never an arbitrary excerpt of captured
+// implemented, since no stable reporter-summary contract exists across every
+// child tool), then exit code — and never an arbitrary excerpt of captured
 // output, which is not proof of relevance and can surface unrelated
 // trailing chatter instead of the real error.
 describe('getFailureReason', () => {
@@ -1750,12 +1749,11 @@ describe('getFailureReason', () => {
     );
   });
 
-  // Per scripts/REVIEW.md B1: an arbitrary output tail is not proof of
-  // relevance. Even when captured stdout contains a real-looking error
-  // line, `getFailureReason` must not present an excerpt of it as `reason`
-  // unless it comes from a recognized verifier-owned/structured source —
-  // this PR intentionally adds no such reporter-extraction framework, so
-  // the correct default fallback is the exact exit code.
+  // An arbitrary output tail is not proof of relevance. Even when captured
+  // stdout contains a real-looking error line, `getFailureReason` must not
+  // present an excerpt of it as `reason` unless it comes from a recognized
+  // verifier-owned/structured source; the correct default fallback is the
+  // exact exit code.
   it('does not infer a reason from unstructured output; falls back to exit code even when stdout contains a real-looking error line', () => {
     const result = makeExecutedResult({
       label: 'type-check',
@@ -1772,11 +1770,11 @@ describe('getFailureReason', () => {
     expect(reason).not.toContain('TS2322');
   });
 
-  // Per scripts/REVIEW.md B1: a real error can be followed by unrelated
-  // trailing chatter (a build-tool footer, a package-manager notice, blank
-  // lines). Tail-slicing would present that trailing noise as the
-  // "reason", misleading the next agent toward the wrong fix. The default
-  // reason must not surface any of it.
+  // A real error can be followed by unrelated trailing chatter (a
+  // build-tool footer, a package-manager notice, blank lines). Tail-slicing
+  // would present that trailing noise as the "reason", misleading the next
+  // agent toward the wrong fix. The default reason must not surface any of
+  // it.
   it('does not present unrelated trailing output as the reason when a real error is followed by unrelated trailing chatter', () => {
     const result = makeExecutedResult({
       label: 'build',
