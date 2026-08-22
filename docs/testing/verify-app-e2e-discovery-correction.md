@@ -1,12 +1,12 @@
 # Verify application-E2E discovery correction
 
-Status: **architecture ready for implementation**.
+Status: **implemented and architect-reviewed**.
 
-This document is the durable architecture amendment for the application-E2E physical discovery blocker found by the final verifier-modernization PR review. It narrows the relevant application-E2E assumptions in `verify-target-architecture.md`, `verify-unit-impact-correction.md`, and the current benchmark while this correction is active. `docs/testing/architecture.md` remains the canonical testing policy.
+This document is the durable architecture and closure record for the application-E2E physical-discovery blocker found during the final verifier-modernization PR review. `docs/testing/architecture.md` remains the canonical testing policy; `docs/testing/verify-target-architecture.md` owns the wider verifier architecture.
 
 ## Goal
 
-Make the physical Playwright application-E2E collection match the ownership model already used by Mioframe:
+Make physical application Playwright collection match Mioframe ownership:
 
 ```text
 application E2E
@@ -26,178 +26,100 @@ release
 
 A file must not execute in the application Playwright lane while remaining invisible to application scenario/applicability/inventory ownership.
 
-## Confirmed current behavior
+## Architecture decision
 
-Current repository facts:
+The physical source of truth is the resolved `playwright.config.ts`.
 
-- `playwright.config.ts` uses `testDir: './tests/e2e'` and has no `testMatch`;
-- Playwright recursively scans `testDir`; without `testMatch`, its default discovery includes both `*.spec.*` and `*.test.*` JavaScript/TypeScript shapes;
-- current desktop/mobile project `testIgnore` values exclude the Storybook, visual, and release subtrees but do not exclude arbitrary other nested subtrees;
-- every current application product E2E spec is already a direct child of `tests/e2e` and uses `*.spec.ts`;
-- `validateE2EScenarioRegistry()` and `validateE2EProjectApplicability()` inventory only direct `tests/e2e/*.spec.ts` files;
-- `playwright.lanes.test.ts` inventories application specs non-recursively;
-- the final unit-impact scan ownership also treats direct `tests/e2e/*.spec.ts` as the application inventory population.
+Application collection is intentionally root-only because every current product E2E spec is already a direct child of `tests/e2e`, while `E2E_SCENARIO_SCOPES`, `APP_E2E_STANDALONE_SPECS`, `E2E_PROJECT_APPLICABILITY`, and lane inventory are already designed around that corpus. No current requirement needs nested application specs.
 
-Therefore the repository ownership model is root-only, but the current Playwright collection is broader.
-
-## Non-goals
-
-- Do not introduce nested application-E2E directories.
-- Do not make application scenario/applicability registries recursive.
-- Do not move current application specs.
-- Do not change Storybook, visual, or release physical ownership.
-- Do not create a generic Playwright discovery registry or path taxonomy.
-- Do not change product scenarios, browser behavior, retries, workers, timeouts, or CI topology.
-- Do not address the separate release-impact review blocker in this correction.
-
-## Boundaries and ownership
-
-| Owner | Responsibility in this correction |
-| --- | --- |
-| `playwright.config.ts` | physical application-E2E collection contract |
-| `scripts/lib/e2eRisk.ts` | source → application scenario ownership; root application spec validation |
-| `scripts/lib/e2eProjectApplicability.ts` | root application spec → desktop/mobile applicability |
-| `playwright.lanes.test.ts` | cross-lane physical inventory/disjointness proof |
-| `scripts/lib/unitRisk.ts` | unit ownership of tests that scan the real Playwright inventories |
-| `docs/testing/verify-app-e2e-discovery-correction.md` | architecture/oracle for this correction |
-
-Product/FSD ownership is unchanged. This is verifier/test-infrastructure behavior only.
-
-## Source of truth
-
-The application collection source of truth is the actual resolved Playwright config, not a local helper predicate.
-
-The target physical contract is:
+The approved config contract is:
 
 ```text
 testDir: ./tests/e2e
-testMatch: root tests/e2e/*.spec.ts only
+testMatch: **/tests/e2e/*.spec.ts
 ```
 
-Use Playwright's documented absolute-path glob matching to encode this directly. The minimum approved configuration is a top-level root-only glob equivalent to:
+The single `*` after `tests/e2e/` is intentional: nested directories do not match.
 
-```text
-**/tests/e2e/*.spec.ts
-```
+`testMatch` is the single physical lane boundary. Application project `testIgnore` is reserved only for desktop/mobile applicability returned by `getProjectIgnoredSpecs(...)`; Storybook/visual/release subtree ignores are not retained as a second lane-boundary mechanism.
 
-The single `*` after `tests/e2e/` is intentional: nested directories must not match.
+## Ownership
 
-Once `testMatch` owns the physical lane boundary, Storybook/visual/release subtree ignores are redundant for application-lane separation and must not remain as a second physical ownership mechanism. Project `testIgnore` remains only for desktop/mobile applicability exclusions derived from `E2E_PROJECT_APPLICABILITY`.
+| Owner | Responsibility |
+| --- | --- |
+| `playwright.config.ts` | physical application-E2E collection |
+| `scripts/lib/e2eRisk.ts` | source → root application scenario ownership |
+| `scripts/lib/e2eProjectApplicability.ts` | root application spec → desktop/mobile applicability |
+| `playwright.lanes.test.ts` | cross-lane physical inventory/disjointness and real collector proof |
+| `scripts/lib/unitRisk.ts` | unit ownership of tests that scan the real Playwright inventories |
 
-## State shape / public API
+Product/FSD ownership is unchanged.
 
-No persisted state and no product API changes.
+## Accepted implementation
 
-Configuration contract only:
+`playwright.config.ts` now:
 
-```text
-application Playwright project collection
-= root tests/e2e/*.spec.ts
-```
+- keeps `testDir: './tests/e2e'`;
+- sets top-level `testMatch: '**/tests/e2e/*.spec.ts'`;
+- removes the former shared Storybook/visual/release subtree `testIgnore` layer;
+- keeps project `testIgnore` exactly as `getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME)` / `getProjectIgnoredSpecs(MOBILE_PROJECT_NAME)`.
 
-## Minimum sufficient design
-
-1. Add one top-level application `testMatch` that physically restricts collection to direct `tests/e2e/*.spec.ts` files.
-2. Remove the now-redundant shared `storybook/**`, `visual/**`, and `release/**` application `testIgnore` layer.
-3. Keep per-project applicability ignores generated by `getProjectIgnoredSpecs()`.
-4. Keep scenario-registry and project-applicability inventories root-only; they already model the desired corpus.
-5. Keep `playwright.lanes.test.ts` root-only for application specs, but make it prove the config-owned boundary rather than relying on its own scan convention.
-6. Keep `unitRisk.ts` root-app scan-owner predicates only when they mirror the corrected physical/config population.
-7. Do not add another persistent discovery registry.
-
-Simpler alternative considered: retain broad recursive Playwright collection and expand all Mioframe registries/validators to arbitrary nested app specs. Rejected because no current requirement needs nested application specs, all existing product specs are root-level, and this would increase ownership and validation complexity.
+No semantic changes were required in `e2eRisk.ts`, `e2eProjectApplicability.ts`, or `unitRisk.ts`; their root-only model became truthful once the real Playwright config was narrowed.
 
 ## Acceptance matrix
 
-| Path shape | Application Playwright collection | Other owner |
+| Path shape | Application Playwright collection | Owner |
 | --- | --- | --- |
 | `tests/e2e/appSmoke.spec.ts` | yes | application E2E |
 | `tests/e2e/<another-root>.spec.ts` | yes | application E2E; must enter scenario/applicability ownership as applicable |
-| `tests/e2e/other/example.spec.ts` | no | none until a separate owner is explicitly defined |
+| `tests/e2e/other/example.spec.ts` | no | none until explicitly assigned |
 | `tests/e2e/example.test.ts` | no | not application E2E |
-| `tests/e2e/example.test.mjs` | no | may be Vitest only if it matches the Vitest contract; never application E2E |
+| `tests/e2e/example.test.mjs` | no | Vitest only when its Vitest contract applies; never application E2E |
 | `tests/e2e/storybook/example.spec.ts` | no | Storybook behavior |
 | `tests/e2e/visual/example.spec.ts` | no | visual |
 | `tests/e2e/release/example.spec.ts` | no | release |
 | `src/**/Example.browser.spec.ts` | no | Storybook behavior |
 | `src/**/Example.visual.spec.ts` | no | visual |
 
-## Required test proof
+## Independent proof and RED → GREEN evidence
 
-Behavioral proof is materially changed. Follow `test-first` with a fresh dedicated test-author context before production/config edits.
+A fresh test-author context added a real collector proof in `playwright.lanes.test.ts`.
 
-### Primary proof: real Playwright collection
+The proof invokes the installed Playwright CLI in collection-only mode against the real `playwright.config.ts`:
 
-The proof must exercise the installed Playwright collector/config, not reimplement glob matching in a unit predicate.
+```text
+node_modules/@playwright/test/cli.js test --list --config=playwright.config.ts
+```
 
-Use the smallest deterministic collection-only probe, for example Playwright `--list` against the real `playwright.config.ts`; do not launch browsers or the application server merely to test discovery.
+`PLAYWRIGHT_EXTERNAL_BASE_URL` disables the application web server, so the proof does not start the server or a browser.
 
-The collection proof must demonstrate:
+The test creates temporary controlled probes and removes them in `finally`:
 
-- a real root `tests/e2e/*.spec.ts` application spec is collected;
-- a controlled nested `tests/e2e/other/example.spec.ts` probe is not collected;
-- a controlled root `tests/e2e/example.test.mjs` or equivalent default-Playwright test shape is not collected;
-- existing Storybook/visual/release nested specs are not collected by the application config.
+- `tests/e2e/other/example.spec.ts`;
+- `tests/e2e/example.test.mjs`.
 
-Temporary controlled probe files are acceptable only when created and removed entirely inside the proof and when the proof cannot leave repository state behind after success or failure. Do not add permanent fake product specs merely to test collection.
+Pre-fix RED was meaningful: real Playwright discovery collected both probes (reported 69 tests / 19 files), demonstrating that local root-only registries were narrower than the physical lane.
 
-The probe should disable the application web server through the existing config seam when necessary so collection proof stays browser/server-free.
+Post-fix GREEN demonstrates through the real collector that:
 
-### Supporting proof
+- `tests/e2e/appSmoke.spec.ts` is collected;
+- the nested `other/example.spec.ts` probe is not collected;
+- the root `example.test.mjs` default-test-shape probe is not collected;
+- existing Storybook, visual, and release specs are not collected by the application config.
 
-Keep/update focused deterministic proof for:
+Supporting focused proof keeps scenario-registry completeness, project applicability, lane disjointness, and unit inventory ownership aligned with the same root-only contract. The real `tests/e2e/appSmoke.spec.ts` focused unit invocation remains green.
 
-- `validateE2EScenarioRegistry()` root-only completeness;
-- `validateE2EProjectApplicability()` root-only completeness;
-- `playwright.lanes.test.ts` lane disjointness and project applicability wiring;
-- `unitRisk.ts` root-app inventory owners and the nested-other negative case.
+## Non-goals / preserved behavior
 
-The test author must include a `Must reject` case that would pass if the implementation merely kept recursive Playwright discovery while making local predicates agree with one another.
+- no nested application-E2E convention;
+- no recursive application registries;
+- no movement of current application specs;
+- no generic Playwright discovery registry;
+- no Storybook/visual/release config redesign;
+- no retries, workers, timeouts, CI-topology, or product behavior changes.
 
-## TEST IMPACT
+## Review result
 
-- Contract/scenario: physical application-E2E discovery equals direct `tests/e2e/*.spec.ts` only.
-  - Primary proof owner: Playwright collection/config proof in `playwright.lanes.test.ts` or the smallest existing root verifier test that truthfully owns physical lane discovery.
-  - Oracle source: this architecture amendment + Playwright `testDir`/`testMatch` contract.
-  - Must reject: recursive nested app spec or default `*.test.*` file being collected by the app config.
-  - Test author: dedicated fresh test-agent/session.
-  - Red phase: required — current `playwright.config.ts` has recursive default discovery.
-  - Additional proof: E2E registry/applicability/unit inventory planner tests.
-  - Existing proof: current root-only registry/applicability/lane scans.
-  - New/updated proof: executable real-collector boundary plus config assertions.
-  - Risk/platform matrix: path matching must remain valid on supported developer/CI platforms; do not encode host-specific absolute paths.
-  - Durable ownership/impact updates: unit bounded-scan comments/predicates only if required to remain aligned with the physical collection contract.
-  - Task-specific measurements: none.
+The application-E2E physical-discovery blocker is closed.
 
-## Required verification
-
-Coding/test contexts use only focused feedback required by this correction:
-
-- focused unit proof for the changed config/lane/registry/unit-planner tests;
-- the collection-only Playwright probe through the owning test;
-- type-check/lint/format only for touched files when useful.
-
-Do not run a browser E2E suite solely to prove file discovery. Exact-head CI remains architect-owned after final PR publication.
-
-## Forbidden
-
-- No recursive application-E2E registry expansion.
-- No new nested application spec convention.
-- No second persistent discovery registry/helper that duplicates Playwright config.
-- No broad `tests/e2e/**/*.spec.ts` application ownership rule.
-- No keeping redundant Storybook/visual/release `testIgnore` solely as a second lane-boundary mechanism after root-only `testMatch` exists.
-- No changing Storybook/visual/release configs for symmetry.
-- No browser launch, retry, timeout, worker, CI-topology, or product-behavior changes.
-- No release-impact correction in the same coding context.
-- No direct Git/GitHub lifecycle commands from coding/test-author contexts.
-
-## Implementation readiness
-
-- goal and non-goals: resolved;
-- physical owner: `playwright.config.ts`;
-- desired application corpus: resolved to direct `tests/e2e/*.spec.ts`;
-- scenario/applicability owners: unchanged and resolved;
-- proof owner: real Playwright collection plus existing registry/lane/unit support proof;
-- simpler alternative comparison: resolved;
-- unresolved blockers for this correction: none;
-- verdict: **ready**.
+The remaining verifier-modernization review findings are separate owners under `scripts/lib/REVIEW.md` and do not reopen this correction.
