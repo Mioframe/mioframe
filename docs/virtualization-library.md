@@ -1,95 +1,247 @@
-# Virtualization dependency
+# Virtual collection API
 
-Status: **architecture revised; `@tanstack/vue-virtual` selected; no shared Mioframe virtualization wrapper**.
+Status: **architecture accepted; `@tanstack/vue-virtual` selected; minimal shared collection API selected; implementation proof pending**.
 
-This document records only the dependency decision. Database rendering architecture is owned by `docs/database-virtualization.md`; browser proof by `docs/database-virtualization-browser-proof.md`.
+This document is the source of truth for Mioframe's reusable virtualization boundary. Database rendering architecture is owned by `docs/database-virtualization.md`; browser capability proof by `docs/database-virtualization-browser-proof.md`.
 
-## Decision
+## Goal
 
-Use `@tanstack/vue-virtual` directly inside the truthful rendering owner that currently needs virtualization: `src/entities/databaseData`.
+Expose a small, convenient, rendering-topology-independent API for virtualizing one logical collection along one axis without exposing TanStack setup or measurement wiring to consumers.
 
-Do not keep or introduce `src/shared/ui/virtualization`, `useVirtualAxis`, `VirtualList`, `VirtualTable`, `VirtualGrid`, or another Mioframe virtualization API while database is the only confirmed production consumer.
+The API must remove consumer concepts rather than mirror the dependency.
 
-The minimum dependency shape is:
+## Selected architecture
 
 ```text
 @tanstack/vue-virtual
-        ↓
-entities/databaseData
-        ↓
-DatabaseDataTable
+          ↓
+shared/ui/virtualization
+          ↓
+   useVirtualCollection
+          │
+          ├── visible logical items
+          ├── leading/trailing extent
+          ├── total extent
+          └── per-instance measurement directive
+                    ↓
+             consumer-owned element
 ```
 
-A database-local helper/composable may be extracted only when the production implementation becomes materially easier to read with it. Such a helper remains database-owned and exposes only current database needs.
+The shared layer does not render or create DOM. Consumers choose `<div>`, `<li>`, `<tr>`, `<th>`, positioned surfaces, native tables, or other layouts and apply the returned directive to the element that owns one virtual item's measured size.
 
-## Why the previous wrapper is rejected
+The directive therefore hides DOM measurement plumbing without owning DOM structure.
 
-The earlier shared adapter mostly mirrored TanStack while adding:
+## Public API
 
-- Mioframe-specific option/result types;
-- input validation;
-- a private replacement for TanStack's element index marker;
-- generic lifecycle and browser fixtures;
-- an additional public contract to maintain.
+The initial API is one composable.
 
-Those costs are not justified by a second current consumer. Repository architecture prefers the simpler local solution until reuse is proven.
+Conceptually:
 
-Vendor implementation details such as TanStack's `data-index`, `measureElement`, virtual item shape, and instance methods are allowed inside the private database implementation. They are not Mioframe public APIs merely because they appear in one entity component.
+```ts
+type VirtualCollectionAxis = 'vertical' | 'horizontal';
+type VirtualCollectionKey = string | number | bigint;
+
+type EstimateSize<T> = number | ((value: T, index: number) => number);
+
+interface UseVirtualCollectionOptions<T, TKey extends VirtualCollectionKey> {
+  root: MaybeRefOrGetter<HTMLElement | null | undefined>;
+  key: (value: T, index: number) => TKey;
+  estimateSize: EstimateSize<T>;
+  axis?: VirtualCollectionAxis;
+  overscan?: number;
+  surfaceOffset?: MaybeRefOrGetter<number>;
+}
+
+interface VirtualCollectionItem<T, TKey extends VirtualCollectionKey> {
+  index: number;
+  key: TKey;
+  value: T;
+  offset: number;
+  size: number;
+}
+
+interface UseVirtualCollectionResult<T, TKey extends VirtualCollectionKey> {
+  items: Readonly<ComputedRef<readonly VirtualCollectionItem<T, TKey>[]>>;
+  totalSize: Readonly<ComputedRef<number>>;
+  leadingSize: Readonly<ComputedRef<number>>;
+  trailingSize: Readonly<ComputedRef<number>>;
+  measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
+}
+
+useVirtualCollection(source, options)
+```
+
+Exact imports/types may use the repository's established Vue type aliases, but the conceptual surface above is fixed.
+
+### Source
+
+`source` is a `MaybeRefOrGetter<readonly T[]>`.
+
+The shared API maps current virtual indexes back to the current source and exposes `value` directly. Consumers must not repeat `source[item.index]` mapping merely to render a virtual item.
+
+### Root
+
+`root` is the explicit physical scroll element. The shared API never discovers a scroll parent through DOM traversal or computed-style heuristics.
+
+A collection instance and its root identity have the same lifetime. Arbitrary live root replacement is not a public contract; recreate/remount the owning collection when composition replaces the physical root.
+
+### Axis
+
+`axis` defaults to `vertical`. `horizontal` uses the same collection contract; no separate horizontal API exists.
+
+### Surface offset
+
+`surfaceOffset` is the current distance, along the collection axis, between the scroll-root origin and the collection surface origin. It maps to the engine's scroll-margin concept.
+
+Public `item.offset`, `leadingSize`, and `trailingSize` remain **collection-surface-relative**, so consumers do not subtract engine-specific margins themselves.
+
+### Result geometry
+
+`totalSize`, `leadingSize`, `trailingSize`, `item.offset`, and `item.size` are presentation geometry only. They are not persisted state.
+
+A consumer may use them as spacer sizes, padding, absolute transforms, grid tracks, table spacer rows/cells, or any other layout it owns.
+
+## Measurement directive
+
+`measure` is a per-`useVirtualCollection` Vue directive instance.
+
+Typical usage:
+
+```ts
+const rows = useVirtualCollection(source, options);
+const vVirtualRow = rows.measure;
+```
+
+```vue
+<li v-for="item in rows.items" :key="item.key" v-virtual-row="item">
+  ...
+</li>
+```
+
+The same directive contract must work on table elements:
+
+```vue
+<tr v-virtual-row="row">...</tr>
+<th v-virtual-column="column">...</th>
+```
+
+The directive owns only integration plumbing required to associate the bound virtual item with the actual element and invoke TanStack measurement.
+
+It may set/update TanStack's index attribute internally before calling `measureElement`. Consumers do not bind or know the attribute name.
+
+The directive must refresh association when Vue reuses an element for a different current index/item.
+
+It must not create:
+
+- an element-to-item registry;
+- an independent `ResizeObserver`;
+- a measured-size cache;
+- an offset/range structure;
+- a custom cleanup scheduler.
+
+TanStack remains responsible for element observation, disconnected-element cleanup, measured-size caching, offsets, ranges, and scroll correction.
 
 ## Ownership
 
-TanStack owns:
+### Shared virtualization
 
-- virtual range calculation;
-- estimated and measured item geometry;
-- ResizeObserver-backed dynamic measurement;
+Owns only:
+
+- mapping a reactive logical collection to TanStack count/keys/estimates;
+- vertical/horizontal configuration;
+- explicit root forwarding;
+- optional surface offset and overscan forwarding;
+- mapping TanStack virtual items back to `{ index, key, value, offset, size }`;
+- collection-relative leading/trailing/total geometry;
+- per-instance measurement directive.
+
+### Consumer
+
+Owns:
+
+- markup and layout topology;
+- spacer/padding/positioning strategy;
+- accessibility semantics;
+- sticky/floating surfaces;
+- focus/edit/selection behavior;
+- presentation-specific sizing policy such as database column grow-only remount minimums.
+
+### TanStack
+
+Owns:
+
+- range calculation;
+- estimated/measured geometry;
+- `ResizeObserver` behavior;
 - stable-key measurement cache;
 - scroll correction;
-- deep index navigation.
+- engine lifecycle.
 
-Database owns:
+## Why this boundary is justified
 
-- logical rows/properties and their stable IDs;
-- row/column virtualizer configuration;
-- native table DOM and spacer DOM;
-- sizing policy specific to database columns;
-- scroll-root wiring supplied by composition;
-- sticky/action/edit/accessibility behavior.
+Direct TanStack is fewer shared files but forces each consumer to understand and repeat engine-specific collection mapping and element-measurement wiring.
 
-Do not create a second offset tree, range algorithm, ResizeObserver scheduler, measurement cache, or scroll-anchor implementation.
+The previous `useVirtualAxis` wrapper is rejected because it mirrored TanStack options/results and introduced a second vocabulary for the engine.
 
-## Extraction threshold
+`useVirtualCollection` instead expresses the consumer problem:
 
-Reconsider a shared virtualization abstraction only after a second real production consumer exists and both implementations expose a stable, meaningful common contract.
+```text
+logical collection + root + stable key + estimate
+                      ↓
+visible values + extents + measurement directive
+```
 
-Before extracting, prove that:
+It hides repeated integration plumbing while leaving rendering entirely consumer-owned.
 
-1. duplicated behavior is not merely coincidental TanStack setup;
-2. the shared owner has no database-specific knowledge;
-3. the abstraction removes more concepts than it adds;
-4. both current consumers become easier to understand and test;
-5. the public API is smaller than using TanStack directly.
+## Deliberately absent
 
-Hypothetical future lists/grids do not satisfy this threshold.
+Do not initially expose or implement:
 
-## Engine reconsideration
+- TanStack virtualizer instance/types;
+- direct `measureElement` calls;
+- `data-index`/`indexAttribute` in consumer markup;
+- `scrollToIndex` or smooth scrolling;
+- scroll padding APIs;
+- range extractors/pinning;
+- `resizeItem`/manual size setters;
+- cache reset/persistence;
+- generic `VirtualList`, `VirtualTable`, `VirtualGrid` components;
+- a two-dimensional coordinator;
+- root directives or automatic root discovery;
+- validation/error framework beyond what current implementation needs to fail safely during development.
 
-Keep TanStack Virtual unless required Mioframe behavior would otherwise force substantial custom general-purpose virtualization machinery.
+Add a capability only when a current production scenario requires it and the simpler API cannot satisfy that scenario.
 
-A native-table CSS quirk, spacer technique, or database-specific sizing policy is not enough to reopen the dependency decision.
+## Proof requirement
+
+Because the API owns real browser measurement binding, it requires browser proof.
+
+Shared proof should be narrow:
+
+- large logical collection remains bounded in mounted items;
+- directive adds no wrapper DOM and works on ordinary consumer-owned elements;
+- dynamic grow/shrink remeasurement works;
+- stable-key/index remapping keeps directive measurement associated with the current item;
+- collection-relative leading/trailing geometry remains correct after deep scroll;
+- unmount/remount does not leave observable stale behavior.
+
+Do not duplicate TanStack's generic test suite or build a generic grid fixture.
+
+Database native-table proof separately exercises the same public API on `<tr>`/`<th>` and owns table-specific geometry.
 
 ## Forbidden
 
-- shared wrapper created only to hide vendor syntax;
-- custom generic virtualizer;
-- TanStack Table as a second table/domain state owner;
-- hidden full-dataset measurement;
-- persisted virtual measurements;
-- generic pinning/range APIs without a current product requirement;
-- abstraction justified only by possible future reuse.
+- mirroring arbitrary TanStack options/results;
+- shared rendering components merely to make virtualization convenient;
+- functional/renderless components that clone or constrain consumer VNodes when a directive can bind behavior directly;
+- independent observers/caches/range math;
+- database knowledge in shared virtualization;
+- hidden full-collection measurement;
+- abstraction justified by hypothetical future behavior rather than this narrow current contract.
 
 ## Readiness
 
-Dependency decision: **ready**.
+Architecture: **ready**.
 
-Next step: direct database-oriented native-table capability proof from `docs/database-virtualization-direct-integration-handoff.md` and `docs/database-virtualization-direct-integration-preflight.md`.
+Implementation/proof handoff: `docs/database-virtualization-collection-api-handoff.md`.
+Implementation preflight: `docs/database-virtualization-collection-api-preflight.md`.
