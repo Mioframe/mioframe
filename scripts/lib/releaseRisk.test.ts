@@ -212,10 +212,7 @@ type ReleasePlanOptionsWithReleaseSpecTestOverrides = ResolveReleasePlanOptions 
 // The two inventory seams are intentionally test-local until production adds
 // them. This keeps the red phase contractual (the current resolver ignores
 // the options) instead of producing a module-not-found setup failure.
-const resolveReleasePlanWithReleaseSpecTestOverrides = resolveReleasePlan as unknown as (
-  changedFiles: readonly string[],
-  options?: ReleasePlanOptionsWithReleaseSpecTestOverrides,
-) => ReturnType<typeof resolveReleasePlan>;
+const resolveReleasePlanWithReleaseSpecTestOverrides = resolveReleasePlan;
 
 /**
  * Calls `resolveReleasePlan` with the Contract C test-only
