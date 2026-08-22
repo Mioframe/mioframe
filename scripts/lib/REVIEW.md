@@ -27,21 +27,24 @@ The previous B1 semantic ownership blocker is resolved by the current implementa
 
 Owner: `scripts/lib/releaseRisk.test.ts` with one adjacent warning in `scripts/lib/releaseRisk.ts`.
 
-The semantic implementation is acceptable, but exact-head CI run `verify #4038` fails in `autofix` before verification lanes can run:
+Exact-head CI run `verify #4038` fails in `autofix` before verification lanes can run:
 
-- Oxlint: unused `ReleasePlanOptionsWithReleaseSpecTestOverrides` type alias in `scripts/lib/releaseRisk.test.ts`;
-- ESLint: the unknown-release-check proof uses prohibited type assertions (`as unknown as` / equivalent cast path) under `@typescript-eslint/consistent-type-assertions`;
-- Oxlint also reports an unnecessary `String(check)` conversion in the production invalid-mapping diagnostic.
+- unused obsolete test-author type scaffolding in `scripts/lib/releaseRisk.test.ts`;
+- the unknown-release-check proof uses prohibited type assertions under `@typescript-eslint/consistent-type-assertions`;
+- the production invalid-mapping diagnostic contains an unnecessary `String(check)` conversion.
 
-The test must continue to prove that corrupted runtime mapping data containing a check outside `RELEASE_IMPACT_CHECKS` resolves `invalid`; do not delete or weaken that assertion. Express the runtime corruption without a type assertion and remove now-obsolete test-author scaffolding. The production diagnostic cleanup must not change validation semantics.
+The accepted runtime-invalid-check assertion must remain. This is proof/static cleanup only; release-impact behavior and ownership are already accepted.
 
-Verification after correction: focused `unit-tests` for `releaseRisk.test.ts` / `releaseRisk.ts`, focused static/fix-only feedback as useful, and type-check only if needed. Exact-head CI remains architect-owned.
+Ready correction handoff:
+
+- `docs/testing/verify-release-impact-static-cleanup.md`
+- status: `ready`
 
 ## Minor issues
 
 ### m1 — Test-author RED comments are stale after implementation
 
-`scripts/lib/releaseRisk.test.ts` still says the inventory override seams are "until production adds them" and that the current resolver "ignores the options". Those statements were true only during RED; the production resolver now owns both seams. Rewrite/remove the historical wording while preserving the independent local oracle and assertions.
+The same cleanup must remove/rewrite historical comments that still describe the replacement inventory seams as not yet implemented.
 
 The separate verifier-output findings remain in `scripts/REVIEW.md` and are intentionally out of scope here.
 
@@ -53,7 +56,7 @@ None.
 
 - No release-impact architecture redesign.
 - No inventory API change.
-- No new release mapping or production-config boundary change.
+- No release mapping or production-config boundary change.
 - No managed-update grouping change.
 - No CI/workflow change.
 - No benchmark work until Pass E and the separate output findings are closed.
@@ -66,21 +69,24 @@ None.
 
 Owner: Pass E proof/static cleanup only.
 
-Allowed scope:
+Authoritative handoff:
+
+```text
+docs/testing/verify-release-impact-static-cleanup.md
+```
+
+Allowed implementation scope:
 
 ```text
 scripts/lib/releaseRisk.test.ts
 scripts/lib/releaseRisk.ts
 ```
 
-Required final state:
+Required order:
 
-1. preserve every accepted Pass E assertion and production behavior;
-2. remove the unused obsolete test-only type alias/import scaffolding;
-3. prove unknown runtime release-check rejection without type assertions;
-4. remove the unnecessary `String(check)` conversion without changing the diagnostic meaning;
-5. update stale RED-phase comments to final-state wording;
-6. focused unit/static feedback passes;
-7. return to architect for Pass E closure review.
+1. preserve accepted assertions and production semantics;
+2. remove static-rule violations and stale RED scaffolding/comments;
+3. focused unit/static feedback only;
+4. return to architect for Pass E closure review.
 
 Do not combine the two `scripts/REVIEW.md` output minors into this cleanup.
