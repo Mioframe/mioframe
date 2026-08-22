@@ -12,6 +12,7 @@ This document owns verifier-modernization packaging, correction order, and final
 - `docs/testing/verify-change-classification.md` — repository metadata classification;
 - `docs/testing/verify-unit-impact-correction.md` — unit-impact ownership amendment;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E physical-discovery correction;
+- `docs/testing/verify-release-impact-correction.md` — current ready Pass E release-consumer correction;
 - `docs/testing/verify-modernization.md` — implementation/benchmark progress record;
 - `scripts/lib/REVIEW.md` — currently active source-level findings;
 - `.agents/skills/verification/SKILL.md`, `test-first`, and `test-authoring` — execution/proof workflow.
@@ -71,13 +72,16 @@ The existing root-only E2E scenario/applicability inventories and corresponding 
 
 Owner: `scripts/lib/releaseRisk.ts` and its proof.
 
-The remaining correction must close the six-command release consumer population rather than add ad-hoc path exceptions. Active requirements are recorded in `scripts/lib/REVIEW.md` and include:
+Architecture for this correction is resolved in `docs/testing/verify-release-impact-correction.md`. The correction must audit the closed consumer population starting from the six real `RELEASE_CHECK_COMMANDS`, not add ad-hoc path exceptions.
 
-- release execution infrastructure such as `scripts/e2eReleaseContainer.mjs` / `scripts/playwrightContainer.ts` must select their actual release consumers;
-- ordinary Vitest-only proof and declaration-only type files must not inherit release-impact merely by adjacency/directory;
-- conservative fallback under release implementation boundaries must exclude unit-only proof while retaining unknown implementation/runtime safety;
-- exact mapping integrity must reject conflicting duplicate ownership and empty consumer sets;
-- independent proof must reject both silent release-input omission and proof-only over-selection.
+Required outcomes include:
+
+- release execution infrastructure such as `scripts/e2eReleaseContainer.mjs`, `scripts/playwrightContainer.ts`, `playwright.release.config.ts`, and `scripts/release/artifactServer.mjs` selects its actual browser release consumers;
+- shared runtime support actually imported by release specs, including the confirmed `tests/e2e/helpers.ts` relation, is included in the consumer audit;
+- ordinary Vitest-only proof and declaration-only type files do not inherit release-impact merely by adjacency/directory;
+- conservative fallback under release implementation boundaries excludes proof/type-only files while retaining unknown implementation/runtime safety;
+- exact mapping integrity rejects duplicate source ownership and empty consumer sets before first-match resolution can silently drop ownership;
+- independent proof rejects both silent release-input omission and proof/type-only over-selection.
 
 This is the next coding correction.
 
