@@ -120,14 +120,14 @@ A narrow type-project inclusion change is allowed only if the new TypeScript mod
 
 This is repository verification/release tooling; product FSD layers are not changed.
 
-| Concern | Owner |
-| --- | --- |
-| Release spec path inventory | `scripts/release/releaseSpecInventory.ts` |
-| Artifact / release-smoke command construction | `scripts/verify.ts` |
-| Managed-update labels, four-group ordering and execution | `scripts/release/managedUpdatesProof.mjs` |
-| Source-impact release selection and validation | `scripts/lib/releaseRisk.ts` |
-| Production Vite configuration behavior | existing `vite.config.ts` / `config/**` owners; unchanged |
-| CI placement | `.github/workflows/verify.yml`; unchanged |
+| Concern                                                  | Owner                                                     |
+| -------------------------------------------------------- | --------------------------------------------------------- |
+| Release spec path inventory                              | `scripts/release/releaseSpecInventory.ts`                 |
+| Artifact / release-smoke command construction            | `scripts/verify.ts`                                       |
+| Managed-update labels, four-group ordering and execution | `scripts/release/managedUpdatesProof.mjs`                 |
+| Source-impact release selection and validation           | `scripts/lib/releaseRisk.ts`                              |
+| Production Vite configuration behavior                   | existing `vite.config.ts` / `config/**` owners; unchanged |
+| CI placement                                             | `.github/workflows/verify.yml`; unchanged                 |
 
 ## Source of truth
 
@@ -348,28 +348,28 @@ The shared release execution inventory is the minimum complete abstraction justi
 
 ## Acceptance matrix
 
-| Population / mechanism | Required owner | Representative case | Must reject |
-| --- | --- | --- | --- |
-| Artifact release spec | inventory → `artifact` command/planner | `productionArtifactSmoke.spec.ts` | planner/command literal drift |
-| Release-smoke spec | inventory → `release-smoke` command/planner | `firstUserAndReturningUserSmoke.spec.ts` | planner/command literal drift |
-| Managed-update spec | inventory group → managed orchestrator/planner | `managedUpdatesLifecycle.spec.ts` | basename ownership for an unexecuted spec |
-| Entire release spec corpus | bounded recursive scan | `tests/e2e/release/**/*.spec.ts` | unowned new spec silently skip/full |
-| Production PWA/build config | four-check production-build boundary | `config/plugins/pwa.ts` | production PWA input → skip |
-| Nearby config negative | no release ownership from broad config | unrelated `config/**` outside named boundary | accidental broad `config/**` full/focused |
-| Proof-only plugin file | proof exclusion before plugin prefix | representative `config/plugins/*.test.ts` if present/test seam | test file inherits release ownership |
-| Exact mapping runtime identity | mapping validator | known mapping | unknown check value accepted |
-| Release inventory module | release-impact infrastructure | `scripts/release/releaseSpecInventory.ts` | inventory change skips release lane |
+| Population / mechanism         | Required owner                                 | Representative case                                            | Must reject                               |
+| ------------------------------ | ---------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------- |
+| Artifact release spec          | inventory → `artifact` command/planner         | `productionArtifactSmoke.spec.ts`                              | planner/command literal drift             |
+| Release-smoke spec             | inventory → `release-smoke` command/planner    | `firstUserAndReturningUserSmoke.spec.ts`                       | planner/command literal drift             |
+| Managed-update spec            | inventory group → managed orchestrator/planner | `managedUpdatesLifecycle.spec.ts`                              | basename ownership for an unexecuted spec |
+| Entire release spec corpus     | bounded recursive scan                         | `tests/e2e/release/**/*.spec.ts`                               | unowned new spec silently skip/full       |
+| Production PWA/build config    | four-check production-build boundary           | `config/plugins/pwa.ts`                                        | production PWA input → skip               |
+| Nearby config negative         | no release ownership from broad config         | unrelated `config/**` outside named boundary                   | accidental broad `config/**` full/focused |
+| Proof-only plugin file         | proof exclusion before plugin prefix           | representative `config/plugins/*.test.ts` if present/test seam | test file inherits release ownership      |
+| Exact mapping runtime identity | mapping validator                              | known mapping                                                  | unknown check value accepted              |
+| Release inventory module       | release-impact infrastructure                  | `scripts/release/releaseSpecInventory.ts`                      | inventory change skips release lane       |
 
 ## Risk matrix
 
-| Risk | Required protection |
-| --- | --- |
-| Planner claims a spec that no command runs | one shared execution inventory |
-| New release spec is forgotten | exhaustive bounded filesystem validation → `invalid` |
-| PWA build semantics bypass release gate | bounded production Vite config relation |
+| Risk                                                 | Required protection                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------ |
+| Planner claims a spec that no command runs           | one shared execution inventory                                     |
+| New release spec is forgotten                        | exhaustive bounded filesystem validation → `invalid`               |
+| PWA build semantics bypass release gate              | bounded production Vite config relation                            |
 | Generic config changes become expensive release work | only named exact files + `config/plugins/**`; no broad `config/**` |
-| Existing managed-update execution semantics drift | preserve labels/order/group count/stop-on-failure |
-| Test seam becomes a second production API | replacement-only options documented test-only |
+| Existing managed-update execution semantics drift    | preserve labels/order/group count/stop-on-failure                  |
+| Test seam becomes a second production API            | replacement-only options documented test-only                      |
 
 ## Required test proof
 
