@@ -5,11 +5,11 @@ vi.mock('./packageJsonImpact.ts', () => ({
 }));
 
 import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
+import type { ReleaseSpecExecutionInventory } from '../release/releaseSpecInventory.ts';
 import {
   RELEASE_IMPACT_CHECKS,
   resolveReleasePlan,
   type ReleaseImpactCheck,
-  type ResolveReleasePlanOptions,
 } from './releaseRisk.ts';
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
@@ -154,22 +154,11 @@ const ALL_CHECKS_SORTED = [
   'release-smoke',
 ];
 
-// This is the accepted current execution corpus from
-// docs/testing/verify-release-impact-correction.md, kept local because the
-// production inventory module does not exist during the required red phase.
-// It is deliberately not derived from releaseRisk.ts or runner output.
-interface ReleaseSpecExecutionInventoryForTest {
-  readonly artifact: readonly string[];
-  readonly releaseSmoke: readonly string[];
-  readonly managedUpdates: {
-    readonly lifecycle: readonly string[];
-    readonly migrationIsolation: readonly string[];
-    readonly crossEngine: readonly string[];
-    readonly dataCompatibility: readonly string[];
-  };
-}
-
-const CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY: ReleaseSpecExecutionInventoryForTest = {
+// This local replacement inventory fixture mirrors the accepted current
+// execution corpus from docs/testing/verify-release-impact-correction.md.
+// It is supplied through the production resolver's replacement-only seams,
+// rather than derived from releaseRisk.ts or runner output.
+const CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY: ReleaseSpecExecutionInventory = {
   artifact: ['tests/e2e/release/productionArtifactSmoke.spec.ts'],
   releaseSmoke: ['tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts'],
   managedUpdates: {
@@ -201,18 +190,6 @@ const CURRENT_RELEASE_SPEC_FILES = [
   ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.crossEngine,
   ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.dataCompatibility,
 ];
-
-type ReleasePlanOptionsWithReleaseSpecTestOverrides = ResolveReleasePlanOptions & {
-  /** Replacement-only test seam required by the accepted release-spec contract. */
-  releaseSpecInventoryOverride?: ReleaseSpecExecutionInventoryForTest;
-  /** Replacement-only discovered release-spec list for one resolver call. */
-  releaseSpecFilesOverride?: readonly string[];
-};
-
-// The two inventory seams are intentionally test-local until production adds
-// them. This keeps the red phase contractual (the current resolver ignores
-// the options) instead of producing a module-not-found setup failure.
-const resolveReleasePlanWithReleaseSpecTestOverrides = resolveReleasePlan;
 
 /**
  * Calls `resolveReleasePlan` with the Contract C test-only
@@ -368,9 +345,10 @@ describe('resolveReleasePlan exact-mapping integrity fails closed (Contract C, e
   it('fails invalid for an exact mapping with an impossible runtime check value', () => {
     // Deliberately corrupt a test-only override while preserving the
     // production NarrowReleaseMapping contract as ReleaseImpactCheck[].
-    const impossibleChecks = [
-      'not-a-real-release-impact-check',
-    ] as unknown as readonly ReleaseImpactCheck[];
+    const impossibleChecks: readonly ReleaseImpactCheck[] = ['release-config'];
+    Object.defineProperty(impossibleChecks, 0, {
+      value: 'not-a-real-release-impact-check',
+    });
     const plan = resolveWithMappingOverride(
       ['scripts/release/validateReleaseConfig.mjs'],
       [{ path: 'scripts/release/validateReleaseConfig.mjs', checks: impossibleChecks }],
@@ -416,7 +394,7 @@ describe('resolveReleasePlan production Vite configuration ownership (Pass E Con
 describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B)', () => {
   it('fails invalid when a discovered new release spec is absent from the replacement inventory', () => {
     const unownedSpec = 'tests/e2e/release/newReleaseContract.spec.ts';
-    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([unownedSpec], {
+    const plan = resolveReleasePlan([unownedSpec], {
       releaseSpecFilesOverride: [...CURRENT_RELEASE_SPEC_FILES, unownedSpec],
     });
 
@@ -426,7 +404,7 @@ describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B
 
   it('fails invalid rather than claiming managed-updates from an unowned managedUpdates filename', () => {
     const unownedSpec = 'tests/e2e/release/managedUpdatesUnowned.spec.ts';
-    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([unownedSpec], {
+    const plan = resolveReleasePlan([unownedSpec], {
       releaseSpecFilesOverride: [...CURRENT_RELEASE_SPEC_FILES, unownedSpec],
     });
 
@@ -436,7 +414,7 @@ describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B
 
   it('fails invalid when a replacement inventory assigns one real spec to two managed-update groups', () => {
     const duplicatedSpec = 'tests/e2e/release/managedUpdatesLifecycle.spec.ts';
-    const duplicateInventory: ReleaseSpecExecutionInventoryForTest = {
+    const duplicateInventory: ReleaseSpecExecutionInventory = {
       ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY,
       managedUpdates: {
         ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates,
@@ -446,7 +424,7 @@ describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B
         ],
       },
     };
-    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([duplicatedSpec], {
+    const plan = resolveReleasePlan([duplicatedSpec], {
       releaseSpecInventoryOverride: duplicateInventory,
       releaseSpecFilesOverride: CURRENT_RELEASE_SPEC_FILES,
     });
@@ -457,7 +435,7 @@ describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B
 
   it('fails invalid when an inventory-owned managed-update spec is missing from the filesystem seam', () => {
     const missingSpec = 'tests/e2e/release/managedUpdatesLifecycle.spec.ts';
-    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([missingSpec], {
+    const plan = resolveReleasePlan([missingSpec], {
       fileExists: (filePath) => filePath !== missingSpec,
       releaseSpecInventoryOverride: CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY,
       releaseSpecFilesOverride: CURRENT_RELEASE_SPEC_FILES,

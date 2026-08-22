@@ -438,7 +438,7 @@ export function resolveReleasePlan(
     for (const check of mapping.checks) {
       if (!RELEASE_IMPACT_CHECK_SET.has(check)) {
         registryErrors.push(
-          `release-impact mapping for ${mapping.path === '' ? '(empty path)' : mapping.path} references unknown check ${String(check)}`,
+          `release-impact mapping for ${mapping.path === '' ? '(empty path)' : mapping.path} references unknown check ${check}`,
         );
       }
     }
