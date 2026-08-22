@@ -1,5 +1,10 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
+import {
+  RELEASE_SPEC_EXECUTION_INVENTORY,
+  type ReleaseSpecExecutionInventory,
+} from '../release/releaseSpecInventory.ts';
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 
 /** One of the six existing source-impact release contracts. `release-version` is independent PR/release policy, not source-impact, and is deliberately excluded. */
@@ -20,6 +25,8 @@ export const RELEASE_IMPACT_CHECKS: readonly ReleaseImpactCheck[] = [
   'release-smoke',
   'managed-updates',
 ];
+
+const RELEASE_IMPACT_CHECK_SET = new Set<ReleaseImpactCheck>(RELEASE_IMPACT_CHECKS);
 
 /**
  * One exact `changed file path -> release checks` ownership entry. Exported
@@ -112,8 +119,6 @@ const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
   // managedUpdatesActivationUi.spec.ts / managedUpdatesRecovery.spec.ts /
   // managedReleaseDataCompatibility.spec.ts (managed-updates).
   { path: 'tests/e2e/helpers.ts', checks: ['artifact', 'managed-updates', 'release-smoke'] },
-  { path: 'tests/e2e/release/productionArtifactSmoke.spec.ts', checks: ['artifact'] },
-  { path: 'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts', checks: ['release-smoke'] },
   // Artifact-facing worker: affects both the built controller artifact
   // contract and managed-update runtime lifecycle.
   { path: 'src/sw.ts', checks: ['artifact', 'managed-updates'] },
@@ -187,6 +192,7 @@ const FULL_LANE_EXACT_FILES = new Set([
   'index.html',
   'scripts/verify.ts',
   'scripts/lib/releaseRisk.ts',
+  'scripts/release/releaseSpecInventory.ts',
 ]);
 
 // Publisher/retained-release/data-compatibility code under the managed
@@ -199,6 +205,18 @@ const FULL_LANE_PREFIXES = ['scripts/pages/lib/'];
 
 const PACKAGE_JSON_PATH = 'package.json';
 const PNPM_LOCK_PATH = 'pnpm-lock.yaml';
+const RELEASE_SPEC_DIR = 'tests/e2e/release';
+const PRODUCTION_VITE_CONFIG_EXACT_FILES = new Set([
+  'config/alias.ts',
+  'config/vueCustomElements.ts',
+]);
+const PRODUCTION_VITE_CONFIG_PREFIX = 'config/plugins/';
+const PRODUCTION_VITE_CONFIG_CHECKS: readonly ReleaseImpactCheck[] = [
+  'artifact',
+  'build',
+  'managed-updates',
+  'release-smoke',
+];
 
 function isExistingFile(filePath: string): boolean {
   try {
@@ -212,15 +230,77 @@ function uniqSorted<T extends string>(values: readonly T[]): T[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
-// Managed-update release proof: every managedUpdates*.spec.ts and the data
-// compatibility spec run through the single scripts/release/managedUpdatesProof.mjs
-// orchestrator (confirmed); directory-wide, not individually existence-validated.
-function isManagedUpdatesReleaseSpecPath(filePath: string): boolean {
-  if (filePath === 'tests/e2e/release/managedReleaseDataCompatibility.spec.ts') {
-    return true;
+function findReleaseSpecFiles(): string[] {
+  const matchedFiles: string[] = [];
+  const pendingDirs: string[] = [RELEASE_SPEC_DIR];
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop();
+
+    if (currentDir === undefined) {
+      continue;
+    }
+
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.posix.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        pendingDirs.push(entryPath);
+      } else if (entry.isFile() && entryPath.endsWith('.spec.ts')) {
+        matchedFiles.push(entryPath);
+      }
+    }
   }
 
-  return filePath.startsWith('tests/e2e/release/managedUpdates') && filePath.endsWith('.spec.ts');
+  return uniqSorted(matchedFiles);
+}
+
+interface ReleaseSpecExecutionAssignment {
+  spec: string;
+  check: ReleaseImpactCheck;
+  group: string;
+}
+
+function getReleaseSpecExecutionAssignments(
+  inventory: ReleaseSpecExecutionInventory,
+): ReleaseSpecExecutionAssignment[] {
+  return [
+    ...inventory.artifact.map((spec) => ({ spec, check: 'artifact' as const, group: 'artifact' })),
+    ...inventory.releaseSmoke.map((spec) => ({
+      spec,
+      check: 'release-smoke' as const,
+      group: 'release-smoke',
+    })),
+    ...inventory.managedUpdates.lifecycle.map((spec) => ({
+      spec,
+      check: 'managed-updates' as const,
+      group: 'managed-updates:lifecycle',
+    })),
+    ...inventory.managedUpdates.migrationIsolation.map((spec) => ({
+      spec,
+      check: 'managed-updates' as const,
+      group: 'managed-updates:migration-isolation',
+    })),
+    ...inventory.managedUpdates.crossEngine.map((spec) => ({
+      spec,
+      check: 'managed-updates' as const,
+      group: 'managed-updates:cross-engine',
+    })),
+    ...inventory.managedUpdates.dataCompatibility.map((spec) => ({
+      spec,
+      check: 'managed-updates' as const,
+      group: 'managed-updates:data-compatibility',
+    })),
+  ];
+}
+
+function isProductionViteConfigPath(filePath: string): boolean {
+  return (
+    PRODUCTION_VITE_CONFIG_EXACT_FILES.has(filePath) ||
+    filePath.startsWith(PRODUCTION_VITE_CONFIG_PREFIX)
+  );
 }
 
 // Every currently confirmed tests/e2e/release/fixtures/** file has its own
@@ -281,8 +361,8 @@ export interface ResolveReleasePlanOptions {
   packageJsonOldRef?: string | null;
   /**
    * Test-only override for file-existence checks, used only to
-   * self-validate the exact narrow-mapping table. Production callers should
-   * omit this.
+   * self-validate exact mappings and release-spec inventory members.
+   * Production callers should omit this.
    */
   fileExists?: (filePath: string) => boolean;
   /**
@@ -290,18 +370,31 @@ export interface ResolveReleasePlanOptions {
    * table for this call (never appends). Production callers must omit this.
    */
   exactMappingsOverride?: readonly NarrowReleaseMapping[];
+  /**
+   * Test-only inventory that fully REPLACES the production release-spec
+   * execution inventory for this call (never appends). Production callers
+   * must omit this.
+   */
+  releaseSpecInventoryOverride?: ReleaseSpecExecutionInventory;
+  /**
+   * Test-only discovered release-spec list that fully REPLACES the bounded
+   * filesystem scan for this call (never appends). Production callers must
+   * omit this.
+   */
+  releaseSpecFilesOverride?: readonly string[];
 }
 
 /**
  * Resolve the source-impact release plan for the given changed files, in
- * priority order: invalid (narrow mapping table self-validation failed),
- * then per changed file: exact narrow-mapping match (focused), release-
- * sensitive infrastructure / `pnpm-lock.yaml` / runtime-relevant
- * `package.json` (full), proof/declaration-only shape (no impact from that
- * path), the broad publication prefix (full), an unmapped release fixture
- * (full), or the managed-update release/runtime boundary (focused). A
- * changeset with any `full`-triggering path resolves `full` overall; absent
- * that, any `focused` match resolves `focused`; absent that, `skip`.
+ * priority order: invalid (exact mapping or release-spec execution
+ * inventory validation failed), then per changed file: exact narrow mapping
+ * or inventory-owned release specification (focused), release-sensitive
+ * infrastructure / `pnpm-lock.yaml` / runtime-relevant `package.json`
+ * (full), proof/declaration-only shape (no impact from that path), the broad
+ * publication prefix (full), an unmapped release fixture (full), or the
+ * managed-update runtime boundary (focused). A changeset with any
+ * `full`-triggering path resolves `full` overall; absent that, any `focused`
+ * match resolves `focused`; absent that, `skip`.
  * `release-version` is independent PR/release policy and is never selected
  * here. Release planning uses the flat changed-file projection;
  * deletion-dependent correctness is not required for these checks.
@@ -315,9 +408,13 @@ export function resolveReleasePlan(
     packageJsonOldRef = null,
     fileExists = isExistingFile,
     exactMappingsOverride,
+    releaseSpecInventoryOverride,
+    releaseSpecFilesOverride,
   }: ResolveReleasePlanOptions = {},
 ): ReleasePlan {
   const effectiveMappings = exactMappingsOverride ?? NARROW_EXACT_MAPPINGS;
+  const effectiveReleaseSpecInventory =
+    releaseSpecInventoryOverride ?? RELEASE_SPEC_EXECUTION_INVENTORY;
 
   const registryErrors: string[] = [];
   const seenPaths = new Set<string>();
@@ -338,6 +435,14 @@ export function resolveReleasePlan(
       );
     }
 
+    for (const check of mapping.checks) {
+      if (!RELEASE_IMPACT_CHECK_SET.has(check)) {
+        registryErrors.push(
+          `release-impact mapping for ${mapping.path === '' ? '(empty path)' : mapping.path} references unknown check ${String(check)}`,
+        );
+      }
+    }
+
     if (mapping.path !== '' && !fileExists(mapping.path)) {
       registryErrors.push(`release-impact mapping references missing path ${mapping.path}`);
     }
@@ -345,6 +450,69 @@ export function resolveReleasePlan(
 
   for (const duplicatePath of duplicatePaths) {
     registryErrors.push(`release-impact mapping registers duplicate source path ${duplicatePath}`);
+  }
+
+  const releaseSpecChecks = new Map<string, ReleaseImpactCheck>();
+  const releaseSpecGroups = new Map<string, string>();
+
+  for (const assignment of getReleaseSpecExecutionAssignments(effectiveReleaseSpecInventory)) {
+    const existingGroup = releaseSpecGroups.get(assignment.spec);
+
+    if (existingGroup !== undefined) {
+      registryErrors.push(
+        `release spec inventory assigns ${assignment.spec} to multiple execution groups: ${existingGroup}, ${assignment.group}`,
+      );
+      continue;
+    }
+
+    releaseSpecGroups.set(assignment.spec, assignment.group);
+    releaseSpecChecks.set(assignment.spec, assignment.check);
+
+    if (!fileExists(assignment.spec)) {
+      registryErrors.push(`release spec inventory references missing path ${assignment.spec}`);
+    }
+  }
+
+  let effectiveReleaseSpecFiles: readonly string[] = [];
+  let releaseSpecPopulationAvailable = true;
+
+  if (releaseSpecFilesOverride !== undefined) {
+    effectiveReleaseSpecFiles = releaseSpecFilesOverride;
+  } else {
+    try {
+      effectiveReleaseSpecFiles = findReleaseSpecFiles();
+    } catch (error) {
+      releaseSpecPopulationAvailable = false;
+      registryErrors.push(
+        `unable to list ${RELEASE_SPEC_DIR}/**/*.spec.ts: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (releaseSpecPopulationAvailable) {
+    const discoveredReleaseSpecs = new Set<string>();
+
+    for (const spec of effectiveReleaseSpecFiles) {
+      if (discoveredReleaseSpecs.has(spec)) {
+        registryErrors.push(`release spec scan contains duplicate path ${spec}`);
+      } else {
+        discoveredReleaseSpecs.add(spec);
+      }
+    }
+
+    for (const spec of releaseSpecChecks.keys()) {
+      if (!discoveredReleaseSpecs.has(spec)) {
+        registryErrors.push(
+          `release spec inventory references path outside ${RELEASE_SPEC_DIR}/**/*.spec.ts ${spec}`,
+        );
+      }
+    }
+
+    for (const spec of discoveredReleaseSpecs) {
+      if (!releaseSpecChecks.has(spec)) {
+        registryErrors.push(`release spec ${spec} is not assigned to an executing release check`);
+      }
+    }
   }
 
   if (registryErrors.length > 0) {
@@ -378,6 +546,25 @@ export function resolveReleasePlan(
       continue;
     }
 
+    const releaseSpecCheck = releaseSpecChecks.get(filePath);
+
+    if (releaseSpecCheck !== undefined) {
+      focusedChecks.add(releaseSpecCheck);
+      focusedReasons.push(`release spec ${filePath} -> ${releaseSpecCheck}`);
+      continue;
+    }
+
+    if (isProductionViteConfigPath(filePath)) {
+      for (const check of PRODUCTION_VITE_CONFIG_CHECKS) {
+        focusedChecks.add(check);
+      }
+
+      focusedReasons.push(
+        `production Vite configuration path ${filePath} -> ${PRODUCTION_VITE_CONFIG_CHECKS.join(', ')}`,
+      );
+      continue;
+    }
+
     if (FULL_LANE_PREFIXES.some((prefix) => filePath.startsWith(prefix))) {
       fullReasons.push(
         `release-sensitive infrastructure path ${filePath} -> full source-impact release proof`,
@@ -407,7 +594,7 @@ export function resolveReleasePlan(
       continue;
     }
 
-    if (isManagedUpdatesReleaseSpecPath(filePath) || isAppUpdateRuntimePath(filePath)) {
+    if (isAppUpdateRuntimePath(filePath)) {
       focusedChecks.add('managed-updates');
       focusedReasons.push(`managed-update release-relevant path ${filePath} -> managed-updates`);
     }

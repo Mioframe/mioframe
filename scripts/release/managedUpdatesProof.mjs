@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { applyProcessResult } from '../lib/processResult.ts';
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
 import { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL } from './runManagedReleaseDataCompatibilityProof.mjs';
+import { RELEASE_SPEC_EXECUTION_INVENTORY } from './releaseSpecInventory.ts';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
@@ -10,27 +11,16 @@ const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 // activation-UI specs, and worker-owned recovery. Runs in its own fresh
 // Playwright container.
 export const MANAGED_UPDATES_LIFECYCLE_LABEL = 'managed-updates-lifecycle';
-export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
-  'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
-  'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
-  'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
-  'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
-  'tests/e2e/release/managedUpdatesRecovery.spec.ts',
-  'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
-  'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
-];
+export const MANAGED_UPDATES_LIFECYCLE_SPECS =
+  RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.lifecycle;
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).
 // Runs in a second fresh Playwright container, only after group 1 passes.
 // managedUpdatesControllerUpgrade.spec.ts runs first within this fresh
 // Chromium container, before the longer migration suites.
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL = 'managed-updates-migration-isolation';
-export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
-  'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-  'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
-  'tests/e2e/release/managedUpdatesDevelop.spec.ts',
-  'tests/e2e/release/managedUpdatesMigration.spec.ts',
-];
+export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS =
+  RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.migrationIsolation;
 
 // Group 3: the narrow cross-engine lifecycle smoke, run on Firefox and
 // WebKit only (via this file's own Playwright project entries; Chromium's
@@ -38,17 +28,15 @@ export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
 // after group 2 passes, isolated from the Chromium migration/isolation
 // proof above.
 export const MANAGED_UPDATES_CROSS_ENGINE_LABEL = 'managed-updates-cross-engine';
-export const MANAGED_UPDATES_CROSS_ENGINE_SPECS = [
-  'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
-];
+export const MANAGED_UPDATES_CROSS_ENGINE_SPECS =
+  RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.crossEngine;
 
 // Group 4: the data-compatibility publication gate's own browser proof (see
 // scripts/pages/lib/managedCompatibilityPreflight.mjs), run hermetically
 // against two releases it builds and publishes itself. Runs in a fourth
 // fresh Playwright container, only after group 3 passes.
-export const MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS = [
-  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
-];
+export const MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS =
+  RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.dataCompatibility;
 
 // Fixed run order: each group must complete before the next starts.
 export const MANAGED_UPDATES_GROUPS = [

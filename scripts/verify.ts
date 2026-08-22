@@ -40,6 +40,7 @@ import {
   resolveReleasePlan,
   type ReleaseImpactCheck,
 } from './lib/releaseRisk.ts';
+import { RELEASE_SPEC_EXECUTION_INVENTORY } from './release/releaseSpecInventory.ts';
 import {
   FIX_ONLY_LABELS,
   formatShellCommand,
@@ -1138,12 +1139,7 @@ const RELEASE_CHECK_COMMANDS: Record<ReleaseImpactCheck, { command: string; args
   },
   artifact: {
     command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
-    ],
+    args: ['e2e:release', '--label', 'artifact', ...RELEASE_SPEC_EXECUTION_INVENTORY.artifact],
   },
   'release-smoke': {
     command: 'pnpm',
@@ -1151,7 +1147,7 @@ const RELEASE_CHECK_COMMANDS: Record<ReleaseImpactCheck, { command: string; args
       'e2e:release',
       '--label',
       'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+      ...RELEASE_SPEC_EXECUTION_INVENTORY.releaseSmoke,
     ],
   },
   'managed-updates': { command: 'node', args: ['scripts/release/managedUpdatesProof.mjs'] },

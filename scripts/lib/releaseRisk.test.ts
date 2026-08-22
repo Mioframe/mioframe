@@ -9,6 +9,7 @@ import {
   RELEASE_IMPACT_CHECKS,
   resolveReleasePlan,
   type ReleaseImpactCheck,
+  type ResolveReleasePlanOptions,
 } from './releaseRisk.ts';
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
@@ -152,6 +153,69 @@ const ALL_CHECKS_SORTED = [
   'release-config',
   'release-smoke',
 ];
+
+// This is the accepted current execution corpus from
+// docs/testing/verify-release-impact-correction.md, kept local because the
+// production inventory module does not exist during the required red phase.
+// It is deliberately not derived from releaseRisk.ts or runner output.
+interface ReleaseSpecExecutionInventoryForTest {
+  readonly artifact: readonly string[];
+  readonly releaseSmoke: readonly string[];
+  readonly managedUpdates: {
+    readonly lifecycle: readonly string[];
+    readonly migrationIsolation: readonly string[];
+    readonly crossEngine: readonly string[];
+    readonly dataCompatibility: readonly string[];
+  };
+}
+
+const CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY: ReleaseSpecExecutionInventoryForTest = {
+  artifact: ['tests/e2e/release/productionArtifactSmoke.spec.ts'],
+  releaseSmoke: ['tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts'],
+  managedUpdates: {
+    lifecycle: [
+      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
+      'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
+      'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
+      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+      'tests/e2e/release/managedUpdatesRecovery.spec.ts',
+      'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
+      'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
+    ],
+    migrationIsolation: [
+      'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+      'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
+      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
+      'tests/e2e/release/managedUpdatesMigration.spec.ts',
+    ],
+    crossEngine: ['tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts'],
+    dataCompatibility: ['tests/e2e/release/managedReleaseDataCompatibility.spec.ts'],
+  },
+};
+
+const CURRENT_RELEASE_SPEC_FILES = [
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.artifact,
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.releaseSmoke,
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.lifecycle,
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.migrationIsolation,
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.crossEngine,
+  ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.dataCompatibility,
+];
+
+type ReleasePlanOptionsWithReleaseSpecTestOverrides = ResolveReleasePlanOptions & {
+  /** Replacement-only test seam required by the accepted release-spec contract. */
+  releaseSpecInventoryOverride?: ReleaseSpecExecutionInventoryForTest;
+  /** Replacement-only discovered release-spec list for one resolver call. */
+  releaseSpecFilesOverride?: readonly string[];
+};
+
+// The two inventory seams are intentionally test-local until production adds
+// them. This keeps the red phase contractual (the current resolver ignores
+// the options) instead of producing a module-not-found setup failure.
+const resolveReleasePlanWithReleaseSpecTestOverrides = resolveReleasePlan as unknown as (
+  changedFiles: readonly string[],
+  options?: ReleasePlanOptionsWithReleaseSpecTestOverrides,
+) => ReturnType<typeof resolveReleasePlan>;
 
 /**
  * Calls `resolveReleasePlan` with the Contract C test-only
@@ -302,6 +366,117 @@ describe('resolveReleasePlan exact-mapping integrity fails closed (Contract C, e
 
     expect(plan.mode).toBe('invalid');
     expect(plan.checks).toEqual([]);
+  });
+
+  it('fails invalid for an exact mapping with an impossible runtime check value', () => {
+    // Deliberately corrupt a test-only override while preserving the
+    // production NarrowReleaseMapping contract as ReleaseImpactCheck[].
+    const impossibleChecks = [
+      'not-a-real-release-impact-check',
+    ] as unknown as readonly ReleaseImpactCheck[];
+    const plan = resolveWithMappingOverride(
+      ['scripts/release/validateReleaseConfig.mjs'],
+      [{ path: 'scripts/release/validateReleaseConfig.mjs', checks: impossibleChecks }],
+    );
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.checks).toEqual([]);
+  });
+});
+
+describe('resolveReleasePlan production Vite configuration ownership (Pass E Contract A)', () => {
+  it.each([
+    'config/plugins/pwa.ts',
+    'config/plugins/base.ts',
+    'config/alias.ts',
+    'config/vueCustomElements.ts',
+  ])(
+    'selects exactly build, artifact, release-smoke, and managed-updates for the real production Vite input %s',
+    (filePath) => {
+      // Oracle: vite.config.ts imports these bounded production-build inputs,
+      // and buildArtifact.mjs is the release artifact build used by the three
+      // Playwright-backed release checks. release-config and publisher import
+      // do not consume this build path.
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('focused');
+      expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
+    },
+  );
+
+  it.each([
+    'config/plugins/base.test.ts',
+    'config/plugins/pwa.test.ts',
+    'config/unrelatedRuntimeConfig.ts',
+  ])('keeps the non-production config path %s outside release impact', (filePath) => {
+    const plan = resolveReleasePlan([filePath]);
+
+    expect(plan.mode).toBe('skip');
+    expect(plan.checks).toEqual([]);
+  });
+});
+
+describe('resolveReleasePlan release-spec inventory ownership (Pass E Contract B)', () => {
+  it('fails invalid when a discovered new release spec is absent from the replacement inventory', () => {
+    const unownedSpec = 'tests/e2e/release/newReleaseContract.spec.ts';
+    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([unownedSpec], {
+      releaseSpecFilesOverride: [...CURRENT_RELEASE_SPEC_FILES, unownedSpec],
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.checks).toEqual([]);
+  });
+
+  it('fails invalid rather than claiming managed-updates from an unowned managedUpdates filename', () => {
+    const unownedSpec = 'tests/e2e/release/managedUpdatesUnowned.spec.ts';
+    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([unownedSpec], {
+      releaseSpecFilesOverride: [...CURRENT_RELEASE_SPEC_FILES, unownedSpec],
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.checks).toEqual([]);
+  });
+
+  it('fails invalid when a replacement inventory assigns one real spec to two managed-update groups', () => {
+    const duplicatedSpec = 'tests/e2e/release/managedUpdatesLifecycle.spec.ts';
+    const duplicateInventory: ReleaseSpecExecutionInventoryForTest = {
+      ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY,
+      managedUpdates: {
+        ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates,
+        migrationIsolation: [
+          ...CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY.managedUpdates.migrationIsolation,
+          duplicatedSpec,
+        ],
+      },
+    };
+    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([duplicatedSpec], {
+      releaseSpecInventoryOverride: duplicateInventory,
+      releaseSpecFilesOverride: CURRENT_RELEASE_SPEC_FILES,
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.checks).toEqual([]);
+  });
+
+  it('fails invalid when an inventory-owned managed-update spec is missing from the filesystem seam', () => {
+    const missingSpec = 'tests/e2e/release/managedUpdatesLifecycle.spec.ts';
+    const plan = resolveReleasePlanWithReleaseSpecTestOverrides([missingSpec], {
+      fileExists: (filePath) => filePath !== missingSpec,
+      releaseSpecInventoryOverride: CURRENT_RELEASE_SPEC_EXECUTION_INVENTORY,
+      releaseSpecFilesOverride: CURRENT_RELEASE_SPEC_FILES,
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.checks).toEqual([]);
+  });
+});
+
+describe('resolveReleasePlan release-spec inventory infrastructure (Pass E)', () => {
+  it('fails closed to all six source-impact checks for a changed release-spec inventory module', () => {
+    const plan = resolveReleasePlan(['scripts/release/releaseSpecInventory.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.checks).toEqual(ALL_CHECKS_SORTED);
   });
 });
 
