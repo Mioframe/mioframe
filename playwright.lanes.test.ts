@@ -4,6 +4,10 @@ import appConfig from './playwright.config';
 import releaseConfig from './playwright.release.config';
 import storybookBehaviorConfig from './playwright.storybook.config';
 import visualConfig from './playwright.visual.config';
+import {
+  DESKTOP_PROJECT_NAME,
+  MOBILE_PROJECT_NAME,
+} from './scripts/lib/e2eProjectApplicability.ts';
 
 describe('Playwright lane discovery stays disjoint', () => {
   it('gives application e2e and release lanes their own physical testDir', () => {
@@ -32,8 +36,24 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(visualConfig.respectGitIgnore).toBe(true);
   });
 
-  it('makes application e2e ignore the storybook, visual, and release subtrees', () => {
-    expect(appConfig.testIgnore).toEqual(
+  it('makes both application e2e projects ignore the storybook, visual, and release subtrees', () => {
+    // The shared subtree ignores live on projects[*].testIgnore, not a
+    // top-level appConfig.testIgnore (playwright.config.ts sets testIgnore
+    // per-project, mixing SHARED_TEST_IGNORE with each project's own
+    // getProjectIgnoredSpecs(...) applicability ignores) -- resolve each real
+    // project by name rather than duplicating E2E_PROJECT_APPLICABILITY's own
+    // registry contract, which is e2eProjectApplicability.test.ts's job.
+    const desktopProject = appConfig.projects?.find(
+      (project) => project.name === DESKTOP_PROJECT_NAME,
+    );
+    const mobileProject = appConfig.projects?.find(
+      (project) => project.name === MOBILE_PROJECT_NAME,
+    );
+
+    expect(desktopProject?.testIgnore).toEqual(
+      expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),
+    );
+    expect(mobileProject?.testIgnore).toEqual(
       expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),
     );
   });

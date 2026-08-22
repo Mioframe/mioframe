@@ -276,6 +276,43 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // failures against the current unfixed production module, not an
 // import-time failure. Do not weaken these assertions to make the current
 // unfixed production module pass.
+//
+// B1/M1 status-aware + scan-boundary correction pass (this round;
+// scripts/lib/REVIEW.md B1 and M1; docs/testing/verify-unit-impact-correction.md
+// decision #4 "Exact external ownership is additive and status-aware" and
+// decision #5's Playwright-inventory row): confirmed by direct read of the
+// current resolveUnitPlan (scripts/lib/unitRisk.ts) that:
+// (1) B1 -- `fileAsDataMappings.find(...)` sits under the `// added |
+//     modified` comment, reached only after `deleted` already `continue`d
+//     past the ordinary isUnitRelevantByShape fallback and `renamed` already
+//     `continue`d even earlier; PRIVACY.md, .gitignore, and every
+//     .github/workflows/*.yml source is neither test-shaped nor an
+//     ORDINARY_SOURCE_EXTENSIONS shape, so a deleted/renamed exact-mapping
+//     source currently resolves `mode: 'skip'`, silently losing its
+//     surviving owner. New "resolveUnitPlan status-aware exact external
+//     ownership" describe block below covers deleted/renamed verify.yml,
+//     PRIVACY.md, and .gitignore (status-only proof per
+//     verify-unit-impact-correction.md's "Real resolver probes" section,
+//     since executing the real repository after deleting/renaming these
+//     canonical inputs would be destructive), each with a fileExists-override
+//     case proving current source existence is never required to recognize
+//     the relation, plus one composition-safety case confirming full still
+//     dominates a changeset that also carries a real exact-owner relation.
+// (2) M1 -- the current UNIT_SCAN_OWNERS entry for playwright.lanes.test.ts
+//     reuses `isPlaywrightOnlyProofPath` as its `matchesPath` (confirmed by
+//     direct read, including that function's own "functionally the same
+//     population isPlaywrightOnlyProofPath already recognizes" comment,
+//     which is the wrong claim this correction fixes), but
+//     isPlaywrightOnlyProofPath matches ANY `.spec.ts` file at arbitrary
+//     nesting depth under tests/e2e/ with no subtree restriction, over-broad
+//     relative to the six real populations playwright.lanes.test.ts's own
+//     filesystem scan enumerates. New "Must reject" case added to the
+//     existing "playwright.lanes.test.ts (scans the complete current
+//     Playwright spec population...)" describe block below, using
+//     tests/e2e/other/example.spec.ts: `.spec.ts`-shaped and under
+//     tests/e2e/, so it matches isPlaywrightOnlyProofPath and IS currently
+//     (incorrectly) selected, but is outside every one of the six real
+//     scanned sub-populations.
 
 function added(filePath: string): ChangedPath {
   return { status: 'added', path: filePath };
@@ -295,6 +332,15 @@ function renamed(oldPath: string, newPath: string): ChangedPath {
 
 const EVERYTHING_EXISTS = () => true;
 const NOTHING_EXISTS = () => false;
+
+// Selective fileExists override for status-aware exact-ownership proof: every
+// path exists except the ones listed, so a deleted/renamed mapping SOURCE can
+// be asserted absent from the tree while the real UNIT_FILE_AS_DATA_MAPPINGS
+// registry's owning test paths (validated by validateFileAsDataMappings via
+// the same fileExists callback) still resolve to existing on disk.
+function existsExceptFor(...excludedPaths: string[]): (filePath: string) => boolean {
+  return (filePath: string) => !excludedPaths.includes(filePath);
+}
 
 describe('resolveUnitPlan registry validation', () => {
   it('accepts the real UNIT_FILE_AS_DATA_MAPPINGS registry with no changed paths', () => {
@@ -755,6 +801,123 @@ describe('resolveUnitPlan file-as-data mapping selection (B1-corrected new relat
   });
 });
 
+describe('resolveUnitPlan status-aware exact external ownership (scripts/lib/REVIEW.md B1; docs/testing/verify-unit-impact-correction.md decision #4 "Exact external ownership is additive and status-aware")', () => {
+  // Confirmed by direct read of resolveUnitPlan's changed-path loop
+  // (scripts/lib/unitRisk.ts): the `fileAsDataMappings.find(...)` lookup sits
+  // under the `// added | modified` comment, reached only after an explicit
+  // `if (change.status === 'deleted') { ...; continue; }` early return and
+  // only for the non-`renamed` branch (renamed changes `continue` even
+  // earlier, right after checkInfrastructureTrigger/checkScanOwners, never
+  // falling through to the mapping lookup at all). PRIVACY.md, .gitignore,
+  // and every .github/workflows/*.yml mapping source is neither test-shaped
+  // (isTestShapedPath) nor an ORDINARY_SOURCE_EXTENSIONS shape
+  // (isOrdinaryUnitSourcePath), so the existing deleted/renamed
+  // isUnitRelevantByShape fallback that rescues ordinary sources (see
+  // "resolveUnitPlan deletion and rename safety" above) never rescues these
+  // either -- a deleted or renamed exact-mapping-only source currently falls
+  // all the way through to `mode: 'skip'`, silently dropping a real
+  // surviving Vitest owner. Every assertion below that exercises a
+  // deleted/renamed exact-mapping source is expected to fail red (wrong
+  // `mode`/`relatedInputs`) against the current unfixed resolveUnitPlan.
+
+  it('deleted .github/workflows/verify.yml still selects all five surviving exact owners (Must reject: mode "skip", silently dropping every workflow-test owner)', () => {
+    const plan = resolveUnitPlan([deleted('.github/workflows/verify.yml')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'scripts/ciAutofix.test.ts',
+      'scripts/release/buildDateWorkflow.test.mjs',
+      'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
+      'scripts/release/materializePrVersionWorkflow.test.mjs',
+      'scripts/verify.test.ts',
+    ]);
+  });
+
+  it('deleted .github/workflows/verify.yml selects its owners purely from the fixed-path contract, independent of current source existence on disk', () => {
+    const plan = resolveUnitPlan([deleted('.github/workflows/verify.yml')], {
+      fileExists: existsExceptFor('.github/workflows/verify.yml'),
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toContain('scripts/verify.test.ts');
+  });
+
+  it('renamed .github/workflows/verify.yml (old side) still selects its surviving exact owners via the old path -- the new path (.yml.bak) is deliberately chosen to match neither isOrdinaryUnitSourcePath (not one of ORDINARY_SOURCE_EXTENSIONS) nor any other UNIT_FILE_AS_DATA_MAPPINGS source, isolating the exact-mapping relation being proved here', () => {
+    const plan = resolveUnitPlan([
+      renamed('.github/workflows/verify.yml', '.github/workflows/verify.yml.bak'),
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'scripts/ciAutofix.test.ts',
+      'scripts/release/buildDateWorkflow.test.mjs',
+      'scripts/release/managedDeploymentValidationWorkflow.test.mjs',
+      'scripts/release/materializePrVersionWorkflow.test.mjs',
+      'scripts/verify.test.ts',
+    ]);
+  });
+
+  it('deleted PRIVACY.md still selects DataStoragePrivacyPane.test.ts (Must reject: mode "skip", silently dropping the owner)', () => {
+    const plan = resolveUnitPlan([deleted('PRIVACY.md')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts',
+    ]);
+  });
+
+  it('deleted PRIVACY.md selects its owner purely from the fixed-path contract, independent of current source existence on disk', () => {
+    const plan = resolveUnitPlan([deleted('PRIVACY.md')], {
+      fileExists: existsExceptFor('PRIVACY.md'),
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toContain(
+      'src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts',
+    );
+  });
+
+  it('renamed PRIVACY.md (old side) still selects its owner via the old path (Must reject: mode "skip", losing the owner on rename) -- the new path (PRIVACY.archived.md) deliberately does not match any ordinary-source shape or other mapping', () => {
+    const plan = resolveUnitPlan([renamed('PRIVACY.md', 'PRIVACY.archived.md')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual([
+      'src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts',
+    ]);
+  });
+
+  it('renamed PRIVACY.md (old side) selects its owner purely from the fixed-path contract, independent of current source existence on disk (neither the old nor the new path exists post-rename)', () => {
+    const plan = resolveUnitPlan([renamed('PRIVACY.md', 'PRIVACY.archived.md')], {
+      fileExists: existsExceptFor('PRIVACY.md', 'PRIVACY.archived.md'),
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toContain(
+      'src/pages/DataStoragePrivacyPane/DataStoragePrivacyPane.test.ts',
+    );
+  });
+
+  it('deleted .gitignore still selects scripts/agentEnvironment.test.mjs (Must reject: mode "skip", silently dropping the owner)', () => {
+    const plan = resolveUnitPlan([deleted('.gitignore')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['scripts/agentEnvironment.test.mjs']);
+  });
+
+  it('renamed .gitignore (old side) still selects its owner via the old path -- the new path (.gitignore.disabled) deliberately does not match any ordinary-source shape or other mapping', () => {
+    const plan = resolveUnitPlan([renamed('.gitignore', '.gitignore.disabled')]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['scripts/agentEnvironment.test.mjs']);
+  });
+
+  it('composition safety: a deleted exact-mapping source together with a deleted ordinary unit source in the same changeset still resolves full, so status-aware exact ownership never weakens the existing unsafe-deletion full-unit fallback (already true on the current unfixed resolver too -- this is a regression guard for the fix, not a red proof of the B1 defect itself)', () => {
+    const plan = resolveUnitPlan([deleted('PRIVACY.md'), deleted('src/entities/foo/foo.ts')]);
+
+    expect(plan.mode).toBe('full');
+  });
+});
+
 describe('resolveUnitPlan repository-wide ordinary source widening (B1-corrected: dependency-input eligibility is not limited to src/config/scripts, and tests/e2e/** non-test helpers are eligible too)', () => {
   it('selects the real root postcss.config.js as ordinary source pass-through -- config/postcss.config.test.ts has a real "import postcssConfig from \'../postcss.config.js\'" edge to this exact root module; resolveUnitPlan only selects which paths to hand to Vitest related, it does not itself trace the import graph', () => {
     const plan = resolveUnitPlan([modified('postcss.config.js')]);
@@ -929,6 +1092,24 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
   });
 
   describe('playwright.lanes.test.ts (scans the complete current Playwright spec population it enumerates: tests/e2e/*.spec.ts direct children (non-recursive), tests/e2e/storybook/**/*.spec.ts, tests/e2e/visual/**/*.spec.ts, tests/e2e/release/**/*.spec.ts, src/**/*.browser.spec.ts, and src/**/*.visual.spec.ts)', () => {
+    // M1 correction (scripts/lib/REVIEW.md): the current UNIT_SCAN_OWNERS
+    // entry for playwright.lanes.test.ts reuses `isPlaywrightOnlyProofPath`
+    // as its `matchesPath` (confirmed by direct read of scripts/lib/unitRisk.ts,
+    // whose own comment there calls this "functionally the same population
+    // isPlaywrightOnlyProofPath already recognizes" -- WRONG per this
+    // correction). isPlaywrightOnlyProofPath's real check is only
+    // `filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')`,
+    // with no subtree restriction at all, so it matches a `.spec.ts` file at
+    // ANY nesting depth under tests/e2e/ -- broader than the six real
+    // populations this test's own filesystem scan enumerates (listed in this
+    // describe's title). The corrected resolveUnitPlan must give
+    // playwright.lanes.test.ts a DEDICATED narrow scan predicate matching
+    // exactly those six populations, not a reused isPlaywrightOnlyProofPath
+    // reference, while isPlaywrightOnlyProofPath itself remains correct and
+    // unchanged for its separate ordinary-Vitest-exclusion responsibility
+    // (see isOrdinaryUnitSourcePath). The "Must reject: nested-subtree
+    // outside every real scanned population" case below is the proof that
+    // currently fails red under the over-broad reused predicate.
     it.each([
       ['tests/e2e/appSmoke.spec.ts'],
       ['tests/e2e/storybook/colorOwnership.spec.ts'],
@@ -958,6 +1139,12 @@ describe('resolveUnitPlan bounded repository-scan ownership (mechanism 5)', () =
 
       expect(plan.mode).toBe('focused');
       expect(plan.relatedInputs).toEqual(['tests/e2e/helpers.ts']);
+      expect(plan.relatedInputs).not.toContain('playwright.lanes.test.ts');
+    });
+
+    it("Must reject: does not select the scan owner for a path that IS .spec.ts-shaped and lives somewhere under tests/e2e/, but in a nested subtree OUTSIDE all six real scanned populations (M1 -- this is the critical case distinguishing the corrected narrow predicate from the over-broad isPlaywrightOnlyProofPath reuse: tests/e2e/other/example.spec.ts matches isPlaywrightOnlyProofPath's unrestricted `startsWith('tests/e2e/') && endsWith('.spec.ts')` check, so the CURRENT unfixed resolver incorrectly selects playwright.lanes.test.ts for it, even though the real test never enumerates a tests/e2e/other/** subtree -- only root tests/e2e/*.spec.ts direct children plus storybook/, visual/, and release/)", () => {
+      const plan = resolveUnitPlan([modified('tests/e2e/other/example.spec.ts')]);
+
       expect(plan.relatedInputs).not.toContain('playwright.lanes.test.ts');
     });
   });

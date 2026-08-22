@@ -330,6 +330,41 @@ function isRootAppE2ESpecPath(filePath: string): boolean {
   return !filePath.slice(APP_E2E_SPEC_DIR_PREFIX.length).includes('/');
 }
 
+const VISUAL_CENTRAL_PREFIX = 'tests/e2e/visual/';
+const RELEASE_CENTRAL_PREFIX = 'tests/e2e/release/';
+
+// playwright.lanes.test.ts's own filesystem scan (its listFiles() calls)
+// enumerates exactly six populations: root tests/e2e/*.spec.ts direct
+// children (non-recursive), tests/e2e/storybook/**/*.spec.ts,
+// tests/e2e/visual/**/*.spec.ts, tests/e2e/release/**/*.spec.ts, and
+// colocated src/**/*.browser.spec.ts / src/**/*.visual.spec.ts. This must NOT
+// reuse isPlaywrightOnlyProofPath, whose unrestricted
+// `startsWith('tests/e2e/') && endsWith('.spec.ts')` check matches a spec at
+// ANY nesting depth under tests/e2e/ (e.g. a hypothetical
+// tests/e2e/other/**), broader than what the lane test itself actually
+// enumerates -- see docs/testing/verify-unit-impact-correction.md decision #5
+// and scripts/lib/REVIEW.md M1. isPlaywrightOnlyProofPath itself remains
+// unchanged for its separate ordinary-Vitest-exclusion responsibility.
+function isPlaywrightLaneInventoryScanPath(filePath: string): boolean {
+  if (
+    filePath.endsWith(COLOCATED_BROWSER_SPEC_SUFFIX) ||
+    filePath.endsWith(COLOCATED_VISUAL_SPEC_SUFFIX)
+  ) {
+    return filePath.startsWith('src/');
+  }
+
+  if (!filePath.endsWith('.spec.ts')) {
+    return false;
+  }
+
+  return (
+    isRootAppE2ESpecPath(filePath) ||
+    filePath.startsWith(STORYBOOK_BEHAVIOR_CENTRAL_PREFIX) ||
+    filePath.startsWith(VISUAL_CENTRAL_PREFIX) ||
+    filePath.startsWith(RELEASE_CENTRAL_PREFIX)
+  );
+}
+
 /**
  * Confirmed bounded repository-scan owners. Each `matchesPath` predicate was
  * verified against the real scanning production code, not just the
@@ -364,12 +399,14 @@ export const UNIT_SCAN_OWNERS: readonly UnitScanOwner[] = [
     test: 'src/shared/ui/material/foundation/tokens.test.ts',
     matchesPath: (filePath) => COMPONENT_TOKENS_CSS_PATTERN.test(filePath),
   },
-  // playwright.lanes.test.ts scans the complete current Playwright spec
-  // population it enumerates across all four lanes -- functionally the same
-  // population isPlaywrightOnlyProofPath already recognizes.
+  // playwright.lanes.test.ts scans exactly its six real enumerated
+  // populations via its own dedicated narrow predicate -- see
+  // isPlaywrightLaneInventoryScanPath above; deliberately NOT
+  // isPlaywrightOnlyProofPath, which is broader (see scripts/lib/REVIEW.md
+  // M1).
   {
     test: 'playwright.lanes.test.ts',
-    matchesPath: isPlaywrightOnlyProofPath,
+    matchesPath: isPlaywrightLaneInventoryScanPath,
   },
   {
     test: 'scripts/lib/e2eRisk.test.ts',
@@ -482,11 +519,13 @@ function validateScanOwners(
  * source/support paths handed to Vitest's own related-test resolution), or
  * skip (no unit-relevant changes). Deleted/renamed status must be consumed
  * from `changedPaths` because removed/moved dependencies cannot be resolved
- * safely from the current filesystem alone. Bounded scan-owner relations are
- * evaluated for every status (including deletions), because a deleted path
+ * safely from the current filesystem alone. Bounded scan-owner relations and
+ * exact file-as-data mappings are both evaluated for every status (including
+ * deletions and both sides of a rename), because a deleted or renamed path
  * still changes the real repository population its owning scan test
- * observes, even when the same path is not otherwise unit-relevant by shape
- * (for example a deleted Playwright spec).
+ * observes, or still has a known fixed-path exact owner, even when the same
+ * path is not otherwise unit-relevant by shape (for example a deleted
+ * Playwright spec, or a deleted `PRIVACY.md`).
  * @param changedPaths Status-aware changed paths from `changedPaths.ts`.
  * @param [options] Resolution options.
  * @returns Plan with `mode`, candidate `relatedInputs` when focused, and
@@ -539,12 +578,35 @@ export function resolveUnitPlan(
     }
   };
 
+  // Exact file-as-data ownership is a property of the repository path
+  // contract, not of current file existence or changed-path status: apply it
+  // to every relevant changed path side (added/modified/deleted, and both
+  // old and new sides of a rename) so a deleted or renamed exact external
+  // input never silently loses its surviving owner -- see
+  // docs/testing/verify-unit-impact-correction.md decision #4 and
+  // scripts/lib/REVIEW.md B1.
+  const checkExactMapping = (filePath: string): void => {
+    const mapping = fileAsDataMappings.find((entry) => entry.source === filePath);
+
+    if (!mapping) {
+      return;
+    }
+
+    for (const test of mapping.tests) {
+      relatedInputs.add(test);
+    }
+
+    focusedReasons.push(`file-as-data relation ${filePath} -> ${mapping.tests.join(', ')}`);
+  };
+
   for (const change of changedPaths) {
     if (change.status === 'renamed') {
       checkInfrastructureTrigger(change.oldPath);
       checkInfrastructureTrigger(change.newPath);
       checkScanOwners(change.oldPath);
       checkScanOwners(change.newPath);
+      checkExactMapping(change.oldPath);
+      checkExactMapping(change.newPath);
 
       if (isUnitRelevantByShape(change.oldPath) || isUnitRelevantByShape(change.newPath)) {
         fullReasons.push(
@@ -557,6 +619,7 @@ export function resolveUnitPlan(
 
     checkInfrastructureTrigger(change.path);
     checkScanOwners(change.path);
+    checkExactMapping(change.path);
 
     if (change.status === 'deleted') {
       if (isUnitRelevantByShape(change.path)) {
@@ -567,16 +630,6 @@ export function resolveUnitPlan(
     }
 
     // added | modified
-    const mapping = fileAsDataMappings.find((entry) => entry.source === change.path);
-
-    if (mapping) {
-      for (const test of mapping.tests) {
-        relatedInputs.add(test);
-      }
-
-      focusedReasons.push(`file-as-data relation ${change.path} -> ${mapping.tests.join(', ')}`);
-    }
-
     if (isTestShapedPath(change.path) && fileExists(change.path)) {
       relatedInputs.add(change.path);
       focusedReasons.push(`changed unit test ${change.path} -> ${change.path}`);
