@@ -1,6 +1,6 @@
 # Database virtualization browser proof
 
-Status: **required shared-API + native-table capability gate before production database migration**.
+Status: **required shared-API + native-table capability gate before production database migration; final mounted-cell DOM correction pending**.
 
 The browser gate proves the selected `useVirtualCollection` boundary plus Mioframe-owned native-table integration risks. Passing DOM layout assertions alone is not sufficient when the contract being claimed is virtual measurement geometry.
 
@@ -75,8 +75,12 @@ For fixed viewport/overscan:
 
 - mounted data rows remain bounded while logical rows are in the thousands;
 - mounted property headers remain bounded while logical columns are in the hundreds;
-- mounted logical data cells are counted explicitly and remain bounded by the current row/column ranges;
-- no logical rows × columns cross product is materialized, initially or after deep 2D scrolling.
+- **actual mounted logical data-cell DOM is counted directly from the rendered `<td>` set**, excluding spacer cells;
+- the actual logical-cell DOM count equals the settled current row-range × column-range intersection count;
+- the actual logical-cell DOM count remains bounded initially and after deep 2D scrolling;
+- no logical rows × columns cross product is materialized.
+
+A fixture output computed as `rows.items.length * columns.items.length` may be diagnostic, but it is not proof of mounted-cell DOM and must not be used as the primary bounded-cell assertion.
 
 ### Vertical geometry
 
@@ -123,7 +127,8 @@ Examples:
 
 - DOM height proves DOM height, not virtual measurement state;
 - public `VirtualCollectionItem.size`/`offset` and public extents prove shared virtual geometry;
-- mounted cell count proves bounded 2D rendering work;
+- direct count of rendered logical `<td>` elements proves bounded mounted-cell DOM;
+- a derived row-range × column-range product does **not** prove mounted-cell DOM by itself;
 - visible anchor viewport position before/after an above-viewport resize proves scroll-correction behavior.
 
 Do not inspect TanStack private caches or instances to make capability proof pass.
@@ -169,7 +174,7 @@ Record the outcome in `docs/database-virtualization-collection-api-result.md`:
 - resolved TanStack/Playwright/browser versions;
 - exact shared API and database proof counts/outcomes;
 - pass/fail for each required public-geometry contract;
-- bounded mounted-cell evidence;
+- direct actual mounted-cell DOM evidence at initial and deep 2D ranges;
 - anchor-stability evidence;
 - any narrow native-table normalization retained;
 - whether the minimal shared API remained within its architecture boundary;
@@ -187,4 +192,5 @@ Production migration preflight may start only when:
 - deep vertical and deep horizontal offsets are both proven;
 - row grow/shrink and above-viewport anchor correction work;
 - column remount minimum is proven after widening content is removed;
-- bounded row/column/cell DOM and logical accessibility semantics pass.
+- **actual rendered logical data-cell DOM**, plus row/column DOM, is directly proven bounded;
+- logical accessibility semantics pass.
