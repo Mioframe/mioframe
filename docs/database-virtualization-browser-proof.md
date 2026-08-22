@@ -2,7 +2,7 @@
 
 Status: **required shared-API + native-table capability gate before production database migration**.
 
-The previous direct-TanStack capability plan is superseded. The browser gate now proves the selected `useVirtualCollection` boundary plus Mioframe-owned native-table integration risks.
+The browser gate proves the selected `useVirtualCollection` boundary plus Mioframe-owned native-table integration risks. Passing DOM layout assertions alone is not sufficient when the contract being claimed is virtual measurement geometry.
 
 ## Proof split
 
@@ -30,10 +30,14 @@ Prove:
 - mounted items remain bounded by viewport/overscan;
 - returned items expose correct current `{ index, key, value, offset, size }` mapping;
 - returned measurement directive adds no wrapper DOM and consumer markup does not bind TanStack attributes/methods;
-- a mounted item can grow and shrink and geometry updates;
-- after stable-key reorder/index remapping, resizing the remapped item updates the current item rather than the former index;
-- deep scroll produces materially large `leadingSize` and correct `trailingSize`/visible logical positions;
+- a mounted item can grow and shrink and **public virtual geometry** updates both ways;
+- after stable-key reorder/index remapping, resizing the remapped item updates public geometry for the current item/index rather than the former index;
+- non-zero `surfaceOffset` keeps public `offset`, `leadingSize`, `trailingSize`, and `totalSize` collection-relative;
+- deep scroll produces materially large `leadingSize`, correct `trailingSize`, and correct visible logical positions;
+- valid source values may include `undefined` when the index is in bounds;
 - unmount/remount has no observable stale measurement behavior.
+
+Physical `boundingBox()` changes may be supporting evidence, but they must not be the sole evidence for a measurement-cache/virtual-geometry claim.
 
 Chromium is sufficient for this generic shared proof. Firefox is added only where a shared-specific incompatibility is actually observed; current confirmed Firefox risk is native table measurement, not generic list measurement.
 
@@ -49,6 +53,8 @@ Requirements:
 - no worker, service, persistence, routing, editor, relation, or toolbar product behavior;
 - at least 5,000 rows × 300 properties;
 - one physical scroll root for this capability fixture.
+
+A dedicated fixed-size wrapper may be the physical scroll root. `MDTable` itself need not own scrolling when native table min-content behavior prevents it from being a stable viewport.
 
 Use one vertical row collection and one horizontal property collection. Apply their returned directives directly to real `<tr>` and `<th>` measurement owners.
 
@@ -68,8 +74,9 @@ Performance wall-clock comparison remains Chromium-controlled and belongs to lat
 For fixed viewport/overscan:
 
 - mounted data rows remain bounded while logical rows are in the thousands;
-- mounted property headers/cells remain bounded while logical columns are in the hundreds;
-- no logical rows × columns cross product is materialized.
+- mounted property headers remain bounded while logical columns are in the hundreds;
+- mounted logical data cells are counted explicitly and remain bounded by the current row/column ranges;
+- no logical rows × columns cross product is materialized, initially or after deep 2D scrolling.
 
 ### Vertical geometry
 
@@ -77,9 +84,9 @@ Prove:
 
 - top/bottom spacer rows use `leadingSize`/`trailingSize` and preserve total virtual extent;
 - deep scroll reaches rows near the end without mounting predecessors;
-- dynamic mounted row growth updates geometry;
-- the same row can shrink again and geometry/offsets update;
-- resizing a mounted row above the viewport does not produce an unacceptable full-row anchor jump;
+- dynamic mounted row growth updates both physical `<tr>` geometry and public row virtual geometry;
+- the same row can shrink again and both physical/public geometry update;
+- resizing a measured row above the viewport updates geometry while preserving a visible anchor within a bounded tolerance smaller than one representative row height;
 - behavior works with real `MDTable` border/layout model in Chromium and Firefox.
 
 Fixed-height Firefox fallback is not acceptable.
@@ -92,7 +99,8 @@ Prove:
 - deep horizontal scroll reaches a property near the end of at least 300 logical properties;
 - visible header/body use the same property collection items;
 - mounted body content can widen its corresponding `<th>` through native table layout;
-- public item `size` can be used as remount `min-width` so ordinary horizontal scrolling does not shrink/regrow a discovered column;
+- the corresponding public column item `size` increases after that widening;
+- after the widened property is evicted, the widening body condition is removed before remount, and the previously discovered public `size` still preserves the remount `min-width` within tolerance;
 - spacer-column phantom min-content technique, if still needed, produces correct deep offset in both engines.
 
 Live shrink of a previously discovered column width is intentionally **not** a capability requirement. Width may remain grow-only for the current table lifetime; a full remount may rediscover it.
@@ -106,6 +114,19 @@ With partial DOM prove:
 - visible logical row/column indices match full-data positions, including after deep scrolling;
 - virtual spacers are absent from logical accessibility semantics;
 - ARIA grid conversion is unnecessary.
+
+## Evidence quality rule
+
+Every claimed contract must be asserted through the lowest public observable that actually owns the behavior.
+
+Examples:
+
+- DOM height proves DOM height, not virtual measurement state;
+- public `VirtualCollectionItem.size`/`offset` and public extents prove shared virtual geometry;
+- mounted cell count proves bounded 2D rendering work;
+- visible anchor viewport position before/after an above-viewport resize proves scroll-correction behavior.
+
+Do not inspect TanStack private caches or instances to make capability proof pass.
 
 ## Shared API failure threshold
 
@@ -132,7 +153,7 @@ If native flow is blocked, stop and return evidence for architecture review. Do 
 
 Do not clone these into capability fixtures:
 
-- actual `.database-view` surface-offset wiring;
+- actual `.database-view` product surface-offset wiring beyond the shared generic non-zero offset proof;
 - sticky action-column product behavior;
 - active edit eviction/view-switch handling;
 - nested relation roots;
@@ -147,7 +168,9 @@ Record the outcome in `docs/database-virtualization-collection-api-result.md`:
 
 - resolved TanStack/Playwright/browser versions;
 - exact shared API and database proof counts/outcomes;
-- pass/fail for each required contract;
+- pass/fail for each required public-geometry contract;
+- bounded mounted-cell evidence;
+- anchor-stability evidence;
 - any narrow native-table normalization retained;
 - whether the minimal shared API remained within its architecture boundary;
 - whether native-table-first remains accepted;
@@ -157,9 +180,11 @@ Record the outcome in `docs/database-virtualization-collection-api-result.md`:
 
 Production migration preflight may start only when:
 
-- shared `useVirtualCollection` proof passes without a second geometry/lifecycle system;
+- shared `useVirtualCollection` proof passes using public geometry, without a second geometry/lifecycle system;
+- non-zero `surfaceOffset`, leading/trailing geometry, and source-value semantics pass;
 - database native-table proof passes in Chromium;
-- Firefox dynamic row measurement passes with real `MDTable` geometry;
+- Firefox dynamic row/column measurement passes with real `MDTable` geometry and public virtual size assertions;
 - deep vertical and deep horizontal offsets are both proven;
-- row grow/shrink works;
-- bounded 2D DOM and logical accessibility semantics pass.
+- row grow/shrink and above-viewport anchor correction work;
+- column remount minimum is proven after widening content is removed;
+- bounded row/column/cell DOM and logical accessibility semantics pass.
