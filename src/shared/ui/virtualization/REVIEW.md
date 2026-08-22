@@ -8,6 +8,11 @@ Verdict: blocked
 - Shared Storybook browser capability proof, especially non-zero `surfaceOffset` geometry.
 - Colocated reusable-library documentation.
 
+Correction contract:
+
+- [`../../../../docs/database-virtualization-stability-handoff.md`](../../../../docs/database-virtualization-stability-handoff.md)
+- [`../../../../docs/database-virtualization-stability-preflight.md`](../../../../docs/database-virtualization-stability-preflight.md)
+
 ## Blockers
 
 ### B1 — Non-zero surface-offset proof is known intermittent
@@ -25,12 +30,13 @@ Evidence:
 Basis:
 
 - [`../../../../AGENTS.md`](../../../../AGENTS.md) — known flaky behavior is failed proof; retry-pass/clean rerun is not accepted, and tests must not be weakened with sleeps/retries/timeout inflation.
+- [`../../../../docs/database-virtualization-stability-handoff.md`](../../../../docs/database-virtualization-stability-handoff.md) — accepted correction architecture requires one self-consistent public/DOM geometry snapshot and preserves existing tolerances/runtime architecture.
 
 Risk: The capability gate can report green while the public collection-relative geometry proof is racing browser measurement/scroll settling, so production migration would start on non-deterministic evidence.
 
 Required final state: The non-zero `surfaceOffset` browser proof observes a deterministic, self-consistent public/DOM geometry state and passes without relying on retries, sleeps, timeout inflation, weakened tolerances, or TanStack private state.
 
-Verification: Run the focused shared/database Storybook behavior proof with retries disabled/diagnostic-only semantics and confirm no intermittent classification; exact-head CI must then pass with no flaky test classification.
+Verification: Follow the bounded stability diagnostic in `docs/database-virtualization-stability-preflight.md`; exact-head CI must then pass with no flaky test classification.
 
 ## Major issues
 
