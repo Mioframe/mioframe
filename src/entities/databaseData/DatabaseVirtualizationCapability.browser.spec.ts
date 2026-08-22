@@ -257,20 +257,22 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
     expect(neverWidenedWidth).toBeLessThan(discoveredSize - GEOMETRY_TOLERANCE_PX);
   });
 
-  test('bounds mounted logical data cells far below the full row x column cross product at initial and deep 2D ranges', async ({
+  test('bounds actual mounted logical data-cell DOM far below the full row x column cross product at initial and deep 2D ranges', async ({
     page,
   }) => {
     await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
-
-    await expect(page.getByTestId('db-virt-mounted-cells')).toBeVisible();
 
     // A generous upper bound derived from viewport/overscan (well under 30 rows x 30 cols from
     // the existing bounded-rows/bounded-cols contracts), far below the 5,000 x 300 logical cross
     // product of 1,500,000 cells.
     const GENEROUS_CELL_BOUND = 900;
 
-    // The three <output>s can each re-render on their own Vue update tick, so read them in one
-    // synchronous browser-side callback to avoid observing a torn snapshot across ticks.
+    // Read the mounted row/column range readouts and the actual rendered logical data-cell DOM
+    // count in one synchronous browser-side callback to avoid observing a torn snapshot across
+    // Vue update ticks. `cells` counts real `<td>` elements directly instead of trusting a
+    // derived rows-range x columns-range product, so retained/duplicated logical cell DOM outside
+    // the current intersection would surface as a mismatch against `rows * cols` below. Spacer
+    // `<td>`s carry no `db-virt-cell-` prefix and are excluded by the selector.
     const readCounts = () =>
       page.evaluate(() => {
         const read = (testId: string) =>
@@ -278,15 +280,31 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
         return {
           rows: read('db-virt-mounted-rows'),
           cols: read('db-virt-mounted-cols'),
-          cells: read('db-virt-mounted-cells'),
+          cells: document.querySelectorAll('[data-testid^="db-virt-cell-"]').length,
         };
       });
 
-    const initial = await readCounts();
+    // Poll for a torn-free, self-consistent snapshot instead of reading immediately after
+    // navigation: the fixture's row/column collections mount asynchronously, so an un-polled
+    // read can race a not-yet-settled (empty/NaN) or momentarily inconsistent state.
+    const pollSettled = async (): Promise<{ rows: number; cols: number; cells: number }> => {
+      let settled: { rows: number; cols: number; cells: number } | undefined;
+      await expect
+        .poll(async () => {
+          const counts = await readCounts();
+          const isSettled =
+            counts.rows > 0 && counts.cols > 0 && counts.cells === counts.rows * counts.cols;
+          if (isSettled) settled = counts;
+          return isSettled;
+        })
+        .toBe(true);
+      if (!settled) throw new Error('unreachable: poll only resolves once settled is set');
+      return settled;
+    };
 
-    expect(initial.rows).toBeGreaterThan(0);
+    const initial = await pollSettled();
+
     expect(initial.rows).toBeLessThan(30);
-    expect(initial.cols).toBeGreaterThan(0);
     expect(initial.cols).toBeLessThan(30);
     expect(initial.cells).toBe(initial.rows * initial.cols);
     expect(initial.cells).toBeLessThan(GENEROUS_CELL_BOUND);
@@ -298,21 +316,7 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
       el.scrollLeft = Number.MAX_SAFE_INTEGER;
     });
 
-    await expect.poll(async () => (await readCounts()).rows).toBeGreaterThan(0);
-    await expect.poll(async () => (await readCounts()).cols).toBeGreaterThan(0);
-
-    // Consistency (cells === rows * cols) can only be asserted once both axes have settled;
-    // poll for a torn-free, self-consistent snapshot instead of racing three separate reads.
-    let deep: { rows: number; cols: number; cells: number } | undefined;
-    await expect
-      .poll(async () => {
-        const counts = await readCounts();
-        const consistent = counts.cells === counts.rows * counts.cols;
-        if (consistent) deep = counts;
-        return consistent;
-      })
-      .toBe(true);
-    if (!deep) throw new Error('unreachable: poll only resolves once deep is set');
+    const deep = await pollSettled();
 
     expect(deep.rows).toBeLessThan(30);
     expect(deep.cols).toBeLessThan(30);

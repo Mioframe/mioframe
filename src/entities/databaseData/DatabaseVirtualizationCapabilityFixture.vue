@@ -255,9 +255,6 @@ const viewportStyle: CSSProperties = {
 
     <output data-testid="db-virt-mounted-rows">{{ rows.items.value.length }}</output>
     <output data-testid="db-virt-mounted-cols">{{ columns.items.value.length }}</output>
-    <output data-testid="db-virt-mounted-cells">
-      {{ rows.items.value.length * columns.items.value.length }}
-    </output>
   </div>
 </template>
 

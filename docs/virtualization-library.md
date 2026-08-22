@@ -1,6 +1,6 @@
 # Virtual collection API
 
-Status: **architecture accepted; `@tanstack/vue-virtual` selected; minimal shared collection API selected; implementation proof pending**.
+Status: **architecture accepted; `@tanstack/vue-virtual` selected; minimal shared collection API selected; implementation/browser capability proof passed**.
 
 This document is the source of truth for Mioframe's reusable virtualization boundary. Database rendering architecture is owned by `docs/database-virtualization.md`; browser capability proof by `docs/database-virtualization-browser-proof.md`.
 
@@ -68,7 +68,7 @@ interface UseVirtualCollectionResult<T, TKey extends VirtualCollectionKey> {
   measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
 }
 
-useVirtualCollection(source, options)
+useVirtualCollection(source, options);
 ```
 
 Exact imports/types may use the repository's established Vue type aliases, but the conceptual surface above is fixed.
@@ -242,6 +242,10 @@ Database native-table proof separately exercises the same public API on `<tr>`/`
 ## Readiness
 
 Architecture: **ready**.
+
+`useVirtualCollection` implementation and browser capability proof: **passed**. See `docs/database-virtualization-collection-api-result.md` for final counts and evidence.
+
+Production database migration is the next separate stage; see `docs/database-virtualization.md`.
 
 Implementation/proof handoff: `docs/database-virtualization-collection-api-handoff.md`.
 Implementation preflight: `docs/database-virtualization-collection-api-preflight.md`.

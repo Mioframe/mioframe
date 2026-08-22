@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **architecture accepted; shared `useVirtualCollection` API selected; native-table-first capability proof pending; secondary optimizations evidence-gated**.
+Status: **architecture accepted; shared `useVirtualCollection` API capability passed; native-table-first capability passed; ready for production database migration planning; secondary optimizations evidence-gated**.
 
 This document is the architecture source of truth for large database rendering. Shared virtualization API is defined in `docs/virtualization-library.md`; browser capability proof is in `docs/database-virtualization-browser-proof.md`; performance evidence is in `docs/database-virtualization-profiling.md`.
 
@@ -27,13 +27,13 @@ Primary invariant:
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `shared/ui/virtualization` | Generic one-axis logical collection -> virtual items/extents mapping and measurement directive. |
-| `entities/databaseData` | Native table DOM, row/column collection composition, spacer DOM, database column sizing policy, logical table accessibility, sticky action-cell integration. |
-| database widgets | Physical scroll-root wiring, toolbar/after composition, edit lifecycle, relation/nested-view composition. |
-| service/worker | Canonical filter/sort/order/data contracts. |
-| `shared/ui/Table` | Existing table presentation only; no virtualization responsibility. |
+| Owner                      | Responsibility                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/ui/virtualization` | Generic one-axis logical collection -> virtual items/extents mapping and measurement directive.                                                              |
+| `entities/databaseData`    | Native table DOM, row/column collection composition, spacer DOM, database column sizing policy, logical table accessibility, sticky action-cell integration. |
+| database widgets           | Physical scroll-root wiring, toolbar/after composition, edit lifecycle, relation/nested-view composition.                                                    |
+| service/worker             | Canonical filter/sort/order/data contracts.                                                                                                                  |
+| `shared/ui/Table`          | Existing table presentation only; no virtualization responsibility.                                                                                          |
 
 ## Source of truth
 
@@ -268,6 +268,6 @@ After bounded rendering, rerun profiling. Only measured remaining bottlenecks ma
 
 ## Readiness
 
-Architecture: **ready for shared collection API + native-table capability implementation**.
+Architecture: **ready**. Shared collection API capability and native-table capability proof have both **passed**; see `docs/database-virtualization-collection-api-result.md` for final counts and evidence, including direct actual mounted logical data-cell DOM proof.
 
-Production migration remains gated on that proof and its review.
+Production database migration planning/implementation is the next stage and has **not started**. This document does not claim production migration is complete.

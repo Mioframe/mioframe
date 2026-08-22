@@ -1,6 +1,6 @@
 # Database virtualization profiling and analysis plan
 
-Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; native-table capability pending; secondary optimizations evidence-gated**.
+Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; virtualization capability passed; real product profiling/performance acceptance remains pending production migration; secondary optimizations evidence-gated**.
 
 `docs/virtualization-library.md` owns the shared API. `docs/database-virtualization.md` owns database rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
 
@@ -64,17 +64,17 @@ Record seed, rows, columns, density, property mix, filter/sort, sentinels, and v
 
 Required scale series:
 
-| Case | Rows | Columns | Purpose |
-| --- | ---: | ---: | --- |
-| S0 | 100 | 8 | control |
-| R1 | 1,000 | 8 | row growth |
-| R2 | 3,000 | 8 | row growth |
-| R3 | 10,000 | 8 | large row baseline |
-| R4 | 30,000 | 8 | required final row target |
-| C1 | 100 | 50 | column growth |
-| C2 | 100 | 100 | column growth |
-| C3 | 100 | 300 | required large-column target |
-| G1 | 30,000 | 300 | 9,000,000 logical intersections; required post-fix |
+| Case |   Rows | Columns | Purpose                                            |
+| ---- | -----: | ------: | -------------------------------------------------- |
+| S0   |    100 |       8 | control                                            |
+| R1   |  1,000 |       8 | row growth                                         |
+| R2   |  3,000 |       8 | row growth                                         |
+| R3   | 10,000 |       8 | large row baseline                                 |
+| R4   | 30,000 |       8 | required final row target                          |
+| C1   |    100 |      50 | column growth                                      |
+| C2   |    100 |     100 | column growth                                      |
+| C3   |    100 |     300 | required large-column target                       |
+| G1   | 30,000 |     300 | 9,000,000 logical intersections; required post-fix |
 
 Optional stress after the final solution is stable: 100,000 rows and/or 1,000 columns.
 

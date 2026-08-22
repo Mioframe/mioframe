@@ -1,6 +1,6 @@
 # Database virtualization browser proof
 
-Status: **required shared-API + native-table capability gate before production database migration; final mounted-cell DOM correction pending**.
+Status: **shared-API + native-table capability gate passed; production database migration may begin planning**.
 
 The browser gate proves the selected `useVirtualCollection` boundary plus Mioframe-owned native-table integration risks. Passing DOM layout assertions alone is not sufficient when the contract being claimed is virtual measurement geometry.
 
