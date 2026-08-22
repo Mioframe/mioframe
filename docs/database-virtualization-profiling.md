@@ -1,8 +1,8 @@
 # Database virtualization profiling and analysis plan
 
-Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; virtualization capability passed; real product profiling/performance acceptance remains pending production migration; secondary optimizations evidence-gated**.
+Status: **research plan; virtualization, TanStack, and minimal shared collection API are fixed; capability behavior implemented but stability proof pending; real product profiling/performance acceptance remains pending production migration; secondary optimizations evidence-gated**.
 
-`docs/virtualization-library.md` owns the shared API. `docs/database-virtualization.md` owns database rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
+`src/shared/ui/virtualization/README.md` owns the shared API. `docs/database-virtualization.md` owns database rendering architecture. `docs/database-virtualization-browser-proof.md` owns browser geometry capability. This document owns performance evidence.
 
 ## Goals
 
@@ -119,6 +119,8 @@ Do not attach durable wall-clock budgets to the shared primitive and do not buil
 
 Database native-table capability proves browser geometry in Chromium/Firefox. Performance acceptance uses the real product after migration.
 
+A capability behavior contract is not considered ready while its browser proof is known intermittent; the current `surfaceOffset` and above-viewport anchor stability defects must be resolved before production migration starts.
+
 ## Product correctness around performance
 
 The faster implementation is invalid unless it preserves:
@@ -168,7 +170,8 @@ Do not create a generic benchmark framework.
 
 Before production migration implementation:
 
-- shared collection API + database native-table capability from `docs/database-virtualization-browser-proof.md` passes and is reviewed.
+- shared collection API + database native-table capability from `docs/database-virtualization-browser-proof.md` passes deterministically and is reviewed;
+- no required capability browser contract is known intermittent.
 
 Before final performance acceptance:
 
