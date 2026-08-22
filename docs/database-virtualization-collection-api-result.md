@@ -48,24 +48,24 @@ Type-check for the `vItem` rename passed. The rename itself is accepted and is n
 
 The following behavior/architecture findings remain accepted:
 
-| Contract                                                                                                | Review status |
-| ------------------------------------------------------------------------------------------------------- | ------------- |
-| Public directive property is `vItem`; no `measure` compatibility alias                                 | ACCEPTED      |
-| Valid in-bounds `undefined` source value                                                                | ACCEPTED      |
-| Vertical grow/shrink updates public `item.size`                                                         | ACCEPTED      |
-| Horizontal growth updates public `item.size`                                                            | ACCEPTED      |
-| Stable-key remap followed by resize updates public geometry at the new index                            | ACCEPTED      |
+| Contract                                                                                                | Review status                              |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Public directive property is `vItem`; no `measure` compatibility alias                                  | ACCEPTED                                   |
+| Valid in-bounds `undefined` source value                                                                | ACCEPTED                                   |
+| Vertical grow/shrink updates public `item.size`                                                         | ACCEPTED                                   |
+| Horizontal growth updates public `item.size`                                                            | ACCEPTED                                   |
+| Stable-key remap followed by resize updates public geometry at the new index                            | ACCEPTED                                   |
 | Non-zero `surfaceOffset` contract and collection-relative geometry                                      | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
-| Deep `leadingSize`/`trailingSize`/`totalSize` relationship                                              | ACCEPTED      |
-| Real `MDTable` row grow/shrink with public row size in Chromium/Firefox                                 | ACCEPTED      |
-| Body-driven native column growth with public column size                                                | ACCEPTED      |
-| Column remount minimum after widening content is removed while unmounted                                | ACCEPTED      |
-| Deep vertical/horizontal logical geometry                                                               | ACCEPTED      |
+| Deep `leadingSize`/`trailingSize`/`totalSize` relationship                                              | ACCEPTED                                   |
+| Real `MDTable` row grow/shrink with public row size in Chromium/Firefox                                 | ACCEPTED                                   |
+| Body-driven native column growth with public column size                                                | ACCEPTED                                   |
+| Column remount minimum after widening content is removed while unmounted                                | ACCEPTED                                   |
+| Deep vertical/horizontal logical geometry                                                               | ACCEPTED                                   |
 | Above-viewport row resize anchor behavior                                                               | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
-| Native table accessibility semantics                                                                    | ACCEPTED      |
-| Dedicated fixed-size wrapper as physical capability scroll root                                         | ACCEPTED      |
-| Phantom min-content spacer normalization                                                                | ACCEPTED      |
-| Actual mounted logical-cell DOM equals settled row × column intersection, at initial and deep 2D ranges | ACCEPTED      |
+| Native table accessibility semantics                                                                    | ACCEPTED                                   |
+| Dedicated fixed-size wrapper as physical capability scroll root                                         | ACCEPTED                                   |
+| Phantom min-content spacer normalization                                                                | ACCEPTED                                   |
+| Actual mounted logical-cell DOM equals settled row × column intersection, at initial and deep 2D ranges | ACCEPTED                                   |
 
 ## Resolved blocker: mounted logical data-cell DOM
 
