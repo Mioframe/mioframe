@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **PR publication blocked by one reopened application-E2E alignment correction and final documentation/comment cleanup**.
+Status: **PR publication blocked by one architecture-redone application-E2E correction and final source/comment cleanup**.
 
 This document owns verifier-modernization packaging, correction order, and final integration state. It does not redefine lane semantics owned by the architecture documents.
 
@@ -8,14 +8,14 @@ This document owns verifier-modernization packaging, correction order, and final
 
 - `docs/testing/architecture.md` — project-wide testing policy;
 - `docs/testing/verify-target-architecture.md` — verifier impact/planning architecture;
-- `docs/testing/verify-agent-output.md` — agent-facing verifier output;
+- `docs/testing/verify-agent-output.md` — implemented agent-facing verifier output;
 - `docs/testing/verify-change-classification.md` — repository metadata classification;
-- `docs/testing/verify-unit-impact-correction.md` — unit-impact ownership amendment;
-- `docs/testing/verify-app-e2e-discovery-correction.md` — application-E2E physical/planner discovery contract, currently reopened for final alignment;
+- `docs/testing/verify-unit-impact-correction.md` — closed unit-impact ownership amendment;
+- `docs/testing/verify-app-e2e-discovery-correction.md` — **ready redesigned application-E2E path-ownership handoff**;
 - `docs/testing/verify-release-impact-correction.md` — closed Pass E release-impact correction;
-- `docs/testing/verify-modernization.md` — implementation/benchmark progress record;
+- `docs/testing/verify-modernization.md` — implementation/selection progress record;
 - `scripts/lib/REVIEW.md` — active final PR-level findings;
-- `.agents/skills/verification/SKILL.md`, `test-first`, and `test-authoring` — execution/proof workflow.
+- `.agents/skills/verification/SKILL.md`, `architect-handoff`, `implementation-preflight`, `test-first`, and `test-authoring` — workflow/proof rules.
 
 Architecture/status/benchmark documents are architect-owned. Coding and test-author agents must not edit them unless explicitly assigned.
 
@@ -27,135 +27,138 @@ Finish branch:
 refactor/verify-modernization-finish
 ```
 
-Current synchronized `develop` merge-base:
+Last synchronized `develop` merge-base:
 
 ```text
 13ae220900a2a724c867b01b5eb1f045c2a1d857
 ```
 
-The branch was last compared as ahead of, and not behind, that `develop` head. Re-check immediately before PR publication.
+Re-check against current `develop` immediately before PR publication.
 
-## Closed corrections
+## Closed areas
 
-### Pass A — agent-facing output
+- Pass A — bounded agent-facing output;
+- Pass B — repository metadata classification;
+- Pass C — unit impact, including exact Vitest direct-test discovery;
+- Pass D — explicit mutation ownership;
+- Pass E — closed release-impact consumer model;
+- Pass F — accepted CI topology.
 
-Behavior remains accepted: default output is bounded, detailed diagnostics stay in `.verify/logs/**`, heartbeats carry verifier-owned liveness only, and failure reasons fall back to exact exit status plus log/rerun pointers when no trustworthy semantic extractor exists.
+Do not reopen those areas without new repository evidence. Pass C is touched only mechanically where `unitRisk.ts` must consume the new shared root-app path predicate; its unit-impact semantics remain unchanged.
 
-One canonical wording mismatch in `verify-agent-output.md` remains architect-owned cleanup; verifier behavior is not reopened.
+## Architecture redo — application-E2E root-spec ownership
 
-### Pass B — repository metadata classification
+Repeated correction drift triggered the root `AGENTS.md` stop rule. The next pass is no longer a local `e2eRisk.ts` patch.
 
-Closed. `isNonRuntimeRepositoryMetadataPath()` remains a narrow positive fact rather than a global Markdown/document classifier.
-
-### Pass C — unit impact
-
-Closed, including the exact direct Vitest discovery follow-up.
-
-`isTestShapedPath()` now mirrors `vitest.config.ts`:
-
-```text
-src/**/*.test.ts
-config/**/*.test.ts
-scripts/**/*.test.ts
-scripts/**/*.test.mjs
-tests/e2e/**/*.test.mjs
-playwright.*.test.ts
-eslint.config.test.ts
-```
-
-Unsupported `src/config *.test.mjs` shapes remain eligible as ordinary module/support inputs for `vitest related`; they are simply not direct Vitest tests.
-
-### Pass D — mutation ownership
-
-Closed. Mutation remains explicit high-risk opt-in through one registry shared with Stryker; adjacency is not ownership.
-
-### Pass E — release-impact consumer model
-
-Closed and architect-reviewed against `docs/testing/verify-release-impact-correction.md`.
-
-The release planner uses real six-command consumer ownership, excludes proof/type-only paths before broad runtime fallbacks, validates malformed exact mappings, preserves unknown significant runtime fail-closed behavior, and keeps `release-version` independent.
-
-### Pass F — CI topology
-
-Closed. Implementation proof lanes remain parallel after autofix, `verification-release` runs source-impact release proof independently, aggregate verification requires it, and release-version remains separate.
-
-## Reopened final correction — application-E2E selection and collector-proof safety
-
-The physical Playwright config is already correctly root-only:
+The ready architecture in `docs/testing/verify-app-e2e-discovery-correction.md` introduces one narrow pure owner:
 
 ```text
-application E2E
-→ direct tests/e2e/*.spec.ts only
+scripts/lib/appE2EPaths.ts
 ```
 
-Final full-diff review found two remaining mismatches owned by the same application-E2E discovery/selection boundary:
+It owns exactly:
 
-1. `scripts/lib/e2eRisk.ts:isAppE2ESpecPath()` still recognizes arbitrary nested non-reserved `tests/e2e/**/*.spec.ts` files as application specs, even though `playwright.config.ts`, scenario-registry discovery, applicability discovery, and unit inventory ownership are root-only.
-2. `playwright.lanes.test.ts` creates fixed probe paths and recursively removes a fixed nested directory, which can overwrite/delete otherwise valid future repository content.
+```text
+APP_E2E_SPEC_DIR
+APP_E2E_TEST_MATCH
+isRootAppE2ESpecPath()
+```
 
-The resolved architecture and proof requirements are in `docs/testing/verify-app-e2e-discovery-correction.md`.
+Consumers:
 
-This correction is next. Do not broaden it into another application-E2E redesign.
+```text
+appE2EPaths.ts
+├─ playwright.config.ts
+├─ e2eRisk.ts
+├─ e2eProjectApplicability.ts
+└─ unitRisk.ts
+```
 
-## Final documentation/comment cleanup after behavioral correction
+This is not a generic discovery framework and does not own product scenario mappings.
 
-Once the application-E2E correction is green and reviewed, the architect completes remaining final-state wording cleanup:
+Required final behavior:
 
-- align `docs/testing/verify-agent-output.md` with the accepted exit-code + log-pointer fallback;
-- remove the stale old-prefix wording in `unitRisk.test.ts`;
-- correct release-lane wording in `e2eRisk.ts` if not already touched by the correction;
-- correct the rolling-buffer comment in `verify.ts`;
-- refresh affected benchmark/status rows in `verify-modernization.md`, including the shared `scripts/playwrightContainer.ts` browser-lane ownership.
+```text
+tests/e2e/appSmoke.spec.ts
+→ app spec
 
-No executable behavior or assertions should change solely for this cleanup.
+tests/e2e/other/example.spec.ts
+→ not app spec/support
+
+tests/e2e/other/helper.ts
+→ conservative app support
+
+tests/e2e/example.test.ts
+→ not app support
+```
+
+Scenario and standalone registry metadata must reject non-root app specs. `scripts/lib/appE2EPaths.ts` itself is full application-E2E infrastructure.
+
+The real Playwright collector remains an independent oracle and must use collision-safe proof-owned temporary paths.
+
+## Remaining source/comment cleanup
+
+After the behavioral architecture correction is reviewed, clean only remaining stale source/test comments recorded in `scripts/lib/REVIEW.md`:
+
+- old ordinary-source prefix wording in `unitRisk.test.ts`;
+- release-spec wording in `e2eRisk.ts`;
+- obsolete rolling-buffer/getFailureReason wording in `verify.ts`.
+
+No executable behavior or assertions change solely for this cleanup.
 
 ## Remaining order
 
 ```text
-1. application-E2E root-only planner + collision-safe collector correction
-2. architect semantic review of that complete owner scope
-3. final documentation/comment cleanup
-4. architect refreshes benchmark/status
-5. full final semantic PR-level diff review
-6. remove resolved REVIEW.md artifacts
-7. compare branch with current develop and integrate if needed
-8. publish PR to develop
-9. apply release-intent/version label
-10. inspect exact-head CI
-11. if CI/autofix changes head, review the new exact head and its CI
-12. record actual CI critical path / merge latency
-13. merge-readiness verdict
+1. implement shared application-E2E path owner + migrate all named consumers
+2. fresh test-author proof + meaningful nested-spec RED + safe real-collector proof
+3. architect re-review of complete application-E2E owner scope
+4. final source/comment cleanup
+5. architect refreshes affected status/selection documentation
+6. full final semantic PR-level diff review
+7. remove resolved REVIEW.md artifacts
+8. compare branch with current develop and integrate if needed
+9. publish PR to develop
+10. apply release-intent/version label
+11. inspect exact-head CI
+12. if CI/autofix changes head, review the new exact head and its CI
+13. record actual CI critical path / merge latency
+14. merge-readiness verdict
 ```
 
-## Proof discipline for the remaining behavioral correction
+## Proof discipline
+
+For the architecture correction:
 
 ```text
-accepted contract
+ready architecture handoff
+→ implementation-preflight
 → fresh test-author context
-→ root-positive / nested-negative planner proof
-→ meaningful RED for broad nested spec classification
-→ collision-safe real collector proof
+→ root-positive / nested-negative planner + metadata proof
+→ meaningful RED for current nested-spec drift
+→ collision-safe real Playwright collector/filter proof
 → separate implementation context
+→ remove duplicate production predicates
 → focused GREEN
 → architect semantic review
 ```
 
-The implementation agent treats accepted assertions as read-only. Proof-harness safety itself does not need a ceremonial RED when the old proof already exercises the right external behavior; its setup/cleanup semantics must instead be reviewed directly for isolation.
+The real collector proof must not use the shared predicate as its expected-value oracle.
 
 ## Final review boundary
 
 Before PR publication, review the complete `develop...refactor/verify-modernization-finish` result for:
 
 - ownership and dependency direction;
+- single production source of truth for application-E2E root paths;
 - physical proof discovery vs planner/registry/applicability inventories;
 - fail-closed/status behavior;
 - unit/release/mutation source of truth;
-- removal of replaced inference;
-- proof independence and test-state isolation;
+- removal of replaced inference/duplicate predicates;
+- proof independence and mutable test-state isolation;
 - verifier output boundedness/actionability;
 - release-version separation;
 - CI topology;
-- benchmark consistency.
+- selection/benchmark consistency.
 
 No active `REVIEW.md` may remain in the final PR diff.
 
