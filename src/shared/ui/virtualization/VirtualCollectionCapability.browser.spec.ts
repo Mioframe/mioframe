@@ -239,29 +239,75 @@ test.describe('VirtualCollectionCapability shared composable', () => {
 
     await page.getByTestId('vcc-scrollto-end-button').click();
 
-    await expect
-      .poll(async () => Number(await page.getByTestId('vcc-leading-size').textContent()))
-      .toBeGreaterThan(100000);
+    // Read every compared deep-scroll geometry value together in one synchronous browser-side
+    // snapshot instead of separate live reads, so trailingSize/scrollHeight are never checked
+    // against a totalSize/last-item measurement taken at a different settling moment. A single
+    // valid snapshot can still be a transient frame, so require the same logical tail item and
+    // equal geometry across two consecutive observations before accepting it as settled.
+    const readDeepGeometry = () =>
+      page.evaluate(() => {
+        const items = document.querySelectorAll('[data-testid^="vcc-item-"]');
+        const last = items.item(items.length - 1);
+        const viewportEl = document.querySelector('[data-testid="vcc-viewport"]');
+        return {
+          leadingSize: Number(
+            document.querySelector('[data-testid="vcc-leading-size"]')?.textContent,
+          ),
+          totalSize: Number(document.querySelector('[data-testid="vcc-total-size"]')?.textContent),
+          trailingSize: Number(
+            document.querySelector('[data-testid="vcc-trailing-size"]')?.textContent,
+          ),
+          lastItemTestId: last?.getAttribute('data-testid') ?? null,
+          lastItemOffset: Number(last?.getAttribute('data-item-offset')),
+          lastItemSize: Number(last?.getAttribute('data-item-size')),
+          scrollHeight: viewportEl?.scrollHeight ?? 0,
+        };
+      });
 
-    const totalSizeAfterScroll = Number(await page.getByTestId('vcc-total-size').textContent());
-    const trailingSize = Number(await page.getByTestId('vcc-trailing-size').textContent());
-    const lastItemGeometry = await page
-      .locator('[data-testid^="vcc-item-"]')
-      .last()
-      .evaluate((el) => ({
-        offset: Number(el.getAttribute('data-item-offset')),
-        size: Number(el.getAttribute('data-item-size')),
-      }));
+    let previousDeepGeometry: Awaited<ReturnType<typeof readDeepGeometry>> | undefined;
+    let settledDeepGeometry: Awaited<ReturnType<typeof readDeepGeometry>> | undefined;
+    await expect
+      .poll(async () => {
+        const snapshot = await readDeepGeometry();
+        const trailingValid =
+          Math.abs(
+            snapshot.trailingSize -
+              (snapshot.totalSize - (snapshot.lastItemOffset + snapshot.lastItemSize)),
+          ) <= GEOMETRY_TOLERANCE_PX;
+        const scrollHeightValid =
+          Math.abs(snapshot.scrollHeight - (SURFACE_OFFSET_PX + snapshot.totalSize)) <=
+          STRUCTURAL_TOLERANCE_PX;
+        const isSettled =
+          snapshot.leadingSize > 100000 &&
+          snapshot.lastItemTestId !== null &&
+          trailingValid &&
+          scrollHeightValid &&
+          previousDeepGeometry !== undefined &&
+          previousDeepGeometry.lastItemTestId === snapshot.lastItemTestId &&
+          previousDeepGeometry.trailingSize === snapshot.trailingSize &&
+          previousDeepGeometry.totalSize === snapshot.totalSize &&
+          previousDeepGeometry.scrollHeight === snapshot.scrollHeight;
+        if (isSettled) settledDeepGeometry = snapshot;
+        previousDeepGeometry = snapshot;
+        return isSettled;
+      })
+      .toBe(true);
+    if (!settledDeepGeometry) {
+      throw new Error('unreachable: poll only resolves once settledDeepGeometry is set');
+    }
+
     expect(
       Math.abs(
-        trailingSize - (totalSizeAfterScroll - (lastItemGeometry.offset + lastItemGeometry.size)),
+        settledDeepGeometry.trailingSize -
+          (settledDeepGeometry.totalSize -
+            (settledDeepGeometry.lastItemOffset + settledDeepGeometry.lastItemSize)),
       ),
     ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
-
-    const scrollHeight = await page.getByTestId('vcc-viewport').evaluate((el) => el.scrollHeight);
-    expect(Math.abs(scrollHeight - (SURFACE_OFFSET_PX + totalSizeAfterScroll))).toBeLessThanOrEqual(
-      STRUCTURAL_TOLERANCE_PX,
-    );
+    expect(
+      Math.abs(
+        settledDeepGeometry.scrollHeight - (SURFACE_OFFSET_PX + settledDeepGeometry.totalSize),
+      ),
+    ).toBeLessThanOrEqual(STRUCTURAL_TOLERANCE_PX);
   });
 
   test('accepts a valid undefined source value at an in-bounds index without throwing', async ({

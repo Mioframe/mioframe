@@ -10,6 +10,10 @@ const ROW_COUNT = 5000;
 // The tolerated above-viewport resize anchor movement must remain below one representative row
 // height, not require pixel-exact anchoring.
 const ANCHOR_TOLERANCE_PX = ROW_BASE_HEIGHT_PX;
+// Two consecutive getBoundingClientRect() reads of an unchanged row can differ by a sub-pixel
+// rounding amount even once layout is genuinely settled; consecutive-observation stability checks
+// tolerate that instead of requiring bit-exact equality.
+const STABILITY_EPSILON_PX = 0.5;
 
 test.describe('DatabaseVirtualizationCapability native-table model', () => {
   test('renders through actual MDTable with logical row/column accessibility counts', async ({
@@ -331,71 +335,142 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
     await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
 
     const viewport = page.getByTestId('db-virt-viewport');
+    const scrollTarget = 50 * ROW_BASE_HEIGHT_PX;
     // Scroll deep enough that some previously-mounted rows fall fully above the viewport while
     // remaining within the overscan-mounted buffer.
-    await viewport.evaluate((el, scrollTarget) => {
-      el.scrollTop = scrollTarget;
-    }, 50 * ROW_BASE_HEIGHT_PX);
-
-    await expect
-      .poll(async () => Number(await page.getByTestId('db-virt-mounted-rows').textContent()))
-      .toBeGreaterThan(0);
+    await viewport.evaluate((el, target) => {
+      el.scrollTop = target;
+    }, scrollTarget);
 
     const rowSelector =
       '[data-testid^="db-virt-row-"]:not([data-testid$="-top"]):not([data-testid$="-bottom"])';
-    await expect.poll(async () => page.locator(rowSelector).count()).toBeGreaterThan(0);
 
-    const { aboveViewportIndex, anchorIndex, anchorYBefore } = await page
-      .locator(rowSelector)
-      .evaluateAll((rowEls, viewportTestId) => {
-        const viewportEl = document.querySelector(`[data-testid="${viewportTestId}"]`);
-        const viewportTop = viewportEl?.getBoundingClientRect().top ?? 0;
-        const viewportBottom = viewportEl?.getBoundingClientRect().bottom ?? 0;
-        // Sub-pixel layout rounding can make a strict full-containment boundary check flaky;
-        // classify by overlap with a small epsilon instead of exact edge comparisons.
-        const EPSILON_PX = 0.5;
+    // Read scroll position, above-viewport/anchor row selection, and the above row's own current
+    // size together in one synchronous browser-side snapshot, so the baseline can never mix rows
+    // chosen before the requested scroll/range/measurement state has settled.
+    const readAnchorState = () =>
+      page.evaluate(
+        ({ viewportTestId, rowSelector }) => {
+          const viewportEl = document.querySelector(`[data-testid="${viewportTestId}"]`);
+          const viewportTop = viewportEl?.getBoundingClientRect().top ?? 0;
+          const viewportBottom = viewportEl?.getBoundingClientRect().bottom ?? 0;
+          // Sub-pixel layout rounding can make a strict full-containment boundary check flaky;
+          // classify by overlap with a small epsilon instead of exact edge comparisons.
+          const EPSILON_PX = 0.5;
 
-        const rows = rowEls.map((el) => ({
-          index: Number(el.getAttribute('aria-rowindex')) - 2,
-          rect: el.getBoundingClientRect(),
-        }));
+          const rows = Array.from(document.querySelectorAll(rowSelector)).map((el) => ({
+            index: Number(el.getAttribute('aria-rowindex')) - 2,
+            size: Number(el.getAttribute('data-row-size')),
+            rect: el.getBoundingClientRect(),
+          }));
 
-        const above = rows.filter((row) => row.rect.bottom <= viewportTop + EPSILON_PX);
-        // Any row overlapping the viewport box at all counts as an anchor candidate; the middle
-        // one avoids picking a row that is only partially clipped at an edge.
-        const overlapping = rows.filter(
-          (row) =>
-            row.rect.bottom > viewportTop + EPSILON_PX &&
-            row.rect.top < viewportBottom - EPSILON_PX,
-        );
-        const anchor = overlapping.at(Math.floor(overlapping.length / 2));
+          const above = rows.filter((row) => row.rect.bottom <= viewportTop + EPSILON_PX);
+          // Any row overlapping the viewport box at all counts as an anchor candidate; the middle
+          // one avoids picking a row that is only partially clipped at an edge.
+          const overlapping = rows.filter(
+            (row) =>
+              row.rect.bottom > viewportTop + EPSILON_PX &&
+              row.rect.top < viewportBottom - EPSILON_PX,
+          );
+          const anchor = overlapping.at(Math.floor(overlapping.length / 2));
 
-        return {
-          aboveViewportIndex: above[0]?.index ?? -1,
-          anchorIndex: anchor?.index ?? -1,
-          anchorYBefore: anchor?.rect.top ?? 0,
-        };
-      }, 'db-virt-viewport');
+          return {
+            scrollTop: viewportEl?.scrollTop ?? -1,
+            aboveViewportIndex: above[0]?.index ?? -1,
+            aboveViewportSize: above[0]?.size ?? -1,
+            anchorIndex: anchor?.index ?? -1,
+            anchorY: anchor?.rect.top ?? null,
+          };
+        },
+        { viewportTestId: 'db-virt-viewport', rowSelector },
+      );
 
+    // TanStack corrects scrollTop away from the raw requested pixel value once it measures real
+    // row heights against the ROW_BASE_HEIGHT_PX estimate, so the settled scrollTop legitimately
+    // differs from `scrollTarget`; require it to be stable (unchanged) across consecutive
+    // observations instead of matching the raw requested value.
+    let previousBaseline: Awaited<ReturnType<typeof readAnchorState>> | undefined;
+    let settledBaseline: Awaited<ReturnType<typeof readAnchorState>> | undefined;
+    await expect
+      .poll(async () => {
+        const snapshot = await readAnchorState();
+        const isSettled =
+          snapshot.scrollTop >= 0 &&
+          snapshot.aboveViewportIndex >= 0 &&
+          snapshot.anchorIndex >= 0 &&
+          previousBaseline !== undefined &&
+          previousBaseline.scrollTop === snapshot.scrollTop &&
+          previousBaseline.aboveViewportIndex === snapshot.aboveViewportIndex &&
+          previousBaseline.anchorIndex === snapshot.anchorIndex &&
+          previousBaseline.anchorY !== null &&
+          snapshot.anchorY !== null &&
+          Math.abs(previousBaseline.anchorY - snapshot.anchorY) <= STABILITY_EPSILON_PX;
+        if (isSettled) settledBaseline = snapshot;
+        previousBaseline = snapshot;
+        return isSettled;
+      })
+      .toBe(true);
+    if (!settledBaseline) {
+      throw new Error('unreachable: poll only resolves once settledBaseline is set');
+    }
+
+    const {
+      aboveViewportIndex,
+      aboveViewportSize: initialAboveSize,
+      anchorIndex,
+      anchorY: anchorYBefore,
+    } = settledBaseline;
+    if (anchorYBefore === null) {
+      throw new Error('unreachable: settled baseline always has a numeric anchorY');
+    }
     expect(aboveViewportIndex).toBeGreaterThanOrEqual(0);
     expect(anchorIndex).toBeGreaterThanOrEqual(0);
-
-    const aboveRow = page.getByTestId(`db-virt-row-${aboveViewportIndex}`);
-    const initialAboveSize = Number(await aboveRow.getAttribute('data-row-size'));
 
     await page.getByTestId('db-virt-grow-row-index').fill(String(aboveViewportIndex));
     await page.getByTestId('db-virt-grow-row-button').click();
 
-    await expect
-      .poll(async () => Number(await aboveRow.getAttribute('data-row-size')))
-      .toBeGreaterThan(initialAboveSize + GEOMETRY_TOLERANCE_PX);
+    // Poll public row-size growth and post-resize anchor geometry together, so the final
+    // assertion cannot run before TanStack-owned scroll correction for the resized above-viewport
+    // row has settled.
+    const readResizeResult = () =>
+      page.evaluate(
+        ({ aboveTestId, anchorTestId }) => {
+          const aboveEl = document.querySelector(`[data-testid="${aboveTestId}"]`);
+          const anchorEl = document.querySelector(`[data-testid="${anchorTestId}"]`);
+          return {
+            aboveRowSize: Number(aboveEl?.getAttribute('data-row-size')),
+            anchorMounted: anchorEl !== null,
+            anchorY: anchorEl?.getBoundingClientRect().top ?? null,
+          };
+        },
+        {
+          aboveTestId: `db-virt-row-${aboveViewportIndex}`,
+          anchorTestId: `db-virt-row-${anchorIndex}`,
+        },
+      );
 
-    const anchorRow = page.getByTestId(`db-virt-row-${anchorIndex}`);
+    let previousResult: Awaited<ReturnType<typeof readResizeResult>> | undefined;
+    let settledResult: Awaited<ReturnType<typeof readResizeResult>> | undefined;
     await expect
       .poll(async () => {
-        const box = await anchorRow.boundingBox();
-        return Math.abs((box?.y ?? anchorYBefore) - anchorYBefore);
+        const snapshot = await readResizeResult();
+        const isSettled =
+          snapshot.aboveRowSize > initialAboveSize + GEOMETRY_TOLERANCE_PX &&
+          snapshot.anchorMounted &&
+          snapshot.anchorY !== null &&
+          previousResult !== undefined &&
+          previousResult.anchorMounted &&
+          previousResult.anchorY !== null &&
+          Math.abs(previousResult.anchorY - snapshot.anchorY) <= STABILITY_EPSILON_PX;
+        if (isSettled) settledResult = snapshot;
+        previousResult = snapshot;
+        return isSettled;
       })
-      .toBeLessThan(ANCHOR_TOLERANCE_PX);
+      .toBe(true);
+    if (!settledResult || settledResult.anchorY === null) {
+      throw new Error('unreachable: poll only resolves once settledResult has a numeric anchorY');
+    }
+
+    expect(Math.abs(settledResult.anchorY - anchorYBefore)).toBeLessThan(ANCHOR_TOLERANCE_PX);
   });
 });
