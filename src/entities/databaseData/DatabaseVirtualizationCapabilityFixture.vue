@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { useVirtualAxis } from '@shared/ui/virtualization';
-import type { VirtualAxisItem } from '@shared/ui/virtualization';
+import { useVirtualCollection } from '@shared/ui/virtualization';
+import type { VirtualCollectionItem } from '@shared/ui/virtualization';
+import { MDTable } from '@shared/ui/Table';
 import { computed, ref, useTemplateRef } from 'vue';
 import type { CSSProperties } from 'vue';
 
 /**
  * Deterministic Storybook browser-proof fixture for the native-table-first database DOM
  * model described in `docs/database-virtualization.md`. Not production UI: it uses only
- * synthetic rows/properties through the real shared `useVirtualAxis` adapter, with no
- * worker, service, persistence, editor, relation, or toolbar behavior.
+ * synthetic rows/properties through the real shared `useVirtualCollection` composable and
+ * actual `MDTable`, with no worker, service, persistence, editor, relation, or toolbar behavior.
  */
 const props = withDefaults(
   defineProps<{
@@ -17,7 +18,7 @@ const props = withDefaults(
   }>(),
   {
     rowCount: 5000,
-    colCount: 40,
+    colCount: 300,
   },
 );
 
@@ -26,7 +27,15 @@ const COL_BASE_WIDTH_PX = 96;
 const viewportWidthPx = '520px';
 const viewportHeightPx = '360px';
 
+// The physical scroll root is a dedicated wrapper, not MDTable's own root. `table-layout: auto`
+// (MDTable's default) lets an auto-layout table grow past any CSS width to fit its min-content;
+// the trailing phantom spacer's min-content width would otherwise force the table itself wide
+// enough that it never actually overflows its own box, defeating virtualization. The wrapper's
+// fixed size is a real, content-independent constraint, so it stays the one element that scrolls.
 const scrollElRef = useTemplateRef<HTMLElement>('scrollEl');
+
+const rowIds = computed(() => Array.from({ length: props.rowCount }, (_, index) => index));
+const colIds = computed(() => Array.from({ length: props.colCount }, (_, index) => index));
 
 const rowGrowth = ref<Record<number, number>>({});
 const bodyCellGrowth = ref<Record<number, number>>({});
@@ -35,6 +44,12 @@ const growRowInput = ref(0);
 function growRow(): void {
   const index = growRowInput.value;
   rowGrowth.value = { ...rowGrowth.value, [index]: (rowGrowth.value[index] ?? 0) + 1 };
+}
+function shrinkRow(): void {
+  const index = growRowInput.value;
+  const current = rowGrowth.value[index] ?? 0;
+  if (current <= 0) return;
+  rowGrowth.value = { ...rowGrowth.value, [index]: current - 1 };
 }
 
 const growColInput = ref(0);
@@ -58,51 +73,37 @@ function bodyCellContent(rowIndex: number, colIndex: number): string {
   return `R${rowIndex}C${colIndex}${'w'.repeat(extra * 10)}`;
 }
 
-const verticalAxis = useVirtualAxis({
-  count: () => props.rowCount,
-  getItemKey: (index) => index,
-  getScrollElement: () => scrollElRef.value,
-  orientation: 'vertical',
-  estimateSize: () => ROW_BASE_HEIGHT_PX,
+const rows = useVirtualCollection(rowIds, {
+  root: () => scrollElRef.value,
+  key: (id) => id,
+  estimateSize: ROW_BASE_HEIGHT_PX,
   overscan: 4,
 });
 
-const horizontalAxis = useVirtualAxis({
-  count: () => props.colCount,
-  getItemKey: (index) => index,
-  getScrollElement: () => scrollElRef.value,
-  orientation: 'horizontal',
-  estimateSize: () => COL_BASE_WIDTH_PX,
+const columns = useVirtualCollection(colIds, {
+  root: () => scrollElRef.value,
+  key: (id) => id,
+  estimateSize: COL_BASE_WIDTH_PX,
+  axis: 'horizontal',
   overscan: 4,
 });
 
-const columnSpacers = computed(() => {
-  const cols = horizontalAxis.virtualItems.value;
-  const first = cols[0];
-  const last = cols[cols.length - 1];
-  return {
-    left: first?.start ?? 0,
-    right: last ? horizontalAxis.totalSize.value - last.end : horizontalAxis.totalSize.value,
-  };
-});
+const vVirtualRow = rows.measure;
+const vVirtualColumn = columns.measure;
 
-const rowSpacers = computed(() => {
-  const rows = verticalAxis.virtualItems.value;
-  const first = rows[0];
-  const last = rows[rows.length - 1];
-  return {
-    top: first?.start ?? 0,
-    bottom: last ? verticalAxis.totalSize.value - last.end : verticalAxis.totalSize.value,
-  };
-});
+const totalColumns = computed(() => columns.items.value.length + 2);
 
-const totalColumns = computed(() => horizontalAxis.virtualItems.value.length + 2);
-
-function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
-  // The remount minimum uses the axis's own last-measured/cached size for this stable key so
-  // ordinary scrolling never shrinks a column below its already-known width.
+function columnMinWidthStyle(col: VirtualCollectionItem<number, number>): CSSProperties {
+  // The remount minimum uses the collection's own last-measured/cached size for this stable key
+  // so ordinary scrolling never shrinks a column below its already-known width.
   return { minWidth: `${col.size}px` };
 }
+
+const viewportStyle: CSSProperties = {
+  overflow: 'auto',
+  width: viewportWidthPx,
+  height: viewportHeightPx,
+};
 </script>
 
 <template>
@@ -119,6 +120,9 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
         />
       </label>
       <button type="button" data-testid="db-virt-grow-row-button" @click="growRow">Grow row</button>
+      <button type="button" data-testid="db-virt-shrink-row-button" @click="shrinkRow">
+        Shrink row
+      </button>
       <label>
         Grow column body content
         <input
@@ -138,8 +142,9 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
       ref="scrollEl"
       class="database-virtualization-capability-fixture__viewport"
       data-testid="db-virt-viewport"
+      :style="viewportStyle"
     >
-      <table
+      <MDTable
         class="database-virtualization-capability-fixture__table"
         data-testid="db-virt-table"
         :aria-rowcount="rowCount + 1"
@@ -147,32 +152,32 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
       >
         <colgroup>
           <!-- Auto table layout does not reliably size an empty spacer cell from a per-cell
-               `width`; an explicit `<col>` width is the correct hint for the skipped-column
-               spacer, matching docs/database-virtualization.md's colgroup model. Visible
-               property columns stay unset so native content-driven auto-layout still owns them. -->
-          <col :style="{ width: `${columnSpacers.left}px` }" />
-          <col v-for="col in horizontalAxis.virtualItems.value" :key="col.key" />
-          <col :style="{ width: `${columnSpacers.right}px` }" />
+             `width`; an explicit `<col>` width is the correct hint for the skipped-column
+             spacer, matching docs/database-virtualization.md's colgroup model. Visible
+             property columns stay unset so native content-driven auto-layout still owns them. -->
+          <col :style="{ width: `${columns.leadingSize.value}px` }" />
+          <col v-for="col in columns.items.value" :key="col.key" />
+          <col :style="{ width: `${columns.trailingSize.value}px` }" />
         </colgroup>
         <thead>
           <tr data-testid="db-virt-header-row">
             <th
               aria-hidden="true"
               data-testid="db-virt-header-spacer-left"
-              :style="{ width: `${columnSpacers.left}px` }"
+              :style="{ width: `${columns.leadingSize.value}px` }"
             >
               <!-- Auto table layout treats an empty spacer cell's own `width` only as a weak
-                   hint; a phantom zero-height content box reliably forces the column's
-                   min-content width, matching the required deep horizontal offset. -->
+                 hint; a phantom zero-height content box reliably forces the column's
+                 min-content width, matching the required deep horizontal offset. -->
               <div
                 class="database-virtualization-capability-fixture__spacer-phantom"
-                :style="{ width: `${columnSpacers.left}px` }"
+                :style="{ width: `${columns.leadingSize.value}px` }"
               />
             </th>
             <th
-              v-for="col in horizontalAxis.virtualItems.value"
+              v-for="col in columns.items.value"
               :key="col.key"
-              :ref="(el) => horizontalAxis.measureElement(col.index, el as HTMLElement | null)"
+              v-virtual-column="col"
               class="database-virtualization-capability-fixture__header-cell"
               :data-testid="`db-virt-header-cell-${col.key}`"
               :aria-colindex="col.index + 1"
@@ -183,11 +188,11 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
             <th
               aria-hidden="true"
               data-testid="db-virt-header-spacer-right"
-              :style="{ width: `${columnSpacers.right}px` }"
+              :style="{ width: `${columns.trailingSize.value}px` }"
             >
               <div
                 class="database-virtualization-capability-fixture__spacer-phantom"
-                :style="{ width: `${columnSpacers.right}px` }"
+                :style="{ width: `${columns.trailingSize.value}px` }"
               />
             </th>
           </tr>
@@ -197,21 +202,21 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
             <td
               class="database-virtualization-capability-fixture__row-spacer-cell"
               :colspan="totalColumns"
-              :style="{ height: `${rowSpacers.top}px` }"
+              :style="{ height: `${rows.leadingSize.value}px` }"
             />
           </tr>
 
           <tr
-            v-for="row in verticalAxis.virtualItems.value"
+            v-for="row in rows.items.value"
             :key="row.key"
-            :ref="(el) => verticalAxis.measureElement(row.index, el as HTMLElement | null)"
+            v-virtual-row="row"
             class="database-virtualization-capability-fixture__row"
             :data-testid="`db-virt-row-${row.key}`"
             :aria-rowindex="row.index + 2"
           >
-            <td aria-hidden="true" :style="{ width: `${columnSpacers.left}px` }" />
+            <td aria-hidden="true" :style="{ width: `${columns.leadingSize.value}px` }" />
             <td
-              v-for="col in horizontalAxis.virtualItems.value"
+              v-for="col in columns.items.value"
               :key="col.key"
               class="database-virtualization-capability-fixture__cell"
               :data-testid="`db-virt-cell-${row.key}-${col.key}`"
@@ -225,24 +230,22 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
               >
               <template v-else>{{ bodyCellContent(row.key, col.key) }}</template>
             </td>
-            <td aria-hidden="true" :style="{ width: `${columnSpacers.right}px` }" />
+            <td aria-hidden="true" :style="{ width: `${columns.trailingSize.value}px` }" />
           </tr>
 
           <tr aria-hidden="true" data-testid="db-virt-row-spacer-bottom">
             <td
               class="database-virtualization-capability-fixture__row-spacer-cell"
               :colspan="totalColumns"
-              :style="{ height: `${rowSpacers.bottom}px` }"
+              :style="{ height: `${rows.trailingSize.value}px` }"
             />
           </tr>
         </tbody>
-      </table>
+      </MDTable>
     </div>
 
-    <output data-testid="db-virt-mounted-rows">{{ verticalAxis.virtualItems.value.length }}</output>
-    <output data-testid="db-virt-mounted-cols">{{
-      horizontalAxis.virtualItems.value.length
-    }}</output>
+    <output data-testid="db-virt-mounted-rows">{{ rows.items.value.length }}</output>
+    <output data-testid="db-virt-mounted-cols">{{ columns.items.value.length }}</output>
   </div>
 </template>
 
@@ -259,16 +262,6 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
     align-items: center;
   }
 
-  &__viewport {
-    overflow: auto;
-    width: v-bind(viewportWidthPx);
-    height: v-bind(viewportHeightPx);
-  }
-
-  &__table {
-    border-collapse: collapse;
-  }
-
   &__spacer-phantom {
     height: 1px;
   }
@@ -280,11 +273,8 @@ function columnMinWidthStyle(col: VirtualAxisItem<number>): CSSProperties {
 
   &__header-cell,
   &__cell {
-    border: 1px solid #ccc;
-    padding: 2px 6px;
     white-space: nowrap;
     box-sizing: border-box;
-    text-align: start;
   }
 
   &__row-label {

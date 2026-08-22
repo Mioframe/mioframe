@@ -6,17 +6,18 @@ import { openStory } from '../../../tests/e2e/storybook/storybook.testUtils';
 const GEOMETRY_TOLERANCE_PX = 4;
 
 test.describe('DatabaseVirtualizationCapability native-table model', () => {
-  test('renders semantic native table structure with logical row/column accessibility counts', async ({
+  test('renders through actual MDTable with logical row/column accessibility counts', async ({
     page,
   }) => {
     await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
 
     const table = page.getByTestId('db-virt-table');
+    await expect(table).toHaveClass(/md-table/);
     await expect(page.getByRole('table')).toBeVisible();
     await expect(table.locator('thead')).toHaveCount(1);
     await expect(table.locator('tbody')).toHaveCount(1);
     await expect(table).toHaveAttribute('aria-rowcount', '5001');
-    await expect(table).toHaveAttribute('aria-colcount', '40');
+    await expect(table).toHaveAttribute('aria-colcount', '300');
 
     await expect(page.getByRole('row').first()).toBeVisible();
     await expect(page.getByRole('columnheader').first()).toBeVisible();
@@ -68,7 +69,9 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
     await expect(page.getByTestId('db-virt-header-cell-3')).toHaveAttribute('aria-colindex', '4');
   });
 
-  test('measures dynamic <tr> height from mounted row content', async ({ page }) => {
+  test('measures dynamic <tr> height from mounted row content, growing and shrinking', async ({
+    page,
+  }) => {
     await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
 
     const row = page.getByTestId('db-virt-row-1');
@@ -81,6 +84,14 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
     await expect
       .poll(async () => (await row.boundingBox())?.height ?? 0)
       .toBeGreaterThan((initialBox?.height ?? 0) + GEOMETRY_TOLERANCE_PX);
+
+    const grownBox = await row.boundingBox();
+
+    await page.getByTestId('db-virt-shrink-row-button').click();
+
+    await expect
+      .poll(async () => (await row.boundingBox())?.height ?? 0)
+      .toBeLessThan((grownBox?.height ?? 0) - GEOMETRY_TOLERANCE_PX);
   });
 
   test('measures dynamic <th> width driven by mounted body-cell content in that column', async ({
@@ -102,9 +113,7 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
       .toBeGreaterThan((initialBox?.width ?? 0) + GEOMETRY_TOLERANCE_PX);
   });
 
-  test('keeps deep vertical and horizontal offsets correct while bounding mounted DOM', async ({
-    page,
-  }) => {
+  test('keeps deep vertical offsets correct while bounding mounted DOM', async ({ page }) => {
     await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
 
     // A very large scrollTop clamps deterministically to the real max scroll offset in every
@@ -136,6 +145,50 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
       )
       .evaluateAll((rows) => rows.map((row) => Number(row.getAttribute('aria-rowindex'))));
     expect(Math.min(...visibleRowIndices)).toBeGreaterThan(4900);
+  });
+
+  test('keeps deep horizontal offsets correct, reaching a property near the end in header and body', async ({
+    page,
+  }) => {
+    await openStory(page, 'entities-databasedata-databasevirtualizationcapability--default');
+
+    const viewport = page.getByTestId('db-virt-viewport');
+    await viewport.evaluate((el) => {
+      el.scrollLeft = Number.MAX_SAFE_INTEGER;
+    });
+
+    await expect
+      .poll(async () => Number(await page.getByTestId('db-virt-mounted-cols').textContent()))
+      .toBeGreaterThan(0);
+
+    const mountedCols = Number(await page.getByTestId('db-virt-mounted-cols').textContent());
+    expect(mountedCols).toBeLessThan(30);
+
+    await expect
+      .poll(async () =>
+        page
+          .getByTestId('db-virt-header-spacer-left')
+          .evaluate((el) => el.getBoundingClientRect().width),
+      )
+      .toBeGreaterThan(10000);
+
+    const visibleHeaderColIndices = await page
+      .locator('[data-testid^="db-virt-header-cell-"]')
+      .evaluateAll((cells) => cells.map((cell) => Number(cell.getAttribute('aria-colindex'))));
+    expect(Math.max(...visibleHeaderColIndices)).toBeGreaterThanOrEqual(291);
+
+    const visibleBodyColIndices = await page
+      .locator('[data-testid^="db-virt-cell-0-"]')
+      .evaluateAll((cells) => cells.map((cell) => Number(cell.getAttribute('aria-colindex'))));
+
+    // Header and body use the exact same property collection range.
+    expect([...visibleHeaderColIndices].sort((a, b) => a - b)).toEqual(
+      [...visibleBodyColIndices].sort((a, b) => a - b),
+    );
+
+    // Early properties are no longer mounted anywhere.
+    await expect(page.getByTestId('db-virt-header-cell-0')).toHaveCount(0);
+    await expect(page.getByTestId('db-virt-cell-0-0')).toHaveCount(0);
   });
 
   test('does not shrink a previously measured column below its last known width during ordinary scroll', async ({

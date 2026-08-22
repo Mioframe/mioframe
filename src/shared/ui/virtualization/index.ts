@@ -1,9 +1,9 @@
-export { useVirtualAxis } from './useVirtualAxis';
+export { useVirtualCollection } from './useVirtualCollection';
 export type {
-  UseVirtualAxisOptions,
-  UseVirtualAxisResult,
-  VirtualAxisAlign,
-  VirtualAxisItem,
-  VirtualAxisKey,
-  VirtualAxisOrientation,
-} from './useVirtualAxis';
+  EstimateSize,
+  UseVirtualCollectionOptions,
+  UseVirtualCollectionResult,
+  VirtualCollectionAxis,
+  VirtualCollectionItem,
+  VirtualCollectionKey,
+} from './useVirtualCollection';
