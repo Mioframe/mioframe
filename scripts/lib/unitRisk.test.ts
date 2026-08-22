@@ -446,6 +446,39 @@ describe('resolveUnitPlan registry validation', () => {
   });
 });
 
+// M1 correction (scripts/lib/REVIEW.md M1; docs/testing/verify-unit-impact-correction.md
+// decision 1 "Direct Vitest discovery is exact"): vitest.config.ts's real
+// `test.include` matrix (quoted verbatim in that decision) lists
+// `src/**/*.test.ts` and `config/**/*.test.ts` under those two roots --
+// never `src/**/*.test.mjs` or `config/**/*.test.mjs`. Only `scripts/**`
+// accepts both `.test.ts` and `.test.mjs`. The current (pre-fix)
+// isTestShapedPath instead accepts ANY of src/, config/, scripts/ with
+// EITHER `.test.ts` or `.test.mjs` (see UNIT_RELEVANT_PREFIXES), so it
+// wrongly treats these two shapes as Vitest-owned test modules. Both cases
+// below are expected to fail RED against the current unfixed production
+// module: validateFileAsDataMappings (via isTestShapedPath) currently
+// accepts these owning-test paths as valid, so with no changed paths the
+// plan resolves to 'skip' rather than 'invalid'.
+describe('resolveUnitPlan invalid owner via unsupported .test.mjs shape (M1)', () => {
+  it('fails invalid when a referenced test path is src/**/*.test.mjs -- Vitest never discovers this shape (vitest.config.ts only includes src/**/*.test.ts under src/)', () => {
+    const plan = resolveUnitPlan([], {
+      fileAsDataMappings: [{ source: 'PRIVACY.md', tests: ['src/example.test.mjs'] }],
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('invalid');
+  });
+
+  it('fails invalid when a referenced test path is config/**/*.test.mjs -- Vitest never discovers this shape (vitest.config.ts only includes config/**/*.test.ts under config/)', () => {
+    const plan = resolveUnitPlan([], {
+      fileAsDataMappings: [{ source: 'PRIVACY.md', tests: ['config/example.test.mjs'] }],
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('invalid');
+  });
+});
+
 describe('resolveUnitPlan full-unit infrastructure triggers', () => {
   const INFRASTRUCTURE_FILES = [
     'vitest.config.ts',
@@ -1303,6 +1336,103 @@ describe('resolveUnitPlan direct test self-selection', () => {
 
     expect(plan.mode).toBe('focused');
     expect(plan.relatedInputs).toEqual(['playwright.lanes.test.ts']);
+  });
+
+  it('selects a modified config/**/*.test.ts file that currently exists on disk (config/ accepts .test.ts per vitest.config.ts test.include; not previously covered by an explicit self-selection case)', () => {
+    const plan = resolveUnitPlan([modified('config/example.test.ts')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['config/example.test.ts']);
+  });
+
+  it('selects a modified scripts/**/*.test.ts file that currently exists on disk (scripts/ accepts both .test.ts and .test.mjs per vitest.config.ts test.include; only the .test.mjs shape was previously covered explicitly, via scripts/release/foo.test.mjs above)', () => {
+    const plan = resolveUnitPlan([modified('scripts/example.test.ts')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['scripts/example.test.ts']);
+  });
+});
+
+// M1 negative matrix (docs/testing/verify-unit-impact-correction.md decision
+// 1): these assertions check the reason string rather than relatedInputs
+// emptiness, because an unsupported test shape may still be legitimately
+// selected as ordinary Vitest-related source input (mechanism 2, see
+// "resolveUnitPlan repository-wide ordinary source widening" and "resolveUnitPlan
+// ordinary source pass-through" above) or via an unrelated bounded-scan owner
+// (mechanism 5). Only the false claim "this path is itself a Vitest-owned
+// test module" (the 'changed unit test' reason produced by the direct-test
+// self-selection branch) is under test here.
+describe('resolveUnitPlan direct-test negative matrix (unsupported test-file shapes must never resolve through the "changed unit test" self-selection reason)', () => {
+  it('src/example.test.mjs is never self-selected as a direct test (Must reject: current unfixed isTestShapedPath wrongly accepts src/**/*.test.mjs -- expected RED pre-fix)', () => {
+    const plan = resolveUnitPlan([modified('src/example.test.mjs')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
+  });
+
+  it('config/example.test.mjs is never self-selected as a direct test (Must reject: current unfixed isTestShapedPath wrongly accepts config/**/*.test.mjs -- expected RED pre-fix)', () => {
+    const plan = resolveUnitPlan([modified('config/example.test.mjs')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
+  });
+
+  it('tests/e2e/example.test.ts is never self-selected as a direct test -- tests/e2e/** requires .test.mjs, not .test.ts (unchanged by the M1 fix; already GREEN pre-fix)', () => {
+    const plan = resolveUnitPlan([modified('tests/e2e/example.test.ts')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
+  });
+
+  it('an arbitrary root example.test.ts is never self-selected as a direct test -- root only recognizes the two named special cases, eslint.config.test.ts and playwright.<name>.test.ts (unchanged by the M1 fix; already GREEN pre-fix)', () => {
+    const plan = resolveUnitPlan([modified('example.test.ts')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
+  });
+});
+
+// Overcorrection guard (the task's explicit "Must Reject" scenario): a fix
+// that merely stops treating src/**/*.test.mjs and config/**/*.test.mjs as
+// DIRECT TESTS must not also make them unit-IRRELEVANT. isTestShapedPath and
+// isOrdinaryUnitSourcePath are separate concerns (isOrdinaryUnitSourcePath
+// must not be touched by the M1 fix); a `.mjs` file under src/ or config/ is
+// still a plausible ordinary module/support input Vitest `related` can trace
+// (ORDINARY_SOURCE_EXTENSIONS includes '.mjs'), so it must keep resolving to
+// 'focused' with itself in relatedInputs, just via the ordinary-source-pass-
+// through reason instead of "changed unit test". No fileAsDataMappings
+// override is used -- the real UNIT_FILE_AS_DATA_MAPPINGS registry has no
+// entry for either path, so any relation observed here comes from
+// isOrdinaryUnitSourcePath alone, not external metadata.
+describe('resolveUnitPlan overcorrection guard: an unsupported .test.mjs shape remains a truthful ordinary source input', () => {
+  it('a modified src/example.test.mjs still resolves focused with itself as the sole relatedInputs entry, via ordinary Vitest-related pass-through rather than "changed unit test" (mode/relatedInputs already pass pre-fix by coincidence -- both the buggy direct-test branch and the correct ordinary-source branch add exactly this one path; only the reason differs, which is RED pre-fix)', () => {
+    const plan = resolveUnitPlan([modified('src/example.test.mjs')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['src/example.test.mjs']);
+    expect(plan.reasons.some((reason) => reason.includes('Vitest related resolution'))).toBe(true);
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
+  });
+
+  it('a modified config/example.test.mjs still resolves focused with itself as the sole relatedInputs entry, via ordinary Vitest-related pass-through rather than "changed unit test"', () => {
+    const plan = resolveUnitPlan([modified('config/example.test.mjs')], {
+      fileExists: EVERYTHING_EXISTS,
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.relatedInputs).toEqual(['config/example.test.mjs']);
+    expect(plan.reasons.some((reason) => reason.includes('Vitest related resolution'))).toBe(true);
+    expect(plan.reasons.some((reason) => reason.includes('changed unit test'))).toBe(false);
   });
 });
 

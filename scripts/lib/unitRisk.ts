@@ -207,7 +207,6 @@ const FULL_UNIT_EXACT_FILES = new Set([
   'pnpm-lock.yaml',
 ]);
 
-const UNIT_RELEVANT_PREFIXES = ['src/', 'config/', 'scripts/'];
 const ORDINARY_SOURCE_EXTENSIONS = ['.ts', '.vue', '.mjs', '.js', '.json', '.css'];
 const PACKAGE_JSON_PATH = 'package.json';
 const ROOT_PLAYWRIGHT_TEST_PATTERN = /^playwright\.[^/]+\.test\.ts$/;
@@ -257,9 +256,12 @@ function isTestShapedPath(filePath: string): boolean {
     return true;
   }
 
+  if (filePath.startsWith('scripts/')) {
+    return filePath.endsWith('.test.ts') || filePath.endsWith('.test.mjs');
+  }
+
   return (
-    UNIT_RELEVANT_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
-    (filePath.endsWith('.test.ts') || filePath.endsWith('.test.mjs'))
+    (filePath.startsWith('src/') || filePath.startsWith('config/')) && filePath.endsWith('.test.ts')
   );
 }
 
