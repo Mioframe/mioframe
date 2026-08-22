@@ -143,17 +143,16 @@ Do not change proof selection or warning/failure semantics.
 4. architect re-review the affected output contract
 5. run one complete PR-level semantic review
 6. remove resolved REVIEW.md artifacts
-7. require a stable exact-head CI run
-8. perform and record the mandatory representative benchmark:
+7. obtain a stable exact-head CI run for the corrected implementation
+8. perform and record the mandatory representative benchmark from bounded real run evidence:
    - critical path / merge latency
    - aggregate expensive compute
-9. decide stop vs separate measured follow-up
-10. re-check current develop ancestry and exact PR head
-11. give merge-readiness verdict
-12. squash merge only when review, benchmark, and exact-head gates are all satisfied
+9. record the stop vs separate-follow-up decision in architect-owned docs
+10. require CI on the resulting final documentation head
+11. re-check current develop ancestry and exact PR head
+12. give merge-readiness verdict
+13. squash merge only when review, benchmark, and final exact-head gates are all satisfied
 ```
-
-If benchmark evidence requires documentation updates, those updates create a new exact head. The final merge gate must therefore include CI after the final benchmark/status documentation commit as well.
 
 ## Version policy
 
