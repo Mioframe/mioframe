@@ -4,53 +4,52 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Pass G final benchmark and finish-completion evidence after the latest Pass C ownership correction and synchronization with current `develop`.
+- Complete verifier-modernization finish implementation on `refactor/verify-modernization-finish` after synchronization with current `develop`.
+- Passes A-F and the final Pass C correction were re-reviewed against the current implementation, current tests, `docs/testing/verify-target-architecture.md`, and `docs/testing/verify-unit-impact-correction.md`.
+- The final Pass G benchmark was re-reviewed against the corrected post-sync planner behavior and the recorded real focused resolver probes.
 
 ## Blockers
 
-### B1 — the recorded final benchmark is not yet valid against the final implementation/proof state
-
-Owner: `docs/testing/verify-modernization.md`.
-
-The document contains the complete canonical representative table, but its finish conclusion remains invalid while the owner-local findings in `scripts/lib/REVIEW.md` are open:
-
-1. exact external ownership is not status-safe for deleted/renamed non-ordinary inputs;
-2. the recorded Playwright inventory real-resolver case selects `playwright.lanes.test.ts`, while that owner is currently stale against the actual project-level `testIgnore` config;
-3. the recorded Playwright scan population is broader than the lane test's real filesystem inventory.
-
-Branch synchronization is now complete, so the previous `develop`-sync prerequisite is resolved. The benchmark must now be refreshed only for cases invalidated by the final correction and for one representative post-sync source case that proves the record corresponds to the current tree.
-
-Required final state:
-
-- resolve every active finding in `scripts/lib/REVIEW.md` first;
-- complete the post-sync semantic external-ownership audit of the current Vitest population and record whether it found any new relations;
-- rerun the benchmark/proof cases invalidated by the final correction:
-  - deleted exact external input;
-  - renamed exact external input;
-  - Playwright inventory scan with every selected unit owner green;
-  - adjacent nested `tests/e2e/<other-subtree>/*.spec.ts` proving `playwright.lanes.test.ts` is not over-selected;
-- rerun one representative source case introduced by the synchronized directory/repository-state change, for example a current production file under `src/shared/service/fileSystem/` or `src/shared/service/repositories/`, to demonstrate the final table is based on the post-sync tree rather than the old baseline;
-- update the Pass G table, false-negative section, and accepted-over-selection section to match the resulting implementation exactly;
-- state the post-sync audit result explicitly (`new relations: ...` or `new relations: none`);
-- keep exact-head CI critical-path / merge-latency pending until the architect publishes the PR;
-- do not add benchmark tooling or rerun unrelated expensive child proof locally.
-
-## Acceptance for benchmark closure
-
-The final recorded benchmark is acceptable only when:
-
-- every canonical representative class remains present;
-- every current Pass C ownership mechanism remains represented;
-- status-aware exact ownership is represented explicitly;
-- the Playwright inventory row describes the exact real scan population;
-- the real `tests/e2e/appSmoke.spec.ts` focused unit invocation is green including `playwright.lanes.test.ts`;
-- no known semantic-review false negative remains;
-- all timing claims are actually measured local planner timing;
-- CI critical-path claims are deferred to exact-head CI.
+None.
 
 ## Major issues
 
-None beyond the owner-local Pass C findings.
+### M1 — durable verifier artifacts still depend on temporary review history and one Pass G statement is stale
+
+Owner: verifier modernization documentation/integration (`docs/testing` with affected verifier comments/tests).
+
+Problem: the implementation/proof behavior is now correct, but several durable branch artifacts still describe resolved correction history as if temporary `REVIEW.md` files were authoritative, and the final benchmark contains one statement that contradicts the corrected Playwright inventory predicate.
+
+Evidence:
+
+- [`verify-modernization.md`](./verify-modernization.md), `Accepted false positives / conservative over-selection` — says a colocated Playwright spec **or any** `tests/e2e/**/*.spec.ts` path selects `playwright.lanes.test.ts`. The final M1 correction immediately above proves the opposite for an arbitrary nested `tests/e2e/other/example.spec.ts`: it must not select `playwright.lanes.test.ts` because that path is outside the lane test's real scan population.
+- [`../../scripts/lib/unitRisk.ts`](../../scripts/lib/unitRisk.ts), comments around `isPlaywrightLaneInventoryScanPath` / `checkExactMapping` — still cite `scripts/lib/REVIEW.md B1/M1`, even though the owner review is resolved and has been removed.
+- [`../../scripts/lib/unitRisk.test.ts`](../../scripts/lib/unitRisk.test.ts), test-author audit commentary — still contains resolved-round wording such as references to `scripts/lib/REVIEW.md` and statements that the current production module is "unfixed" / expected red, although the final branch implementation is now green.
+- [`../../scripts/verify.ts`](../../scripts/verify.ts), `getFailureReason` commentary — still cites the resolved temporary `scripts/REVIEW.md B1` instead of the canonical failure-detail contract.
+- [`../../.github/workflows/verify.yml`](../../.github/workflows/verify.yml), `verification-release` timeout commentary — still cites the resolved temporary `.github/workflows/REVIEW.md B1` instead of the canonical testing/timeout evidence.
+
+Basis:
+
+- [`../../.agents/skills/project-review/SKILL.md`](../../.agents/skills/project-review/SKILL.md), `Review artifact ownership` — `REVIEW.md` is temporary working state; when a review closes, durable decisions must live in canonical documentation and the review artifact is deleted.
+- [`../../AGENTS.md`](../../AGENTS.md), `Implementation quality` — obsolete comments and replaced logic/documentation should be removed rather than retained after their replacement is established.
+- [`verify-unit-impact-correction.md`](./verify-unit-impact-correction.md), bounded Playwright inventory decision — `playwright.lanes.test.ts` owns only root app specs, explicit Storybook/visual/release subtrees, and colocated browser/visual specs; an arbitrary nested other subtree is outside that scan.
+
+Risk: the final implementation is correct, but the durable source of truth becomes internally contradictory and depends on review artifacts that are intentionally non-permanent. Future verifier maintenance could reintroduce the broad Playwright predicate or misread historical RED-state commentary as current contract.
+
+Required final state:
+
+- durable verifier implementation/test/workflow comments cite canonical testing documents, not resolved owner `REVIEW.md` files;
+- remove or rewrite historical "current unfixed" / expected-RED commentary that is no longer true in the final branch while preserving useful oracle/mechanism explanations;
+- correct the Pass G accepted-over-selection statement so it names only the real Playwright inventory populations and explicitly does not claim arbitrary nested `tests/e2e/<other-subtree>/**/*.spec.ts` ownership by `playwright.lanes.test.ts`;
+- do not change production planner behavior, test expectations, lane ownership, CI topology, or benchmark measurements while doing this cleanup;
+- after the cleanup is re-reviewed, delete this `docs/testing/REVIEW.md` as the last temporary review artifact.
+
+Verification:
+
+- inspect the touched verifier comments/docs against `verify-target-architecture.md` and `verify-unit-impact-correction.md`;
+- confirm no durable verifier implementation/test/workflow comment relies on the resolved owner `REVIEW.md` artifacts;
+- confirm the Pass G Playwright wording agrees with the existing positive `appSmoke.spec.ts` row and negative `tests/e2e/other/example.spec.ts` row;
+- formatting/document checks only as needed; no behavioral verifier rerun is required because this finding must not change executable behavior.
 
 ## Minor issues
 
@@ -62,5 +61,9 @@ None.
 
 ## Items not required
 
-- Do not rerun every expensive child proof locally; only planner/resolver/benchmark cases invalidated by the final correction and synchronization are required before PR publication.
-- A standalone benchmark framework or historical metrics database is not required.
+- Do not reopen Pass A-F architecture, Pass C ownership mechanisms, mutation/release mappings, CI topology, or planner performance work.
+- Do not rerun browser/release/mutation proof for this documentation/comment-only cleanup.
+
+## Unresolved questions
+
+None.
