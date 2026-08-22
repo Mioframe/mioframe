@@ -1,10 +1,10 @@
 # Verify unit-impact correction
 
-Status: **accepted architecture; application-E2E inventory alignment closed; one local Vitest test-shape implementation mismatch remains under review**.
+Status: **implemented and architect-reviewed**.
 
-This document narrows the unit-impact contract in `verify-target-architecture.md`. It separates real Vitest test discovery from dependency-input eligibility and defines the external ownership mechanisms required by current repository tests. It does not introduce a second dependency graph or a generic repository dependency system.
+This document narrows the unit-impact contract in `verify-target-architecture.md`. It separates real Vitest test discovery from dependency-input eligibility and defines the external ownership mechanisms required by the current repository. It does not introduce a second dependency graph or a generic repository dependency system.
 
-`docs/testing/verify-app-e2e-discovery-correction.md` owns the physical application Playwright collection contract that makes the root application inventory below truthful.
+`docs/testing/verify-app-e2e-discovery-correction.md` separately owns the physical application Playwright collection contract used by root application inventory proof.
 
 ## Problem
 
@@ -19,7 +19,7 @@ Ordinary import ownership is delegated to Vitest. Some current tests also observ
 
 ### 1. Direct Vitest discovery is exact
 
-The current direct Vitest test population comes from `vitest.config.ts`:
+The direct Vitest test population comes from `vitest.config.ts`:
 
 ```text
 src/**/*.test.ts
@@ -33,7 +33,14 @@ eslint.config.test.ts
 
 Playwright `*.spec.ts` proof is never a direct Vitest test merely because it is TypeScript.
 
-Implementation rule: `isTestShapedPath()` must mirror this matrix literally. In particular, `src/**/*.test.mjs` and `config/**/*.test.mjs` are not direct Vitest tests. This exactness is currently an open local implementation finding under `scripts/lib/REVIEW.md`; it does not change the architecture.
+`isTestShapedPath()` mirrors this matrix literally:
+
+- `src/**` / `config/**` → `.test.ts` only;
+- `scripts/**` → `.test.ts` or `.test.mjs`;
+- `tests/e2e/**` → `.test.mjs` only;
+- exact root `eslint.config.test.ts` and `playwright.<name>.test.ts` remain supported.
+
+In particular, `src/**/*.test.mjs` and `config/**/*.test.mjs` are not direct Vitest tests.
 
 ### 2. Ordinary dependency inputs are repository-wide
 
@@ -44,6 +51,8 @@ vitest related <inputs...>
 ```
 
 regardless of whether it lives under `src/`, `config/`, `scripts/`, `tests/e2e/`, or repository root.
+
+A path may therefore be invalid as a direct test shape while still being a truthful ordinary dependency input. For example, `src/example.test.mjs` is not a direct Vitest test but remains a plausible `.mjs` source/support input for `vitest related`.
 
 A valid ordinary input with zero Vitest owners may produce zero related tests. Do not force full unit merely because the import graph has no unit owner.
 
@@ -58,7 +67,7 @@ Do not duplicate an owner in external metadata when a real import relation lets 
 Examples:
 
 - `postcss.config.js → config/postcss.config.test.ts` is ordinary import ownership;
-- `vite.config.ts → scripts/release/viteBuildDate.test.mjs` is ordinary import ownership and must not be duplicated as an external mapping.
+- `vite.config.ts → scripts/release/viteBuildDate.test.mjs` is ordinary import ownership and is not duplicated as an external mapping.
 
 ### 4. Exact external ownership is additive and status-aware
 
@@ -86,7 +95,7 @@ Confirmed examples include:
 - `.gitignore → scripts/agentEnvironment.test.mjs`;
 - `eslint.config.mjs → eslint.config.test.ts` through ESLint runtime discovery;
 - `vite.config.ts → config/viteConfigFixtureImport.test.ts` direct read;
-- the forbidden legacy `src/shared/lib/md/tokens.css` existence contract → Material token proof;
+- forbidden legacy `src/shared/lib/md/tokens.css` existence contract → Material token proof;
 - fixed shared/style sources read directly by their owning tests.
 
 Do not manufacture a mapping from temporary test fixtures or from an already import-reachable relation.
@@ -95,17 +104,9 @@ Do not manufacture a mapping from temporary test fixtures or from an already imp
 
 A Vitest test that deterministically scans a repository population owns that set even without an import edge.
 
-Represent each real scan with the smallest local predicate matching the scanner's actual population. Do not:
+Represent each real scan with the smallest local predicate matching the scanner's actual population. Do not map every scanned file individually, run full unit for a broad root, generate a dependency graph, or reuse a broader neighboring category for convenience.
 
-- map every scanned file individually;
-- run full unit for every file under a broad root;
-- create a generated dependency graph;
-- reuse a broader neighboring category merely for convenience.
-
-Every scan predicate needs:
-
-- a representative positive inside the actual scanned population;
-- a nearby negative outside it.
+Each scan predicate needs a representative positive inside its real population and a nearby negative outside it.
 
 Confirmed scan owners:
 
@@ -129,15 +130,13 @@ Confirmed scan owners:
 7. `scripts/lib/e2eProjectApplicability.test.ts`
    - direct root application `tests/e2e/*.spec.ts` applicability inventory;
 8. `scripts/lib/storybookBehaviorRisk.test.ts`
-   - its actual Storybook behavior spec inventories;
+   - its real Storybook behavior spec inventories;
 9. `scripts/lib/visualRisk.test.ts`
-   - its actual colocated visual inventory.
+   - its real colocated visual inventory.
 
 ### 6. Application-E2E inventory is physically root-only
 
-The root application scan predicates above are not merely local conventions anymore.
-
-`docs/testing/verify-app-e2e-discovery-correction.md` establishes the real Playwright config contract:
+The root application scan predicates are tied to the real Playwright config contract in `docs/testing/verify-app-e2e-discovery-correction.md`:
 
 ```text
 playwright.config.ts
@@ -145,20 +144,13 @@ testDir: ./tests/e2e
 testMatch: **/tests/e2e/*.spec.ts
 ```
 
-Real Playwright `--list` proof confirmed:
-
-- root `tests/e2e/appSmoke.spec.ts` is app-collected;
-- temporary `tests/e2e/other/example.spec.ts` is not app-collected;
-- temporary root `tests/e2e/example.test.mjs` is not app-collected;
-- Storybook/visual/release nested specs are not app-collected.
-
-Therefore `tests/e2e/other/example.spec.ts` is a valid adjacent-negative case for the root application bounded scans because it is outside both the scanners' enumerated population **and** the physical application lane.
+The physical config is root-only. The application-E2E correction document currently owns one reopened planner/proof-safety alignment issue; that does not reopen unit-impact architecture itself.
 
 The broader `isPlaywrightOnlyProofPath` concern remains separate: Playwright-owned `*.spec.ts` paths must not become ordinary Vitest dependency inputs merely because they have a `.ts` suffix.
 
 ### 7. External-ownership audit is semantic
 
-Audit the complete current Vitest-owned population for repository observation outside the import graph, including:
+Audit the current Vitest-owned population for repository observation outside the import graph, including:
 
 - `node:fs` / `node:fs/promises` reads and existence/stat/access checks;
 - deterministic `readdir*` scans;
@@ -175,8 +167,6 @@ Classify each candidate as exactly one of:
 - unrelated/non-unit.
 
 Search expressions are discovery aids, not the audit boundary.
-
-The post-`develop` synchronization audit found no additional external ownership mechanism or relation beyond the recorded set.
 
 ### 8. Full-unit fallback remains status/infrastructure safety
 
@@ -197,6 +187,8 @@ Do not turn arbitrary root config files or broad scanned directories into full-u
 | Mechanism | Representative case | Planner ownership | Required evidence |
 | --- | --- | --- | --- |
 | direct changed Vitest test | `scripts/lib/unitRisk.test.ts` | select test itself | focused unit invocation |
+| direct discovery negative | `src/example.test.mjs` | not direct test | owner-validation negative |
+| unsupported test-shaped ordinary input | `src/example.test.mjs` | pass source to `vitest related` | planner overcorrection guard |
 | ordinary import dependency | `postcss.config.js` | pass source to `vitest related` | real related owner selected |
 | cross-root ordinary import | `vite.config.ts → viteBuildDate.test.mjs` | source only | real related owner selected |
 | `tests/e2e/**` ordinary helper | managed release fixture helper | pass helper | real related owner selected |
@@ -207,14 +199,14 @@ Do not turn arbitrary root config files or broad scanned directories into full-u
 | bounded source scan | source import-boundary tests | scan owner | representative scanned change |
 | bounded Material token scan | component `tokens.css` | token scan owner | representative token change |
 | root app inventory | `tests/e2e/appSmoke.spec.ts` | lane + registry/applicability inventory owners; never spec itself | real app collector + focused unit invocation |
-| outside app inventory | `tests/e2e/other/example.spec.ts` | no root-app inventory owner; never ordinary Vitest input | real collector excludes + planner negative |
+| outside app inventory | nested arbitrary app spec candidate | no root-app inventory owner; never ordinary Vitest input | root-only collector/planner negative |
 | unit-global infrastructure | `vitest.config.ts` etc. | full unit | planner proof |
 
-## Required proof discipline
+## Proof result
 
-For materially changed unit-impact proof, use a fresh test-author context before implementation. Pure planner assertions are insufficient when ownership is delegated to a real resolver such as Vitest or Playwright; representative real resolver/tool probes are required.
+Fresh test-author proof for the final direct-test discovery mismatch established RED for unsupported `src/**/*.test.mjs` and `config/**/*.test.mjs` external-owner paths. The implementation then made the exact discovery matrix green while preserving ordinary dependency-input pass-through. Focused unit proof and type-check passed.
 
-Accepted delegated proof includes real `vitest related` cases for ordinary imports and the real Playwright collector proof for application physical discovery.
+Delegated ownership continues to require representative real resolver/tool proof rather than pure planner assertions when practical.
 
 ## Forbidden
 
@@ -227,18 +219,6 @@ Accepted delegated proof includes real `vitest related` cases for ordinary impor
 - treating arbitrary Playwright `*.spec.ts` as ordinary Vitest input;
 - treating `src/**/*.test.mjs` / `config/**/*.test.mjs` as direct Vitest tests contrary to `vitest.config.ts`.
 
-## Current implementation status
+## Closure
 
-Implemented and accepted:
-
-- repository-wide ordinary input delegation;
-- additive/status-aware exact ownership;
-- bounded scan ownership;
-- runtime/existence ownership;
-- real Playwright root-only application discovery alignment.
-
-Still open under `scripts/lib/REVIEW.md`:
-
-- make direct `isTestShapedPath()` recognition literally match the Vitest include matrix.
-
-No architecture redesign is required for that remaining local correction.
+Unit-impact architecture and the direct Vitest discovery correction are closed. Remaining verifier-modernization findings, if any, are tracked separately in `scripts/lib/REVIEW.md` and must not be used to reopen this unit contract without new repository evidence.
