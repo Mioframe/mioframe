@@ -1,4 +1,4 @@
-# Database virtualization collection API implementation preflight
+# Database virtualization collection API correction preflight
 
 Status: **ready**.
 
@@ -6,353 +6,260 @@ Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `doc
 
 ## Goal
 
-Replace the current `useVirtualAxis` capability implementation with the selected minimal `useVirtualCollection` API and prove both the shared public contract and the database native-table consumer before production migration.
-
-Do not migrate production database rendering or implement secondary performance optimizations.
+Correct the existing `useVirtualCollection` implementation/proof without changing the accepted architecture or migrating production database rendering.
 
 ## Confirmed current state
 
-- `@tanstack/vue-virtual` is already installed on the selected `3.13.x` line.
-- `src/shared/ui/virtualization` currently contains the superseded `useVirtualAxis` adapter plus generic list/grid fixtures/tests.
-- `DatabaseVirtualizationCapabilityFixture.vue` currently consumes the old adapter and does not yet represent the final shared API contract.
-- Production `DatabaseDataTable.vue` remains unchanged.
+- `useVirtualCollection` is implemented and is the only shared virtualization API.
+- database capability consumes only the shared public entry point and uses actual `MDTable`.
+- current browser corpus passes, but several assertions prove DOM effects rather than the public virtual geometry contract.
+- production database components remain unchanged.
 
-## Public API
+## Files to update
 
-Create/replace with:
+Shared implementation/proof:
 
 - `src/shared/ui/virtualization/useVirtualCollection.ts`
-- `src/shared/ui/virtualization/index.ts`
-
-Conceptual contract:
-
-```ts
-import type { ComputedRef, MaybeRefOrGetter, ObjectDirective } from 'vue';
-
-type VirtualCollectionAxis = 'vertical' | 'horizontal';
-type VirtualCollectionKey = string | number | bigint;
-type EstimateSize<T> = number | ((value: T, index: number) => number);
-
-interface UseVirtualCollectionOptions<T, TKey extends VirtualCollectionKey> {
-  root: MaybeRefOrGetter<HTMLElement | null | undefined>;
-  key: (value: T, index: number) => TKey;
-  estimateSize: EstimateSize<T>;
-  axis?: VirtualCollectionAxis;
-  overscan?: number;
-  surfaceOffset?: MaybeRefOrGetter<number>;
-}
-
-interface VirtualCollectionItem<T, TKey extends VirtualCollectionKey> {
-  index: number;
-  key: TKey;
-  value: T;
-  offset: number;
-  size: number;
-}
-
-interface UseVirtualCollectionResult<T, TKey extends VirtualCollectionKey> {
-  items: Readonly<ComputedRef<readonly VirtualCollectionItem<T, TKey>[]>>;
-  totalSize: Readonly<ComputedRef<number>>;
-  leadingSize: Readonly<ComputedRef<number>>;
-  trailingSize: Readonly<ComputedRef<number>>;
-  measure: ObjectDirective<HTMLElement, VirtualCollectionItem<T, TKey>>;
-}
-
-function useVirtualCollection<T, TKey extends VirtualCollectionKey>(
-  source: MaybeRefOrGetter<readonly T[]>,
-  options: UseVirtualCollectionOptions<T, TKey>,
-): UseVirtualCollectionResult<T, TKey>;
-```
-
-Use repository naming/type conventions where exact Vue typing requires a type-only equivalent, but do not add public capabilities beyond this contract.
-
-## Internal mapping
-
-Use exactly one TanStack `useVirtualizer` per `useVirtualCollection` call.
-
-Map:
-
-- `count` from current source length;
-- `getItemKey(index)` from `options.key(source[index], index)`;
-- `getScrollElement` from `options.root` via normal Vue reactivity;
-- `horizontal` from `axis === 'horizontal'`;
-- `estimateSize(index)` from numeric estimate or `(value, index)` callback;
-- `overscan` directly when provided;
-- TanStack `scrollMargin` from current `surfaceOffset`.
-
-Returned `items` map current TanStack virtual items back to current source values.
-
-Public `offset` is collection-surface-relative:
-
-```text
-virtualItem.start - surfaceOffset
-```
-
-`totalSize` is the collection extent.
-
-For a non-empty current virtual range:
-
-```text
-leadingSize = first.offset
-trailingSize = totalSize - (last.offset + last.size)
-```
-
-Clamp only unavoidable floating-point/browser residuals at zero if needed; do not silently normalize arbitrary invalid configuration.
-
-For an empty virtual range, leading/trailing are zero.
-
-## Measurement directive
-
-`measure` is created per composable instance and is the only public element-measurement binding.
-
-Required behavior:
-
-### `mounted`
-
-- receive the bound current `VirtualCollectionItem`;
-- set/update the TanStack-required measurement index attribute on the actual element;
-- call the owning TanStack virtualizer's `measureElement(element)`.
-
-### `updated`
-
-- refresh the index attribute from the new binding value before measurement;
-- call `measureElement(element)` again so Vue element reuse/index remapping cannot preserve stale association.
-
-Do not require the consumer to bind any engine attribute or method.
-
-Do not build explicit element cleanup infrastructure. TanStack remains the element observer/cache owner. The shared browser proof must demonstrate virtual eviction and full fixture remount without stale observable behavior.
-
-Do not add:
-
-- element -> item maps;
-- independent ResizeObserver;
-- manual `resizeItem` state;
-- custom unobserve registry;
-- custom range/offset math.
-
-If the installed TanStack/Vue lifecycle proves that the directive cannot safely preserve association without one of those mechanisms, stop and record `not ready` rather than broadening the abstraction.
-
-## Root lifetime
-
-`root` may be null before mount.
-
-The public contract does not promise arbitrary live replacement of one non-null physical root with another while the collection instance remains alive. The collection/root owner should remount/recreate when root identity structurally changes.
-
-Do not add root discovery or root lifecycle machinery.
-
-## Required removal
-
-Delete the superseded shared implementation/proof:
-
-- `src/shared/ui/virtualization/useVirtualAxis.ts`
-- `src/shared/ui/virtualization/useVirtualAxis.test.ts`
-- `src/shared/ui/virtualization/VirtualAxisListFixture.vue`
-- `src/shared/ui/virtualization/VirtualAxisGridFixture.vue`
-- `src/shared/ui/virtualization/VirtualizationCapability.stories.ts`
-- `src/shared/ui/virtualization/VirtualizationCapability.browser.spec.ts`
-
-Replace `index.ts`; do not keep compatibility aliases for `useVirtualAxis`.
-
-## Shared proof files
-
-Create:
-
 - `src/shared/ui/virtualization/VirtualCollectionCapabilityFixture.vue`
-- `src/shared/ui/virtualization/VirtualCollectionCapability.stories.ts`
 - `src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts`
 
-Do not create a generic grid fixture.
-
-The shared fixture should use ordinary consumer-owned markup (`<ul>/<li>` or `<div>`) and the returned measurement directive.
-
-Required shared contracts:
-
-1. at least 10,000 logical items with bounded mounted item count;
-2. returned visible item values/keys/indices match source truth;
-3. directive creates no wrapper DOM and consumer template contains no explicit TanStack measurement binding;
-4. one mounted item grows and then shrinks, with observable geometry updating both times;
-5. stable-key reorder/remap followed by another resize updates the remapped item at its new index;
-6. deep scroll produces materially large `leadingSize` and correct visible logical item identity;
-7. unmount/remount of the fixture returns to correct behavior without page errors/stale geometry.
-
-Chromium owns this shared proof.
-
-## Database capability files
-
-Update:
+Database capability:
 
 - `src/entities/databaseData/DatabaseVirtualizationCapabilityFixture.vue`
-- `src/entities/databaseData/DatabaseVirtualizationCapability.stories.ts`
 - `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts`
 
-The database fixture must import only the shared public virtualization entry point, never `@tanstack/vue-virtual` directly.
+Evidence:
 
-Use actual `MDTable`.
+- `docs/database-virtualization-collection-api-result.md`
 
-Fixture defaults:
+Update stories only if a new deterministic story variant is necessary for the required proof.
 
-- at least 5,000 logical rows;
-- at least 300 logical properties;
-- one shared physical scroll root;
-- synthetic text/body data only;
-- viewport small enough that mounted rows/columns/cells are bounded.
+Do not change production database components, `MDTable.vue`, worker/service code, or dependency versions unless consistency is actually broken.
 
-Use:
+## Shared implementation correction
 
-- one vertical `useVirtualCollection` for rows;
-- one horizontal `useVirtualCollection` for properties;
-- returned row directive on real `<tr>`;
-- returned property directive on real `<th>`;
-- the exact same `columns.items` for header and all mounted rows;
-- top/bottom spacers from row leading/trailing size;
-- left/right spacers from property leading/trailing size;
-- the previously discovered phantom min-content box only if still required by native table layout.
+`readValue()` must validate index bounds independently from the value.
 
-No per-cell measurement state.
+A source such as:
 
-## Dynamic database sizing
+```ts
+const source: readonly (string | undefined)[] = ['a', undefined, 'c'];
+```
 
-### Rows
+has a valid value at index `1`.
 
-Provide deterministic controls that let one mounted row:
+Use an explicit integer/in-bounds check before reading the entry. Do not interpret `undefined` as missing.
 
-1. grow substantially;
-2. be observed at the larger consumed height;
-3. shrink back;
-4. be observed at the smaller consumed height.
+Do not add a validation framework or change the public API.
 
-Use observable browser geometry, not TanStack private cache fields.
+## Shared proof correction
 
-### Columns
+### Observable geometry exposure in fixture
 
-Change body content only; keep the header label unchanged.
+Expose deterministic test-only outputs derived only from the public `useVirtualCollection` result when needed, for example:
 
-Prove wider body content grows the native column and measured `<th>`.
+- current item `size` by stable key/index;
+- current item `offset`;
+- `totalSize`;
+- `leadingSize`;
+- `trailingSize`.
 
-After the property scrolls outside the virtual range and returns, use returned public item `size` as the remount minimum so width remains stable within a small browser tolerance.
+Do not expose the TanStack instance or private state.
 
-Do not implement live shrink/reset of discovered column width.
+### Grow/shrink
 
-## Deep 2D database proof
+For a mounted vertical item:
 
-### Vertical
+1. capture DOM height and public item `size` or following public offset;
+2. grow content;
+3. prove DOM height grows;
+4. prove public virtual geometry grows accordingly;
+5. shrink content;
+6. prove both DOM height and public geometry shrink again.
 
-Programmatically scroll near the vertical end and assert:
+The test must fail if only DOM layout changes while measurement state stays stale.
 
-- mounted rows remain bounded;
-- a logical row near the end is mounted;
-- full logical `aria-rowindex` is correct;
-- top spacer/leading extent is materially large;
-- early rows are not materialized.
+For horizontal dynamic growth, likewise prove public item `size` changes, not only `boundingBox().width`.
 
-### Horizontal
+### Stable-key remap
 
-Programmatically scroll near the horizontal end and assert:
+Use one stable item identity.
 
-- mounted columns/cells remain bounded;
-- a logical property near the end (for example index >= 290) is mounted in header and body;
-- full logical `aria-colindex` is correct;
-- left spacer/leading extent is materially large;
-- early properties are no longer mounted;
-- header/body property ranges agree.
+1. grow and prove its public `size`;
+2. reorder so the stable item moves to another index;
+3. scroll it back into range;
+4. verify returned `{ key, index, value }` reflects the new position;
+5. grow it again;
+6. prove its public geometry increases at the new index.
 
-Merely unmounting an early column is not deep horizontal proof.
+Do not use physical height alone as the final proof.
 
-## Accessibility
+### `surfaceOffset`
 
-On initial and deep ranges prove:
+Add a deterministic non-zero `surfaceOffset` scenario.
 
-- native table/row/columnheader/cell semantics;
-- complete logical `aria-rowcount`;
-- complete logical `aria-colcount`;
-- correct logical row/column indices;
-- virtual spacer rows/cells excluded from logical semantics.
+Prove:
 
-No ARIA grid conversion.
+- public item `offset` is collection-surface-relative rather than root-relative;
+- `leadingSize` is collection-relative;
+- `totalSize` remains the collection extent;
+- `trailingSize` remains correct;
+- no consumer subtracts engine scroll margin manually.
 
-## Playwright configuration
+Use actual layout content before the virtual collection or another faithful browser setup so the non-zero offset corresponds to a real collection surface position.
 
-Update `playwright.storybook.config.ts`:
+### Deep extents
 
-- Chromium ordinary Storybook behavior discovery remains unchanged and therefore runs both shared/database owner-local browser specs;
-- `firefox-virtualization-capability` must match only `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts`;
-- remove references to deleted shared capability files.
+At deep scroll, assert both:
 
-Do not broaden Firefox to the full Storybook suite.
+- materially large/correct `leadingSize`;
+- `trailingSize` consistent with the last mounted item's public `offset + size` and `totalSize`.
 
-## Result artifact
+Do not inspect TanStack internals.
 
-Create `docs/database-virtualization-collection-api-result.md` recording:
+### Source value contract
 
-- resolved `@tanstack/vue-virtual` and transitive core versions;
-- Playwright/Chromium/Firefox versions;
-- exact final test counts/outcomes by project;
-- shared API contract matrix;
-- database native-table contract matrix;
-- whether phantom spacer normalization remains required;
-- whether Firefox real-`MDTable` dynamic row measurement passes;
-- whether the shared implementation stayed free of registry/observer/cache/option-passthrough growth;
-- final `ready` or `not ready` verdict.
+Add the lowest faithful proof that a valid `undefined` source entry can participate in the collection without `RangeError` and with the correct stable key/value semantics. Use unit proof only if that contract can be proven faithfully without browser behavior; otherwise keep it in the shared fixture/spec.
 
-Do not reuse stale counts/claims from the superseded capability result.
+## Database proof correction
+
+### Row grow/shrink
+
+In addition to `<tr>` bounding geometry, expose/observe the matching public row item geometry.
+
+Prove:
+
+- row public `size` grows after content growth;
+- row public `size` shrinks after content shrink;
+- subsequent row offset/total extent changes consistently when useful.
+
+This corrected assertion must run in Chromium and the narrow Firefox project.
+
+### Column body-driven growth
+
+Prove all of:
+
+1. header text does not change;
+2. body content widens the native column;
+3. `<th>` physical width grows;
+4. corresponding public column item `size` grows.
+
+### Column remount minimum
+
+Correct the existing false-positive path:
+
+1. widen one visible property through body content;
+2. wait until public column `size` reflects the larger width;
+3. record that public size;
+4. scroll the property completely out of range;
+5. while it is unmounted, remove/reset the body-content widening condition;
+6. scroll back;
+7. prove the property remounts with `min-width` from the previously measured public `size` and remains within tolerance of the recorded width.
+
+The test must fail if native body content alone is responsible for the remounted width.
+
+### Bounded cell work
+
+Count actual mounted logical data cells explicitly, excluding spacer cells.
+
+At initial range and after deep 2D scrolling prove:
+
+- mounted rows are bounded;
+- mounted columns are bounded;
+- mounted data cells are bounded by approximately mounted rows × mounted columns and are far below the 5,000 × 300 logical cross product.
+
+Use a deterministic generous upper bound derived from fixture viewport/overscan rather than an exact incidental count.
+
+### Above-viewport anchor correction
+
+Add a deterministic scenario:
+
+1. scroll to a position where a measured row is above the viewport and a stable visible anchor row can be identified;
+2. resize the above-viewport row;
+3. prove virtual geometry updates;
+4. prove the visible anchor's viewport position changes by less than one representative row height / the documented bounded tolerance.
+
+Do not require pixel-exact anchoring.
+
+Run this in Chromium and Firefox because the database capability spec is the same narrow cross-engine proof owner.
+
+## Existing accepted behavior to preserve
+
+- actual `MDTable` usage;
+- dedicated fixed-size wrapper as the one physical scroll root;
+- phantom min-content horizontal spacer normalization where required;
+- 5,000 × 300 logical fixture scale;
+- shared header/body property range;
+- native table accessibility semantics;
+- Firefox project matched only to the database capability spec;
+- no direct TanStack import from `databaseData`.
 
 ## TEST IMPACT
 
-- Shared public collection/measurement API: primary proof `VirtualCollectionCapability.browser.spec.ts`, Chromium.
-- Shared dynamic measurement/remap/lifecycle: same owner-local browser proof.
-- Database native-table geometry: primary proof `DatabaseVirtualizationCapability.browser.spec.ts`, Chromium + narrow Firefox.
-- Structural scalability: observable bounded mounted item/row/column/cell counts; no wall-clock budget in capability task.
-- Accessibility: database browser proof.
-- Unit validation/API-shape suite for the old wrapper: removed; do not replace it unless a new pure contract actually requires unit proof.
-- Product E2E/performance timing: deferred to production migration.
+- Shared geometry contract: primary owner `VirtualCollectionCapability.browser.spec.ts` in Chromium.
+- Valid `undefined` source value: lowest faithful unit or shared-browser proof.
+- Shared `surfaceOffset`/leading/trailing geometry: shared browser proof.
+- Shared remap measurement: shared browser proof using public geometry.
+- Database dynamic row/column measurement: database browser proof in Chromium + Firefox using public geometry plus DOM geometry.
+- Database bounded 2D work: database browser proof including explicit mounted-cell count.
+- Database column remount minimum: database browser proof with widening content removed before remount.
+- Above-viewport scroll correction: database browser proof in Chromium + Firefox.
+- Product E2E/performance timing remains deferred.
 
 ## Verification
 
-Run verifier-managed checks:
+Run verifier-managed focused checks for every changed file, including at minimum:
 
 ```bash
 pnpm verify --only type-check --files \
   src/shared/ui/virtualization/useVirtualCollection.ts \
-  src/shared/ui/virtualization/index.ts \
   src/shared/ui/virtualization/VirtualCollectionCapabilityFixture.vue \
-  src/shared/ui/virtualization/VirtualCollectionCapability.stories.ts \
   src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts \
   src/entities/databaseData/DatabaseVirtualizationCapabilityFixture.vue \
-  src/entities/databaseData/DatabaseVirtualizationCapability.stories.ts \
-  src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts \
-  playwright.storybook.config.ts
+  src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts
 
 pnpm verify --only storybook-behavior --files \
   src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts \
   src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts
-
-pnpm verify --only storybook-build --files \
-  src/shared/ui/virtualization/VirtualCollectionCapability.stories.ts \
-  src/entities/databaseData/DatabaseVirtualizationCapability.stories.ts \
-  playwright.storybook.config.ts
 ```
 
-Run applicable format/eslint/oxlint checks and final `pnpm verify` if focused planning does not cover the complete task diff.
+Run the verifier-selected unit lane if a focused unit test is added for the generic source-value contract.
 
-## Do not change
+Run applicable storybook-build/static, format, ESLint/Oxlint checks and final `pnpm verify` when focused planning does not cover the complete correction diff.
 
-- `DatabaseDataTable.vue`;
-- `DatabaseViewLayout.vue`;
-- `DatabaseViewWidget.vue`;
-- `EditableInlineValue.vue`;
-- relation production components;
-- worker/service code;
-- `MDTable.vue` or Material components;
-- package dependency versions unless consistency is actually broken.
+Do not rely on retries, sleeps, force, or timeout inflation.
+
+## Result artifact
+
+Rewrite `docs/database-virtualization-collection-api-result.md` from the final evidence.
+
+It must include:
+
+- exact final test counts/outcomes;
+- PASS/FAIL for public-geometry grow/shrink;
+- PASS/FAIL for post-remap public geometry;
+- PASS/FAIL for non-zero `surfaceOffset` and `trailingSize`;
+- PASS/FAIL for valid `undefined` source values;
+- PASS/FAIL for public column size growth and remount minimum after widening content is removed;
+- PASS/FAIL for bounded mounted data-cell count;
+- PASS/FAIL for above-viewport anchor stability;
+- Chromium/Firefox results;
+- retained native-table normalization;
+- final `ready` or `not ready` verdict.
+
+Do not retain the previous `Ready` verdict unless every corrected contract passes.
+
+## Forbidden
+
+- public API expansion;
+- TanStack instance/private cache exposure;
+- tests that prove only DOM size while claiming virtual measurement correctness;
+- independent observer/cache/registry/range state;
+- production database migration;
+- worker/query/paging/index changes;
+- fallback rendering architecture work;
+- broad retries, sleeps, force, or timeout inflation.
 
 ## Stop conditions
 
-Stop and record `not ready` without inventing another architecture if:
-
-- `useVirtualCollection` needs a second element registry/observer/geometry cache;
-- correct behavior requires arbitrary TanStack options to become public;
-- the measurement directive cannot preserve correct remapped-item association using engine-owned lifecycle;
-- real `MDTable` dynamic `<tr>` geometry cannot work in Firefox without fixed heights or another measurement engine;
-- deep horizontal spacer geometry is incorrect in either required engine;
-- partial native-table accessibility cannot represent deep logical positions;
-- implementation starts growing a generic grid/rendering component or functional VNode wrapper.
+Stop and record `not ready` if any corrected public-geometry contract cannot be proven without exposing TanStack internals or adding a second lifecycle/geometry system.
