@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **application-E2E discovery correction closed; PR publication remains blocked by release-impact and unit-discovery findings**.
+Status: **application-E2E and release-impact corrections closed; PR publication remains blocked by one unit-discovery major and final comment/TSDoc cleanup**.
 
 This document owns verifier-modernization packaging, correction order, and final integration state. It does not redefine lane semantics owned by the architecture documents.
 
@@ -12,9 +12,9 @@ This document owns verifier-modernization packaging, correction order, and final
 - `docs/testing/verify-change-classification.md` — repository metadata classification;
 - `docs/testing/verify-unit-impact-correction.md` — unit-impact ownership amendment;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E physical-discovery correction;
-- `docs/testing/verify-release-impact-correction.md` — current ready Pass E release-consumer correction;
+- `docs/testing/verify-release-impact-correction.md` — closed Pass E release-impact correction;
 - `docs/testing/verify-modernization.md` — implementation/benchmark progress record;
-- `scripts/lib/REVIEW.md` — currently active source-level findings;
+- `scripts/lib/REVIEW.md` — active remaining source-level findings;
 - `.agents/skills/verification/SKILL.md`, `test-first`, and `test-authoring` — execution/proof workflow.
 
 Architecture/status/benchmark documents are architect-owned. Coding and test-author agents must not edit them unless explicitly assigned.
@@ -33,63 +33,45 @@ Synchronized `develop` baseline:
 13ae220900a2a724c867b01b5eb1f045c2a1d857
 ```
 
-No additional sync prerequisite is currently known. PR publication remains blocked by `scripts/lib/REVIEW.md`.
+PR publication remains blocked by the active `scripts/lib/REVIEW.md` findings.
 
-## Implemented passes
+## Closed corrections
 
-The branch still contains one coherent modernization result:
+### Application-E2E physical discovery
 
-```text
-Pass A — bounded agent-facing output
-Pass B — repository metadata/change classification
-Pass C — durable unit impact
-Pass D — explicit mutation ownership
-Pass E — source-impact release planning
-Pass F — exact-head CI integration
-Pass G — representative benchmark / finish validation
-```
-
-Passes are reviewed as one final system; green focused proof does not replace semantic review.
-
-## Current review state
-
-### Closed — application-E2E physical discovery
-
-`docs/testing/verify-app-e2e-discovery-correction.md` is implemented and architect-reviewed.
-
-Final physical contract:
+Closed and architect-reviewed.
 
 ```text
 application Playwright
 → direct tests/e2e/*.spec.ts only
 ```
 
-The real `playwright.config.ts` now enforces this with root-only `testMatch`; project `testIgnore` owns only desktop/mobile applicability. A real Playwright `--list` proof demonstrated meaningful RED before the fix and GREEN after it.
+The real `playwright.config.ts` enforces the boundary and a real Playwright `--list` proof established meaningful RED before the fix and GREEN after it.
 
-The existing root-only E2E scenario/applicability inventories and corresponding unit bounded-scan ownership are therefore now aligned with physical Playwright discovery.
+### Pass E release-impact consumer model
 
-### Open blocker — Pass E release-impact consumer model
+Closed and architect-reviewed against `docs/testing/verify-release-impact-correction.md`.
 
-Owner: `scripts/lib/releaseRisk.ts` and its proof.
+The release planner now:
 
-Architecture for this correction is resolved in `docs/testing/verify-release-impact-correction.md`. The correction must audit the closed consumer population starting from the six real `RELEASE_CHECK_COMMANDS`, not add ad-hoc path exceptions.
+- starts from the six real `RELEASE_CHECK_COMMANDS` contracts;
+- exact-maps release runner/config/server/shared-spec-support seams to their actual consumers;
+- maps the publisher seam to `publisher-node-import + managed-updates` where real consumers require both;
+- excludes ordinary Vitest proof and declaration-only files before broad runtime fallbacks;
+- preserves full fail-closed selection for unknown significant release runtime/implementation input;
+- validates empty/duplicate/missing exact mapping state before planning;
+- keeps `release-version` independent;
+- introduces no generic dependency graph, new release proof, or CI topology change.
 
-Required outcomes include:
+Focused independent planner proof and type-check were green. Exact-head CI remains the final automatic gate after PR publication.
 
-- release execution infrastructure such as `scripts/e2eReleaseContainer.mjs`, `scripts/playwrightContainer.ts`, `playwright.release.config.ts`, and `scripts/release/artifactServer.mjs` selects its actual browser release consumers;
-- shared runtime support actually imported by release specs, including the confirmed `tests/e2e/helpers.ts` relation, is included in the consumer audit;
-- ordinary Vitest-only proof and declaration-only type files do not inherit release-impact merely by adjacency/directory;
-- conservative fallback under release implementation boundaries excludes proof/type-only files while retaining unknown implementation/runtime safety;
-- exact mapping integrity rejects duplicate source ownership and empty consumer sets before first-match resolution can silently drop ownership;
-- independent proof rejects both silent release-input omission and proof/type-only over-selection.
+## Remaining findings
 
-This is the next coding correction.
-
-### Open major — exact Vitest direct-test discovery
+### Major — exact Vitest direct-test discovery
 
 Owner: `scripts/lib/unitRisk.ts`.
 
-`isTestShapedPath()` must mirror the real `vitest.config.ts` include matrix exactly:
+`isTestShapedPath()` must mirror the current `vitest.config.ts` include matrix exactly:
 
 ```text
 src/**/*.test.ts
@@ -103,77 +85,80 @@ eslint.config.test.ts
 
 In particular, `src/**/*.test.mjs` and `config/**/*.test.mjs` are not direct Vitest tests.
 
-This is a local correction and must not introduce a new ownership abstraction.
+This is a narrow local correction. Do not introduce another discovery abstraction or reopen the broader Pass C ownership model.
 
-### Open minor — stale durable comments/TSDoc
+### Minor — stale durable comments/TSDoc
 
-After behavioral corrections, remove references to resolved temporary `REVIEW.md` state and obsolete RED narration from durable source/test/workflow comments. Fix `isSafeVisualExclusionPath()` TSDoc so it no longer claims blanket Markdown exclusion.
+After the unit-discovery correction:
 
-Do not change behavior to satisfy old comments.
+- remove references to resolved temporary `REVIEW.md` files;
+- remove obsolete `current unfixed` / expected-RED narration;
+- keep concise final-state rationale tied to canonical docs;
+- fix `isSafeVisualExclusionPath()` TSDoc so it no longer claims plain Markdown is excluded.
 
-## Correction order
+This cleanup must not change behavior.
 
-Use separate coding/test-author contexts for materially different ownership problems:
+## Remaining order
 
 ```text
-1. application-E2E physical discovery            CLOSED
-2. release-impact closed consumer correction     NEXT
-3. exact Vitest test-discovery predicate          local follow-up
-4. stale comment/TSDoc cleanup                    behavior-preserving
-5. architect refreshes affected benchmark/status
-6. full final semantic PR-level diff review
+1. exact Vitest direct-test predicate correction
+2. stale comment/TSDoc cleanup
+3. architect refreshes affected benchmark/status
+4. full final semantic PR-level diff review
+5. remove resolved REVIEW.md artifacts
+6. re-check branch against current develop
 7. publish PR to develop
 8. exact-head CI
-9. merge-readiness verdict
+9. record actual CI critical path / merge latency
+10. merge-readiness verdict
 ```
 
-Do not combine the release consumer audit with unrelated browser or mutation work.
+## Proof discipline
 
-## Proof-author discipline
-
-For behavior-changing proof:
+For the remaining behavior-changing unit correction:
 
 ```text
-accepted contract / TEST IMPACT
+accepted contract
 → fresh test-author context
-→ independent oracle + Must reject
-→ meaningful RED where applicable
+→ independent positive/negative matrix proof
+→ meaningful RED when applicable
 → separate implementation context
-→ GREEN focused proof
+→ focused GREEN
 → architect semantic review
 ```
 
-The implementer treats accepted assertions as read-only. If proof conflicts with architecture, return it to the test owner/architect rather than weakening it.
+The implementation agent treats accepted assertions as read-only.
 
 ## Final review boundary
 
-Before PR publication, the architect reviews the complete `develop...refactor/verify-modernization-finish` result for:
+Before PR publication, review the complete `develop...refactor/verify-modernization-finish` result for:
 
 - ownership and dependency direction;
 - physical proof discovery vs declared inventories;
-- status/fail-closed behavior;
+- fail-closed/status behavior;
 - unit/release/mutation source of truth;
 - removal of replaced inference;
-- independent proof quality;
-- agent-facing output boundedness/actionability;
+- proof independence;
+- verifier output boundedness/actionability;
 - release-version separation;
 - CI topology;
-- final benchmark consistency.
+- benchmark consistency.
 
 No active `REVIEW.md` may remain in the final PR diff.
 
-## PR and CI sequence
+## PR / CI sequence
 
 Only after semantic findings are closed:
 
 ```text
 final full-diff review
 → remove resolved REVIEW.md artifacts
-→ publish PR against develop
-→ apply required version-intent label
+→ compare with current develop
+→ publish PR
+→ apply release-intent/version label
 → inspect exact-head CI
-→ if autofix/materialization changes head, review the new head and its CI
-→ record actual CI critical path / merge latency
+→ if autofix/materialization changes head, review the new head and its new CI
+→ record real CI critical path / merge latency
 → merge-readiness decision
 ```
 
@@ -181,6 +166,4 @@ Exact-head GitHub CI is the authoritative automatic repository gate.
 
 ## Stop rule
 
-After exact-head CI is healthy and final review has no findings, stop verifier infrastructure modernization.
-
-Do not continue automatically with additional jobs, sharding, shared cross-job artifacts, generic dependency graphs, Nx/Turbo, universal registries, speculative E2E optimization, or permanent benchmark infrastructure.
+After exact-head CI is healthy and final review has no findings, stop verifier infrastructure modernization. Further jobs, sharding, cross-job artifacts, generic dependency graphs, task runners, universal registries, or speculative optimization require a separate measured need and architecture decision.
