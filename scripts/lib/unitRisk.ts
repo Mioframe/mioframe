@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 
+import { isRootAppE2ESpecPath } from './appE2EPaths.ts';
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 import type { ChangedPath } from './changedPaths.ts';
 
@@ -304,7 +305,6 @@ const COMPONENT_TOKENS_CSS_PATTERN = /^src\/shared\/ui\/material\/components\/[^
 const STORYBOOK_BEHAVIOR_CENTRAL_PREFIX = 'tests/e2e/storybook/';
 const COLOCATED_BROWSER_SPEC_SUFFIX = '.browser.spec.ts';
 const COLOCATED_VISUAL_SPEC_SUFFIX = '.visual.spec.ts';
-const APP_E2E_SPEC_DIR_PREFIX = 'tests/e2e/';
 
 // src/readRecoveryImportBoundary.test.ts and
 // src/features/fileSystemAccessImportBoundary.test.ts both recursively
@@ -317,19 +317,6 @@ function isNonTestBoundaryScanPath(filePath: string, prefix: string): boolean {
     (filePath.endsWith('.ts') || filePath.endsWith('.vue')) &&
     !filePath.includes('.test.')
   );
-}
-
-// scripts/lib/e2eRisk.test.ts and scripts/lib/e2eProjectApplicability.test.ts
-// each validate their registry against a NON-recursive readdirSync of
-// tests/e2e/*.spec.ts direct children only (findAppE2ESpecFiles/
-// findRootAppE2ESpecFiles), never the nested storybook/visual/release
-// subdirectories.
-function isRootAppE2ESpecPath(filePath: string): boolean {
-  if (!filePath.startsWith(APP_E2E_SPEC_DIR_PREFIX) || !filePath.endsWith('.spec.ts')) {
-    return false;
-  }
-
-  return !filePath.slice(APP_E2E_SPEC_DIR_PREFIX.length).includes('/');
 }
 
 const VISUAL_CENTRAL_PREFIX = 'tests/e2e/visual/';

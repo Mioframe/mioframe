@@ -20,9 +20,10 @@
     // import it without pulling the application's `tsconfig.app.json`
     // project into this one.
     "src/shared/service/appUpdate/channelContract.ts",
-    // playwright.config.ts resolves per-project testIgnore from this
-    // verifier-owned module; explicit entry needed for the same reason as
-    // channelContract.ts above.
+    // playwright.config.ts resolves root application-E2E collection and
+    // per-project testIgnore from these verifier-owned modules; explicit
+    // entries are needed for the same reason as channelContract.ts above.
+    "scripts/lib/appE2EPaths.ts",
     "scripts/lib/e2eProjectApplicability.ts"
   ],
   "compilerOptions": {

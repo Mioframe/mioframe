@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const APP_E2E_SPEC_DIR = 'tests/e2e';
-const APP_E2E_SPEC_PREFIX = `${APP_E2E_SPEC_DIR}/`;
+import { APP_E2E_SPEC_DIR, isRootAppE2ESpecPath } from './appE2EPaths.ts';
 
 /** Playwright project names this module resolves ignore lists for. */
 export const DESKTOP_PROJECT_NAME = 'chromium';
@@ -56,21 +55,6 @@ function isExistingFile(filePath: string): boolean {
   } catch {
     return false;
   }
-}
-
-/**
- * Check whether a path is a root-level application e2e spec: directly under
- * `tests/e2e/`, not in a nested lane directory (`visual/`, `release/`,
- * `storybook/`, or any other subdirectory).
- * @param filePath Repository-relative path.
- * @returns True when the path is a root app e2e spec file path shape.
- */
-function isRootAppE2ESpecPath(filePath: string): boolean {
-  if (!filePath.startsWith(APP_E2E_SPEC_PREFIX) || !filePath.endsWith('.spec.ts')) {
-    return false;
-  }
-
-  return !filePath.slice(APP_E2E_SPEC_PREFIX.length).includes('/');
 }
 
 function findRootAppE2ESpecFiles(specDir: string): string[] {

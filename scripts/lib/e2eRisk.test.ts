@@ -119,6 +119,14 @@ describe('root-only application E2E spec classification', () => {
     expect(plan.specs).toEqual([]);
   });
 
+  it('does not classify a direct Vitest-style test as application E2E support', () => {
+    expect(isAppE2ESupportPath('tests/e2e/example.test.ts')).toBe(false);
+  });
+
+  it('keeps an existing root test utility helper as application E2E support', () => {
+    expect(isAppE2ESupportPath('tests/e2e/reorderSurface.testUtils.ts')).toBe(true);
+  });
+
   it.each([
     'tests/e2e/storybook/example.spec.ts',
     'tests/e2e/visual/example.spec.ts',
@@ -137,6 +145,7 @@ describe('isFullLaneE2EInfrastructurePath', () => {
     expect(isFullLaneE2EInfrastructurePath('scripts/verify.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('scripts/lib/e2eRisk.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('scripts/lib/e2eProjectApplicability.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('scripts/lib/appE2EPaths.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('pnpm-lock.yaml')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('tsconfig.app.json')).toBe(true);
   });
@@ -303,6 +312,17 @@ describe('validateE2EScenarioRegistry', () => {
     expect(
       validation.errors.some((error) => error.includes('must not reference visual spec')),
     ).toBe(true);
+  });
+
+  it('rejects an existing non-root standalone spec while the complete root registry remains intact', () => {
+    const nonRootSpec = 'tests/e2e/release/productionArtifactSmoke.spec.ts';
+    const validation = validateE2EScenarioRegistry({
+      scenarios: E2E_SCENARIO_SCOPES,
+      standaloneSpecs: [...APP_E2E_STANDALONE_SPECS, nonRootSpec],
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.errors.some((error) => error.includes(nonRootSpec))).toBe(true);
   });
 
   it('fails when an existing app e2e spec is not covered by the registry or standalone list', () => {

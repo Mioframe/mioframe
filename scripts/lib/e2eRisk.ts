@@ -1,14 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { APP_E2E_SPEC_DIR, isRootAppE2ESpecPath } from './appE2EPaths.ts';
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 import { isNonRuntimeRepositoryMetadataPath } from './repositoryMetadata.ts';
 
 const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const RELEASE_SPEC_PREFIX = 'tests/e2e/release/';
 const STORYBOOK_BEHAVIOR_SPEC_PREFIX = 'tests/e2e/storybook/';
-const E2E_DIR_PREFIX = 'tests/e2e/';
-const APP_E2E_SPEC_DIR = 'tests/e2e';
+const E2E_DIR_PREFIX = `${APP_E2E_SPEC_DIR}/`;
 const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
 const PACKAGE_JSON_PATH = 'package.json';
 
@@ -20,6 +20,7 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
+  'scripts/lib/appE2EPaths.ts',
   'scripts/lib/e2eRisk.ts',
   'scripts/lib/e2eProjectApplicability.ts',
   'scripts/playwrightContainer.ts',
@@ -263,14 +264,7 @@ export function isStorybookBehaviorPath(filePath: string): boolean {
  * @returns True when the path is an app e2e spec file.
  */
 export function isAppE2ESpecPath(filePath: string): boolean {
-  return (
-    filePath.startsWith(E2E_DIR_PREFIX) &&
-    filePath.endsWith('.spec.ts') &&
-    path.posix.dirname(filePath) === APP_E2E_SPEC_DIR &&
-    !isVisualE2ESpecPath(filePath) &&
-    !isReleaseE2ESpecPath(filePath) &&
-    !isStorybookBehaviorPath(filePath)
-  );
+  return isRootAppE2ESpecPath(filePath);
 }
 
 /**
@@ -288,6 +282,8 @@ export function isAppE2ESupportPath(filePath: string): boolean {
     !isReleaseE2ESpecPath(filePath) &&
     !isStorybookBehaviorPath(filePath) &&
     !filePath.endsWith('.spec.ts') &&
+    !filePath.endsWith('.test.ts') &&
+    !filePath.endsWith('.test.mjs') &&
     filePath.endsWith('.ts')
   );
 }
@@ -382,8 +378,12 @@ export function validateE2EScenarioRegistry(
   const registrySpecs = getAllRegistrySpecs(scenarios).map(String);
 
   for (const spec of registrySpecs) {
-    if (isVisualE2ESpecPath(spec)) {
-      errors.push(`scenario registry must not reference visual spec ${spec}`);
+    if (!isRootAppE2ESpecPath(spec)) {
+      errors.push(
+        isVisualE2ESpecPath(spec)
+          ? `scenario registry must not reference visual spec ${spec}`
+          : `scenario registry must reference root app e2e spec ${spec}`,
+      );
       continue;
     }
 
@@ -393,8 +393,12 @@ export function validateE2EScenarioRegistry(
   }
 
   for (const spec of standaloneSpecs) {
-    if (isVisualE2ESpecPath(spec)) {
-      errors.push(`APP_E2E_STANDALONE_SPECS must not reference visual spec ${spec}`);
+    if (!isRootAppE2ESpecPath(spec)) {
+      errors.push(
+        isVisualE2ESpecPath(spec)
+          ? `APP_E2E_STANDALONE_SPECS must not reference visual spec ${spec}`
+          : `APP_E2E_STANDALONE_SPECS must reference root app e2e spec ${spec}`,
+      );
       continue;
     }
 

@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import toolingConfig from './config/tooling.json' with { type: 'json' };
+import { APP_E2E_SPEC_DIR, APP_E2E_TEST_MATCH } from './scripts/lib/appE2EPaths.ts';
 import {
   DESKTOP_PROJECT_NAME,
   getProjectIgnoredSpecs,
@@ -16,13 +17,13 @@ const previewURLPattern = new RegExp(
 );
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: `./${APP_E2E_SPEC_DIR}`,
   // Root-only application collection: direct tests/e2e/*.spec.ts files only.
   // See docs/testing/verify-app-e2e-discovery-correction.md -- this replaces
   // the former SHARED_TEST_IGNORE subtree-exclusion mechanism as the single
   // physical lane boundary between application e2e and the Storybook,
   // visual, and release lanes.
-  testMatch: '**/tests/e2e/*.spec.ts',
+  testMatch: APP_E2E_TEST_MATCH,
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

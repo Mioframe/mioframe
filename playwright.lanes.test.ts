@@ -168,16 +168,18 @@ describe('real Playwright collector boundary (application config)', () => {
       expect(listing).not.toContain(nestedProbeListingPath);
       expect(listing).not.toContain(path.basename(defaultShapeProbeSpec));
 
-      // Supplying a nested path as a Playwright CLI filter narrows the real
-      // collector; it cannot make that path bypass the configured testMatch.
+      // Supplying both a real root path and a nested path as Playwright CLI
+      // filters narrows the real collector; it cannot make the nested path
+      // bypass the configured testMatch.
       const filteredResult = spawnSync(
         process.execPath,
-        [...collectorArgs, nestedProbeSpec],
+        [...collectorArgs, 'tests/e2e/appSmoke.spec.ts', nestedProbeSpec],
         collectorOptions,
       );
 
-      expect(filteredResult.status).toBe(1);
-      expect(`${filteredResult.stdout}${filteredResult.stderr}`).toContain('No tests found');
+      expect(filteredResult.status).toBe(0);
+      expect(filteredResult.stderr).toBe('');
+      expect(filteredResult.stdout).toContain('appSmoke.spec.ts');
       expect(filteredResult.stdout).not.toContain(nestedProbeListingPath);
 
       // 4, 5, 6. Existing nested Storybook/visual/release specs must never
