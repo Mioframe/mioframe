@@ -140,10 +140,11 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 // - `config/tooling.json` (already covered by the existing "does not
 //   register config/tooling.json" / "resolves config/tooling.json alone"
 //   tests below): `vite.config.ts` has a real `import toolingConfig from
-//   './config/tooling.json' with { type: 'json' };`, and since
-//   `config/tooling.json` itself matches isOrdinaryUnitSourcePath's `src/`/
-//   `config/`/`scripts/` prefix check, it is already passed to Vitest
-//   related resolution directly regardless of vite.config.ts;
+//   './config/tooling.json' with { type: 'json' };`. Ordinary dependency-input
+//   eligibility is repository-wide for supported module/style/support shapes,
+//   so `config/tooling.json` is passed to Vitest related as an ordinary `.json`
+//   input. That real import relation needs no additional exact file-as-data
+//   mapping;
 // - `src/shared/ui/material/components/button/tokens.css`: `MDButton.vue`
 //   has a real `import './tokens.css';` (plain JS side-effect import,
 //   confirmed by direct read, line 15), and `MDButton.test.ts` has a real

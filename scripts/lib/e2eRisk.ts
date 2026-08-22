@@ -235,9 +235,10 @@ export function isVisualE2ESpecPath(filePath: string): boolean {
 
 /**
  * Check whether a changed file is a release-only e2e spec under
- * `tests/e2e/release/`. Release specs run against the production artifact
- * via `playwright.release.config.ts` / `pnpm verify --full`, not the
- * focused dev app e2e resolved here.
+ * `tests/e2e/release/`. Release specs belong to the separately owned release
+ * verification lane and run against the production artifact through
+ * `playwright.release.config.ts`. Application-E2E planning must never select
+ * them.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is a release e2e spec.
  */

@@ -1015,8 +1015,12 @@ async function runCommand(
     exitCode,
     status,
     // Bounded rolling buffer (see appendToRollingBuffer/MAX_ROLLING_BUFFER_CHARS)
-    // of combined captured output; getFailureReason further excerpts this
-    // for a failed check's bounded reason. stderr is not tracked separately.
+    // retains combined captured output for verifier-owned diagnostics,
+    // warning/blocking-log handling, and result/log surfaces. Normal failure
+    // fallback never infers a root cause from arbitrary output tails:
+    // getFailureReason uses trusted verifier-owned facts when available,
+    // otherwise the exact exit code with log/rerun pointers. stderr is not
+    // tracked separately.
     stdout: outputBuffer,
     stderr: '',
     hasWarnings: warningSummary.length > 0,
