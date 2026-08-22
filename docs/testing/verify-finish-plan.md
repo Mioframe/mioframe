@@ -1,8 +1,8 @@
 # Verify modernization finish plan
 
-Status: **PR #216 is blocked by one verifier execution-contract finding: the `artifact` release check has an outer timeout shorter than its owning Playwright container deadline**.
+Status: **all known implementation/review findings are closed; PR #216 exact-head CI remains the merge gate**.
 
-This document owns verifier-modernization packaging and final integration order. It does not redefine lane semantics owned by the architecture documents.
+This document owns verifier-modernization packaging and final integration state. It does not redefine lane semantics owned by the architecture documents.
 
 ## Authority
 
@@ -13,8 +13,7 @@ This document owns verifier-modernization packaging and final integration order.
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact ownership correction;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed single-owner application-E2E discovery architecture;
 - `docs/testing/verify-release-impact-correction.md` — closed release-impact selection/consumer ownership correction;
-- `docs/testing/verify-modernization.md` — implementation/selection status;
-- `scripts/REVIEW.md` — active PR-level review findings;
+- `docs/testing/verify-modernization.md` — final implementation/selection status;
 - `.agents/skills/verification/SKILL.md`, `project-review`, `architect-handoff`, `implementation-preflight`, `test-first`, and `test-authoring` — workflow/proof rules.
 
 Architecture/status documents are architect-owned. Coding/test-author contexts must not edit them unless explicitly assigned.
@@ -24,111 +23,95 @@ Architecture/status documents are architect-owned. Coding/test-author contexts m
 ```text
 branch: refactor/verify-modernization-finish
 PR: #216
-current reviewed head: bdd2131c8a6bd40db1a34e1ce8e0cc4c9d45884a
 base: develop
+release intent: version:patch
 ```
 
 Re-check the exact PR head and current `develop` before merge.
 
 ## Closed implementation scope
 
-The following remain closed and must not be reopened without new evidence:
+The following are closed and must not be reopened without new repository evidence:
 
 - Pass A — bounded agent-facing output;
 - Pass B — repository metadata classification;
 - Pass C — unit impact / exact Vitest discovery / real `vitest related` ownership;
 - single-owner application-E2E discovery architecture and collision-safe collector proof;
 - Pass D — explicit mutation ownership;
-- Pass E — release-impact **selection and consumer mapping**;
+- Pass E — release-impact selection, consumer mapping, and faithful execution timeout contracts;
 - Pass F — parallel CI topology and independent `release-version` gate;
-- final stale-comment cleanup.
+- final source/comment cleanup.
 
-## Active blocker — artifact outer timeout
+## Artifact timeout correction
 
-The release-impact `artifact` command is:
+The PR-level review found that `artifact` executes through the same bounded Playwright-container path as `release-smoke`:
 
 ```text
-pnpm e2e:release --label artifact tests/e2e/release/productionArtifactSmoke.spec.ts
+pnpm e2e:release --label artifact ...
 → scripts/e2eReleaseContainer.mjs
 → runPlaywrightInContainer(...)
 ```
 
-The shared Playwright container uses the canonical timeout from `config/tooling.json`:
+The canonical container deadline is 900 seconds. `scripts/verify.ts` owns the outer Playwright command deadline through `resolvePlaywrightCommandTimeoutMs()`:
 
 ```text
-verification.playwrightContainer.timeoutSeconds = 900
-```
-
-`scripts/verify.ts` already defines the outer Playwright timeout contract as:
-
-```text
-container timeout + PLAYWRIGHT_COMMAND_OVERHEAD_MS
-= 15 minutes + 2 minutes
+900 seconds + 2 minutes orchestration allowance
 = 17 minutes
 ```
 
-That derived timeout is used by `e2e`, `storybook-behavior`, `visual`, and `release-smoke`, but `artifact` is incorrectly fixed at 8 minutes. The verifier can therefore terminate a valid artifact Playwright run before the owning container reaches its own bounded deadline.
+The correction is implemented and architect-reviewed:
 
-This is an execution-contract bug, not a release-impact ownership redesign.
+- `COMMAND_TIMEOUT_MS_BY_LABEL.artifact` now uses the existing derived Playwright timeout;
+- `scripts/verify.test.ts` classifies `artifact` with the Playwright-backed labels rather than the unrelated fixed-limit commands;
+- the proof requires every single-session Playwright-backed outer timeout to equal the derived contract and stay strictly above the canonical container deadline;
+- no artifact-specific timeout constant, resolver, configuration, release mapping, runner, or workflow path was added.
 
-### Required final state
-
-- `COMMAND_TIMEOUT_MS_BY_LABEL.artifact` uses `PLAYWRIGHT_COMMAND_TIMEOUT_MS`;
-- timeout tests classify `artifact` as Playwright-container-backed, not as an unrelated fixed-limit command;
-- every Playwright-backed label remains strictly above the canonical 900-second container deadline;
-- the existing `verification-release` timeout-envelope proof is recalculated from the corrected command map;
-- `.github/workflows/verify.yml` remains at 120 minutes unless the corrected envelope proves it insufficient.
-
-With the current constants, the corrected verifier-owned worst-case release-impact envelope is:
+The resulting verifier-owned worst-case release-impact envelope remains:
 
 ```text
-build          10m
-artifact       17m
-release-smoke  17m
-managed-updates 68m
--------------------
-total         112m
-setup allowance 5m
-required      117m
+build             10m
+artifact          17m
+release-smoke     17m
+managed-updates   68m
+---------------------
+total            112m
+setup allowance    5m
+required          117m
 ```
 
-The current 120-minute GitHub job deadline remains sufficient, so no workflow change is currently required.
+The existing `verification-release` GitHub job timeout remains 120 minutes, and the existing dynamic envelope proof verifies that it is strictly greater than the computed requirement. No workflow timeout or topology change is needed.
 
-## Proof discipline
+## Final semantic review
 
-This is a behavioral timeout-contract correction. Use a fresh test-author context before production changes.
+After the artifact timeout correction, the known PR-level finding is closed.
 
-Meaningful RED:
+Current semantic findings:
 
 ```text
-artifact is included in the Playwright-backed timeout population
-→ expected derived 17-minute timeout
-→ current production returns fixed 8-minute timeout
+blockers: 0
+major issues: 0
+minor issues: 0
+accepted risks: 0
 ```
 
-The implementation context then changes only the minimum production timeout assignment needed to satisfy the accepted proof.
-
-Do not manufacture additional release ownership or CI topology changes.
+A temporary review artifact must not remain in the mergeable PR diff after the finding is closed.
 
 ## Remaining order
 
 ```text
-1. fresh test-author correction for artifact timeout classification
-2. minimal scripts/verify.ts implementation correction
-3. focused verifier unit proof + type-check if useful
-4. architect reviews the exact correction and recalculated 120-minute envelope
-5. remove resolved scripts/REVIEW.md
-6. refresh verify-modernization.md / PR description to closed state
-7. require exact-head verification-release + aggregate verify CI
-8. if autofix changes head, review the new exact head and its CI
-9. record actual CI critical path / merge latency
-10. merge-readiness verdict
-11. squash merge only after the exact-head automatic gate is healthy
+1. remove the resolved temporary scripts/REVIEW.md
+2. refresh PR review wording to the closed state
+3. require exact-head PR CI
+4. if any automation changes the head, review that new exact head and require its CI
+5. confirm the branch is not behind current develop
+6. record the actual CI result / critical path if useful
+7. give the merge-readiness verdict
+8. squash merge only after the exact-head automatic gate is healthy
 ```
 
 ## PR / version policy
 
-PR #216 remains an ordinary internal verification/tooling refactor into `develop` with release intent:
+PR #216 is an ordinary internal verification/tooling refactor into `develop` with release intent:
 
 ```text
 version:patch
@@ -138,8 +121,8 @@ Same-repository CI owns materialization of the exact `package.json` PATCH versio
 
 ## Exact-head rule
 
-The exact PR head is authoritative. Any new review/correction/autofix commit invalidates earlier CI as a merge gate.
+The exact PR head is authoritative. Any review/status cleanup or autofix commit invalidates earlier CI as a merge gate; only CI associated with the resulting final head counts.
 
 ## Stop rule
 
-After this blocker is closed, final semantic review remains clean, and exact-head CI succeeds, stop verifier infrastructure modernization. Further jobs, sharding, cross-job artifacts, generic dependency graphs, task runners, universal registries, or speculative optimization require a separate measured need and architecture decision.
+After exact-head CI is healthy and merge-readiness is established, stop verifier infrastructure modernization. Further jobs, sharding, cross-job artifacts, generic dependency graphs, task runners, universal registries, or speculative optimization require a separate measured need and architecture decision.
