@@ -258,17 +258,18 @@ export function isStorybookBehaviorPath(filePath: string): boolean {
 
 /**
  * Check whether a changed file is a non-visual, non-release, non-Storybook-behavior
- * app e2e spec under `tests/e2e/`.
+ * app e2e spec directly under `tests/e2e/`.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is an app e2e spec file.
  */
 export function isAppE2ESpecPath(filePath: string): boolean {
   return (
     filePath.startsWith(E2E_DIR_PREFIX) &&
+    filePath.endsWith('.spec.ts') &&
+    path.posix.dirname(filePath) === APP_E2E_SPEC_DIR &&
     !isVisualE2ESpecPath(filePath) &&
     !isReleaseE2ESpecPath(filePath) &&
-    !isStorybookBehaviorPath(filePath) &&
-    filePath.endsWith('.spec.ts')
+    !isStorybookBehaviorPath(filePath)
   );
 }
 
@@ -286,7 +287,7 @@ export function isAppE2ESupportPath(filePath: string): boolean {
     !isVisualE2ESpecPath(filePath) &&
     !isReleaseE2ESpecPath(filePath) &&
     !isStorybookBehaviorPath(filePath) &&
-    !isAppE2ESpecPath(filePath) &&
+    !filePath.endsWith('.spec.ts') &&
     filePath.endsWith('.ts')
   );
 }

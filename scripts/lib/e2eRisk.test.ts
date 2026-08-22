@@ -80,6 +80,56 @@ describe('isAppE2ESpecPath and isAppE2ESupportPath exclude Storybook behavior pa
   });
 });
 
+describe('root-only application E2E spec classification', () => {
+  it('recognizes a direct root app spec and focuses that spec', () => {
+    const appSpec = 'tests/e2e/appSmoke.spec.ts';
+
+    expect(isAppE2ESpecPath(appSpec)).toBe(true);
+
+    const plan = resolveAppE2EPlan([appSpec]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([appSpec]);
+  });
+
+  it('does not classify an arbitrary nested spec as an app spec or support file', () => {
+    const nestedSpec = 'tests/e2e/other/example.spec.ts';
+
+    expect(isAppE2ESpecPath(nestedSpec)).toBe(false);
+    expect(isAppE2ESupportPath(nestedSpec)).toBe(false);
+  });
+
+  it('does not select an arbitrary nested spec for application E2E', () => {
+    const nestedSpec = 'tests/e2e/other/example.spec.ts';
+
+    const plan = resolveAppE2EPlan([nestedSpec], { fileExists: () => true });
+
+    expect(plan.mode).toBe('skip');
+    expect(plan.specs).toEqual([]);
+  });
+
+  it('keeps a nested non-spec helper as conservative application support', () => {
+    const helperPath = 'tests/e2e/other/helper.ts';
+
+    expect(isAppE2ESupportPath(helperPath)).toBe(true);
+
+    const plan = resolveAppE2EPlan([helperPath]);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+  });
+
+  it.each([
+    'tests/e2e/storybook/example.spec.ts',
+    'tests/e2e/visual/example.spec.ts',
+    'tests/e2e/release/example.spec.ts',
+  ])('keeps reserved lane path %s outside application E2E', (filePath) => {
+    expect(isAppE2ESpecPath(filePath)).toBe(false);
+    expect(isAppE2ESupportPath(filePath)).toBe(false);
+    expect(resolveAppE2EPlan([filePath]).mode).toBe('skip');
+  });
+});
+
 describe('isFullLaneE2EInfrastructurePath', () => {
   it('flags playwright config and verify tooling', () => {
     expect(isFullLaneE2EInfrastructurePath('playwright.config.ts')).toBe(true);

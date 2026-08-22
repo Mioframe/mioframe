@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import appConfig from './playwright.config';
 import releaseConfig from './playwright.release.config';
@@ -108,42 +110,54 @@ describe('real Playwright collector boundary (application config)', () => {
   // truthful to the physical lane boundary independently of whether
   // validateE2EScenarioRegistry()/validateE2EProjectApplicability()/this
   // file's own listFiles() scan agree with each other.
-  it('collects the real root app spec, but rejects a nested probe, a default test-shape probe, and existing storybook/visual/release specs', () => {
-    const nestedProbeDir = 'tests/e2e/other';
-    const nestedProbeSpec = `${nestedProbeDir}/example.spec.ts`;
-    const defaultShapeProbeSpec = 'tests/e2e/example.test.mjs';
+  it('collects the real root app spec, but rejects nested/default-shape probes and existing reserved-lane specs', () => {
+    const createdProbeFiles: string[] = [];
+    let nestedProbeDir: string | undefined;
+    const probeId = randomUUID();
 
     try {
-      fs.mkdirSync(nestedProbeDir, { recursive: true });
-      fs.writeFileSync(
-        nestedProbeSpec,
-        "import { test } from '@playwright/test';\n\ntest('nested probe must not be collected by the application config', () => {});\n",
-      );
-      fs.writeFileSync(
-        defaultShapeProbeSpec,
-        "import { test } from '@playwright/test';\n\ntest('default test-shape probe must not be collected by the application config', () => {});\n",
+      nestedProbeDir = fs.mkdtempSync(path.join('tests/e2e', `playwright-lanes-proof-${probeId}-`));
+      const nestedProbeSpec = path.join(nestedProbeDir, 'nested.spec.ts');
+      const defaultShapeProbeSpec = path.join(
+        'tests/e2e',
+        `playwright-lanes-proof-${probeId}.test.mjs`,
       );
 
-      const result = spawnSync(
-        process.execPath,
-        ['node_modules/@playwright/test/cli.js', 'test', '--list', '--config=playwright.config.ts'],
-        {
-          cwd: process.cwd(),
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            // Any placeholder external base URL resolves appConfig's
-            // webServer to undefined (see playwright.config.ts), so
-            // collection stays browser/server-free.
-            PLAYWRIGHT_EXTERNAL_BASE_URL: 'http://127.0.0.1:1',
-          },
-        },
+      createExclusiveCollectorProbe(
+        nestedProbeSpec,
+        'nested probe must not be collected by the application config',
+        createdProbeFiles,
       );
+      createExclusiveCollectorProbe(
+        defaultShapeProbeSpec,
+        'default test-shape probe must not be collected by the application config',
+        createdProbeFiles,
+      );
+
+      const collectorArgs = [
+        'node_modules/@playwright/test/cli.js',
+        'test',
+        '--list',
+        '--config=playwright.config.ts',
+      ];
+      const collectorOptions = {
+        cwd: process.cwd(),
+        encoding: 'utf8' as const,
+        env: {
+          ...process.env,
+          // Any placeholder external base URL resolves appConfig's
+          // webServer to undefined (see playwright.config.ts), so
+          // collection stays browser/server-free.
+          PLAYWRIGHT_EXTERNAL_BASE_URL: 'http://127.0.0.1:1',
+        },
+      };
+      const result = spawnSync(process.execPath, collectorArgs, collectorOptions);
 
       expect(result.status).toBe(0);
       expect(result.stderr).toBe('');
 
       const listing = result.stdout;
+      const nestedProbeListingPath = path.relative('tests/e2e', nestedProbeSpec);
 
       // 1. A real root application spec is collected.
       expect(listing).toContain('appSmoke.spec.ts');
@@ -151,8 +165,20 @@ describe('real Playwright collector boundary (application config)', () => {
       // 2 & 3. Must reject: the root-only testMatch
       // (`**/tests/e2e/*.spec.ts`) must exclude both a nested spec and a
       // root default-Playwright `*.test.*` shape from the listing.
-      expect(listing).not.toContain('other/example.spec.ts');
-      expect(listing).not.toContain('example.test.mjs');
+      expect(listing).not.toContain(nestedProbeListingPath);
+      expect(listing).not.toContain(path.basename(defaultShapeProbeSpec));
+
+      // Supplying a nested path as a Playwright CLI filter narrows the real
+      // collector; it cannot make that path bypass the configured testMatch.
+      const filteredResult = spawnSync(
+        process.execPath,
+        [...collectorArgs, nestedProbeSpec],
+        collectorOptions,
+      );
+
+      expect(filteredResult.status).toBe(1);
+      expect(`${filteredResult.stdout}${filteredResult.stderr}`).toContain('No tests found');
+      expect(filteredResult.stdout).not.toContain(nestedProbeListingPath);
 
       // 4, 5, 6. Existing nested Storybook/visual/release specs must never
       // be collected by the application config either.
@@ -160,12 +186,34 @@ describe('real Playwright collector boundary (application config)', () => {
       expect(listing).not.toContain('visual/shared-ui.spec.ts');
       expect(listing).not.toContain('release/productionArtifactSmoke.spec.ts');
     } finally {
-      fs.rmSync(nestedProbeSpec, { force: true });
-      fs.rmSync(nestedProbeDir, { recursive: true, force: true });
-      fs.rmSync(defaultShapeProbeSpec, { force: true });
+      for (const probeFile of [...createdProbeFiles].reverse()) {
+        fs.unlinkSync(probeFile);
+      }
+
+      if (nestedProbeDir) {
+        fs.rmdirSync(nestedProbeDir);
+      }
     }
   });
 });
+
+function createExclusiveCollectorProbe(
+  filePath: string,
+  testName: string,
+  createdProbeFiles: string[],
+): void {
+  const fileDescriptor = fs.openSync(filePath, 'wx');
+  createdProbeFiles.push(filePath);
+
+  try {
+    fs.writeFileSync(
+      fileDescriptor,
+      `import { test } from '@playwright/test';\n\ntest('${testName}', () => {});\n`,
+    );
+  } finally {
+    fs.closeSync(fileDescriptor);
+  }
+}
 
 function listFiles(
   dir: string,
