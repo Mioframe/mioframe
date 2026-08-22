@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **PR publication blocked by one architecture-redone application-E2E correction and final source/comment cleanup**.
+Status: **all known behavioral/architecture findings closed; PR publication blocked only by final source-comment cleanup and one final full-diff review**.
 
 This document owns verifier-modernization packaging, correction order, and final integration state. It does not redefine lane semantics owned by the architecture documents.
 
@@ -10,14 +10,14 @@ This document owns verifier-modernization packaging, correction order, and final
 - `docs/testing/verify-target-architecture.md` — verifier impact/planning architecture;
 - `docs/testing/verify-agent-output.md` — implemented agent-facing verifier output;
 - `docs/testing/verify-change-classification.md` — repository metadata classification;
-- `docs/testing/verify-unit-impact-correction.md` — closed unit-impact ownership amendment;
-- `docs/testing/verify-app-e2e-discovery-correction.md` — **ready redesigned application-E2E path-ownership handoff**;
-- `docs/testing/verify-release-impact-correction.md` — closed Pass E release-impact correction;
+- `docs/testing/verify-unit-impact-correction.md` — closed unit-impact ownership correction;
+- `docs/testing/verify-app-e2e-discovery-correction.md` — closed single-owner application-E2E path architecture;
+- `docs/testing/verify-release-impact-correction.md` — closed release-impact correction;
 - `docs/testing/verify-modernization.md` — implementation/selection progress record;
-- `scripts/lib/REVIEW.md` — active final PR-level findings;
+- `scripts/lib/REVIEW.md` — active final review state;
 - `.agents/skills/verification/SKILL.md`, `architect-handoff`, `implementation-preflight`, `test-first`, and `test-authoring` — workflow/proof rules.
 
-Architecture/status/benchmark documents are architect-owned. Coding and test-author agents must not edit them unless explicitly assigned.
+Architecture/status/benchmark documents are architect-owned. Coding/test-author contexts must not edit them unless explicitly assigned.
 
 ## Branch state
 
@@ -27,153 +27,146 @@ Finish branch:
 refactor/verify-modernization-finish
 ```
 
-Last synchronized `develop` merge-base:
+Current comparison against `develop`:
 
 ```text
-13ae220900a2a724c867b01b5eb1f045c2a1d857
+ahead: 107 commits
+behind: 0
+merge base: 13ae220900a2a724c867b01b5eb1f045c2a1d857
 ```
 
-Re-check against current `develop` immediately before PR publication.
+Re-check immediately before PR publication because `develop` may move.
 
 ## Closed areas
 
-- Pass A — bounded agent-facing output;
-- Pass B — repository metadata classification;
-- Pass C — unit impact, including exact Vitest direct-test discovery;
-- Pass D — explicit mutation ownership;
-- Pass E — closed release-impact consumer model;
-- Pass F — accepted CI topology.
+### Pass A — agent-facing output
 
-Do not reopen those areas without new repository evidence. Pass C is touched only mechanically where `unitRisk.ts` must consume the new shared root-app path predicate; its unit-impact semantics remain unchanged.
+Closed. Default output is bounded; detailed diagnostics remain in `.verify/logs/**` / `--verbose`; heartbeats carry verifier-owned liveness only; failure fallback uses trusted semantic facts or exact exit code + log/rerun pointers rather than arbitrary output-tail inference.
 
-## Architecture redo — application-E2E root-spec ownership
+### Pass B — repository metadata
 
-Repeated correction drift triggered the root `AGENTS.md` stop rule. The next pass is no longer a local `e2eRisk.ts` patch.
+Closed. `isNonRuntimeRepositoryMetadataPath()` remains a narrow positive classifier rather than a global Markdown exclusion.
 
-The ready architecture in `docs/testing/verify-app-e2e-discovery-correction.md` introduces one narrow pure owner:
+### Pass C — unit impact
+
+Closed, including exact Vitest direct-test discovery. Ordinary dependency-input eligibility remains repository-wide and delegated to `vitest related`; external exact/scan/runtime ownership stays additive and status-aware.
+
+### Application-E2E ownership architecture
+
+Closed after architecture redo.
+
+One pure module now owns the repeated root-app invariant:
 
 ```text
 scripts/lib/appE2EPaths.ts
-```
-
-It owns exactly:
-
-```text
-APP_E2E_SPEC_DIR
-APP_E2E_TEST_MATCH
-isRootAppE2ESpecPath()
+├─ APP_E2E_SPEC_DIR
+├─ APP_E2E_TEST_MATCH
+└─ isRootAppE2ESpecPath()
 ```
 
 Consumers:
 
 ```text
-appE2EPaths.ts
-├─ playwright.config.ts
-├─ e2eRisk.ts
-├─ e2eProjectApplicability.ts
-└─ unitRisk.ts
+playwright.config.ts
+e2eRisk.ts
+e2eProjectApplicability.ts
+unitRisk.ts
 ```
 
-This is not a generic discovery framework and does not own product scenario mappings.
+The replaced private root predicates/constants were removed. Scenario mappings and project applicability data remain with their original owners.
 
-Required final behavior:
+Final contract:
 
 ```text
 tests/e2e/appSmoke.spec.ts
-→ app spec
+→ root app spec / focused direct E2E
 
 tests/e2e/other/example.spec.ts
-→ not app spec/support
+→ not app spec/support / no app selection
 
 tests/e2e/other/helper.ts
-→ conservative app support
+→ conservative app support / full
 
 tests/e2e/example.test.ts
 → not app support
+
+existing *.testUtils.ts app helper
+→ support behavior preserved
 ```
 
-Scenario and standalone registry metadata must reject non-root app specs. `scripts/lib/appE2EPaths.ts` itself is full application-E2E infrastructure.
+Scenario/standalone and applicability metadata reject non-root app specs. `appE2EPaths.ts` is full application-E2E infrastructure only.
 
-The real Playwright collector remains an independent oracle and must use collision-safe proof-owned temporary paths.
+The real Playwright collector remains independent. Collision-safe probe ownership is closed, and the filtered collector succeeds with `appSmoke.spec.ts + nested probe` while excluding the nested probe.
 
-## Remaining source/comment cleanup
+`tsconfig.node.json` explicitly includes the new verifier module because `playwright.config.ts` imports it; focused type-check confirmed this TypeScript project boundary.
 
-After the behavioral architecture correction is reviewed, clean only remaining stale source/test comments recorded in `scripts/lib/REVIEW.md`:
+### Pass D — mutation
 
-- old ordinary-source prefix wording in `unitRisk.test.ts`;
-- release-spec wording in `e2eRisk.ts`;
-- obsolete rolling-buffer/getFailureReason wording in `verify.ts`.
+Closed. Mutation remains explicit registry-based high-risk proof shared with Stryker; adjacency does not create mutation work.
 
-No executable behavior or assertions change solely for this cleanup.
+### Pass E — release impact
+
+Closed. Six source-impact checks use exact/fallback consumer ownership; proof/type-only files are excluded before broad runtime fallback; malformed exact mappings fail invalid; unknown significant release-runtime input remains fail-closed; `release-version` remains independent.
+
+### Pass F — CI topology
+
+Closed. Verification lanes remain parallel after autofix; release-impact and release-version remain independent gates; no speculative cross-job artifact or topology redesign was introduced.
+
+## Remaining review item
+
+`scripts/lib/REVIEW.md` contains one minor, behavior-preserving comment cleanup only:
+
+1. old ordinary-source prefix wording in `unitRisk.test.ts`;
+2. obsolete release execution wording in `e2eRisk.ts`;
+3. obsolete rolling-buffer/getFailureReason wording in `verify.ts`.
+
+No executable behavior or assertions should change for this cleanup.
 
 ## Remaining order
 
 ```text
-1. implement shared application-E2E path owner + migrate all named consumers
-2. fresh test-author proof + meaningful nested-spec RED + safe real-collector proof
-3. architect re-review of complete application-E2E owner scope
-4. final source/comment cleanup
-5. architect refreshes affected status/selection documentation
-6. full final semantic PR-level diff review
-7. remove resolved REVIEW.md artifacts
-8. compare branch with current develop and integrate if needed
-9. publish PR to develop
-10. apply release-intent/version label
-11. inspect exact-head CI
-12. if CI/autofix changes head, review the new exact head and its CI
-13. record actual CI critical path / merge latency
-14. merge-readiness verdict
+1. perform the three source/test comment corrections
+2. architect refreshes verify-modernization.md final status/selection wording
+3. full final semantic develop...branch review
+4. if clean, delete scripts/lib/REVIEW.md
+5. compare branch with current develop and integrate if needed
+6. publish PR to develop
+7. apply required release-intent/version label
+8. inspect exact-head CI
+9. if autofix/materialization changes head, review the new exact head and its CI
+10. record actual CI critical path / merge latency
+11. merge-readiness verdict
 ```
-
-## Proof discipline
-
-For the architecture correction:
-
-```text
-ready architecture handoff
-→ implementation-preflight
-→ fresh test-author context
-→ root-positive / nested-negative planner + metadata proof
-→ meaningful RED for current nested-spec drift
-→ collision-safe real Playwright collector/filter proof
-→ separate implementation context
-→ remove duplicate production predicates
-→ focused GREEN
-→ architect semantic review
-```
-
-The real collector proof must not use the shared predicate as its expected-value oracle.
 
 ## Final review boundary
 
-Before PR publication, review the complete `develop...refactor/verify-modernization-finish` result for:
+Before PR publication, review the complete resulting diff for:
 
 - ownership and dependency direction;
-- single production source of truth for application-E2E root paths;
-- physical proof discovery vs planner/registry/applicability inventories;
+- single source of truth for app-E2E root discovery;
+- physical collector vs planner/registry/applicability alignment;
 - fail-closed/status behavior;
 - unit/release/mutation source of truth;
-- removal of replaced inference/duplicate predicates;
-- proof independence and mutable test-state isolation;
-- verifier output boundedness/actionability;
+- removal of replaced inference/duplicate ownership;
+- proof independence and test-state isolation;
+- bounded/actionable verifier output;
 - release-version separation;
 - CI topology;
-- selection/benchmark consistency.
+- final selection/status documentation consistency.
 
-No active `REVIEW.md` may remain in the final PR diff.
+No active `REVIEW.md` may remain in the published PR diff.
 
 ## PR / CI sequence
 
-Only after semantic findings are closed:
+Only after the final semantic review is clean:
 
 ```text
-final full-diff review
-→ remove resolved REVIEW.md artifacts
+remove resolved REVIEW.md
 → compare with current develop
 → publish PR
 → apply required release-intent label
 → inspect exact-head CI
-→ if autofix/materialization changes head, review the new head and new CI
+→ if head changes, review the new exact head and new CI
 → record real CI critical path / merge latency
 → merge-readiness decision
 ```
