@@ -1,18 +1,19 @@
 # Database virtualization collection API result
 
-Status: **not ready; architecture and public API accepted, capability stability proof blocked by known intermittent browser failures**.
+Status: **Ready**.
 
-Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/database-virtualization-collection-api-preflight.md`, `src/shared/ui/virtualization/README.md`, `docs/database-virtualization.md`, `docs/database-virtualization-browser-proof.md`.
+Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/database-virtualization-collection-api-preflight.md`, `docs/database-virtualization-stability-handoff.md`, `docs/database-virtualization-stability-preflight.md`, `src/shared/ui/virtualization/README.md`, `docs/database-virtualization.md`, `docs/database-virtualization-browser-proof.md`.
 
 ## Architecture status
 
-The architecture, ownership, and public API are accepted and are not reopened by this result.
+The architecture, ownership, and public API are accepted.
 
 Accepted:
 
 - `@tanstack/vue-virtual` remains the engine;
 - `useVirtualCollection` is the only Mioframe virtualization API;
-- public surface remains `items`, `totalSize`, `leadingSize`, `trailingSize`, `vItem`;
+- public surface is `items`, `totalSize`, `leadingSize`, `trailingSize`, `vItem`;
+- no `measure` compatibility alias exists;
 - no TanStack instance/types are exposed;
 - no second observer/cache/range/anchor engine exists;
 - database capability consumes only the shared API and uses actual `MDTable`;
@@ -28,92 +29,84 @@ Accepted:
 | Chromium (Playwright-managed)         | 149.0.7827.55 |
 | Firefox (Playwright-managed)          | 151.0         |
 
-## Existing corrected evidence
+## Capability contracts
 
-A clean focused run reported:
+| Contract                                                                                                | Status   |
+| ------------------------------------------------------------------------------------------------------- | -------- |
+| Public directive property is `vItem`; no compatibility alias                                            | ACCEPTED |
+| Valid in-bounds `undefined` source value                                                                | ACCEPTED |
+| Vertical grow/shrink updates public `item.size`                                                         | ACCEPTED |
+| Horizontal growth updates public `item.size`                                                            | ACCEPTED |
+| Stable-key remap followed by resize updates public geometry at the new index                            | ACCEPTED |
+| Non-zero `surfaceOffset` keeps public geometry collection-relative                                      | ACCEPTED |
+| Deep `leadingSize`/`trailingSize`/`totalSize` relationship                                              | ACCEPTED |
+| Real `MDTable` row grow/shrink with public row size in Chromium/Firefox                                 | ACCEPTED |
+| Body-driven native column growth with public column size                                                | ACCEPTED |
+| Column remount minimum after widening content is removed while unmounted                                | ACCEPTED |
+| Deep vertical/horizontal logical geometry                                                               | ACCEPTED |
+| Above-viewport row resize anchor stability                                                              | ACCEPTED |
+| Native table accessibility semantics                                                                    | ACCEPTED |
+| Dedicated fixed-size wrapper as physical capability scroll root                                         | ACCEPTED |
+| Phantom min-content spacer normalization                                                                | ACCEPTED |
+| Actual mounted logical-cell DOM equals settled row × column intersection, at initial and deep 2D ranges | ACCEPTED |
 
-| Project                             | Spec(s)                                                     | Tests | Outcome   |
-| ----------------------------------- | ----------------------------------------------------------- | ----: | --------- |
-| `chromium`                          | shared `VirtualCollectionCapability.browser.spec.ts`        |    10 | 10 passed |
-| `chromium`                          | database `DatabaseVirtualizationCapability.browser.spec.ts` |    10 | 10 passed |
-| `firefox-virtualization-capability` | database spec only                                          |    10 | 10 passed |
+## Mounted-cell DOM proof
 
-The same current implementation also produced an earlier failed focused run in which the required non-zero-`surfaceOffset` shared geometry proof and the database above-viewport anchor proof failed intermittently before a later clean rerun.
+`DatabaseVirtualizationCapability.browser.spec.ts` directly counts rendered logical database `<td>` elements with `[data-testid^="db-virt-cell-"]` in the same browser-side snapshot as mounted row/column counts.
 
-Repository policy does not accept a later clean run as proof that a known intermittent failure is green. These failures therefore remain an active stability blocker until their test-authoring/runtime cause is corrected and the required proof is deterministic.
+At initial and deep 2D ranges it proves:
 
-Type-check for the `vItem` rename passed. The rename itself is accepted and is not implicated by the two geometry failures.
+- actual logical-cell DOM equals the settled mounted row × column intersection;
+- mounted rows and columns each remain below 30;
+- actual mounted logical cells remain below 900;
+- mounted work stays far below the 5,000 × 300 logical cross product.
 
-## Contracts accepted by review
+The old derived `rows.items.length * columns.items.length` diagnostic output was removed.
 
-The following behavior/architecture findings remain accepted:
+## Stability correction
 
-| Contract                                                                                                | Review status                              |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Public directive property is `vItem`; no `measure` compatibility alias                                  | ACCEPTED                                   |
-| Valid in-bounds `undefined` source value                                                                | ACCEPTED                                   |
-| Vertical grow/shrink updates public `item.size`                                                         | ACCEPTED                                   |
-| Horizontal growth updates public `item.size`                                                            | ACCEPTED                                   |
-| Stable-key remap followed by resize updates public geometry at the new index                            | ACCEPTED                                   |
-| Non-zero `surfaceOffset` contract and collection-relative geometry                                      | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
-| Deep `leadingSize`/`trailingSize`/`totalSize` relationship                                              | ACCEPTED                                   |
-| Real `MDTable` row grow/shrink with public row size in Chromium/Firefox                                 | ACCEPTED                                   |
-| Body-driven native column growth with public column size                                                | ACCEPTED                                   |
-| Column remount minimum after widening content is removed while unmounted                                | ACCEPTED                                   |
-| Deep vertical/horizontal logical geometry                                                               | ACCEPTED                                   |
-| Above-viewport row resize anchor behavior                                                               | ACCEPTED BEHAVIOR; STABILITY PROOF BLOCKED |
-| Native table accessibility semantics                                                                    | ACCEPTED                                   |
-| Dedicated fixed-size wrapper as physical capability scroll root                                         | ACCEPTED                                   |
-| Phantom min-content spacer normalization                                                                | ACCEPTED                                   |
-| Actual mounted logical-cell DOM equals settled row × column intersection, at initial and deep 2D ranges | ACCEPTED                                   |
+Two required geometry proofs were previously known intermittent. They are now corrected as test-authoring races rather than runtime defects.
 
-## Resolved blocker: mounted logical data-cell DOM
+### Shared non-zero `surfaceOffset`
 
-The database fixture previously published:
+Deep public geometry and physical scroll extent are read in one synchronous browser-side snapshot and accepted only when the complete invariant is valid and stable across consecutive observations.
 
-```text
-rows.items.length * columns.items.length
+### Database above-viewport anchor
+
+The baseline now waits for stable actual `scrollTop`, row identities, and anchor geometry. It does not require the actual settled scroll position to equal the raw requested pixel value because TanStack may legitimately adjust it after real measurements replace estimates.
+
+After row growth, the proof waits for public row-size growth plus stable final anchor geometry before comparing anchor movement.
+
+No tolerance widening, sleep, fixed-frame wait, timeout inflation, retry acceptance, fixture protocol, public API change, or runtime change was introduced.
+
+## Verification evidence
+
+The task-specific stability diagnostic was:
+
+```bash
+pnpm verify --only storybook-behavior --files \
+  src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts \
+  src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts \
+  --repeat 10
 ```
 
-as `db-virt-mounted-cells`, and the bounded-cell test asserted that derived value. This proved only that the virtual row and column ranges were bounded, not that the actual mounted logical `<td>` DOM contained only those intersections without retaining or duplicating cells outside the current ranges.
+Reported result: **300/300 test executions passed with no retries or flaky classification** across the applicable Chromium and Firefox projects.
 
-### Final proof performed
+Focused type-check also passed.
 
-`src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts` now counts real logical database-cell DOM directly with `document.querySelectorAll('[data-testid^="db-virt-cell-"]').length` inside one browser-side `page.evaluate`, alongside the existing mounted row/column range readouts, so all three values are read from one self-consistent snapshot. Spacer `<td>` elements carry no `db-virt-cell-`-prefixed `data-testid` and are excluded by construction.
-
-Both the initial state and the state after deep 2D scrolling (`scrollTop`/`scrollLeft` driven to `Number.MAX_SAFE_INTEGER`) are read by polling until the snapshot is self-consistent (`cells === rows * cols` and both ranges non-empty), then asserted:
-
-- actual mounted logical-cell DOM count equals the settled mounted row-range × column-range intersection count, at both initial and deep 2D ranges;
-- mounted rows and mounted columns each stay below 30;
-- actual mounted logical-cell DOM count stays below the generous bound of 900;
-- actual mounted logical-cell DOM count stays far below the 5,000 × 300 (1,500,000) logical cross product, at both ranges.
-
-The obsolete `db-virt-mounted-cells` derived output was removed from `DatabaseVirtualizationCapabilityFixture.vue`.
-
-## Active stability blocker
-
-Two required capability tests are currently known to be intermittent:
-
-1. `VirtualCollectionCapability.browser.spec.ts` — the non-zero `surfaceOffset` geometry scenario can fail a scroll/geometry tolerance assertion before passing on a later rerun.
-2. `DatabaseVirtualizationCapability.browser.spec.ts` — the above-viewport resize anchor scenario can fail before passing on a later rerun.
-
-The current tests sample live browser geometry after conditions that are not sufficient to prove the complete geometry snapshot has settled. The correction must make these proofs deterministic without sleeps, force, broad retries, timeout inflation, weakened tolerances, or private TanStack state.
-
-A clean exact-head CI run is still required after the stability correction, but CI passing once does not by itself erase a known intermittent proof failure.
+Exact-head GitHub CI remains the architect-owned automatic merge gate.
 
 ## Documentation status
 
-Current state:
-
 - shared virtualization architecture/public API: accepted;
-- `vItem` rename: accepted;
-- shared/database capability behavior: implemented and manually demonstrated;
-- capability stability proof: blocked by the two known intermittent browser tests above;
-- production database migration: not started and remains blocked on deterministic capability proof;
+- shared browser capability: passed;
+- database native-table capability: passed;
+- capability stability gate: passed;
+- production database migration: not started, ready for architecture/preflight;
 - product performance profiling/acceptance: pending production migration.
 
 ## Final verdict
 
-**Not ready.**
+**Ready.**
 
-No architecture redesign is required. Correct the two browser-proof stability defects, then rerun the focused capability proof and exact-head CI. Production database migration preflight remains blocked until the required browser proof is deterministic.
+The virtualization capability/foundation stage is complete. Production database migration is the next separate stage and is not implemented by this PR.
