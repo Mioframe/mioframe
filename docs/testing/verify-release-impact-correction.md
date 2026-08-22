@@ -54,7 +54,7 @@ Required invariants:
 
 - current production Vite/PWA build configuration cannot silently resolve `skip`;
 - every current release Playwright spec has exactly one truthful executing source of ownership;
-- adding a release spec without assigning it to a real executing contract fails closed;
+- adding a release spec without assigning it to a real executing contract fails `invalid`;
 - planner ownership and actual release execution cannot drift independently;
 - unknown release-check values make the mapping invalid;
 - unknown significant runtime/build input inside an explicitly confirmed release-sensitive boundary never silently skips.
@@ -141,7 +141,7 @@ Required validation:
 - every current repository `tests/e2e/release/**/*.spec.ts` is present in the execution inventory;
 - no current release spec is unowned;
 - removed inventory specs are invalid until the inventory is updated;
-- a newly-added release spec that is not assigned to an actual executing contract is invalid, not silently `skip`;
+- a newly-added release spec that is not assigned to an actual executing contract is invalid, not `full` and not `skip`;
 - a filename such as `managedUpdatesFoo.spec.ts` has no ownership merely because of its basename.
 
 A bounded recursive scan of `tests/e2e/release/**` for `.spec.ts` is acceptable here because this directory is itself the confirmed release Playwright proof surface. Do not turn this into a general repository scanner.
