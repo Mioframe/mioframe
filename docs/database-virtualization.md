@@ -1,338 +1,283 @@
 # Database virtualization
 
-Status: **database virtualization architecture accepted; shared library architecture accepted; secondary optimizations under profiling; production implementation preflight pending**.
+Status: **database virtualization architecture accepted; `@tanstack/vue-virtual` selected through the shared adapter; secondary optimizations remain evidence-gated**.
 
-This document is the architecture source of truth for large database rendering. The reusable virtualization primitive is defined separately in `docs/virtualization-library.md`. Controlled profiling and secondary-optimization analysis are defined in `docs/database-virtualization-profiling.md`.
+This document is the architecture source of truth for large database rendering. The reusable virtualization primitive and dependency boundary are defined in `docs/virtualization-library.md`. Controlled profiling and secondary-optimization analysis are defined in `docs/database-virtualization-profiling.md`.
 
-The database virtualization direction is a decision, not one of several equal optimization hypotheses. Profiling may refine its sizing, focus/edit, proof, and implementation details, but it does not decide whether virtualization is needed. Change that baseline only if repository or measured evidence demonstrates that a confirmed assumption is false.
+Virtualization is a decided part of the solution. Profiling does not decide whether database rendering is virtualized; it measures the current defect, validates the selected integration, sets budgets, and determines whether any additional optimization is justified.
 
-Secondary performance work is different: worker/query changes, batching, cell-read changes, transfer protocols, indexes, and similar optimizations are **not accepted architecture yet** and require measured evidence.
+## Accepted architecture
 
-## Architecture decision status
+- large database rendering uses viewport-bounded rendering rather than progressive full materialization;
+- rows and columns are both virtualized;
+- item dimensions are dynamic and may change after mount;
+- fixed row or column size is not a correctness contract;
+- `@tanstack/vue-virtual` is the selected engine, imported only by `src/shared/ui/virtualization`;
+- shared exposes one headless dynamic-axis primitive under the contract in `docs/virtualization-library.md`;
+- database rendering composes one vertical and one horizontal axis against the same scroll element;
+- there is no generic production `useVirtualGrid`, `VirtualTable`, or database-aware shared component;
+- database row/column composition, cell rendering, sizing policy, editing, focus, sticky behavior, and table-specific measurement coordination remain in `entities/databaseData`;
+- canonical ordered row membership remains service/worker-owned initially;
+- virtualization never becomes a second source of truth for filter/sort/order/data;
+- other performance changes are introduced only when profiling demonstrates a remaining bottleneck.
 
-Accepted now:
+## Evidence-gated secondary optimizations
 
-- large database rendering requires viewport-bounded rendering rather than progressive full materialization;
-- database tables require virtualization on both row and column axes;
-- item dimensions are dynamic and may change after mount; fixed row/column size is not a correctness contract;
-- reusable virtualization geometry belongs in `src/shared/ui/virtualization` under the contract in `docs/virtualization-library.md`;
-- the shared library exposes one dynamic virtual-axis primitive; the database composes two axes rather than depending on a separate generic grid abstraction;
-- database row/column composition, cell rendering, column sizing policy, editing, sticky behavior, and any database measurement coordination remain owned by `entities/databaseData`;
-- filtering/sorting and canonical ordered membership remain service/worker-owned initially;
-- additional optimizations outside virtualization are added only when measurements show a remaining bottleneck.
-
-Detailed shared-library decisions already accepted in `docs/virtualization-library.md` include:
-
-- headless composable API rather than generic render components;
-- provisional estimates plus authoritative dynamic measurement;
-- DOM element measurement for logical items with one owning element;
-- consumer-supplied item sizing for logical dimensions such as database columns whose size is aggregated from several rendered cells/header;
-- one scroll element may be consumed by independent vertical and horizontal axes;
-- geometry-level `scrollToIndex` is shared-owned, while focus/selection/edit policy remains consumer-owned;
-- third-party engine semantics stay encapsulated behind a narrow Mioframe adapter.
-
-Deferred within virtualization until capability/preflight evidence:
-
-- final external engine dependency (`@tanstack/vue-virtual` is the current candidate);
-- exact TypeScript/Vue signatures and invalid-input behavior;
-- final progressively-discovered database column width/reset/shrink policy;
-- focus/edit lifecycle when a database virtual item leaves the viewport;
-- exact browser/product proof files and stable performance budgets.
-
-Evidence-gated secondary optimizations, not accepted yet:
+These are deliberately **not** accepted architecture yet:
 
 - changing per-cell read/subscription contracts;
 - batching database value/property reads;
 - worker filter/sort algorithm changes;
 - worker-to-main transfer changes;
-- range/paging protocols;
-- indexes/caches introduced only for this performance problem;
-- alternative rendering engines beyond the accepted virtualization baseline.
+- paging/range protocols;
+- indexes or caches introduced for this performance problem;
+- broader changes to database storage/query contracts.
+
+Each requires a measured cause, correct owner, acceptance criterion, and proof.
 
 ## Goal
 
-Remove multi-second UI blocking when switching a database from a small filtered view to a large full view, while making rendering scale to very large logical collections.
+Remove multi-second UI blocking when switching from a small filtered database view to a large full view while making database rendering scale to very large logical collections.
 
-Confirmed product requirements:
+Confirmed requirements:
 
-- profiling and performance analysis use reproducible automated tests, not a live-device-only procedure;
-- 30,000+ database rows are a required scale baseline;
-- tables may contain very many properties/columns;
-- item height and width may vary with content and may change after mount;
-- virtualization infrastructure must remain reusable by future large one- and two-dimensional collection presentations, including lists with different visual formats;
-- correctness, interaction, editing, scrolling, filtering, and sorting must be preserved.
+- reproducible automated profiling rather than live-device-only diagnosis;
+- at least 30,000 logical rows as a required scale baseline;
+- very large property/column counts are valid;
+- row height and column width may depend on content and may change after mount;
+- virtualization infrastructure is reusable by future large collection presentations without database semantics;
+- filtering, sorting, editing, scrolling, view switching, accessibility, and correctness remain intact.
 
-The primary rendering invariant is:
+Primary invariant:
 
 > Mounted UI work is bounded by viewport and overscan, not by total logical row or column count.
 
-For a table, mounted cell cost must therefore scale approximately with `visibleRows * visibleColumns`, not `allRows * allColumns`.
+For database cells, mounted work therefore scales approximately with `visibleRows * visibleColumns`, not `allRows * allColumns`.
 
-## Confirmed current behavior and evidence
+## Confirmed current behavior
 
-Current repository evidence:
+Current rendering materializes every row and every property intersection in `DatabaseDataTable.vue`. The database query path already returns the complete ordered filtered item ID list through the service/worker boundary. Rendered editable cells also establish multiple reactive reads, so full materialization multiplies component/subscription cost in addition to DOM/layout work.
 
-- `src/entities/databaseData/DatabaseDataTable.vue` renders every `itemId` and, inside every row, every property with nested `v-for` loops;
-- `src/entities/databaseData/useDatabaseData.ts` consumes the complete ordered filtered ID list from the worker-facing database service;
-- filtering/sorting are owned by `src/shared/service/databaseDocument` and currently return a complete ordered ID list;
-- rendered editable values establish multiple reactive reads through database property/effective/stored value composables, so full-table materialization amplifies subscription cost as well as DOM/component cost;
-- `src/shared/ui/Table/MDTable.vue` is a native table presentation primitive and has no virtualization contract;
-- no repository-owned generic virtualizer currently exists.
+This establishes why bounded rendering is required independently of the exact performance attribution. Profiling still determines how much additional work, if any, remains after virtualization.
 
-The current defect is consistent with unbounded main-thread rendering work. Profiling still has to quantify actual costs and determine whether any secondary bottleneck remains after bounded rendering.
+## Ownership
 
-## Non-goals
-
-This work does not by itself:
-
-- change database filtering, sorting, persistence, or view semantics;
-- introduce pagination as product behavior;
-- require fixed row heights or fixed column widths;
-- recreate native `table-layout: auto` by rendering all hidden cells for measurement;
-- migrate existing `MDList` consumers;
-- turn `MDTable` into a generic virtual-table framework;
-- introduce worker paging, indexes, batch-read protocols, or new caches without measured need;
-- build a generic data-visualization framework for hypothetical layouts;
-- guarantee literally unbounded document size independent of available memory/CPU.
-
-## Affected scenarios
-
-Required scenarios include:
-
-- switch from a short filtered database view to a full large view;
-- switch back while previous rendering work could still be active;
-- vertical scrolling to deep rows;
-- horizontal scrolling to deep columns;
-- dynamic row height caused by content changes;
-- dynamic column width caused by rendered content;
-- inline editing of a currently visible row/cell;
-- filter/sort correctness and ordering;
-- relation-valued cells and other variable-height content;
-- desktop and mobile viewport behavior.
-
-## Boundaries and ownership
-
-| Owner | Responsibility in this work |
+| Owner | Responsibility |
 | --- | --- |
-| feature | No new business state. Existing user actions remain unchanged. |
-| `entities/databaseData` | Database-specific integration: complete row/property identities, two-axis composition, visible cell rendering, database-specific sizing policy, sticky/action behavior, edit/focus policy, and table measurement coordination. |
-| widget | Composition only. Must not own virtual ranges, sizing policy, filtering, or sorting. |
-| page/pane | No change expected. |
-| `shared/ui/virtualization` | Dynamic one-axis virtualization contract from `docs/virtualization-library.md`. No database, Material, selection, or business semantics. |
-| `shared/ui/Table` | Preserve current presentation ownership by default. Change only if implementation preflight proves an unavoidable table-surface requirement. |
-| service/worker | Preserve current canonical filter/sort result initially. Optimize only when measured compute/transfer cost remains a bottleneck after bounded rendering. |
+| `shared/ui/virtualization` | TanStack-backed generic one-axis geometry, measurement, overscan, scroll correction, deep navigation. |
+| `entities/databaseData` | Database-specific two-axis composition, cell rendering, row/column sizing policy, edit/focus behavior, sticky/action behavior, table measurement coordination. |
+| widget | Composition only; no virtual ranges, sizing policy, filtering, or sorting. |
+| page/pane | No performance/domain ownership change expected. |
+| service/worker | Canonical filtering/sorting and ordered membership; optimize only from evidence. |
+| `shared/ui/Table` | Preserve existing presentation ownership unless preflight proves a necessary generic surface change. |
 
 ## Source of truth
 
-- ordered row membership: existing complete worker/service `itemIdList` unless profiling proves that contract itself must change;
-- column/property membership and order: existing database property/view contract;
-- stored database values: existing database document state;
-- virtual ranges, measurements, scroll offsets, overscan, and discovered sizes: ephemeral presentation state only.
+- ordered row membership: current worker/service item ID result;
+- column/property membership and order: current database property/view contract;
+- stored values: current database document state;
+- virtual ranges, offsets, overscan, measurements, discovered sizes: ephemeral presentation state.
 
-Virtualization must never become a second data-ordering or filtering source of truth.
+Measurements are never persisted as database facts by the virtualization layer.
 
-## Database two-axis composition
-
-The database consumes the generic one-axis library twice against the same scroll container:
+## Two-axis composition
 
 ```text
-complete ordered row IDs ------> vertical virtual axis ---+
+complete ordered row IDs ------> vertical useVirtualAxis ---+
                                                         |
-complete property IDs ---------> horizontal virtual axis -+--> visible cell matrix
+complete property IDs ---------> horizontal useVirtualAxis -+--> visible cell matrix
 ```
 
-Only row/column intersections selected by both virtual ranges instantiate expensive cell UI/reactive reads.
+Both axes use the same physical scroll element. Only intersections selected by both current virtual ranges instantiate expensive cell UI/reactive reads.
 
-No production `useVirtualGrid` abstraction is required unless later confirmed cross-axis generic behavior cannot be owned cleanly by the database consumer.
+No shared grid coordinator is required for the initial implementation.
 
 ## Row sizing
 
-Row height is dynamic.
+Rows are dynamically measured DOM items.
 
-The rendered row is the logical vertical item and may be measured through the shared axis `measureElement` integration. It must be remeasured when content or width changes. A relation cell or wrapped value may therefore increase or decrease row height without violating the contract.
+The vertical shared axis uses the TanStack-backed `measureElement` path. Wrapping, relation content, editing, and column-width changes may alter height after mount and must remeasure the row without full-collection remount.
 
-Changing a column width can reflow visible cells and therefore alter row heights; this is a normal cross-axis effect handled by browser resize measurement, not by a shared grid algorithm.
+A column width change can therefore trigger:
+
+```text
+column width changes
+       ↓
+visible cells reflow
+       ↓
+row height changes
+       ↓
+measureElement / ResizeObserver
+       ↓
+vertical geometry updates
+```
 
 ## Column sizing
 
-Column width is dynamic, but horizontal virtualization creates a fundamental limitation: exact native intrinsic width cannot depend on content that has never rendered.
+Horizontal virtualization cannot know the intrinsic width requirement of content that has never rendered. Exact full native-table auto sizing across every hidden row is therefore not a valid requirement alongside bounded rendering.
 
-The database therefore owns a column measurement coordinator. It can aggregate current requirements from the header and rendered cells for one `DatabasePropertyId`, then supply the resulting logical width to the horizontal virtual axis through the shared library's consumer-supplied item-size capability.
+`entities/databaseData` owns a column measurement coordinator:
 
-Current candidate semantics remain **progressively discovered intrinsic sizing**:
+```text
+header measurement
+      +
+visible cell measurements
+      ↓
+database column sizing policy
+      ↓
+shared setItemSize(columnIndex, width)
+      ↓
+TanStack resizeItem
+```
 
-- unseen columns use a provisional estimate;
-- headers and mounted cells contribute actual measured requirements;
-- a discovered wider requirement may enlarge the current column presentation;
-- hidden cells are never bulk-rendered solely to discover their width;
-- session-local measurements are presentation state.
+Initial semantics to validate in browser tests:
 
-Whether width is grow-only for the lifetime of a view, when it may shrink, and what exact events reset the database-owned discovered width remain browser-experiment decisions before final implementation preflight.
+- unseen columns use provisional estimates;
+- headers and mounted cells contribute actual requirements;
+- hidden cells are never bulk-mounted only for sizing;
+- width changes reflow and remeasure visible rows;
+- repeated scrolling must not cause destructive width oscillation.
+
+Still to finalize before database implementation preflight:
+
+- whether discovered width is grow-only within a view/session;
+- when a column may shrink;
+- measurement reset boundary;
+- min/max width policy;
+- viewport-resize behavior.
+
+These are database presentation decisions, not shared virtualizer responsibilities.
 
 ## Focus and editing
 
-The shared virtualizer owns geometry/navigation only. Database editing and focus remain in `entities/databaseData`.
+Shared virtualization owns geometry and `scrollToIndex`, not focus or edit state.
 
-Before implementation preflight, define observable behavior for:
+`entities/databaseData` must define before implementation preflight:
 
-- a focused/editing cell approaching the virtual range boundary;
-- keyboard navigation to an offscreen row/column;
-- overlays/editors whose anchor cell becomes virtualized out;
-- view switches while an edit is active.
+- behavior when a focused/editing cell approaches the virtual boundary;
+- keyboard navigation to offscreen logical rows/columns;
+- overlays/editors whose anchor cell leaves the range;
+- view switching while editing.
 
-Do not solve these by keeping the full dataset mounted.
+Keeping the full dataset mounted is not an allowed solution.
 
-## Secondary optimization decision gate
+## Selected engine boundary
 
-Virtualization is implemented regardless of profiling outcome because the confirmed scale requirements independently rule out full DOM materialization.
+`@tanstack/vue-virtual` is fixed as the virtualization engine through `src/shared/ui/virtualization`.
 
-After a bounded-rendering candidate exists, rerun the same profiling harness.
+Database code must not import TanStack directly or depend on TanStack-specific public types/options. The integration proof verifies actual Mioframe use of dynamic vertical/horizontal sizing, one shared scroll container, deep navigation, post-mount resize, and scroll anchoring.
 
-Only then:
+Reopen the engine decision only if required behavior would otherwise force Mioframe to own substantial general-purpose virtualization machinery. Narrow adapter code or an ordinary integration quirk is not sufficient reason.
 
-1. if visible-range cell setup remains material, profile per-cell property/effective/stored reads and reduce only proven unnecessary work;
-2. if worker filter/sort remains material, optimize the worker-owned query path without moving business semantics into UI;
-3. if complete-ID transfer remains material, quantify it before designing a range/paging protocol;
-4. if measurement/layout dominates, simplify the database sizing policy or adapter integration before adding caches/protocols;
-5. if none remains material, stop optimizing.
+## Simplest viable design
 
-Every secondary optimization needs its own measured cause, owner, acceptance criterion, and proof. It must not be bundled merely because it is performance-related.
+Rejected simpler alternatives:
 
-## Simplest viable alternative
+- vertical-only virtualization — insufficient because large column counts are confirmed;
+- progressive full rendering — eventually recreates O(rows × columns) mounted UI;
+- `content-visibility`/CSS hiding — does not prevent expensive Vue/component/subscription creation;
+- fixed-size virtualization — violates dynamic content requirements;
+- generic grid/table/list rendering framework — broader than current needs;
+- custom Mioframe virtualizer — duplicates mature infrastructure and creates unnecessary ownership.
 
-Vertical-only virtualization is insufficient because very large column counts are a confirmed requirement.
-
-Progressive full rendering is insufficient because it eventually materializes the entire logical collection and violates the bounded-rendering invariant.
-
-A generic grid abstraction is unnecessary because two shared one-axis instances plus database-owned composition satisfy the current requirements with fewer concepts.
-
-The minimum complete rendering design is therefore dynamic virtualization in both axes using the shared one-axis primitive.
-
-## Rejected approaches
-
-Rejected unless new evidence changes a requirement:
-
-- full row/column DOM materialization;
-- progressive rendering that eventually mounts the complete table;
-- CSS hiding or `content-visibility` as the primary scalability mechanism;
-- fixed row height or fixed column width as a required contract;
-- hidden offscreen rendering of all rows/cells for measurement;
-- pagination solely to avoid rendering cost;
-- separate custom virtualizers for table, list, and cards;
-- generic production `useVirtualGrid` without confirmed generic cross-axis behavior;
-- moving database logic into the shared virtualization module;
-- immediate worker paging/index/batching infrastructure without profiling evidence;
-- a generic visualization/layout framework covering tree, kanban, masonry, calendar, graph, or other unconfirmed scenarios.
+The minimum complete rendering solution is therefore two dynamic virtual axes from the shared TanStack-backed primitive plus database-owned composition.
 
 ## Shared UI blast radius
 
-Initial virtualization introduction should:
+Initial implementation should:
 
-- add isolated `src/shared/ui/virtualization` according to `docs/virtualization-library.md`;
+- add `@tanstack/vue-virtual`;
+- add isolated `src/shared/ui/virtualization` with tests/public entry point;
 - make database rendering its first production consumer;
 - not migrate existing `MDList` consumers;
-- not change `MDTable` merely to host virtualization;
-- keep Material components outside the virtualization ownership boundary.
+- not put virtualization into `MDTable` or Material components merely to support this feature.
 
-Any change to an existing shared list/table primitive requires a separate consumer/blast-radius review before implementation.
+Any required change to an existing shared list/table primitive needs its own consumer/blast-radius review.
 
 ## Acceptance matrix
 
 | Contract | Required outcome |
 | --- | --- |
-| Large rows | 30,000+ logical rows do not cause full row DOM/component materialization. |
-| Large columns | Large logical property counts do not cause full column/cell materialization. |
-| Combined scale | Mounted cells remain bounded by visible row/column ranges plus overscan. |
-| Dynamic sizes | Correct rendering does not rely on fixed height/width; post-mount size changes are supported. |
-| Responsiveness | Switching to the large view does not create a multi-second main-thread block and input/navigation remain responsive. |
-| Correctness | Full/filtered views retain exact membership and ordering from existing filter/sort semantics. |
+| Large rows | 30,000+ logical rows do not cause full row materialization. |
+| Large columns | Large property counts do not cause full column/cell materialization. |
+| Combined scale | Mounted cells remain bounded by viewport ranges plus overscan. |
+| Dynamic sizes | Correctness does not rely on fixed dimensions; post-mount changes work. |
+| Responsiveness | Switching to the large view does not create multi-second main-thread blocking. |
+| Correctness | Full/filtered views retain exact membership and sorting. |
 | Scrolling | Deep vertical and horizontal targets are reachable and stable. |
-| Editing | Visible values remain editable without stale writes or lost focus caused by ordinary virtualization updates. |
-| View switching | Old virtual/measurement state does not leak into a newly selected view. |
-| Reuse boundary | Generic virtualization contains no database, Material, filter/sort, selection, or product-specific contract. |
+| Editing | Visible deep cells remain editable with correct persistence/state. |
+| View switching | No stale virtual/measurement state leaks between views. |
+| Dependency boundary | Database/future consumers do not depend directly on TanStack APIs. |
+| Reuse boundary | Shared virtualization contains no database, Material, filter/sort, selection, or business semantics. |
 
-## Performance contract under investigation
+## Performance analysis
 
-Primary metrics:
+`docs/database-virtualization-profiling.md` owns the controlled measurement plan.
 
-- maximum main-thread task duration caused by large-view switching;
-- event-loop/frame acknowledgement after the switch action;
-- mounted row/column/cell counts relative to viewport and overscan;
-- worker query compute latency;
-- worker-to-main result latency/transfer cost;
-- layout/style/paint cost after result delivery.
+Research targets currently include:
 
-Initial responsiveness budget to validate in the controlled harness:
+- event-loop yield after the real view-switch interaction;
+- frame opportunity;
+- max/count/total browser long tasks;
+- target-view usability time;
+- mounted row/column/cell counts;
+- worker query cost and result delivery when material;
+- script/layout/paint attribution through selected CDP diagnostic runs.
 
-- no switch-caused main-thread task over **100 ms**;
-- target individual main-thread work slices at or below the browser long-task threshold of **50 ms**;
-- structural bounded-rendering assertions are preferred over wall-clock-only assertions wherever possible.
+Initial timing targets remain research targets, not permanent CI budgets:
 
-These numbers are not yet a persistent CI budget. Profiling determines whether they are stable and representative enough to become automated regression gates.
+- no switch-associated main-thread block above 100 ms;
+- preferred work slices at or below the 50 ms long-task threshold.
 
-## Required test proof
+Persistent proof should favor structural bounded-rendering invariants where possible.
 
-`docs/testing/architecture.md` remains canonical.
+## Secondary optimization gate
 
-Before database implementation preflight, resolve proof ownership for:
+After a bounded-rendering implementation exists, rerun the same profiling harness.
 
-- shared reusable browser behavior from `docs/virtualization-library.md`;
-- centralized application E2E for the complete database view-switch/edit/deep-scroll scenario;
-- deterministic service/query tests only when a measured secondary optimization changes those contracts;
-- task-specific controlled performance measurements for the current implementation and the bounded-rendering candidate;
-- persistent performance regression checks only for budgets shown to be stable and worth maintaining.
+Then:
 
-`happy-dom` cannot prove geometry, scrolling, measurement, or responsiveness. Lower-level setup may create a valid large database state, but the view-switch action under product E2E must use the real UI.
-
-## Required verification
-
-Before production database virtualization begins:
-
-1. complete the focused shared-library candidate-engine capability proof;
-2. run implementation preflight for `src/shared/ui/virtualization` and database integration with exact files/specs;
-3. capture enough current baseline data to compare the bounded-rendering implementation and detect secondary bottlenecks;
-4. resolve database column-sizing and focus/edit semantics required for coding;
-5. keep all secondary optimization branches evidence-gated.
-
-Do not require worker/query redesign to begin virtualization unless measurements reveal a dependency that makes the accepted rendering architecture impossible.
+1. visible-range setup expensive → profile and reduce only proven cell read/subscription cost;
+2. worker filter/sort expensive → design worker-owned query optimization;
+3. result transfer expensive → quantify before changing query protocol;
+4. measurement/layout expensive → simplify database sizing/integration before adding caches/state;
+5. no material remaining bottleneck → stop optimizing.
 
 ## Forbidden
 
-- make virtualization conditional on whether profiling reproduces a large freeze;
-- modify product filter/sort semantics to make rendering cheaper;
+- make virtualization conditional on profiling reproducing the freeze;
+- expose TanStack directly to database/widgets;
+- implement another generic virtualization algorithm beside TanStack;
 - require fixed item dimensions;
-- render hidden complete datasets for measurement;
-- move database measurement/edit/focus rules into shared virtualization;
-- expose the selected third-party virtualizer directly to entities/widgets;
+- mount hidden full datasets for measurement;
+- move database sizing/edit/focus policy into shared virtualization;
+- change filter/sort behavior to make rendering cheaper;
 - add worker batching/index/paging/read APIs without measured evidence;
-- add permanent production diagnostics solely for one-off profiling;
-- weaken tests with sleeps/retries/time inflation;
-- ask implementation work to choose among unresolved secondary optimizations.
+- add production diagnostics solely for one-off profiling;
+- weaken performance/browser proof with sleeps, retries, or timeout inflation.
 
 ## Implementation readiness
 
 ### Shared virtualization library
 
-Architecture: **accepted** in `docs/virtualization-library.md`.
+Architecture: **accepted**. Engine: **`@tanstack/vue-virtual` selected**.
 
-Next gate: focused engine capability proof and implementation preflight.
+Remaining gate: focused integration proof and implementation preflight for exact API/test paths.
 
 ### Database virtualization
 
-Architecture direction and ownership: **accepted**.
+Architecture and ownership: **accepted**.
 
 Remaining implementation-preflight decisions:
 
-- final column discovery/reset/shrink semantics;
-- final focus/edit lifecycle;
+- column discovery/reset/shrink semantics;
+- focus/edit lifecycle;
 - exact DOM/table layout integration;
 - exact proof/spec paths;
-- confirmed shared engine adapter signatures.
+- final adapter TypeScript signatures after the TanStack integration proof.
 
 ### Secondary optimizations
 
 Status: **not architected; evidence-gated**.
 
-Profiling must first show a material remaining bottleneck after bounded rendering or a baseline bottleneck that independently requires change.
-
-Overall verdict: **virtualization architecture is accepted; production coding waits for the focused capability/preflight decisions above, while all non-virtualization optimizations remain unresolved by design**.
+Overall verdict: **virtualization architecture and engine selection are fixed; production implementation waits only for the focused integration/preflight decisions, while all non-virtualization optimizations remain open by design**.
