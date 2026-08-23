@@ -26,14 +26,14 @@ Remove unnecessary production plumbing introduced by the first virtualization mi
 
 ## Ownership
 
-| Layer | Final responsibility |
-| --- | --- |
-| feature | Existing mutation flows remain unchanged. |
-| entity | `databaseData` owns native table virtualization **and geometry from the explicit root to its own table surface**; `databaseValue` keeps the narrow value writer. Relation entity UI does not expose DOM virtualization roots. |
-| widget | Chooses physical roots, composes nested relation surfaces, owns one local inline-edit lifecycle, and gates source/shape-changing configuration actions. |
-| page/pane | No new responsibility. |
-| shared | `useVirtualCollection` stays the only virtualization API; no automatic root/surface discovery. |
-| service/worker | Canonical row/filter/sort/order/data remain unchanged. |
+| Layer          | Final responsibility                                                                                                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| feature        | Existing mutation flows remain unchanged.                                                                                                                                                                                     |
+| entity         | `databaseData` owns native table virtualization **and geometry from the explicit root to its own table surface**; `databaseValue` keeps the narrow value writer. Relation entity UI does not expose DOM virtualization roots. |
+| widget         | Chooses physical roots, composes nested relation surfaces, owns one local inline-edit lifecycle, and gates source/shape-changing configuration actions.                                                                       |
+| page/pane      | No new responsibility.                                                                                                                                                                                                        |
+| shared         | `useVirtualCollection` stays the only virtualization API; no automatic root/surface discovery.                                                                                                                                |
+| service/worker | Canonical row/filter/sort/order/data remain unchanged.                                                                                                                                                                        |
 
 ## Source of truth and state
 
