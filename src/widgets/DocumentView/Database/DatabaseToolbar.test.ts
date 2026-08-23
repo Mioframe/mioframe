@@ -127,13 +127,15 @@ const ValueFieldStub = defineComponent({
   },
 });
 
+const documentId = zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu');
+
 /* eslint-enable vue/one-component-per-file -- Child stubs end here. */
 
 const mountDatabaseToolbar = (activeConfigurationSurface?: DatabaseConfigurationSurface) =>
   mount(DatabaseToolbar, {
     props: {
       directoryPath: '/database',
-      documentId: zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu'),
+      documentId,
       activeConfigurationSurface,
     },
     global: {
@@ -208,12 +210,9 @@ describe('DatabaseToolbar', () => {
     await wrapper.get('button[aria-label="add item"]').trigger('click');
     expect(wrapper.find('[data-testid="add-dialog"]').exists()).toBe(true);
     await wrapper.get('[data-testid="value-field"]').trigger('click');
-    expect(controls.patchProperty).toHaveBeenCalledWith(
-      '/database',
-      expect.any(String),
-      'property-id',
-      { name: 'new value' },
-    );
+    expect(controls.patchProperty).toHaveBeenCalledWith('/database', documentId, 'property-id', {
+      name: 'new value',
+    });
     await wrapper.get('[data-testid="add-dialog"] button').trigger('click');
     expect(wrapper.find('[data-testid="add-dialog"]').exists()).toBe(false);
     await wrapper.get('button[aria-label="add item"]').trigger('click');

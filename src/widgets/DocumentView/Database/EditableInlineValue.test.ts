@@ -97,7 +97,7 @@ const ValueFieldStub = defineComponent({
     value: { required: true, type: [String, Number, Object] },
     inputSize: { required: true, type: Number },
   },
-  emits: ['update:value', 'update:property', 'keydown.enter', 'keydown.escape'],
+  emits: ['update:value', 'update:property', 'keydown'],
   setup(props, { emit }) {
     return () =>
       h('div', [
@@ -105,6 +105,9 @@ const ValueFieldStub = defineComponent({
           value: props.value,
           onInput: (event: Event) => {
             emit('update:value', (event.target as HTMLInputElement).value);
+          },
+          onKeydown: (event: KeyboardEvent) => {
+            emit('keydown', event);
           },
         }),
         h('button', {
@@ -117,18 +120,6 @@ const ValueFieldStub = defineComponent({
           'data-testid': 'field-property',
           onClick: () => {
             emit('update:property', { name: 'Next' });
-          },
-        }),
-        h('button', {
-          'data-testid': 'field-enter',
-          onClick: () => {
-            emit('keydown.enter');
-          },
-        }),
-        h('button', {
-          'data-testid': 'field-escape',
-          onClick: () => {
-            emit('keydown.escape');
           },
         }),
       ]);
@@ -238,11 +229,9 @@ describe('EditableInlineValue', () => {
     expect(wrapper.emitted('update:draft')).toEqual([['next draft']]);
     await wrapper.find('[data-testid="field-property"]').trigger('click');
     expect(wrapper.emitted('update:property')).toEqual([[{ name: 'Next' }]]);
-    await wrapper.find('[data-testid="field-enter"]').trigger('click');
-    await wrapper.find('[data-testid="tooltip-outside"]').trigger('click');
+    await wrapper.find('input').trigger('keydown', { key: 'Enter' });
     expect(wrapper.emitted('commitEdit')).toHaveLength(1);
-    await wrapper.find('[data-testid="field-escape"]').trigger('click');
-    await wrapper.find('[data-testid="tooltip-close"]').trigger('click');
+    await wrapper.find('input').trigger('keydown', { key: 'Escape' });
     expect(wrapper.emitted('cancelEdit')).toHaveLength(1);
   });
 
@@ -272,6 +261,9 @@ describe('EditableInlineValue', () => {
     await root.trigger('keydown', { key: ' ' });
     expect(controls.toggleBoolean).toHaveBeenCalledWith(false, true);
     expect(controls.postValue).toHaveBeenCalledTimes(3);
+    expect(controls.postValue).toHaveBeenNthCalledWith(1, true);
+    expect(controls.postValue).toHaveBeenNthCalledWith(2, true);
+    expect(controls.postValue).toHaveBeenNthCalledWith(3, true);
     expect(wrapper.emitted('requestEdit')).toBeUndefined();
 
     wrapper.unmount();
@@ -283,9 +275,16 @@ describe('EditableInlineValue', () => {
     propertyFixture.indeterminate = false;
     const defaulted = mountEditor(null);
     expect(defaulted.find('.editable-inline-value').attributes('aria-checked')).toBe('true');
+    defaulted.unmount();
+    valueFixture.current = true;
+    const storedTrue = mountEditor(null);
+    expect(storedTrue.find('.editable-inline-value').attributes('aria-checked')).toBe('true');
   });
 
   it('sizes string editors from the lifted draft and leaves non-string values unsized', () => {
+    const shortString = mountEditor({ draft: 'a', resolving: false });
+    expect(shortString.findComponent(ValueFieldStub).props('inputSize')).toBe(12);
+    shortString.unmount();
     const wrapper = mountEditor({ draft: 'a'.repeat(20), resolving: false });
     expect(wrapper.findComponent(ValueFieldStub).props('inputSize')).toBe(20);
     wrapper.unmount();

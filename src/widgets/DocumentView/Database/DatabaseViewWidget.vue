@@ -104,13 +104,13 @@ const onRequestExplicitViewId = async (viewId: DatabaseViewId | undefined) => {
     return;
   }
 
-  if (await resolveActiveInlineEdit()) {
+  if ((await resolveActiveInlineEdit()).status === 'success') {
     setExplicitViewId(viewId);
   }
 };
 
 const onRequestConfiguration = async (surface: DatabaseConfigurationSurface) => {
-  if (await resolveActiveInlineEdit()) {
+  if ((await resolveActiveInlineEdit()).status === 'success') {
     activeConfigurationSurface.value = surface;
   }
 };

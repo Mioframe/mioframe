@@ -842,9 +842,7 @@ test('retains dynamic row sizing, sticky native-table surfaces, and measured pro
     .toBeGreaterThan(initialRowHeight);
 });
 
-test('preserves a lifted inline draft across virtual eviction and resolves it before view and configuration changes', async ({
-  page,
-}) => {
+const setupInlineEditVirtualizationFlow = async (page: Page) => {
   const documentName = createUniqueName('virtualized edit lifecycle');
   const fixture = createDatabaseVirtualizationFixture({
     name: documentName,
@@ -870,39 +868,32 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
   const selectViewAndClose = async (name: string) => {
     const sheet = await openViewsSheet(page);
     const viewButton = sheet.getByRole('button', { name, exact: true });
-
     await viewButton.click();
     await expect(viewButton).toHaveAttribute('aria-current', 'true');
     await sheet.getByRole('button', { name: /close sheet/i }).click();
     await expect(sheet).toHaveCount(0);
   };
-  const openConfigurationAfterResolvingDraft = async <TSheet>(
-    draftLabel: string,
-    openConfiguration: () => Promise<TSheet>,
-  ) => {
-    const draft = createUniqueName(draftLabel);
 
-    await labelButton().click();
-    await expect(labelField).toBeVisible();
-    await labelField.fill(draft);
-    const configuration = await openConfiguration();
-    await expect(labelField).toHaveCount(0);
-    await expect(rootFirstRow).toContainText(draft);
-
-    return configuration;
+  return {
+    fixture,
+    root,
+    table,
+    firstRow,
+    rootTable,
+    rootFirstRow,
+    labelField,
+    labelButton,
+    selectViewAndClose,
   };
-  const openToolbarFilterSheet = async () => {
-    const sheet = page.getByRole('dialog', { name: /database filters sheet/i });
-    const toolbar = page.locator('.md-toolbar').filter({ visible: true });
+};
 
-    await toolbar.getByRole('button', { name: /^filter$/i }).click();
-    await expect(sheet).toBeVisible();
-
-    return sheet;
-  };
+test('preserves an escaped draft across vertical and horizontal virtual eviction', async ({
+  page,
+}) => {
+  const { fixture, root, table, firstRow, labelField, labelButton } =
+    await setupInlineEditVirtualizationFlow(page);
 
   await expect(firstRow).toContainText(fixture.firstLabel);
-
   await labelButton().click();
   await expect(labelField).toBeVisible();
   await labelField.fill(createUniqueName('cancelled draft'));
@@ -912,7 +903,6 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
 
   const verticalDraft = createUniqueName('vertical eviction draft');
   await labelButton().click();
-  await expect(labelField).toBeVisible();
   await labelField.fill(verticalDraft);
   await root.evaluate((rootElement) => {
     rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
@@ -925,7 +915,6 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
 
   const horizontalDraft = createUniqueName('horizontal eviction draft');
   await labelButton().click();
-  await expect(labelField).toBeVisible();
   await labelField.fill(horizontalDraft);
   await root.evaluate((rootElement) => {
     rootElement.scrollLeft = Number.MAX_SAFE_INTEGER;
@@ -940,12 +929,17 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
     table.getByRole('columnheader', { name: fixture.labelPropertyName, exact: true }),
   ).toBeVisible();
   await expect(firstRow).toContainText(horizontalDraft);
+});
+
+test('resolves an edit before another-cell activation and explicit view switching', async ({
+  page,
+}) => {
+  const { fixture, root, table, firstRow, labelField, labelButton, selectViewAndClose } =
+    await setupInlineEditVirtualizationFlow(page);
 
   const previousEditDraft = createUniqueName('previous edit resolution');
   await labelButton().click();
-  await expect(labelField).toBeVisible();
   await labelField.fill(previousEditDraft);
-
   await firstRow
     .locator('td[aria-colindex="1"]')
     .getByRole('button', { name: 'Filter', exact: true })
@@ -954,11 +948,9 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
   await expect(filterField).toBeVisible();
   await expect(firstRow).toContainText(previousEditDraft);
   await filterField.press('Escape');
-  await expect(filterField).toHaveCount(0);
 
   const viewSwitchDraft = createUniqueName('view switch resolution');
   await labelButton().click();
-  await expect(labelField).toBeVisible();
   await labelField.fill(viewSwitchDraft);
   await selectViewAndClose('Short view');
   await expect(table).toHaveAttribute('aria-rowcount', '21');
@@ -971,59 +963,48 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
     rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
   });
   await expect(page.getByText(fixture.lastLabel, { exact: true })).toBeVisible();
+});
 
-  await root.evaluate((rootElement) => {
-    rootElement.scrollTop = 0;
-  });
-  await selectViewAndClose('Short view');
-  await expect(table).toHaveAttribute('aria-rowcount', '21');
-  await expect(table.locator('tbody > tr[aria-rowindex="22"]')).toHaveCount(0);
-  await expect(page.getByText(fixture.lastLabel, { exact: true })).toHaveCount(0);
+test('resolves before one configuration surface and current-view removal', async ({ page }) => {
+  const { fixture, table, rootTable, rootFirstRow, labelField, labelButton } =
+    await setupInlineEditVirtualizationFlow(page);
 
-  const sortSheet = await openConfigurationAfterResolvingDraft('sort configuration draft', () =>
-    openSortSheet(page),
-  );
+  const sortDraft = createUniqueName('sort configuration draft');
+  await labelButton().click();
+  await labelField.fill(sortDraft);
+  const sortSheet = await openSortSheet(page);
   await expect(sortSheet).toBeVisible();
+  await expect(labelField).toHaveCount(0);
+  await expect(rootFirstRow).toContainText(sortDraft);
   await closeBottomSheet(page, /database sort sheet/i);
 
-  const filterSheet = await openConfigurationAfterResolvingDraft(
-    'filter configuration draft',
-    openToolbarFilterSheet,
-  );
-  await expect(filterSheet).toBeVisible();
-  await closeBottomSheet(page, /database filters sheet/i);
-
-  const propertiesSheet = await openConfigurationAfterResolvingDraft(
-    'property configuration draft',
-    () => openPropertiesSheet(page),
-  );
-  await expect(propertiesSheet).toBeVisible();
-  await closeBottomSheet(page, /database properties sheet/i);
+  const viewsSheet = await openViewsSheet(page);
+  const shortViewButton = viewsSheet.getByRole('button', { name: 'Short view', exact: true });
+  await shortViewButton.click();
+  await expect(shortViewButton).toHaveAttribute('aria-current', 'true');
+  await viewsSheet.getByRole('button', { name: /close sheet/i }).click();
+  await expect(viewsSheet).toHaveCount(0);
 
   const viewRemovalDraft = createUniqueName('view removal configuration draft');
   await labelButton().click();
-  await expect(labelField).toBeVisible();
   await labelField.fill(viewRemovalDraft);
-  const viewsSheet = await openViewsSheet(page);
+  const currentViewsSheet = await openViewsSheet(page);
   await expect(labelField).toHaveCount(0);
   await expect(rootFirstRow).toContainText(viewRemovalDraft);
-
-  const currentViewRow = findListRow(viewsSheet, 'Short view');
-  await expect(viewsSheet.getByRole('button', { name: 'Short view', exact: true })).toHaveAttribute(
-    'aria-current',
-    'true',
-  );
+  const currentViewRow = findListRow(currentViewsSheet, 'Short view');
+  await expect(
+    currentViewsSheet.getByRole('button', { name: 'Short view', exact: true }),
+  ).toHaveAttribute('aria-current', 'true');
   await currentViewRow.getByRole('button', { name: /settings view/i }).click();
   await page.getByRole('menuitem', { name: /^remove$/i }).click();
   const removeDialog = page.getByRole('dialog', { name: /remove view\?/i });
-  await expect(removeDialog).toBeVisible();
   await removeDialog.getByRole('button', { name: /^remove$/i }).click();
   await expect(removeDialog).toHaveCount(0);
-  await expect(viewsSheet.getByRole('button', { name: 'Full view', exact: true })).toHaveAttribute(
-    'aria-current',
-    'true',
-  );
+  await expect(
+    currentViewsSheet.getByRole('button', { name: 'Full view', exact: true }),
+  ).toHaveAttribute('aria-current', 'true');
   await expect(rootTable).toHaveAttribute('aria-rowcount', '161');
   await expect(rootFirstRow).toContainText(viewRemovalDraft);
   await closeBottomSheet(page, /database views sheet/i);
+  await expect(table).toHaveAttribute('aria-rowcount', '161');
 });

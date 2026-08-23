@@ -1,8 +1,17 @@
 import { useDatabaseValueWrite } from '@entity/databaseValue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { DomainError } from '@shared/lib/error';
+import { useSnackbar } from '@shared/ui/Snackbar';
 import { isEqual } from 'es-toolkit';
 import { shallowRef, type Ref } from 'vue';
+
+enum DatabaseInlineEditErrorCode {
+  persistenceFailed = 'databaseInlineValueEdit.persistenceFailed',
+}
+
+type InlineEditResolution = { status: 'success' } | { status: 'error'; error: DomainError };
 
 type ActiveInlineEditSession = {
   itemId: DatabaseItemId;
@@ -28,8 +37,9 @@ const isActiveInlineEdit = (
  */
 export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<AMDocumentId>) => {
   const { postValue } = useDatabaseValueWrite(path, documentId);
+  const { addSnackbar } = useSnackbar();
   const activeInlineEditSession = shallowRef<ActiveInlineEditSession>();
-  let activeInlineEditResolution: Promise<boolean> | undefined;
+  let activeInlineEditResolution: Promise<InlineEditResolution> | undefined;
 
   const getSession = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
     const session = activeInlineEditSession.value;
@@ -44,7 +54,7 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
     };
   };
 
-  const resolve = (): Promise<boolean> => {
+  const resolve = (): Promise<InlineEditResolution> => {
     if (activeInlineEditResolution) {
       return activeInlineEditResolution;
     }
@@ -52,7 +62,7 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
     const session = activeInlineEditSession.value;
 
     if (!session) {
-      return Promise.resolve(true);
+      return Promise.resolve({ status: 'success' });
     }
 
     activeInlineEditSession.value = {
@@ -60,7 +70,7 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
       resolving: true,
     };
 
-    const resolution = (async () => {
+    const resolution: Promise<InlineEditResolution> = (async (): Promise<InlineEditResolution> => {
       try {
         if (!isEqual(session.initialValue, session.draft)) {
           await postValue(session.itemId, session.propertyId, session.draft);
@@ -70,8 +80,8 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
           activeInlineEditSession.value = undefined;
         }
 
-        return true;
-      } catch {
+        return { status: 'success' };
+      } catch (cause) {
         const currentSession = activeInlineEditSession.value;
 
         if (isActiveInlineEdit(currentSession, session.itemId, session.propertyId)) {
@@ -81,7 +91,24 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
           };
         }
 
-        return false;
+        const error =
+          cause instanceof DomainError
+            ? cause
+            : new DomainError('Could not save the inline value.', {
+                code: DatabaseInlineEditErrorCode.persistenceFailed,
+                cause,
+              });
+
+        addSnackbar({ text: 'Could not save the inline value.' });
+
+        if (!(cause instanceof DomainError)) {
+          captureDiagnosticException(error, {
+            feature: 'databaseInlineValueEdit',
+            action: 'resolve',
+          });
+        }
+
+        return { status: 'error', error };
       }
     })();
 
@@ -104,7 +131,7 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
       return;
     }
 
-    if (!(await resolve())) {
+    if ((await resolve()).status !== 'success') {
       return;
     }
 
@@ -132,8 +159,10 @@ export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<
 
   const commit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
     if (isActiveInlineEdit(activeInlineEditSession.value, itemId, propertyId)) {
-      void resolve();
+      return resolve();
     }
+
+    return Promise.resolve<InlineEditResolution>({ status: 'success' });
   };
 
   const cancel = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
