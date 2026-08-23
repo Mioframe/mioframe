@@ -13,7 +13,7 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
-import { isEqual, isUndefined } from 'es-toolkit';
+import { isUndefined } from 'es-toolkit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
@@ -25,6 +25,7 @@ import {
   DatabaseExampleDocumentCreateSuccessCard,
   useDatabaseExampleDocumentCreateSuccess,
 } from '@feature/exampleDocumentsCreate';
+import { useDatabaseInlineEditSession } from './useDatabaseInlineEditSession';
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -65,108 +66,21 @@ const { addSnackbar } = useSnackbar();
 const { removeItem } = useDatabaseData(path, documentId);
 const { postValue } = useDatabaseValueWrite(path, documentId);
 
-interface ActiveInlineEditSession {
-  itemId: DatabaseItemId;
-  propertyId: DatabasePropertyId;
-  initialValue: unknown;
-  draft: unknown;
-  resolving: boolean;
-}
-
-const activeInlineEditSession = shallowRef<ActiveInlineEditSession>();
-let activeInlineEditResolution: Promise<boolean> | undefined;
-
-const isActiveInlineEdit = (
-  session: ActiveInlineEditSession | undefined,
-  itemId: DatabaseItemId,
-  propertyId: DatabasePropertyId,
-): session is ActiveInlineEditSession =>
-  session?.itemId === itemId && session.propertyId === propertyId;
-
-const getInlineEditSession = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
-  const session = activeInlineEditSession.value;
-
-  if (!isActiveInlineEdit(session, itemId, propertyId)) {
-    return undefined;
-  }
-
-  return {
-    draft: session.draft,
-    resolving: session.resolving,
-  };
-};
-
-const resolveActiveInlineEdit = (): Promise<boolean> => {
-  if (activeInlineEditResolution) {
-    return activeInlineEditResolution;
-  }
-
-  const session = activeInlineEditSession.value;
-
-  if (!session) {
-    return Promise.resolve(true);
-  }
-
-  activeInlineEditSession.value = {
-    ...session,
-    resolving: true,
-  };
-
-  const resolution = (async () => {
-    try {
-      if (!isEqual(session.initialValue, session.draft)) {
-        await postValue(session.itemId, session.propertyId, session.draft);
-      }
-
-      if (isActiveInlineEdit(activeInlineEditSession.value, session.itemId, session.propertyId)) {
-        activeInlineEditSession.value = undefined;
-      }
-
-      return true;
-    } catch {
-      const currentSession = activeInlineEditSession.value;
-
-      if (isActiveInlineEdit(currentSession, session.itemId, session.propertyId)) {
-        activeInlineEditSession.value = {
-          ...currentSession,
-          resolving: false,
-        };
-      }
-
-      return false;
-    }
-  })();
-
-  activeInlineEditResolution = resolution;
-  void resolution.finally(() => {
-    if (activeInlineEditResolution === resolution) {
-      activeInlineEditResolution = undefined;
-    }
-  });
-
-  return resolution;
-};
+const {
+  cancel: cancelInlineEdit,
+  commit: commitInlineEdit,
+  getSession: getInlineEditSession,
+  request: requestInlineEdit,
+  resolve: resolveActiveInlineEdit,
+  updateDraft: updateInlineEditDraft,
+} = useDatabaseInlineEditSession(postValue);
 
 const onRequestInlineEdit = async (
   itemId: DatabaseItemId,
   propertyId: DatabasePropertyId,
   initialValue: unknown,
 ) => {
-  if (isActiveInlineEdit(activeInlineEditSession.value, itemId, propertyId)) {
-    return;
-  }
-
-  if (!(await resolveActiveInlineEdit())) {
-    return;
-  }
-
-  activeInlineEditSession.value = {
-    itemId,
-    propertyId,
-    initialValue,
-    draft: initialValue,
-    resolving: false,
-  };
+  await requestInlineEdit(itemId, propertyId, initialValue);
 };
 
 const onUpdateInlineEditDraft = (
@@ -174,30 +88,15 @@ const onUpdateInlineEditDraft = (
   propertyId: DatabasePropertyId,
   draft: unknown,
 ) => {
-  const session = activeInlineEditSession.value;
-
-  if (!isActiveInlineEdit(session, itemId, propertyId) || session.resolving) {
-    return;
-  }
-
-  activeInlineEditSession.value = {
-    ...session,
-    draft,
-  };
+  updateInlineEditDraft(itemId, propertyId, draft);
 };
 
 const onCommitInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
-  if (isActiveInlineEdit(activeInlineEditSession.value, itemId, propertyId)) {
-    void resolveActiveInlineEdit();
-  }
+  commitInlineEdit(itemId, propertyId);
 };
 
 const onCancelInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
-  const session = activeInlineEditSession.value;
-
-  if (isActiveInlineEdit(session, itemId, propertyId) && !session.resolving) {
-    activeInlineEditSession.value = undefined;
-  }
+  cancelInlineEdit(itemId, propertyId);
 };
 
 const onRequestExplicitViewId = async (viewId: DatabaseViewId | undefined) => {
@@ -287,6 +186,7 @@ const onUpdatedEditItemDialog = () => {
         :document-id="documentId"
         :directory-path="path"
         :auto-hide-target="databaseViewRef"
+        :resolve-inline-edit-before-configuration="resolveActiveInlineEdit"
         @update:explicit-view-id="onRequestExplicitViewId"
       />
     </div>
@@ -327,6 +227,7 @@ const onUpdatedEditItemDialog = () => {
           :document-id="documentId"
           :directory-path="path"
           :auto-hide-target="databaseViewRef"
+          :resolve-inline-edit-before-configuration="resolveActiveInlineEdit"
           @update:explicit-view-id="onRequestExplicitViewId"
         />
       </template>

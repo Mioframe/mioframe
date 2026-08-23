@@ -9,8 +9,8 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import type { ItemIdQuery } from '@shared/service';
-import { unrefElement, useElementBounding, useMutationObserver, useScroll } from '@vueuse/core';
-import { computed, onUpdated, toRefs, useTemplateRef } from 'vue';
+import { useScroll } from '@vueuse/core';
+import { computed, toRefs } from 'vue';
 import ValueInline from './ValueInline.vue';
 
 const props = defineProps<{
@@ -30,45 +30,7 @@ const slots = defineSlots<{
 
 const { documentId, path, scrollRoot } = toRefs(props);
 
-const tableSurface = useTemplateRef<HTMLElement>('tableSurface');
-const scrollRootEl = computed(() => unrefElement(scrollRoot.value));
-
-const rootBounding = useElementBounding(scrollRootEl);
-const tableBounding = useElementBounding(tableSurface);
-
-const updateSurfaceBounds = () => {
-  rootBounding.update();
-  tableBounding.update();
-};
-
-// Only direct composition children of the explicit scroll root can move the table before it.
-// Virtual rows/cells are descendants of the table-surface wrapper and therefore cannot trigger
-// this observer; TanStack remains the only virtual-item measurement owner.
-useMutationObserver(scrollRootEl, updateSurfaceBounds, { childList: true });
-
-onUpdated(updateSurfaceBounds);
-
-const verticalSurfaceOffset = computed(() => {
-  const root = scrollRootEl.value;
-
-  if (!root || !tableSurface.value) {
-    return 0;
-  }
-
-  return tableBounding.top.value - rootBounding.top.value - root.clientTop + root.scrollTop;
-});
-
-const horizontalSurfaceOffset = computed(() => {
-  const root = scrollRootEl.value;
-
-  if (!root || !tableSurface.value) {
-    return 0;
-  }
-
-  return tableBounding.left.value - rootBounding.left.value - root.clientLeft + root.scrollLeft;
-});
-
-const { arrivedState } = useScroll(scrollRootEl, {
+const { arrivedState } = useScroll(scrollRoot, {
   throttle: 1e3 / 20,
   observe: true,
 });
@@ -80,51 +42,48 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
 
 <template>
   <div class="database-view-layout">
-    <div ref="tableSurface" class="database-view-layout__table-surface">
-      <DatabaseDataTable
-        v-if="propertiesIdList"
-        :directory-path="path"
-        :document-id="documentId"
-        :view-id="viewId"
-        :id-query="itemIdQuery"
-        :properties="propertiesIdList"
-        :scroll-root="scrollRootEl"
-        :vertical-surface-offset="verticalSurfaceOffset"
-        :horizontal-surface-offset="horizontalSurfaceOffset"
-      >
-        <template #property="{ propertyId }">
-          <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />
-        </template>
+    <DatabaseDataTable
+      v-if="propertiesIdList"
+      class="database-view-layout__table"
+      :directory-path="path"
+      :document-id="documentId"
+      :view-id="viewId"
+      :id-query="itemIdQuery"
+      :properties="propertiesIdList"
+      :scroll-root="scrollRoot"
+    >
+      <template #property="{ propertyId }">
+        <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />
+      </template>
 
-        <template #value="{ itemId, propertyId }">
-          <slot name="value" :item-id="itemId" :property-id="propertyId">
-            <ValueInline
-              :directory-path="path"
-              :document-id="documentId"
-              :property-id="propertyId"
-              :item-id="itemId"
-            />
-          </slot>
-        </template>
+      <template #value="{ itemId, propertyId }">
+        <slot name="value" :item-id="itemId" :property-id="propertyId">
+          <ValueInline
+            :directory-path="path"
+            :document-id="documentId"
+            :property-id="propertyId"
+            :item-id="itemId"
+          />
+        </slot>
+      </template>
 
-        <template v-if="!!slots.action" #action="{ itemId }">
-          <div
-            class="database-view-layout__action"
-            :class="{
-              _elevation: !arrivedRight,
-            }"
-          >
-            <slot name="action" :item-id="itemId" />
-          </div>
-        </template>
+      <template v-if="!!slots.action" #action="{ itemId }">
+        <div
+          class="database-view-layout__action"
+          :class="{
+            _elevation: !arrivedRight,
+          }"
+        >
+          <slot name="action" :item-id="itemId" />
+        </div>
+      </template>
 
-        <template v-if="!!slots.actionHead" #actionHead>
-          <slot name="actionHead" />
-        </template>
-      </DatabaseDataTable>
+      <template v-if="!!slots.actionHead" #actionHead>
+        <slot name="actionHead" />
+      </template>
+    </DatabaseDataTable>
 
-      <div v-else>properties in undefined</div>
-    </div>
+    <div v-else>properties in undefined</div>
 
     <div v-if="!!slots.after" class="database-view-layout__after">
       <slot name="after" />
@@ -137,7 +96,7 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
   display: flex;
   flex-direction: column;
 
-  &__table-surface {
+  &__table {
     min-width: 100%;
   }
 

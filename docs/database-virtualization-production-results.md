@@ -110,3 +110,44 @@ nested relation scroll root with independent two-axis ranges. Those checks are
 correctness/geometry proof rather than a substitute timing benchmark.
 That centralized owner is registered for both desktop Chromium and Mobile
 Chrome; its focused product run passed all 22 project/spec executions.
+
+## Final simplification-correction revalidation
+
+Date: 2026-08-23
+Branch: `fix/database-large-data-performance`
+Repository HEAD while measured: `68a71e89d03713452946819cb52ba80a64157424`
+Measured source: the final PR #217 simplification-correction worktree at that
+head, including uncommitted correction implementation and proof changes.
+
+This deliberately rechecked only S0 and G1 rather than repeating the full
+matrix. The same real JSON-import/view-selection scenario, sparse current
+schema data, production Vite build/preview, 640 × 480 Chromium viewport,
+one-worker container profile, and in-page protocol were used. For each fresh
+browser context, the capture-phase observer measured MessageChannel yield,
+the first `requestAnimationFrame`, switch-to-usable, and Long Tasks; it then
+proved the final logical row, property, and label through deep two-axis
+scrolling. The command used `--retries=0`; Playwright command duration is not
+a timing metric.
+
+| Case | Logical shape | Sample | Yield |  rAF | Usable | LT count/max/total |     Mounted | Correctness |
+| ---- | ------------: | -----: | ----: | ---: | -----: | -----------------: | ----------: | ----------- |
+| S0   |       100 × 8 |      1 |  15.0 | 10.0 |  278.4 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+| S0   |       100 × 8 |      2 |  14.9 | 10.1 |  304.9 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+| S0   |       100 × 8 |      3 |  14.9 | 11.9 |  319.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      1 |  11.9 | 10.8 |  350.5 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      2 |  15.4 | 10.8 |  348.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      3 |  11.7 | 10.8 |  411.8 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+
+| Case | Median yield | Median rAF | Median usable | Worst usable | Long-task total across samples | Worst Long Task |
+| ---- | -----------: | ---------: | ------------: | -----------: | -----------------------------: | --------------: |
+| S0   |         14.9 |       10.1 |         304.9 |        319.2 |                              0 |               0 |
+| G1   |         11.9 |       10.8 |         350.5 |        411.8 |                              0 |               0 |
+
+- G1 retained 12 mounted data rows, 8 mounted property headers, and 96
+  expensive value cells in every sample, so the 9,000,000 logical
+  intersections were not materialized.
+- Every sample reached the full logical metadata and deep final row/property/
+  value sentinels. No G1 switch-associated Long Task exceeded 100 ms; none
+  were observed.
+- Compared with the retained full-matrix baseline above, these bounded samples
+  show no material correction regression. No further optimization was made.

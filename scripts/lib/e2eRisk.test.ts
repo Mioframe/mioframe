@@ -400,6 +400,14 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
   it.each([
     ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
     [
+      'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+    ],
+    [
+      'src/widgets/DocumentView/Database/useDatabaseInlineEditSession.ts',
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+    ],
+    [
       'src/shared/lib/sortable/useReorderSurface.ts',
       ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
     ],

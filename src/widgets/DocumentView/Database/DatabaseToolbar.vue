@@ -22,6 +22,7 @@ const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
   autoHideTarget?: MaybeElement | undefined;
+  resolveInlineEditBeforeConfiguration: () => Promise<boolean>;
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
@@ -50,24 +51,52 @@ const onUpdateProperty = async (
   await patchProperty(path.value, documentId.value, propertyId, v);
 };
 
-const onToggleViewSettings = () => {
-  showViewSettings.value = !showViewSettings.value;
+const onToggleViewSettings = async () => {
+  if (showViewSettings.value) {
+    showViewSettings.value = false;
+    return;
+  }
+
+  if (await props.resolveInlineEditBeforeConfiguration()) {
+    showViewSettings.value = true;
+  }
 };
 
-const onToggleSortSettings = () => {
-  showSortSettings.value = !showSortSettings.value;
+const onToggleSortSettings = async () => {
+  if (showSortSettings.value) {
+    showSortSettings.value = false;
+    return;
+  }
+
+  if (await props.resolveInlineEditBeforeConfiguration()) {
+    showSortSettings.value = true;
+  }
 };
 
 const onToggleAddItemDialog = () => {
   isShowAddItem.value = !isShowAddItem.value;
 };
 
-const onToggleFilterSettings = () => {
-  showFilterSettings.value = !showFilterSettings.value;
+const onToggleFilterSettings = async () => {
+  if (showFilterSettings.value) {
+    showFilterSettings.value = false;
+    return;
+  }
+
+  if (await props.resolveInlineEditBeforeConfiguration()) {
+    showFilterSettings.value = true;
+  }
 };
 
-const onTogglePropertySettings = () => {
-  showPropertySettings.value = !showPropertySettings.value;
+const onTogglePropertySettings = async () => {
+  if (showPropertySettings.value) {
+    showPropertySettings.value = false;
+    return;
+  }
+
+  if (await props.resolveInlineEditBeforeConfiguration()) {
+    showPropertySettings.value = true;
+  }
 };
 
 const onCloseViewsSheet = () => {

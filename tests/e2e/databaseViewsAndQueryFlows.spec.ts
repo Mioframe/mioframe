@@ -26,6 +26,7 @@ import {
   openEqualFilterDialog,
   openFilterSheet,
   openOpfs,
+  openPropertiesSheet,
   openSortSheet,
   openViewsSheet,
   removeSorting,
@@ -37,9 +38,11 @@ import {
 type DatabaseVirtualizationFixture = {
   document: Record<string, unknown>;
   firstLabel: string;
+  itemIds: readonly string[];
   labelPropertyName: string;
   lastLabel: string;
   lastPropertyName: string;
+  relationPropertyName?: string | undefined;
   widePropertyName: string;
 };
 
@@ -47,15 +50,27 @@ const createDatabaseVirtualizationFixture = ({
   name,
   rowCount,
   columnCount,
+  relation,
   shortRowCount = 20,
 }: {
   name: string;
   rowCount: number;
   columnCount: number;
+  relation?:
+    | {
+        documentId: string;
+        itemIds: readonly string[];
+        propertyName: string;
+      }
+    | undefined;
   shortRowCount?: number;
 }): DatabaseVirtualizationFixture => {
   if (columnCount < 2) {
     throw new Error('Database virtualization fixtures need filter and label properties');
+  }
+
+  if (relation && columnCount < 3) {
+    throw new Error('Relation virtualization fixtures need a separate relation property');
   }
 
   // The service exposes map keys in canonical lexical order. Zero padding makes the imported
@@ -71,8 +86,15 @@ const createDatabaseVirtualizationFixture = ({
     throw new Error('Expected filter and label property IDs');
   }
 
-  const properties: Record<string, { name: string; type: 'string' }> = {};
+  const properties: Record<string, Record<string, unknown>> = {};
   const widePropertyName = 'ProgressiveWidthProbeXXXXXXXXXXXXXXXXXXXXXXXX';
+  const relationPropertyName = relation?.propertyName;
+  const relationPropertyId = relation ? propertyIds[2] : undefined;
+
+  if (relation && !relationPropertyId) {
+    throw new Error('Relation virtualization fixtures need a relation property ID');
+  }
+
   const propertyNames = Array.from({ length: columnCount }, (_, index) => {
     const propertyId = propertyIds[index];
 
@@ -88,20 +110,34 @@ const createDatabaseVirtualizationFixture = ({
           : index === 2
             ? widePropertyName
             : `Column ${index + 1}`;
-    properties[propertyId] = { name: propertyName, type: 'string' };
+
+    properties[propertyId] =
+      relation && index === 2
+        ? {
+            name: relationPropertyName,
+            relation: { documentId: relation.documentId, viewId: 'viewId_full' },
+            type: 'relation',
+          }
+        : { name: propertyName, type: 'string' };
     return propertyName;
   });
 
-  const data: Record<string, Record<string, string>> = {};
+  const data: Record<string, Record<string, unknown>> = {};
   const firstLabel = 'short row 1';
   const lastLabel = 'full sentinel row';
+  const itemIds: string[] = [];
 
   for (let index = 0; index < rowCount; index += 1) {
     const isShort = index < shortRowCount;
-    data[`itemId_${String(index + 1).padStart(6, '0')}`] = {
+    const itemId = `itemId_${String(index + 1).padStart(6, '0')}`;
+    itemIds.push(itemId);
+    data[itemId] = {
       [filterPropertyId]: isShort ? 'short' : 'full',
       [labelPropertyId]:
         index === 0 ? firstLabel : index === rowCount - 1 ? lastLabel : `row ${index + 1}`,
+      ...(relation && relationPropertyId && index === 0
+        ? { [relationPropertyId]: relation.itemIds }
+        : {}),
     };
   }
 
@@ -132,26 +168,48 @@ const createDatabaseVirtualizationFixture = ({
       },
     },
     firstLabel,
+    itemIds,
     labelPropertyName: propertyNames[1] ?? 'Label',
     lastLabel,
     lastPropertyName: propertyNames.at(-1) ?? 'Column',
+    relationPropertyName,
     widePropertyName,
   };
+};
+
+const installDatabaseJsonImport = (base64Document: string) => {
+  const bytes = Uint8Array.from(atob(base64Document), (character) => character.charCodeAt(0));
+  const file = new File([bytes], 'database-virtualization.json', {
+    type: 'application/json',
+  });
+
+  Reflect.set(globalThis, 'showOpenFilePicker', () =>
+    Promise.resolve([{ getFile: () => Promise.resolve(file) }]),
+  );
 };
 
 const stubDatabaseJsonImport = async (page: Page, document: Record<string, unknown>) => {
   const encodedDocument = Buffer.from(JSON.stringify(document), 'utf8').toString('base64');
 
-  await page.addInitScript((base64Document: string) => {
-    const bytes = Uint8Array.from(atob(base64Document), (character) => character.charCodeAt(0));
-    const file = new File([bytes], 'database-virtualization.json', {
-      type: 'application/json',
-    });
+  await page.addInitScript(installDatabaseJsonImport, encodedDocument);
+};
 
-    Reflect.set(globalThis, 'showOpenFilePicker', () =>
-      Promise.resolve([{ getFile: () => Promise.resolve(file) }]),
-    );
-  }, encodedDocument);
+const setDatabaseJsonImport = async (page: Page, document: Record<string, unknown>) => {
+  const encodedDocument = Buffer.from(JSON.stringify(document), 'utf8').toString('base64');
+
+  await page.evaluate(installDatabaseJsonImport, encodedDocument);
+};
+
+const getOpenDocumentId = (page: Page) => {
+  const documentId = [...new URL(page.url()).searchParams].find(([key]) =>
+    key.endsWith('[documentId]'),
+  )?.[1];
+
+  if (!documentId) {
+    throw new Error(`Expected an open document ID in ${page.url()}`);
+  }
+
+  return documentId;
 };
 
 const importDatabaseJsonDocument = async (page: Page, documentName: string) => {
@@ -568,6 +626,157 @@ test('uses the explicit nested relation overflow root for independent two-axis r
   await expect(relationTable.locator('tbody td.db-data-table__actions').first()).toBeVisible();
 });
 
+test('keeps normal and teleported recursive relation tables inside their widget-owned scroll roots', async ({
+  page,
+}) => {
+  const placeholderDocumentName = createUniqueName('recursive relation placeholder');
+  const nestedDocumentName = createUniqueName('recursive relation nested');
+  const outerDocumentName = createUniqueName('recursive relation outer');
+  const relationPropertyName = createUniqueName('linked recursive rows');
+
+  await page.setViewportSize({ width: 640, height: 480 });
+  await launchApp(page);
+  await openOpfs(page);
+
+  await createDatabaseDocument(page, placeholderDocumentName);
+  await openDocumentFromExplorer(page, placeholderDocumentName);
+  const placeholderDocumentId = getOpenDocumentId(page);
+  await closeDocumentPane(page);
+
+  const nestedFixture = createDatabaseVirtualizationFixture({
+    name: nestedDocumentName,
+    rowCount: 160,
+    columnCount: 24,
+    relation: {
+      documentId: placeholderDocumentId,
+      itemIds: Array.from(
+        { length: 160 },
+        (_, index) => `itemId_${String(index + 1).padStart(6, '0')}`,
+      ),
+      propertyName: relationPropertyName,
+    },
+  });
+  await setDatabaseJsonImport(page, nestedFixture.document);
+  await importDatabaseJsonDocument(page, nestedDocumentName);
+  const nestedDocumentId = getOpenDocumentId(page);
+
+  const propertiesSheet = await openPropertiesSheet(page);
+  const nestedRelationRow = findListRow(propertiesSheet, relationPropertyName);
+  await nestedRelationRow.getByRole('button', { name: /options/i }).click();
+  await page.getByRole('menuitem', { name: /^edit$/i }).click();
+  const relationPropertyDialog = page.getByRole('dialog', { name: /edit property/i });
+  await expect(relationPropertyDialog).toBeVisible();
+  await relationPropertyDialog.getByRole('combobox', { name: /database document/i }).click();
+  await page.getByRole('option', { name: new RegExp(`^${nestedDocumentName}$`, 'i') }).click();
+  await relationPropertyDialog.getByRole('button', { name: /^edit$/i }).click();
+  await expect(relationPropertyDialog).toHaveCount(0);
+  await closeBottomSheet(page, /database properties sheet/i);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: /rename document/i })).toBeVisible();
+  await closeDocumentPane(page);
+
+  const outerFixture = createDatabaseVirtualizationFixture({
+    name: outerDocumentName,
+    rowCount: 160,
+    columnCount: 24,
+    relation: {
+      documentId: nestedDocumentId,
+      itemIds: nestedFixture.itemIds,
+      propertyName: relationPropertyName,
+    },
+  });
+  await setDatabaseJsonImport(page, outerFixture.document);
+  await importDatabaseJsonDocument(page, outerDocumentName);
+
+  const outerTable = page.locator('.database-view > .database-view-layout > .db-data-table');
+  const firstOuterRow = outerTable.locator('tbody > tr[aria-rowindex="2"]');
+  const normalRoot = firstOuterRow.locator('.database-relation-value-inline__scroll-root');
+  const normalTable = normalRoot.getByRole('table');
+
+  await expect(normalRoot).toBeVisible();
+  await expect(normalTable).toHaveAttribute('aria-rowcount', '161');
+  await expect(normalTable).toHaveAttribute('aria-colcount', '24');
+
+  const readRoot = (root: typeof normalRoot) =>
+    root.evaluate((rootElement) => ({
+      clientHeight: rootElement.clientHeight,
+      clientWidth: rootElement.clientWidth,
+      containsTable: rootElement.contains(rootElement.querySelector('table')),
+      scrollHeight: rootElement.scrollHeight,
+      scrollWidth: rootElement.scrollWidth,
+    }));
+  const readMountedWork = (table: typeof normalTable) =>
+    table.evaluate((tableElement) => ({
+      cells: tableElement.querySelectorAll('tbody td.db-data-table__value').length,
+      headers: tableElement.querySelectorAll('thead th[aria-colindex]:not(.db-data-table__actions)')
+        .length,
+      rows: tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])').length,
+    }));
+  const expectBoundedTable = async (table: typeof normalTable) => {
+    const mountedWork = await readMountedWork(table);
+
+    expect(mountedWork.rows).toBeGreaterThan(0);
+    expect(mountedWork.headers).toBeGreaterThan(0);
+    expect(mountedWork.rows).toBeLessThan(160);
+    expect(mountedWork.headers).toBeLessThan(24);
+    expect(mountedWork.cells).toBe(mountedWork.rows * mountedWork.headers);
+    expect(mountedWork.cells).toBeLessThan(160 * 24);
+  };
+
+  const normalScroll = await readRoot(normalRoot);
+  expect(normalScroll.containsTable).toBe(true);
+  expect(normalScroll.scrollHeight).toBeGreaterThan(normalScroll.clientHeight);
+  expect(normalScroll.scrollWidth).toBeGreaterThan(normalScroll.clientWidth);
+  await expectBoundedTable(normalTable);
+
+  await normalRoot.evaluate((rootElement) => {
+    rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
+    rootElement.scrollLeft = Number.MAX_SAFE_INTEGER;
+  });
+  await expect(normalTable.locator('tbody > tr[aria-rowindex="161"]')).toBeVisible();
+  await expect(
+    normalTable.getByRole('columnheader', { name: nestedFixture.lastPropertyName, exact: true }),
+  ).toBeVisible();
+  await expectBoundedTable(normalTable);
+
+  await normalRoot.evaluate((rootElement) => {
+    rootElement.scrollTop = 0;
+    rootElement.scrollLeft = 0;
+  });
+  const recursiveToggle = normalTable
+    .locator('tbody > tr[aria-rowindex="2"]')
+    .getByRole('button', { name: /^show value$/i });
+  await expect(recursiveToggle).toBeVisible();
+  await recursiveToggle.click();
+
+  const relationRoots = page.locator('.database-relation-value-inline__scroll-root');
+  await expect(relationRoots).toHaveCount(2);
+  const recursiveRoot = relationRoots.last();
+  const recursiveTable = recursiveRoot.getByRole('table');
+  await expect(recursiveRoot).toBeVisible();
+  await expect(recursiveTable).toHaveAttribute('aria-rowcount', '161');
+  await expect(recursiveTable).toHaveAttribute('aria-colcount', '24');
+
+  const recursiveScroll = await readRoot(recursiveRoot);
+  expect(recursiveScroll.containsTable).toBe(true);
+  expect(recursiveScroll.scrollHeight).toBeGreaterThan(recursiveScroll.clientHeight);
+  expect(recursiveScroll.scrollWidth).toBeGreaterThan(recursiveScroll.clientWidth);
+  await expectBoundedTable(recursiveTable);
+
+  await recursiveRoot.evaluate((rootElement) => {
+    rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
+    rootElement.scrollLeft = Number.MAX_SAFE_INTEGER;
+  });
+  await expect(recursiveTable.locator('tbody > tr[aria-rowindex="161"]')).toBeVisible();
+  await expect(
+    recursiveTable.getByRole('columnheader', {
+      name: nestedFixture.lastPropertyName,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectBoundedTable(recursiveTable);
+});
+
 test('keeps the production Database table mounted work below its logical row-property cross product', async ({
   page,
 }) => {
@@ -620,7 +829,7 @@ test('keeps the production Database table mounted work below its logical row-pro
     .toBeLessThan(rowValues.length * propertyNames.length);
 });
 
-test('derives a non-zero vertical table surface offset from real preceding Database content', async ({
+test('keeps real preceding Database content connected to the table-owned surface range', async ({
   page,
 }) => {
   await launchApp(page);
@@ -628,11 +837,18 @@ test('derives a non-zero vertical table surface offset from real preceding Datab
 
   await expect(page.getByText('Example created', { exact: true })).toBeVisible();
   const root = page.locator('.database-view');
-  const table = root.locator(
-    ':scope > .database-view-layout > .database-view-layout__table-surface > table',
-  );
+  const table = root.locator(':scope > .database-view-layout > .database-view-layout__table');
   await expect(root).toBeVisible();
   await expect(table).toBeVisible();
+
+  const deepRangeRows = Array.from({ length: 40 }, (_, index) =>
+    createUniqueName(`surface range row ${index + 1}`),
+  );
+  for (const task of deepRangeRows) {
+    // The real starter-document add-item flow keeps the success card mounted before the table.
+    // eslint-disable-next-line no-await-in-loop -- Item dialogs share one product surface.
+    await addDatabaseItemValues(page, { Task: task });
+  }
 
   const surfaceOffset = await root.evaluate((rootElement) => {
     const tableElement = rootElement.querySelector('.db-data-table');
@@ -649,6 +865,51 @@ test('derives a non-zero vertical table surface offset from real preceding Datab
 
   expect(surfaceOffset.horizontal).toBeGreaterThan(0);
   expect(surfaceOffset.vertical).toBeGreaterThan(0);
+
+  // This remains a real table-owned virtual collection even while the success card moves its
+  // surface down inside the physical root. Exercise a deep mounted range instead of stopping at
+  // a rectangle calculation, then dismiss the card so the same surface moves again.
+  const readMountedRange = () =>
+    table.evaluate((tableElement) => {
+      const rows = Array.from(
+        tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])'),
+      );
+
+      return {
+        indices: rows.map((row) => Number(row.getAttribute('data-mioframe-virtual-index'))),
+        rows: rows.length,
+      };
+    });
+
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = 0;
+  });
+  const initialRange = await readMountedRange();
+  expect(initialRange.rows).toBeGreaterThan(0);
+  expect(initialRange.rows).toBeLessThan(deepRangeRows.length + 5);
+
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
+  });
+  await expect
+    .poll(readMountedRange, {
+      message: 'the success-card-displaced table must reach a different deep virtual row range',
+    })
+    .not.toEqual(initialRange);
+
+  await page.getByRole('button', { name: /^got it$/i }).click();
+  await expect(page.getByText('Example created', { exact: true })).toHaveCount(0);
+
+  const dismissedSurfaceOffset = await root.evaluate((rootElement) => {
+    const tableElement = rootElement.querySelector('.db-data-table');
+    const rootRect = rootElement.getBoundingClientRect();
+    const tableRect = tableElement?.getBoundingClientRect();
+
+    return (tableRect?.top ?? 0) - rootRect.top - rootElement.clientTop + rootElement.scrollTop;
+  });
+
+  expect(dismissedSurfaceOffset).toBeLessThan(surfaceOffset.vertical);
+  await expect(table.locator('tbody > tr:not([aria-hidden="true"])')).not.toHaveCount(0);
 });
 
 test('virtualizes the real Database root across deep native-table row and property ranges', async ({
@@ -897,7 +1158,7 @@ test('retains dynamic row sizing, sticky native-table surfaces, and measured pro
     .toBeGreaterThan(initialRowHeight);
 });
 
-test('preserves a lifted inline draft across virtual eviction and resolves it before view changes', async ({
+test('preserves a lifted inline draft across virtual eviction and resolves it before view and configuration changes', async ({
   page,
 }) => {
   const documentName = createUniqueName('virtualized edit lifecycle');
@@ -915,6 +1176,8 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
   const root = page.locator('.database-view');
   const table = page.getByRole('table');
   const firstRow = table.locator('tbody > tr[aria-rowindex="2"]');
+  const rootTable = root.locator('.db-data-table');
+  const rootFirstRow = rootTable.locator('tbody > tr[aria-rowindex="2"]');
   const labelField = page.getByRole('textbox', { name: fixture.labelPropertyName, exact: true });
   const labelButton = () =>
     firstRow
@@ -928,6 +1191,30 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
     await expect(viewButton).toHaveAttribute('aria-current', 'true');
     await sheet.getByRole('button', { name: /close sheet/i }).click();
     await expect(sheet).toHaveCount(0);
+  };
+  const openConfigurationAfterResolvingDraft = async <TSheet>(
+    draftLabel: string,
+    openConfiguration: () => Promise<TSheet>,
+  ) => {
+    const draft = createUniqueName(draftLabel);
+
+    await labelButton().click();
+    await expect(labelField).toBeVisible();
+    await labelField.fill(draft);
+    const configuration = await openConfiguration();
+    await expect(labelField).toHaveCount(0);
+    await expect(rootFirstRow).toContainText(draft);
+
+    return configuration;
+  };
+  const openToolbarFilterSheet = async () => {
+    const sheet = page.getByRole('dialog', { name: /database filters sheet/i });
+    const toolbar = page.locator('.md-toolbar').filter({ visible: true });
+
+    await toolbar.getByRole('button', { name: /^filter$/i }).click();
+    await expect(sheet).toBeVisible();
+
+    return sheet;
   };
 
   await expect(firstRow).toContainText(fixture.firstLabel);
@@ -1008,4 +1295,51 @@ test('preserves a lifted inline draft across virtual eviction and resolves it be
   await expect(table).toHaveAttribute('aria-rowcount', '21');
   await expect(table.locator('tbody > tr[aria-rowindex="22"]')).toHaveCount(0);
   await expect(page.getByText(fixture.lastLabel, { exact: true })).toHaveCount(0);
+
+  const sortSheet = await openConfigurationAfterResolvingDraft('sort configuration draft', () =>
+    openSortSheet(page),
+  );
+  await expect(sortSheet).toBeVisible();
+  await closeBottomSheet(page, /database sort sheet/i);
+
+  const filterSheet = await openConfigurationAfterResolvingDraft(
+    'filter configuration draft',
+    openToolbarFilterSheet,
+  );
+  await expect(filterSheet).toBeVisible();
+  await closeBottomSheet(page, /database filters sheet/i);
+
+  const propertiesSheet = await openConfigurationAfterResolvingDraft(
+    'property configuration draft',
+    () => openPropertiesSheet(page),
+  );
+  await expect(propertiesSheet).toBeVisible();
+  await closeBottomSheet(page, /database properties sheet/i);
+
+  const viewRemovalDraft = createUniqueName('view removal configuration draft');
+  await labelButton().click();
+  await expect(labelField).toBeVisible();
+  await labelField.fill(viewRemovalDraft);
+  const viewsSheet = await openViewsSheet(page);
+  await expect(labelField).toHaveCount(0);
+  await expect(rootFirstRow).toContainText(viewRemovalDraft);
+
+  const currentViewRow = findListRow(viewsSheet, 'Short view');
+  await expect(viewsSheet.getByRole('button', { name: 'Short view', exact: true })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await currentViewRow.getByRole('button', { name: /settings view/i }).click();
+  await page.getByRole('menuitem', { name: /^remove$/i }).click();
+  const removeDialog = page.getByRole('dialog', { name: /remove view\?/i });
+  await expect(removeDialog).toBeVisible();
+  await removeDialog.getByRole('button', { name: /^remove$/i }).click();
+  await expect(removeDialog).toHaveCount(0);
+  await expect(viewsSheet.getByRole('button', { name: 'Full view', exact: true })).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
+  await expect(rootTable).toHaveAttribute('aria-rowcount', '161');
+  await expect(rootFirstRow).toContainText(viewRemovalDraft);
+  await closeBottomSheet(page, /database views sheet/i);
 });
