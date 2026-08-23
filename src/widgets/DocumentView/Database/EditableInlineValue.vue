@@ -137,7 +137,7 @@ const onRootKeydown = async (event: KeyboardEvent) => {
 
 onBeforeUnmount(() => {
   // A virtual range update can unmount this cell without a component-level close event. The
-  // widget-owned session already holds its draft, so resolving here uses the same normal commit
+  // feature-owned session already holds its draft, so resolving here uses the same normal commit
   // path instead of silently discarding it.
   if (!isCancellationRequested.value && isEditorOpen.value) {
     commitEditor();

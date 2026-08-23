@@ -3,18 +3,40 @@ import { mount } from '@vue/test-utils';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { ref, defineComponent, h, type Ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EditableInlineValue from './EditableInlineValue.vue';
 
+const controls = vi.hoisted(() => ({
+  property: { name: 'Title', type: 'string' },
+  value: undefined as string | number | boolean | undefined,
+  postValue: vi.fn(),
+  toggleBoolean: vi.fn(),
+}));
+
+/* Keep mutable test controls outside the hoisted mock factory; each mount receives a fresh ref. */
+const propertyFixture = {
+  name: 'Title',
+  type: 'string',
+  default: undefined as boolean | undefined,
+  indeterminate: undefined as boolean | undefined,
+};
+const valueFixture = { current: 'initial' as unknown };
+
+/* vi.mock factories run before normal imports, so the primitive fixtures are copied into refs there. */
 vi.mock('@entity/databaseProperty', () => ({
   useDatabaseProperty: () => ({
-    property: ref({ name: 'Title', type: 'string' }),
+    property: ref({
+      name: propertyFixture.name,
+      type: propertyFixture.type,
+      default: propertyFixture.default,
+      indeterminate: propertyFixture.indeterminate,
+    }),
   }),
 }));
 
 vi.mock('@entity/databaseValue', () => ({
-  useDatabaseEffectiveValue: () => ({ value: ref('initial') }),
-  useDatabaseStoredValue: () => ({ post: vi.fn() }),
+  useDatabaseEffectiveValue: () => ({ value: ref(valueFixture.current) }),
+  useDatabaseStoredValue: () => ({ post: controls.postValue }),
 }));
 
 vi.mock('@shared/ui/State', () => ({
@@ -30,19 +52,33 @@ vi.mock('@shared/ui/State', () => ({
 
 vi.mock('@shared/ui/Tooltips', () => ({
   MDOverlayTooltip: defineComponent({
-    props: {
-      show: {
-        type: Boolean,
-        required: true,
-      },
-    },
-    setup(props, { slots }) {
-      return () => (props.show ? h('div', slots.default?.()) : undefined);
+    name: 'MDOverlayTooltip',
+    props: { show: { type: Boolean, required: true } },
+    emits: ['update:show', 'interaction-outside'],
+    setup(props, { emit, slots }) {
+      return () =>
+        props.show
+          ? h('div', { 'data-testid': 'tooltip' }, [
+              h('button', {
+                'data-testid': 'tooltip-close',
+                onClick: () => {
+                  emit('update:show', false);
+                },
+              }),
+              h('button', {
+                'data-testid': 'tooltip-outside',
+                onClick: () => {
+                  emit('interaction-outside');
+                },
+              }),
+              slots.default?.(),
+            ])
+          : undefined;
     },
   }),
 }));
 
-vi.mock('@shared/ui/Checkbox', () => ({ toggleBoolean: vi.fn() }));
+vi.mock('@shared/ui/Checkbox', () => ({ toggleBoolean: controls.toggleBoolean }));
 vi.mock('@shared/lib/validateZodScheme', () => ({
   zodIs: (value: { type?: string }, schema: { type: string }) => value.type === schema.type,
 }));
@@ -58,21 +94,44 @@ vi.mock('./ValueInline.vue', () => ({
 const ValueFieldStub = defineComponent({
   name: 'DatabasePropertyValueFieldById',
   props: {
-    value: { required: true, type: String },
+    value: { required: true, type: [String, Number, Object] },
+    inputSize: { required: true, type: Number },
   },
-  emits: ['update:value'],
+  emits: ['update:value', 'update:property', 'keydown.enter', 'keydown.escape'],
   setup(props, { emit }) {
     return () =>
-      h('input', {
-        value: props.value,
-        onInput: (event: Event) => {
-          const input = event.target;
-
-          if (input instanceof HTMLInputElement) {
-            emit('update:value', input.value);
-          }
-        },
-      });
+      h('div', [
+        h('input', {
+          value: props.value,
+          onInput: (event: Event) => {
+            emit('update:value', (event.target as HTMLInputElement).value);
+          },
+        }),
+        h('button', {
+          'data-testid': 'field-update',
+          onClick: () => {
+            emit('update:value', 'next draft');
+          },
+        }),
+        h('button', {
+          'data-testid': 'field-property',
+          onClick: () => {
+            emit('update:property', { name: 'Next' });
+          },
+        }),
+        h('button', {
+          'data-testid': 'field-enter',
+          onClick: () => {
+            emit('keydown.enter');
+          },
+        }),
+        h('button', {
+          'data-testid': 'field-escape',
+          onClick: () => {
+            emit('keydown.escape');
+          },
+        }),
+      ]);
   },
 });
 
@@ -81,14 +140,30 @@ describe('EditableInlineValue', () => {
   const propertyId = 'propertyId-test' as DatabasePropertyId;
   const documentId = 'document-test' as AMDocumentId;
 
-  const mountEditor = (resolving: boolean) =>
+  beforeEach(() => {
+    propertyFixture.name = 'Title';
+    propertyFixture.type = 'string';
+    propertyFixture.default = undefined;
+    propertyFixture.indeterminate = undefined;
+    valueFixture.current = 'initial';
+    controls.postValue.mockReset();
+    controls.toggleBoolean.mockReset();
+    controls.toggleBoolean.mockReturnValue(true);
+  });
+
+  const mountEditor = (
+    editSession: { draft: unknown; resolving: boolean } | null = {
+      draft: 'recoverable draft',
+      resolving: false,
+    },
+  ) =>
     mount(EditableInlineValue, {
       props: {
         itemId,
         propertyId,
         directoryPath: '/database',
         documentId,
-        editSession: { draft: 'recoverable draft', resolving },
+        ...(editSession === null ? {} : { editSession }),
       },
       global: {
         stubs: { DatabasePropertyValueFieldById: ValueFieldStub, ValueInline: true },
@@ -96,7 +171,7 @@ describe('EditableInlineValue', () => {
     });
 
   it('detaches Material interaction feedback while resolving and restores the exact draft on recovery', async () => {
-    const wrapper = mountEditor(false);
+    const wrapper = mountEditor();
     const inlineRoot = wrapper.find('.editable-inline-value').element;
     const stateModule = await import('@shared/ui/State');
     const stateLayerTarget = vi.mocked(stateModule.useStateLayer).mock.results.at(-1)?.value
@@ -134,6 +209,90 @@ describe('EditableInlineValue', () => {
     expect(wrapper.find('input').element).toHaveProperty('value', 'recoverable draft');
     await wrapper.find('input').setValue('recovered draft');
     expect(wrapper.emitted('update:draft')).toEqual([['changed draft'], ['recovered draft']]);
+  });
+
+  it('supports idle keyboard and pointer editing only for the supported keys', async () => {
+    const wrapper = mountEditor(null);
+    const root = wrapper.find('.editable-inline-value');
+    expect(root.attributes()).toMatchObject({
+      tabindex: '0',
+      role: 'button',
+      'aria-haspopup': 'dialog',
+    });
+
+    await root.trigger('click');
+    await root.trigger('keydown', { key: 'Enter' });
+    await root.trigger('keydown', { key: ' ' });
+    await root.trigger('keydown', { key: 'Escape' });
+    expect(wrapper.emitted('requestEdit')).toEqual([['initial'], ['initial'], ['initial']]);
+  });
+
+  it('forwards active editor updates and commit/cancel intents, but not idle intents', async () => {
+    const idle = mountEditor(null);
+    await idle.trigger('keydown', { key: 'Escape' });
+    expect(idle.emitted('commitEdit')).toBeUndefined();
+    expect(idle.emitted('cancelEdit')).toBeUndefined();
+
+    const wrapper = mountEditor();
+    await wrapper.find('[data-testid="field-update"]').trigger('click');
+    expect(wrapper.emitted('update:draft')).toEqual([['next draft']]);
+    await wrapper.find('[data-testid="field-property"]').trigger('click');
+    expect(wrapper.emitted('update:property')).toEqual([[{ name: 'Next' }]]);
+    await wrapper.find('[data-testid="field-enter"]').trigger('click');
+    await wrapper.find('[data-testid="tooltip-outside"]').trigger('click');
+    expect(wrapper.emitted('commitEdit')).toHaveLength(1);
+    await wrapper.find('[data-testid="field-escape"]').trigger('click');
+    await wrapper.find('[data-testid="tooltip-close"]').trigger('click');
+    expect(wrapper.emitted('cancelEdit')).toHaveLength(1);
+  });
+
+  it('commits an active editor on unmount unless cancellation was requested', async () => {
+    const committed = mountEditor();
+    committed.unmount();
+    expect(committed.emitted('commitEdit')).toEqual([[]]);
+
+    const cancelled = mountEditor();
+    cancelled.findComponent({ name: 'MDOverlayTooltip' }).vm.$emit('update:show', false);
+    await cancelled.vm.$nextTick();
+    cancelled.unmount();
+    expect(cancelled.emitted('commitEdit')).toBeUndefined();
+  });
+
+  it('uses the stored-value boolean path with checkbox semantics', async () => {
+    propertyFixture.name = 'Done';
+    propertyFixture.type = 'boolean';
+    propertyFixture.indeterminate = true;
+    valueFixture.current = false;
+    const wrapper = mountEditor(null);
+    const root = wrapper.find('.editable-inline-value');
+    expect(root.attributes()).toMatchObject({ role: 'checkbox', 'aria-checked': 'false' });
+    expect(root.attributes('aria-haspopup')).toBeUndefined();
+    await root.trigger('click');
+    await root.trigger('keydown', { key: 'Enter' });
+    await root.trigger('keydown', { key: ' ' });
+    expect(controls.toggleBoolean).toHaveBeenCalledWith(false, true);
+    expect(controls.postValue).toHaveBeenCalledTimes(3);
+    expect(wrapper.emitted('requestEdit')).toBeUndefined();
+
+    wrapper.unmount();
+    valueFixture.current = undefined;
+    const mixed = mountEditor(null);
+    expect(mixed.find('.editable-inline-value').attributes('aria-checked')).toBe('mixed');
+    mixed.unmount();
+    propertyFixture.default = true;
+    propertyFixture.indeterminate = false;
+    const defaulted = mountEditor(null);
+    expect(defaulted.find('.editable-inline-value').attributes('aria-checked')).toBe('true');
+  });
+
+  it('sizes string editors from the lifted draft and leaves non-string values unsized', () => {
+    const wrapper = mountEditor({ draft: 'a'.repeat(20), resolving: false });
+    expect(wrapper.findComponent(ValueFieldStub).props('inputSize')).toBe(20);
+    wrapper.unmount();
+    propertyFixture.name = 'Count';
+    propertyFixture.type = 'number';
+    const numberEditor = mountEditor({ draft: 42, resolving: false });
+    expect(numberEditor.findComponent(ValueFieldStub).props('inputSize')).toBe(0);
   });
 });
 
