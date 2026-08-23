@@ -17,7 +17,6 @@ import { isUndefined } from 'es-toolkit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
-import { useDatabaseValueWrite } from '@entity/databaseValue';
 import { DomainError } from '@shared/lib/error';
 import { useDatabaseViewSelection } from '@entity/databaseView';
 import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
@@ -25,7 +24,7 @@ import {
   DatabaseExampleDocumentCreateSuccessCard,
   useDatabaseExampleDocumentCreateSuccess,
 } from '@feature/exampleDocumentsCreate';
-import { useDatabaseInlineEditSession } from './useDatabaseInlineEditSession';
+import { useDatabaseInlineEditSession } from '@feature/databaseInlineValueEdit';
 import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 const props = defineProps<{
@@ -65,8 +64,6 @@ const itemContextualButtons = defineMenuButtonList([
 const { addSnackbar } = useSnackbar();
 
 const { removeItem } = useDatabaseData(path, documentId);
-const { postValue } = useDatabaseValueWrite(path, documentId);
-
 const {
   cancel: cancelInlineEdit,
   commit: commitInlineEdit,
@@ -74,7 +71,7 @@ const {
   request: requestInlineEdit,
   resolve: resolveActiveInlineEdit,
   updateDraft: updateInlineEditDraft,
-} = useDatabaseInlineEditSession(postValue);
+} = useDatabaseInlineEditSession(path, documentId);
 
 const activeConfigurationSurface = shallowRef<DatabaseConfigurationSurface>();
 

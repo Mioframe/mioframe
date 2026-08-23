@@ -121,7 +121,7 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'src/widgets/DocumentView/Database/DatabaseViewLayout.vue',
       'src/widgets/DocumentView/Database/DatabaseViewWidget.vue',
       'src/widgets/DocumentView/Database/EditableInlineValue.vue',
-      'src/widgets/DocumentView/Database/useDatabaseInlineEditSession.ts',
+      'src/features/databaseInlineValueEdit/',
     ],
     specs: ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
   },

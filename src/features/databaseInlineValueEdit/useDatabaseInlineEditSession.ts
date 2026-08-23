@@ -1,6 +1,8 @@
+import { useDatabaseValueWrite } from '@entity/databaseValue';
+import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { isEqual } from 'es-toolkit';
-import { shallowRef } from 'vue';
+import { shallowRef, type Ref } from 'vue';
 
 type ActiveInlineEditSession = {
   itemId: DatabaseItemId;
@@ -10,12 +12,6 @@ type ActiveInlineEditSession = {
   resolving: boolean;
 };
 
-type DatabaseInlineEditValueWriter = (
-  itemId: DatabaseItemId,
-  propertyId: DatabasePropertyId,
-  value: unknown,
-) => Promise<unknown>;
-
 const isActiveInlineEdit = (
   session: ActiveInlineEditSession | undefined,
   itemId: DatabaseItemId,
@@ -24,12 +20,14 @@ const isActiveInlineEdit = (
   session?.itemId === itemId && session.propertyId === propertyId;
 
 /**
- * Keeps the Database widget's one active inline-edit draft stable across virtual remounts and
- * serializes its persistence through the entity-owned value writer.
- * @param postValue - Narrow persistence dependency addressed by logical cell identity.
- * @returns Session lookup and lifecycle operations for Database widget composition.
+ * Keeps one Database inline-edit draft stable across virtual remounts and serializes its
+ * persistence through the entity-owned value writer.
+ * @param path - Directory path containing the Database document.
+ * @param documentId - Database document identity.
+ * @returns Session lookup and lifecycle operations for Database composition.
  */
-export const useDatabaseInlineEditSession = (postValue: DatabaseInlineEditValueWriter) => {
+export const useDatabaseInlineEditSession = (path: Ref<string>, documentId: Ref<AMDocumentId>) => {
+  const { postValue } = useDatabaseValueWrite(path, documentId);
   const activeInlineEditSession = shallowRef<ActiveInlineEditSession>();
   let activeInlineEditResolution: Promise<boolean> | undefined;
 

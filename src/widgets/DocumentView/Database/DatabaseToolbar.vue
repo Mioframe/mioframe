@@ -31,7 +31,12 @@ const emit = defineEmits<{
   closeConfiguration: [];
 }>();
 
-const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
+const {
+  documentId,
+  directoryPath: path,
+  autoHideTarget,
+  activeConfigurationSurface,
+} = toRefs(props);
 const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelection(
   path,
   documentId,
@@ -131,7 +136,7 @@ const hasProperties = computed(() => {
     />
 
     <DatabaseViewsSheet
-      v-if="props.activeConfigurationSurface === 'views'"
+      v-if="activeConfigurationSurface === 'views'"
       v-model:explicit-view-id="viewSelection"
       :path="path"
       :document-id="documentId"
@@ -139,7 +144,7 @@ const hasProperties = computed(() => {
     />
 
     <DatabaseSortSheet
-      v-if="props.activeConfigurationSurface === 'sort'"
+      v-if="activeConfigurationSurface === 'sort'"
       :directory-path="path"
       :document-id="documentId"
       :view-id="effectiveViewId"
@@ -147,14 +152,14 @@ const hasProperties = computed(() => {
     />
 
     <DatabasePropertiesSheet
-      v-if="props.activeConfigurationSurface === 'properties'"
+      v-if="activeConfigurationSurface === 'properties'"
       :document-id="documentId"
       :directory-path="path"
       @closed="onCloseConfiguration"
     />
 
     <DatabaseFiltersSheet
-      v-if="props.activeConfigurationSurface === 'filter' && effectiveViewId"
+      v-if="activeConfigurationSurface === 'filter' && effectiveViewId"
       :document-id="documentId"
       :view-id="effectiveViewId"
       :directory-path="path"

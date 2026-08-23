@@ -405,7 +405,7 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
       ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
     ],
     [
-      'src/widgets/DocumentView/Database/useDatabaseInlineEditSession.ts',
+      'src/features/databaseInlineValueEdit/',
       ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
     ],
     [
