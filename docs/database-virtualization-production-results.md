@@ -1,6 +1,6 @@
 # Database virtualization production results — PR #217
 
-> **Current validity:** structural boundedness is confirmed on the current geometry implementation, but responsiveness acceptance is blocked. The retained `68a71e89...` S0/G1 baseline was fast and observed zero Long Tasks; a later current-geometry temporary run remained bounded but measured materially slower usable-state completion and repeated 291–429 ms Long Tasks. That later run must now be reproduced or rejected on the current PR head through the canonical verifier-managed E2E environment before it is used to select a production correction.
+> **Current validity:** structural boundedness is confirmed. The canonical verifier-managed current-head sparse all-string control is fast (S0 median 281.1 ms, G1 median 321.5 ms, zero Long Tasks), so the earlier non-verifier 1.6–2.5 s current-geometry run is retained only as environment/protocol warning evidence. Performance acceptance remains blocked because operator testing reproduces a different failing class: a real heterogeneous-property Database janks in Chrome during Short -> Full and scrolling, while Firefox on the same laptop does not.
 
 Date: 2026-08-23  
 Branch: `fix/database-large-data-performance`  
@@ -9,196 +9,121 @@ Measured source: the PR #217 migration worktree at that head, including its unco
 
 ## Method
 
-The real Database product was loaded through the existing JSON-import UI. Each
-fixture had current-schema Database data, all-string properties, and only two
-persisted values per row (`Filter` and `Label`). The short view selected 20
-rows by `Filter = short`; the measured action was the real view-sheet selection
-of `Full view` for the same document. This keeps G1 sparse while still
-presenting its 30,000 × 300 = 9,000,000 logical row/property intersections.
-The deterministic seed was `pr-217-production-v1`; no sort was configured.
-The production collections used their fixed `overscan: 4` policy, with 48 px
-row and 160 px property estimates. The rectangular matrix intentionally uses
-no variable-height value; the separate product proof covers that shape.
+The real Database product was loaded through the existing JSON-import UI. Each fixture had current-schema Database data, all-string properties, and only two persisted values per row (`Filter` and `Label`). The short view selected 20 rows by `Filter = short`; the measured action was the real view-sheet selection of `Full view` for the same document. This keeps G1 sparse while still presenting its 30,000 × 300 = 9,000,000 logical row/property intersections. The deterministic seed was `pr-217-production-v1`; no sort was configured.
 
-For each sample, a fresh Chromium browser context loaded the document and
-settled in the short view before a capture-phase in-page observer recorded the
-real selection. The observer used `MessageChannel`, the first
-`requestAnimationFrame`, `PerformanceObserver` Long Tasks, and the first
-requestAnimationFrame with the full logical table metadata plus a settled
-mounted row/property intersection. The same run then proved the last logical
-row, last property, and last label after deep two-axis scrolling. No timing is
-derived from the Playwright command duration.
+For each sample, a fresh Chromium browser context loaded the document and settled in the short view before a capture-phase in-page observer recorded the real selection. The observer used `MessageChannel`, the first `requestAnimationFrame`, `PerformanceObserver` Long Tasks, and the first requestAnimationFrame with the full logical table metadata plus a settled mounted row/property intersection. The same run then proved the last logical row, last property, and last label after deep two-axis scrolling. No timing is derived from Playwright command duration.
 
-The samples ran through the verifier with no test retries in desktop Chromium
-149.0.7827.55 on Linux, 640 × 480 viewport, one Playwright worker, and the
-production Vite build/preview. The verifier container reported 2 CPUs, 6 GiB
-memory, and 8 GiB memory swap. All samples used fresh browser contexts after
-the preview had started; this is not a separate cold-process versus warm-cache
-comparison.
+The samples ran through the verifier with no test retries in desktop Chromium 149.0.7827.55 on Linux, 640 × 480 viewport, one Playwright worker, and the production Vite build/preview. The verifier container reported 2 CPUs, 6 GiB memory, and 8 GiB memory swap.
 
-Three controlled samples were collected for every case. `yield`, `rAF`, and
-`usable` are milliseconds. `LT` is `count / maximum / total` in milliseconds.
-`mounted` is `data rows / property headers / expensive value cells` after the
-full-view switch.
+Three controlled samples were collected for every case. `yield`, `rAF`, and `usable` are milliseconds. `LT` is `count / maximum / total` in milliseconds. `mounted` is `data rows / property headers / expensive value cells` after the full-view switch.
 
-## Raw results
+## Initial matrix
 
-| Case | Logical shape | Sample | Yield |  rAF | Usable | LT count/max/total |     Mounted | Correctness |
-| ---- | ------------: | -----: | ----: | ---: | -----: | -----------------: | ----------: | ----------- |
-| S0   |       100 × 8 |      1 |  21.9 | 20.3 |  853.0 |      1 / 209 / 209 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      2 |  14.8 | 11.0 |  331.8 |        1 / 50 / 50 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      3 |  14.8 | 11.1 |  318.7 |        1 / 51 / 51 | 12 / 8 / 96 | pass        |
-| R1   |     1,000 × 8 |      1 |  14.4 | 12.4 |  428.0 |        1 / 77 / 77 | 12 / 8 / 96 | pass        |
-| R1   |     1,000 × 8 |      2 |  31.1 | 27.7 |  352.4 |        1 / 57 / 57 | 12 / 8 / 96 | pass        |
-| R1   |     1,000 × 8 |      3 |  14.9 |  9.6 |  313.6 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| R2   |     3,000 × 8 |      1 |  15.0 | 13.8 |  391.7 |        1 / 64 / 64 | 12 / 8 / 96 | pass        |
-| R2   |     3,000 × 8 |      2 |  14.5 | 11.3 |  349.9 |        1 / 54 / 54 | 12 / 8 / 96 | pass        |
-| R2   |     3,000 × 8 |      3 |  14.3 | 11.8 |  332.8 |        1 / 68 / 68 | 12 / 8 / 96 | pass        |
-| R3   |    10,000 × 8 |      1 |  16.4 | 15.3 |  404.8 |        1 / 72 / 72 | 12 / 8 / 96 | pass        |
-| R3   |    10,000 × 8 |      2 |  14.8 | 10.6 |  335.5 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| R3   |    10,000 × 8 |      3 |  14.4 | 10.0 |  284.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| R4   |    30,000 × 8 |      1 |  12.5 | 11.6 |  670.9 |        1 / 81 / 81 | 12 / 8 / 96 | pass        |
-| R4   |    30,000 × 8 |      2 |  15.2 | 10.7 |  330.4 |        1 / 67 / 67 | 12 / 8 / 96 | pass        |
-| R4   |    30,000 × 8 |      3 |  15.3 |  9.4 |  443.6 |        1 / 91 / 91 | 12 / 8 / 96 | pass        |
-| C1   |      100 × 50 |      1 |  30.4 | 16.8 |  425.2 |        1 / 70 / 70 | 12 / 8 / 96 | pass        |
-| C1   |      100 × 50 |      2 |  15.2 | 10.7 |  341.0 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| C1   |      100 × 50 |      3 |  14.8 |  9.9 |  278.3 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| C2   |     100 × 100 |      1 |  10.6 |  9.7 |  294.6 |        1 / 56 / 56 | 12 / 8 / 96 | pass        |
-| C2   |     100 × 100 |      2 |  14.2 |  9.8 |  307.0 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| C2   |     100 × 100 |      3 |  11.4 | 10.0 |  311.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| C3   |     100 × 300 |      1 |  14.3 | 11.6 |  339.5 |        1 / 50 / 50 | 12 / 8 / 96 | pass        |
-| C3   |     100 × 300 |      2 |  10.9 | 10.0 |  280.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| C3   |     100 × 300 |      3 |  13.9 | 11.5 |  382.9 |        1 / 52 / 52 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      1 |  21.5 | 20.4 |  479.0 |        1 / 89 / 89 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      2 |  11.5 | 10.1 |  482.7 |        1 / 89 / 89 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      3 |  10.8 |  9.8 |  388.9 |        1 / 76 / 76 | 12 / 8 / 96 | pass        |
+| Case | Logical shape | Sample | Yield | rAF | Usable | LT count/max/total | Mounted | Correctness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| S0 | 100 × 8 | 1 | 21.9 | 20.3 | 853.0 | 1 / 209 / 209 | 12 / 8 / 96 | pass |
+| S0 | 100 × 8 | 2 | 14.8 | 11.0 | 331.8 | 1 / 50 / 50 | 12 / 8 / 96 | pass |
+| S0 | 100 × 8 | 3 | 14.8 | 11.1 | 318.7 | 1 / 51 / 51 | 12 / 8 / 96 | pass |
+| R1 | 1,000 × 8 | 1 | 14.4 | 12.4 | 428.0 | 1 / 77 / 77 | 12 / 8 / 96 | pass |
+| R1 | 1,000 × 8 | 2 | 31.1 | 27.7 | 352.4 | 1 / 57 / 57 | 12 / 8 / 96 | pass |
+| R1 | 1,000 × 8 | 3 | 14.9 | 9.6 | 313.6 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| R2 | 3,000 × 8 | 1 | 15.0 | 13.8 | 391.7 | 1 / 64 / 64 | 12 / 8 / 96 | pass |
+| R2 | 3,000 × 8 | 2 | 14.5 | 11.3 | 349.9 | 1 / 54 / 54 | 12 / 8 / 96 | pass |
+| R2 | 3,000 × 8 | 3 | 14.3 | 11.8 | 332.8 | 1 / 68 / 68 | 12 / 8 / 96 | pass |
+| R3 | 10,000 × 8 | 1 | 16.4 | 15.3 | 404.8 | 1 / 72 / 72 | 12 / 8 / 96 | pass |
+| R3 | 10,000 × 8 | 2 | 14.8 | 10.6 | 335.5 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| R3 | 10,000 × 8 | 3 | 14.4 | 10.0 | 284.2 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| R4 | 30,000 × 8 | 1 | 12.5 | 11.6 | 670.9 | 1 / 81 / 81 | 12 / 8 / 96 | pass |
+| R4 | 30,000 × 8 | 2 | 15.2 | 10.7 | 330.4 | 1 / 67 / 67 | 12 / 8 / 96 | pass |
+| R4 | 30,000 × 8 | 3 | 15.3 | 9.4 | 443.6 | 1 / 91 / 91 | 12 / 8 / 96 | pass |
+| C1 | 100 × 50 | 1 | 30.4 | 16.8 | 425.2 | 1 / 70 / 70 | 12 / 8 / 96 | pass |
+| C1 | 100 × 50 | 2 | 15.2 | 10.7 | 341.0 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| C1 | 100 × 50 | 3 | 14.8 | 9.9 | 278.3 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| C2 | 100 × 100 | 1 | 10.6 | 9.7 | 294.6 | 1 / 56 / 56 | 12 / 8 / 96 | pass |
+| C2 | 100 × 100 | 2 | 14.2 | 9.8 | 307.0 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| C2 | 100 × 100 | 3 | 11.4 | 10.0 | 311.2 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| C3 | 100 × 300 | 1 | 14.3 | 11.6 | 339.5 | 1 / 50 / 50 | 12 / 8 / 96 | pass |
+| C3 | 100 × 300 | 2 | 10.9 | 10.0 | 280.2 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| C3 | 100 × 300 | 3 | 13.9 | 11.5 | 382.9 | 1 / 52 / 52 | 12 / 8 / 96 | pass |
+| G1 | 30,000 × 300 | 1 | 21.5 | 20.4 | 479.0 | 1 / 89 / 89 | 12 / 8 / 96 | pass |
+| G1 | 30,000 × 300 | 2 | 11.5 | 10.1 | 482.7 | 1 / 89 / 89 | 12 / 8 / 96 | pass |
+| G1 | 30,000 × 300 | 3 | 10.8 | 9.8 | 388.9 | 1 / 76 / 76 | 12 / 8 / 96 | pass |
 
-## Per-case summary
-
-| Case | Median yield | Median rAF | Median usable | Worst usable | Long-task total across samples | Worst Long Task |
-| ---- | -----------: | ---------: | ------------: | -----------: | -----------------------------: | --------------: |
-| S0   |         14.8 |       11.1 |         331.8 |        853.0 |                            310 |             209 |
-| R1   |         14.9 |       12.4 |         352.4 |        428.0 |                            134 |              77 |
-| R2   |         14.5 |       11.8 |         349.9 |        391.7 |                            186 |              68 |
-| R3   |         14.8 |       10.6 |         335.5 |        404.8 |                             72 |              72 |
-| R4   |         15.2 |       10.7 |         443.6 |        670.9 |                            239 |              91 |
-| C1   |         15.2 |       10.7 |         341.0 |        425.2 |                             70 |              70 |
-| C2   |         11.4 |        9.8 |         307.0 |        311.2 |                             56 |              56 |
-| C3   |         13.9 |       11.5 |         339.5 |        382.9 |                            102 |              52 |
-| G1   |         11.5 |       10.1 |         479.0 |        482.7 |                            254 |              89 |
-
-## Findings
-
-- Every matrix case, including G1, retained exactly 12 mounted data rows, 8
-  mounted property headers, and 96 expensive value cells for this fixed
-  viewport and overscan. G1 therefore did not instantiate its 9,000,000
-  logical cell cross product in the mounted DOM.
-- Each measured short-to-full switch reached the exact full logical row and
-  column counts and then reached the deep final row/property/value sentinels.
-- G1 stayed below the 100 ms main-thread research target in all three samples
-  (76–89 ms maximum Long Task) despite its 30,000 × 300 logical shape.
-- The one 209 ms Long Task occurred only in S0 sample 1. It is not correlated
-  with row or column scale: R1 through G1 in that same sample set were at most
-  91 ms, and the two later S0 samples were 50–51 ms. The Long Task API does not
-  attribute that isolated initial segment to worker, transfer, Vue, DOM, or
-  layout work. It is therefore classified as an isolated, non-scale-correlated
-  startup-context outlier, not evidence for a secondary cross-layer
-  optimization. No worker/query/transfer/paging/cache change was introduced.
-
-The rectangular timing matrix uses sparse strings by design. The existing
-Database product browser proof separately covers representative dynamic row
-height, progressive property width/remount, sticky surfaces, and the explicit
-nested relation scroll root with independent two-axis ranges. Those checks are
-correctness/geometry proof rather than a substitute timing benchmark.
-That centralized owner is registered for both desktop Chromium and Mobile
-Chrome; its focused product run passed all 22 project/spec executions.
+The initial matrix established bounded mounted work and no scale-correlated >100 ms Long Tasks in G1. The isolated S0 first-sample 209 ms Long Task was not correlated with dataset scale.
 
 ## Final simplification-correction revalidation
 
-Date: 2026-08-23
-Branch: `fix/database-large-data-performance`
+Date: 2026-08-23  
 Repository HEAD while measured: `68a71e89d03713452946819cb52ba80a64157424`
-Measured source: the final PR #217 simplification-correction worktree at that
-head, including uncommitted correction implementation and proof changes.
 
-This deliberately rechecked only S0 and G1 rather than repeating the full
-matrix. The same real JSON-import/view-selection scenario, sparse current
-schema data, production Vite build/preview, 640 × 480 Chromium viewport,
-one-worker container profile, and in-page protocol were used. For each fresh
-browser context, the capture-phase observer measured MessageChannel yield,
-the first `requestAnimationFrame`, switch-to-usable, and Long Tasks; it then
-proved the final logical row, property, and label through deep two-axis
-scrolling. The command used `--retries=0`; Playwright command duration is not
-a timing metric.
+| Case | Sample | Yield | rAF | Usable | LT count/max/total | Mounted | Correctness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| S0 | 1 | 15.0 | 10.0 | 278.4 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| S0 | 2 | 14.9 | 10.1 | 304.9 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| S0 | 3 | 14.9 | 11.9 | 319.2 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 1 | 11.9 | 10.8 | 350.5 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 2 | 15.4 | 10.8 | 348.2 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 3 | 11.7 | 10.8 | 411.8 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
 
-| Case | Logical shape | Sample | Yield |  rAF | Usable | LT count/max/total |     Mounted | Correctness |
-| ---- | ------------: | -----: | ----: | ---: | -----: | -----------------: | ----------: | ----------- |
-| S0   |       100 × 8 |      1 |  15.0 | 10.0 |  278.4 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      2 |  14.9 | 10.1 |  304.9 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      3 |  14.9 | 11.9 |  319.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      1 |  11.9 | 10.8 |  350.5 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      2 |  15.4 | 10.8 |  348.2 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      3 |  11.7 | 10.8 |  411.8 |          0 / 0 / 0 | 12 / 8 / 96 | pass        |
+S0 median usable: 304.9 ms. G1 median usable: 350.5 ms. No Long Tasks were observed in these six samples.
 
-| Case | Median yield | Median rAF | Median usable | Worst usable | Long-task total across samples | Worst Long Task |
-| ---- | -----------: | ---------: | ------------: | -----------: | -----------------------------: | --------------: |
-| S0   |         14.9 |       10.1 |         304.9 |        319.2 |                              0 |               0 |
-| G1   |         11.9 |       10.8 |         350.5 |        411.8 |                              0 |               0 |
-
-- G1 retained 12 mounted data rows, 8 mounted property headers, and 96
-  expensive value cells in every sample, so the 9,000,000 logical
-  intersections were not materialized.
-- Every sample reached the full logical metadata and deep final row/property/
-  value sentinels. No G1 switch-associated Long Task exceeded 100 ms; none
-  were observed.
-- Compared with the retained full-matrix baseline above, these bounded samples
-  showed no material correction regression **for the measured `68a71e89...` implementation**. No further optimization was made at that measured head.
-
-## Current-geometry revalidation — acceptance failed
+## Non-verifier current-geometry warning run
 
 Date: 2026-08-24  
-Branch: `fix/database-large-data-performance`  
-Measured production state: `8d62ba1f8adc66ebb82dd0734afc82824e112f6c`  
-Environment: Chromium 149.0.7827.55 on Linux, production Vite preview, 640 × 480 viewport, one worker, retries disabled, fresh browser context per sample.
+Measured production state: `8d62ba1f8adc66ebb82dd0734afc82824e112f6c`
 
-The temporary measurement tooling was removed after collection. The tracked changes after `8d62ba1...` and before the reviewed coding head changed only tests, so the production/geometry implementation remained equivalent for these measurements.
+| Case | Sample | Yield | rAF | Usable | LT count/max/total | Mounted | Correctness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| S0 | 1 | 4.8 | 0.9 | 1603.3 | 2 / 291 / 564 | 12 / 8 / 96 | pass |
+| S0 | 2 | 3.9 | 12.6 | 1582.5 | 3 / 313 / 644 | 12 / 8 / 96 | pass |
+| S0 | 3 | 20.9 | 1.2 | 1950.8 | 3 / 292 / 613 | 12 / 8 / 96 | pass |
+| G1 | 1 | 20.3 | 0.7 | 2516.8 | 3 / 301 / 697 | 12 / 8 / 96 | pass |
+| G1 | 2 | 4.6 | 1.4 | 1950.7 | 4 / 412 / 863 | 12 / 8 / 96 | pass |
+| G1 | 3 | 3.3 | 14.5 | 2013.1 | 3 / 429 / 862 | 12 / 8 / 96 | pass |
 
-| Case | Logical shape | Sample | Yield |  rAF | Usable | LT count/max/total |     Mounted | Correctness |
-| ---- | ------------: | -----: | ----: | ---: | -----: | -----------------: | ----------: | ----------- |
-| S0   |       100 × 8 |      1 |   4.8 |  0.9 | 1603.3 |      2 / 291 / 564 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      2 |   3.9 | 12.6 | 1582.5 |      3 / 313 / 644 | 12 / 8 / 96 | pass        |
-| S0   |       100 × 8 |      3 |  20.9 |  1.2 | 1950.8 |      3 / 292 / 613 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      1 |  20.3 |  0.7 | 2516.8 |      3 / 301 / 697 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      2 |   4.6 |  1.4 | 1950.7 |      4 / 412 / 863 | 12 / 8 / 96 | pass        |
-| G1   |  30,000 × 300 |      3 |   3.3 | 14.5 | 2013.1 |      3 / 429 / 862 | 12 / 8 / 96 | pass        |
+This run remained structurally bounded but is **not** accepted as evidence of a general current-runtime regression because the canonical verifier-owned run below does not reproduce it.
 
-| Case | Median yield | Median rAF | Median usable | Worst usable | Long-task total across samples | Worst Long Task |
-| ---- | -----------: | ---------: | ------------: | -----------: | -----------------------------: | --------------: |
-| S0   |          4.8 |        1.2 |        1603.3 |       1950.8 |                           1821 |             313 |
-| G1   |          4.6 |        1.4 |        2013.1 |       2516.8 |                           2422 |             429 |
+## Canonical current-head verifier control — slowdown not reproduced
 
-Findings:
+Date: 2026-08-24  
+Measured production-equivalent head: `1c1a3789ef66cc950eba543566502aec8567f3ec`  
+Execution: verifier-managed current checkout only.
 
-- Structural scalability still passes: every sample mounted 12 data rows, 8 property headers, and 96 expensive cells, including G1, so the 9,000,000 logical intersections were not materialized.
-- Deep logical row/property/value correctness passed in every sample.
-- Responsiveness does **not** pass acceptance. Compared with the retained `68a71e89...` revalidation, median usable time is about 5.3× slower for S0 and 5.7× slower for G1, and every fresh sample contains one or more Long Tasks well above the 100 ms research target.
-- The slowdown affects S0 as well as G1, so the evidence does not support a scale-only explanation.
-- This run is retained as warning evidence, but the next coding-agent proof must reproduce or reject it through the canonical focused verifier-managed E2E lane before any production owner is selected.
-
-## Required current-head verifier follow-up
-
-Do **not** run historical refs through manual checkout, worktree, bisect, or other coding-agent Git orchestration.
-
-Create a temporary nested spec at `tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts` and collect exactly three current-head S0 plus three current-head G1 samples through:
+Command:
 
 ```bash
 pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts
 ```
 
-Keep the established 640 × 480 Chromium shape, real Short view -> Full view action, deterministic sparse dataset, in-page timing observer, mounted counts, and deep sentinels. Remove the temporary diagnostic spec before handoff.
+| Case | Sample | Yield | rAF | Usable | LT count/max/total | Mounted | Correctness |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| S0 | 1 | 14.9 | 11.0 | 269.8 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| S0 | 2 | 15.2 | 10.2 | 281.1 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| S0 | 3 | 14.9 | 10.6 | 283.8 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 1 | 29.0 | 12.0 | 323.5 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 2 | 29.1 | 12.3 | 321.5 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
+| G1 | 3 | 15.0 | 9.9 | 305.9 | 0 / 0 / 0 | 12 / 8 / 96 | pass |
 
-Classify only whether the slowdown is `reproduced`, `not reproduced`, or `ambiguous` in the verifier-owned environment.
+Summary:
 
-- If reproduced, stop and route a separate current-head attribution task before production correction.
-- If not reproduced, the architect decides whether this retained slow run was an environment/protocol mismatch and whether performance acceptance can close.
-- If ambiguous, stop with raw evidence; do not add retries, sleeps, broader infrastructure, or historical Git execution.
+- S0 median usable: 281.1 ms;
+- G1 median usable: 321.5 ms;
+- worst Long Task: 0 ms;
+- bounded mounted work: pass;
+- 9M logical intersections materialized: no;
+- deep correctness: pass;
+- temporary diagnostic spec removed; tracked diagnostic files remaining: none.
+
+Interpretation: the sparse all-string current implementation is responsive in the canonical verifier environment. The previous slow warning run was therefore environment/protocol-sensitive rather than proof of a universal runtime regression.
+
+## Current unresolved performance scenario — heterogeneous Chrome content
+
+Operator testing on the same laptop reports:
+
+- a real Database with different property types still has a perceptible Short -> Full delay in Chrome;
+- vertical/ordinary table scrolling in Chrome produces freezes/jank;
+- Firefox on the same laptop does not exhibit the same problem.
+
+This scenario is materially different from the benchmark above because the benchmark is an all-string sparse rectangle. Production heterogeneous cells dispatch to distinct Boolean, Number, String, Date, and Relation render paths, and relation values can compose nested Database UI inside an outer cell.
+
+Required follow-up is therefore **not** another all-string S0/G1 run and not historical A/B. Use one deterministic heterogeneous fixture through repository verifier surfaces in Chrome and Firefox, retain the all-string case as control, cover both Short -> Full and sustained vertical/horizontal scrolling, and narrow the first property/render path that reproduces the Chrome-only cost before choosing a production correction owner.
