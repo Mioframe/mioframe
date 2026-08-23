@@ -4,58 +4,56 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 production Database virtualization, root/surface ownership, relation nesting/teleport, inline-edit lifecycle, product proof, and profiling.
+- PR #217 Database widget composition after the simplification correction: relation roots, inline-edit lifecycle, configuration gating, Vue component contracts, and corresponding product/component proof.
 
 ## Blockers
 
-### B1 — Nested relation root is not physically owned by the Database widget
+### B1 — Resolving inline edits remain interactive while draft updates are rejected
 
 Owner: `src/widgets/DocumentView/Database`
 
-Problem: `RelationValueInline` exports its outer DOM element as `scrollRoot`, but recursive preview content is teleported by `MDRichTooltip`; the nested Database table is therefore virtualized against an element that is not its physical scroll ancestor. The same change also leaks Database virtualization topology into entity UI.
+Problem: `EditableInlineValue` treats any existing `editSession` as an open editor and continues to render an interactive value field while `editSession.resolving` is true. At the same time, `useDatabaseInlineEditSession.updateDraft()` deliberately ignores updates while the session is resolving. User input can therefore be accepted by the mounted field UI while the canonical lifted draft silently refuses the same update. Escape can likewise mark the component cancellation state while the resolving session cannot actually be cancelled.
 
 Evidence:
 
-- [`../../../entities/databaseRelation/RelationValueInline.vue`](../../../entities/databaseRelation/RelationValueInline.vue) — exports `scrollRoot` from `relationValueEl` through the slot.
-- [`DatabaseRelationValueInline.vue`](DatabaseRelationValueInline.vue) — forwards that root to nested `DatabaseViewLayout`.
-- [`../../../shared/ui/Tooltips/MDRichTooltip.vue`](../../../shared/ui/Tooltips/MDRichTooltip.vue) — teleports recursive tooltip content.
+- [`EditableInlineValue.vue`](EditableInlineValue.vue) — `isEditorOpen` depends only on session presence; the field remains rendered during `resolving`, and `editorValue` continues to emit draft updates.
+- [`useDatabaseInlineEditSession.ts`](useDatabaseInlineEditSession.ts) — `updateDraft()` returns without applying a draft while `session.resolving`; `cancel()` also refuses a resolving session.
 
 Basis:
 
-- [`../../../../docs/database-virtualization-simplification-handoff.md`](../../../../docs/database-virtualization-simplification-handoff.md) — final relation-root ownership requires a widget-owned physical root that moves with teleported content.
-- [`../../../entities/AGENTS.md`](../../../entities/AGENTS.md) — entity UI remains narrow/domain-display oriented rather than owning upper-layer composition infrastructure.
+- [`../../../../docs/database-virtualization.md`](../../../../docs/database-virtualization.md) — eviction must not silently lose a draft, failed persistence must leave the session recoverable, and `resolving` exists to serialize the lifecycle safely.
+- [`../../../../.agents/skills/vue-component-implementation/SKILL.md`](../../../../.agents/skills/vue-component-implementation/SKILL.md) — component state must remain declarative and interaction ownership explicit rather than exposing an interactive state whose events cannot be honored.
 
-Risk: deep recursive relation ranges can use incorrect viewport geometry; ownership is difficult to reason about and the current show/hide proof does not cover virtualized recursive scrolling.
+Risk: a user can type or press Escape while persistence is pending and see an apparently active editor even though those interactions are not represented in the canonical session. A successful write can then close the editor with the later typed value lost; a failed write can leave local cancellation state inconsistent with the recovered session.
 
-Required final state: remove the relation entity DOM-root contract and give each nested Database layout a widget-owned physical root that actually contains its table, including after teleport.
+Required final state: while a session is resolving, the UI must not accept edit/cancel interactions that the session intentionally rejects. After failed persistence, the exact recoverable draft must become editable again; after success, the editor closes normally. Do not add a second draft state or another lifecycle manager.
 
-Verification: application E2E with a large recursive relation preview proving root containment, bounded mounted work, and deep row/property reach.
-
-### B2 — User view/configuration changes can bypass unresolved inline-edit gating
-
-Owner: `src/widgets/DocumentView/Database`
-
-Problem: direct explicit view selection resolves the active edit, but view management can be opened while the edit is unresolved and current-view removal can then replace the effective view through `useDatabaseViewSelection` fallback without using that direct-selection handler. Similar configuration surfaces can alter row source/property shape.
-
-Evidence:
-
-- [`DatabaseViewWidget.vue`](DatabaseViewWidget.vue) — `onRequestExplicitViewId` is gated, while edit state machine is embedded locally.
-- [`DatabaseToolbar.vue`](DatabaseToolbar.vue) — opens view/filter/sort/property configuration without a parent edit-resolution precondition.
-- [`DatabaseViewsSheet.vue`](DatabaseViewsSheet.vue) — removes views directly.
-
-Basis:
-
-- [`../../../../docs/database-virtualization-simplification-handoff.md`](../../../../docs/database-virtualization-simplification-handoff.md) — source/shape-changing configuration requires one resolve-before-open gate and failed resolution must keep the draft recoverable.
-
-Risk: an edited cell can disappear from the active source after a failed/unresolved commit, violating the no-silent-draft-loss contract.
-
-Required final state: localize the widget-owned edit lifecycle and gate source/shape-changing configuration before it can mutate the table source; keep direct view-selection gating.
-
-Verification: product E2E for successful configuration gating/current-view removal plus lowest-faithful deterministic failure proof preserving the draft.
+Verification: a deterministic component/lifecycle proof with a controllable deferred writer must exercise the resolving interval, plus the existing product edit/eviction flows must remain green.
 
 ## Major issues
 
-None.
+### M1 — DatabaseToolbar uses a parent action callback as a prop
+
+Owner: `src/widgets/DocumentView/Database`
+
+Problem: the correction added `resolveInlineEditBeforeConfiguration: () => Promise<boolean>` as a `DatabaseToolbar` prop. The child invokes parent-owned orchestration as an imperative permission callback while still owning the four sheet visibility states. This splits one transition between parent permission state and child mutation state and violates the repository Vue communication contract.
+
+Evidence:
+
+- [`DatabaseToolbar.vue`](DatabaseToolbar.vue) — declares and awaits `resolveInlineEditBeforeConfiguration` from props before mutating local sheet state.
+- [`DatabaseViewWidget.vue`](DatabaseViewWidget.vue) — passes `resolveActiveInlineEdit` downward as that prop.
+- [`DatabaseToolbar.test.ts`](DatabaseToolbar.test.ts) — codifies the callback-prop API as the component contract.
+
+Basis:
+
+- [`../../../../.agents/skills/vue-component-implementation/SKILL.md`](../../../../.agents/skills/vue-component-implementation/SKILL.md) — component communication is props down, emits up, with parent composition owning show/hidden state when upstream orchestration decides whether a surface may render.
+- [`AGENTS.md`](AGENTS.md) — Database widget composition prefers explicit props and named event handlers and must keep responsibilities readable and local.
+
+Risk: orchestration direction is inverted, the toolbar cannot be understood from declarative inputs alone, tests protect an imperative callback channel, and future async gates can multiply function props instead of one controlled state transition.
+
+Required final state: configuration opening must use normal Vue upward intent plus parent-controlled state (prop/model) after the parent resolves the edit. `DatabaseToolbar` must not receive a parent command/permission callback prop. Keep one narrow configuration state rather than adding separate callback channels.
+
+Verification: component-contract proof for request/controlled-open behavior plus the existing application E2E for successful resolution and current-view removal.
 
 ## Minor issues
 
@@ -67,7 +65,8 @@ None.
 
 ## Items not required
 
-- No shared `useVirtualCollection` redesign; the existing API remains sufficient after ownership correction.
+- The pre-existing `RelationValueFieldData.onSelect` callback prop predates PR #217; it confirms the general pattern is worth preventing but is not required to be refactored by this performance PR unless the correction must touch that contract again.
+- No shared `useVirtualCollection`, `MDTable`, worker/query, or storage redesign is justified.
 
 ## Unresolved questions
 
