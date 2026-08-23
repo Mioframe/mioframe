@@ -198,9 +198,11 @@ const ariaChecked = computed(() => {
   return !!value.value;
 });
 
-const { hover, focused, durationPressedState } = useStateLayer(inlineEl);
+const interactionTarget = computed(() => (isInteractionEnabled.value ? inlineEl.value : null));
 
-useRipple(inlineEl);
+const { hover, focused, durationPressedState } = useStateLayer(interactionTarget);
+
+useRipple(interactionTarget);
 </script>
 
 <template>
@@ -216,6 +218,7 @@ useRipple(inlineEl);
     :class="[
       propClass,
       {
+        'editable-inline-value_interactive': isInteractionEnabled,
         'md-state_hover': hover,
         'md-state_focused': focused,
         'md-state_pressed': durationPressedState,
@@ -224,7 +227,12 @@ useRipple(inlineEl);
     @click="onRootClick"
     @keydown="onRootKeydown"
   >
-    <MDStateLayer :hover="hover" :focused="focused" :pressed="durationPressedState" />
+    <MDStateLayer
+      v-if="isInteractionEnabled"
+      :hover="hover"
+      :focused="focused"
+      :pressed="durationPressedState"
+    />
 
     <ValueInline
       :directory-path="path"
@@ -266,11 +274,14 @@ useRipple(inlineEl);
   align-items: stretch;
   width: 100%;
   min-height: 100%;
-  cursor: pointer;
   padding: 1step;
   border-radius: 1step;
   transition-property: background-color;
   transition-duration: 0.1s;
+
+  &_interactive {
+    cursor: pointer;
+  }
 
   &__edit-popover {
     display: flex;

@@ -17,6 +17,7 @@ const DESKTOP_ONLY_SPECS = [
   'tests/e2e/databaseItemFlows.spec.ts',
   'tests/e2e/databasePersistenceSmoke.spec.ts',
   'tests/e2e/databasePropertyFlows.spec.ts',
+  'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
   'tests/e2e/exportDocumentBrowserStorage.spec.ts',
   'tests/e2e/helpNavigation.spec.ts',
   'tests/e2e/reorderSurfaceCancellation.spec.ts',
@@ -29,7 +30,7 @@ const DESKTOP_ONLY_SPECS = [
 
 const BOTH_SPECS = [
   'tests/e2e/appSmoke.spec.ts',
-  'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+  'tests/e2e/databaseVirtualizationFlows.spec.ts',
   'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
 ];
 

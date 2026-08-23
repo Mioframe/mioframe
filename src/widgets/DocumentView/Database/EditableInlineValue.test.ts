@@ -2,7 +2,7 @@
 import { mount } from '@vue/test-utils';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { ref, defineComponent, h } from 'vue';
+import { ref, defineComponent, h, type Ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import EditableInlineValue from './EditableInlineValue.vue';
 
@@ -18,13 +18,14 @@ vi.mock('@entity/databaseValue', () => ({
 }));
 
 vi.mock('@shared/ui/State', () => ({
-  MDStateLayer: defineComponent({ render: () => h('div') }),
-  useRipple: vi.fn(),
-  useStateLayer: () => ({
+  MDStateLayer: defineComponent({ render: () => h('div', { class: 'md-state-layer' }) }),
+  useRipple: vi.fn((target: Readonly<Ref<HTMLElement | null>>) => target),
+  useStateLayer: vi.fn((target: Readonly<Ref<HTMLElement | null>>) => ({
     hover: ref(false),
     focused: ref(false),
     durationPressedState: ref(false),
-  }),
+    target,
+  })),
 }));
 
 vi.mock('@shared/ui/Tooltips', () => ({
@@ -94,21 +95,46 @@ describe('EditableInlineValue', () => {
       },
     });
 
-  it('hides editable and cancel/draft interaction while resolving, then restores the exact draft', async () => {
+  it('detaches Material interaction feedback while resolving and restores the exact draft on recovery', async () => {
     const wrapper = mountEditor(false);
+    const inlineRoot = wrapper.find('.editable-inline-value').element;
+    const stateModule = await import('@shared/ui/State');
+    const stateLayerTarget = vi.mocked(stateModule.useStateLayer).mock.results.at(-1)?.value
+      .target as Ref<HTMLElement | null>;
+    const rippleTarget = vi
+      .mocked(stateModule.useRipple)
+      .mock.calls.at(-1)?.[0] as Ref<HTMLElement | null>;
+
+    expect(stateLayerTarget.value).toBe(inlineRoot);
+    expect(rippleTarget.value).toBe(inlineRoot);
+    expect(wrapper.find('.editable-inline-value_interactive').exists()).toBe(true);
+    expect(wrapper.find('.md-state-layer').exists()).toBe(true);
     expect(wrapper.find('input').exists()).toBe(true);
     await wrapper.find('input').setValue('changed draft');
     expect(wrapper.emitted('update:draft')).toEqual([['changed draft']]);
 
     await wrapper.setProps({ editSession: { draft: 'recoverable draft', resolving: true } });
+    expect(stateLayerTarget.value).toBeNull();
+    expect(rippleTarget.value).toBeNull();
+    expect(wrapper.find('.editable-inline-value_interactive').exists()).toBe(false);
+    expect(wrapper.find('.md-state-layer').exists()).toBe(false);
     expect(wrapper.find('input').exists()).toBe(false);
     expect(wrapper.attributes('tabindex')).toBeUndefined();
+    await wrapper.trigger('click');
     await wrapper.trigger('keydown', { key: 'Escape' });
     expect(wrapper.emitted('cancelEdit')).toBeUndefined();
+    expect(wrapper.emitted('requestEdit')).toBeUndefined();
+    expect(wrapper.emitted('update:draft')).toEqual([['changed draft']]);
 
     await wrapper.setProps({ editSession: { draft: 'recoverable draft', resolving: false } });
+    expect(stateLayerTarget.value).toBe(inlineRoot);
+    expect(rippleTarget.value).toBe(inlineRoot);
+    expect(wrapper.find('.editable-inline-value_interactive').exists()).toBe(true);
+    expect(wrapper.find('.md-state-layer').exists()).toBe(true);
     expect(wrapper.find('input').element).toHaveProperty('value', 'recoverable draft');
+    await wrapper.find('input').setValue('recovered draft');
+    expect(wrapper.emitted('update:draft')).toEqual([['changed draft'], ['recovered draft']]);
   });
 });
 
-/* eslint-enable vue/one-component-per-file, @typescript-eslint/consistent-type-assertions */
+/* eslint-enable vue/one-component-per-file, @typescript-eslint/consistent-type-assertions -- Restore file defaults after local fixture assertions. */

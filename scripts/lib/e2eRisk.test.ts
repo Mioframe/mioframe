@@ -207,6 +207,7 @@ describe('validateE2EScenarioRegistry', () => {
     expect(coveredSpecs.has('tests/e2e/databasePersistenceSmoke.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/databasePropertyFlows.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/databaseViewsAndQueryFlows.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databaseVirtualizationFlows.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/repoExplorerScreen.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/repositoryFlows.spec.ts')).toBe(true);
   });
@@ -393,7 +394,7 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
     expect(plan.specs).toEqual([
       'tests/e2e/databaseItemFlows.spec.ts',
       'tests/e2e/databasePersistenceSmoke.spec.ts',
-      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+      'tests/e2e/databaseVirtualizationFlows.spec.ts',
     ]);
   });
 
@@ -401,11 +402,11 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
     ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
     [
       'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
-      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
     ],
     [
       'src/widgets/DocumentView/Database/useDatabaseInlineEditSession.ts',
-      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
     ],
     [
       'src/shared/lib/sortable/useReorderSurface.ts',
