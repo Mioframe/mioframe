@@ -1,341 +1,274 @@
 # Database virtualization production migration preflight
 
-Status: **architecture resolved; production implementation may begin in PR #217**.
+Status: **ready; production implementation may begin in PR #217**.
 
-This preflight covers the production Database migration stage of PR #217 (`fix/database-large-data-performance`). It does not create a new PR boundary. The completed shared virtualization and native-table capability work is the prerequisite for this stage, not the final task result.
+Authoring source: `docs/database-virtualization-production-handoff.md` (ready), `docs/database-virtualization.md`, `src/shared/ui/virtualization/README.md`, current production Database code, applicable `AGENTS.md`, and `docs/testing/architecture.md`.
 
-## Goal
+## Goal and non-goals
 
-Migrate the real Database UI to the accepted two-axis native-table virtualization architecture while preserving canonical data behavior and product interaction semantics.
+Migrate the real Database UI to the accepted native-table two-axis virtualization model, preserve existing product behavior, and prepare the same PR for 30,000 × 300 profiling.
 
-The implementation must make expensive mounted work viewport-bounded and prepare the real product for the required 30,000 × 300 profiling matrix.
+Do not redesign worker/query/storage, introduce paging/range protocols, change filter/sort semantics, add another virtualization abstraction, or broaden shared UI contracts without new evidence.
 
-## Confirmed current owners
+## Confirmed current behavior
+
+- `DatabaseDataTable.vue` renders the full `itemIdList × properties` cross product.
+- `useDatabaseData.ts` already receives canonical active-view filtered/sorted row IDs from service `filteredIdList`.
+- `useDatabaseProperties` provides the existing ordered property ID source.
+- `.database-view` in `DatabaseViewWidget.vue` is the physical 2D scroll root.
+- `DatabaseViewLayout.vue` currently relies on inherited class/ref landing on `DatabaseDataTable` and passes `after` into table `<tfoot>`.
+- `EditableInlineValue.vue` owns draft state locally, so virtual unmount can otherwise destroy an active draft.
+- `RelationValueFieldData.vue` consumes `DatabaseDataTable` inside a separate relation overflow composition.
+
+## Owners and public entry points
 
 ### `entities/databaseData`
 
-Current production owner:
+Own `DatabaseDataTable` production virtualization:
 
-- `DatabaseDataTable.vue` renders the entire `itemIdList × properties` cross product;
-- `useDatabaseData.ts` receives canonical active-view row IDs from service `filteredIdList`;
-- no UI-side sort/filter ownership is required or permitted.
-
-Production migration keeps the same row source and property source and changes only rendering/geometry ownership.
-
-### Database widget composition
-
-Current production owner:
-
-- `.database-view` in `DatabaseViewWidget.vue` is the physical 2D scroll root through `overflow: auto`;
-- `DatabaseViewLayout.vue` currently relies on inherited class/ref landing on `DatabaseDataTable` and observes that element for trailing-edge state;
-- `after` currently passes through `DatabaseDataTable` into `<tfoot>`;
-- inline edit state is currently local to `EditableInlineValue.vue`;
-- view selection is provided by `useDatabaseViewSelection`.
-
-Migration makes these ownership boundaries explicit rather than adding another abstraction.
-
-### Relation composition
-
-`RelationValueFieldData.vue` also consumes `DatabaseDataTable`, inside a relation-specific overflow composition owned by `RelationValueField.vue`.
-
-Nested tables therefore require an explicit root input and independent virtualization instances.
-
-## Accepted final state
-
-### `DatabaseDataTable`
-
-Own:
-
-- `useVirtualCollection` row instance over the existing item ID list;
-- `useVirtualCollection` horizontal instance over the existing ordered property IDs;
-- native `<colgroup>` virtual left/right columns;
-- native `<tbody>` top/bottom spacer rows;
-- exact row × visible-property expensive-cell intersection;
-- row `<tr>` measurement through the shared `vItem` directive;
-- property `<th>` measurement through the shared `vItem` directive;
-- progressive column minimum sizing using public virtual item size only;
-- native table logical ARIA metadata;
+- vertical `useVirtualCollection` over the existing item ID list;
+- horizontal `useVirtualCollection` over existing ordered property IDs;
+- `<colgroup>` left/right virtual columns;
+- `<tbody>` top/bottom virtual spacer rows;
+- exact mounted row × visible-property expensive-cell intersection;
+- row `<tr>` and property `<th>` measurement via shared `vItem`;
+- progressive column `min-width` from public virtual item `size` only;
+- logical native-table ARIA metadata;
 - sticky action-cell integration.
 
-Do not own:
-
-- the physical scroll root;
-- filter/sort/view decisions;
-- toolbar composition;
-- active edit lifecycle;
-- relation root discovery;
-- worker/query behavior.
-
-### `DatabaseViewLayout`
-
-Become an explicit composition wrapper.
-
-Own:
-
-- the explicit scroll-root input from the outer Database widget;
-- table-surface DOM reference used to derive truthful vertical/horizontal `surfaceOffset`;
-- trailing-edge state needed for action elevation;
-- sibling composition of `DatabaseDataTable` and `after` content.
-
-The existing `after` slot leaves table semantics and is rendered after the table.
-
-### `DatabaseViewWidget`
-
-Keep `.database-view` as the one top-level physical 2D scroll root.
-
-Own:
-
-- passing that root explicitly to `DatabaseViewLayout`;
-- active inline-edit session lifecycle;
-- resolving an active edit before explicit view selection changes;
-- preserving current toolbar auto-hide target.
+Public consumer inputs may expand only narrowly to accept the explicit physical root and truthful collection-surface offsets required by the accepted shared API.
 
 ### `entities/databaseValue`
 
-Expose only the narrow domain value write contract required to resolve an active edit session after the corresponding cell component is no longer mounted.
+Expose the narrow domain value-write entry point required to resolve one lifted active edit session after its cell unmounts. Do not expose service clients or a mutation manager.
 
-Do not introduce a generic mutation manager or service object passthrough.
+### Database widget composition
+
+`DatabaseViewWidget` keeps `.database-view` as the physical root and owns one active inline-edit session.
+
+`DatabaseViewLayout` becomes an explicit wrapper that:
+
+- receives/passes the explicit scroll root;
+- owns table-surface DOM reference and root-to-surface offset derivation;
+- preserves trailing-edge/action elevation behavior;
+- renders `DatabaseDataTable` and `after` as siblings.
 
 ### Relation composition
 
-Pass the actual relation overflow root explicitly to the nested `DatabaseDataTable` consumer path. The nested table owns its own two virtualization instances and shares no geometry state with the outer table.
+Pass the actual relation overflow root explicitly to the nested table path. Each nested table gets independent row/column virtual collections.
 
-## Data and state contracts
+## Source of truth and state shape
 
-### Rows
+- rows/order/filter/sort: existing service `filteredIdList` result;
+- properties/order: existing `propertiesIdList`;
+- view selection: existing `useDatabaseViewSelection` contract;
+- values: existing database value entity/service contracts;
+- geometry: TanStack only, through two `useVirtualCollection` instances;
+- edit state: at most one widget-owned `{ itemId, propertyId, draft, resolving }` session, with no geometry, DOM, service, provider, or broad document objects.
 
-Source of truth remains the complete current service result:
+## Minimum implementation design
 
-```text
-service/worker filter + sort + ordering
-            ↓
-      filteredIdList
-            ↓
-      useDatabaseData
-            ↓
-     DatabaseDataTable
-            ↓
- useVirtualCollection(rows)
-```
+1. Make `DatabaseViewLayout` an explicit composition wrapper and move `after` out of `<tfoot>`.
+2. Wire the real `.database-view` root and truthful vertical/horizontal table surface offsets explicitly.
+3. Convert `DatabaseDataTable` to the already-proven native-table row/property virtualization structure.
+4. Preserve action column outside horizontal property virtualization and keep native table semantics.
+5. Lift only the active inline edit session and route resolution through a narrow `databaseValue` entity write contract.
+6. Resolve active edit before changing explicit view selection.
+7. Pass relation roots explicitly and use independent nested virtual collections.
+8. Add/update product E2E for the changed contracts.
+9. Run real production profiling only after bounded rendering is present.
 
-No slice/range query is added during this migration.
+### Simpler alternatives considered
 
-### Properties
+- **Row-only virtualization:** insufficient because C3/G1 remains proportional to all columns.
+- **Keep draft cell-local:** insufficient because the real virtualized cell can unmount.
+- **Worker paging first:** unnecessary for bounded DOM and unsupported by current measurements.
+- **Pin edited ranges:** adds generic range machinery for a lifecycle problem solved by one lifted session.
 
-Source of truth remains the current ordered `propertiesIdList`.
+## Expected files/modules
 
-No separate virtualized property store or reorder state is introduced.
+Production code is expected to touch the narrow set around:
 
-### Geometry
+- `src/entities/databaseData/DatabaseDataTable.vue`;
+- `src/entities/databaseValue/*` public write contract as required;
+- `src/widgets/DocumentView/Database/DatabaseViewLayout.vue`;
+- `src/widgets/DocumentView/Database/DatabaseViewWidget.vue`;
+- `src/widgets/DocumentView/Database/EditableInlineValue.vue`;
+- relation composition path under `src/features/relationValueEdit/*` and/or its database widget consumer only as required for explicit root wiring;
+- centralized application E2E specs/helpers that own Database item/view/query/relation/product-performance scenarios.
 
-Only TanStack, through `useVirtualCollection`, owns virtual item geometry, measurement cache, range calculation, ResizeObserver behavior, and scroll correction.
+Do not modify `useVirtualCollection` or `MDTable` unless production evidence proves the accepted shared contracts insufficient; stop for architecture review first.
 
-Composition may derive collection-surface offsets from known DOM locations, but must not create a second item geometry system.
+## Pass order
 
-### Inline edit session
+### Pass 1 — explicit composition/root topology
 
-At most one active top-level inline edit session exists.
+- make `DatabaseViewLayout` an explicit wrapper;
+- move `after` outside table semantics;
+- establish explicit top-level and nested root inputs;
+- derive truthful surface offsets from known composition DOM.
 
-Minimum session identity/state:
+Focused proof: type-check plus existing Database product path sufficient to confirm toolbar/action composition remains reachable.
 
-- item ID;
-- property ID;
-- current draft value;
-- active/resolving state needed to serialize commit/cancel/view-switch behavior.
+### Pass 2 — production table virtualization
 
-The session must not contain virtual item descriptors, DOM elements, service clients, provider objects, or broad document state.
+- add two `useVirtualCollection` consumers in `DatabaseDataTable`;
+- add native virtual row/column spacers and measurement bindings;
+- preserve sticky action column and current wrapping/dynamic-height behavior;
+- remove obsolete full-range `v-for` rendering and `role=list/listitem` overrides.
 
-## Inline edit lifecycle
+Focused proof: bounded DOM, deep 2D reach, native semantics, sticky behavior, non-zero surface offset.
 
-The current cell-local draft is insufficient once cells can be virtually unmounted, so only the active session is lifted.
+### Pass 3 — edit lifecycle
 
-Required lifecycle:
+- introduce one active session at widget owner;
+- adapt `EditableInlineValue` to consume/update that session;
+- add narrow entity write entry point if the existing ref-bound write API cannot resolve after unmount;
+- serialize previous-edit and view-switch resolution.
 
-1. opening an editor initializes/claims the active session;
-2. field changes update the session draft before the cell can disappear;
-3. Escape cancels and clears without persisting;
-4. ordinary commit writes through the existing domain contract and clears after success;
-5. virtual eviction cannot silently destroy the draft because the draft already belongs to the session;
-6. an eviction-triggered resolution uses the same commit semantics;
-7. failed persistence keeps the draft recoverable and does not report success by clearing it;
-8. remount of the same cell restores the active draft when the session is still unresolved;
-9. beginning another edit resolves the previous session first;
-10. a view-switch request resolves the active session before mutating explicit view state;
-11. if edit resolution fails, the view switch does not proceed.
+Focused proof: commit, Escape, vertical eviction, horizontal eviction, failed-resolution preservation, and view switch.
 
-Do not pin edited rows/columns or expand virtual ranges to keep editors alive.
+### Pass 4 — relation/nested composition
 
-## Surface offset contract
+- finish explicit nested root wiring;
+- prove representative relation view/edit and dynamic outer row behavior.
 
-The accepted shared API requires collection-surface-relative geometry.
+### Pass 5 — performance evidence
 
-Production must pass truthful offsets from the explicit root to the table surface for both axes.
+- execute S0/R1/R2/R3/R4/C1/C2/C3/G1 from `docs/database-virtualization-profiling.md`;
+- classify any remaining material cost before proposing further optimization.
 
-Implementation constraints:
+Do not start evidence-gated worker/query/storage optimization inside these passes; it requires a new narrow architecture decision based on measurements.
 
-- derive only from composition-owned elements;
-- keep the values reactive to layout changes that can move the table surface;
-- no scroll-parent discovery;
-- no separate `ResizeObserver` for virtual item geometry;
-- no custom scroll correction.
+## Required removal of replaced logic
 
-A narrow composition measurement mechanism may be used solely to maintain the root-to-surface offset when the known table position changes.
+- remove production full `itemIdList × properties` rendering path;
+- remove `after` from `DatabaseDataTable` table footer semantics;
+- remove production `tbody role="list"` / `tr role="listitem"` overrides;
+- remove any table-root assumptions in `DatabaseViewLayout` that conflict with explicit `.database-view` root ownership;
+- do not keep compatibility paths for the old unvirtualized production renderer.
 
-## Native-table DOM contract
+## Inline edit contract
 
-Production table shape:
+- opening an editor initializes/claims the active session;
+- field updates write the draft into the session before virtual eviction is possible;
+- Escape cancels and clears without persistence;
+- normal commit clears only after successful persistence;
+- eviction cannot silently lose the draft;
+- failed persistence keeps the draft recoverable;
+- remount of the same cell restores an unresolved active draft;
+- starting another edit resolves the previous session first;
+- view switch resolves the session before mutating explicit view selection;
+- failed resolution blocks that view switch;
+- ordinary scrolling leaves the editor open while its cell remains mounted.
 
-```text
-<table>
-  <colgroup>
-    left virtual spacer
-    visible property columns
-    right virtual spacer
-    optional fill
-    action column
-  </colgroup>
+## Surface-offset contract
 
-  <thead>...</thead>
+- explicit root only;
+- derive from known composition-owned root/table elements;
+- maintain truthful vertical and horizontal distance as layout changes;
+- direct DOM geometry reads or an existing narrow VueUse geometry primitive are acceptable for root-to-surface position;
+- no second virtual-item `ResizeObserver`, size cache, scroll correction, or range engine.
 
-  <tbody>
-    top virtual spacer row
-    visible logical rows
-    bottom virtual spacer row
-  </tbody>
-</table>
-```
+## Accessibility and presentation
 
-Requirements:
+- preserve native table semantics;
+- full logical `aria-rowcount` and `aria-colcount`;
+- mounted logical `aria-rowindex`/`aria-colindex`;
+- virtual spacer/fill DOM excluded from logical semantics;
+- no ARIA grid conversion;
+- preserve sticky header/action behavior, toolbar auto-hide, wrapping/dynamic-height behavior, and current mobile/desktop interaction tier.
 
-- same visible property collection is used by header and every mounted row;
-- virtual spacer/fill cells are hidden from logical accessibility semantics;
-- action column is not part of the property collection;
-- actual expensive data `<td>` count remains bounded;
-- production wrapping/dynamic-height behavior is preserved rather than copying capability-only nowrap styling.
+## TEST IMPACT
 
-## Accessibility contract
+- Contract/scenario: production bounded 2D Database rendering and deep scrolling.
+  - Primary proof owner: application E2E.
+  - Additional proof: existing shared/native capability Storybook behavior only if shared/native owners change.
+  - Existing proof: `src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts`, `src/shared/ui/virtualization/VirtualCollectionCapability.browser.spec.ts`.
+  - New/updated proof: centralized Database E2E covering actual mounted rows/headers/expensive `<td>`, sentinels, deep 2D scroll, real `.database-view` root, non-zero surface offset.
+  - Risk/platform matrix: desktop + mobile product applicability; Chromium product path, existing Firefox native capability remains unless a Firefox-specific production risk is found.
+  - Durable ownership/impact updates: update existing application-E2E source mapping/applicability only if the new/changed centralized spec requires it.
 
-Remove production `role="list"` / `role="listitem"` overrides.
+- Contract/scenario: exact filter/sort/view switching, including short -> full -> short and no stale cells.
+  - Primary proof owner: application E2E.
+  - Existing proof: `tests/e2e/databaseViewsAndQueryFlows.spec.ts`.
+  - New/updated proof: extend the owning Database view/query product spec or a focused new centralized Database performance/product spec without duplicating service algorithm tests.
+  - Risk/platform matrix: real worker/service/UI integration.
+  - Durable ownership/impact updates: preserve explicit application-E2E mapping.
 
-Expose:
+- Contract/scenario: inline edit lifecycle under virtual eviction and view switch.
+  - Primary proof owner: application E2E.
+  - Existing proof: inline commit/persistence scenarios in `tests/e2e/databaseItemFlows.spec.ts`.
+  - New/updated proof: Escape plus vertical/horizontal eviction, remount/recovery, failed resolution where testable through public behavior, and view-switch serialization.
+  - Risk/platform matrix: focus/overlay/scrolling; desktop and mobile where existing applicability requires.
+  - Durable ownership/impact updates: preserve centralized product ownership; no Storybook duplicate.
 
-- native table semantics;
-- full logical `aria-rowcount`;
-- full logical `aria-colcount`;
-- `aria-rowindex` for mounted logical rows;
-- `aria-colindex` for mounted property and action cells;
-- no virtual spacer rows/cells in logical semantics.
+- Contract/scenario: relation/nested table root and representative relation behavior.
+  - Primary proof owner: application E2E.
+  - Existing proof: relation scenarios in `databaseItemFlows.spec.ts` and `databaseViewsAndQueryFlows.spec.ts`.
+  - New/updated proof: explicit nested scrolling/virtualized relation case only for the new root/geometry risk; do not repeat relation domain semantics already protected.
+  - Risk/platform matrix: nested overflow, dynamic height, overlay composition.
+  - Durable ownership/impact updates: existing product E2E mapping if sufficient; otherwise narrow mapping update.
 
-Do not add ARIA grid/spreadsheet interaction semantics.
+- Contract/scenario: 30,000 × 300 scalability and short -> full responsiveness.
+  - Primary proof owner: task-specific product performance measurement.
+  - Additional proof: durable bounded-DOM assertions in application E2E.
+  - Existing proof: `docs/database-virtualization-profiling.md` plan; capability bounded-DOM proof is not the product benchmark.
+  - New/updated proof: controlled S0…G1 result data using in-page `MessageChannel`, `requestAnimationFrame`, switch-to-usable, and Long Task measurements.
+  - Risk/platform matrix: production-like Chromium timing environment; mobile remains correctness coverage unless a stable mobile performance budget is explicitly established.
+  - Metric/budget: no switch-associated main-thread block > 100 ms; prefer slices <= 50 ms; bounded mounted work independent of logical size.
+  - Durable ownership/impact updates: no generic benchmark framework or permanent wall-clock CI budget unless repeated evidence justifies one.
 
-## Sticky and toolbar behavior
+Visual regression: not required unless implementation produces an intentional visible change beyond preserving current layout; geometry/interaction is not proved by screenshots.
 
-Preserve:
+Mutation: no new target identified by this migration preflight.
 
-- sticky header behavior;
-- sticky trailing action cells;
-- current trailing-edge elevation behavior;
-- toolbar reachability and auto-hide against the real `.database-view` root.
-
-Move `after`/toolbar placeholder outside `<tfoot>` without changing its user interaction tier.
-
-## Product scenarios that must not change
-
-- exact active-view filter membership;
-- exact sort order;
-- default/effective view behavior;
-- short -> full -> short switching;
-- no stale old-view cells;
-- inline string/number/date/boolean editing behavior;
-- Escape cancel;
-- item context actions;
-- property update behavior;
-- relation selection/editing and relation view selection;
-- recursive relation preview behavior;
-- toolbar actions;
-- mobile/desktop reachability.
-
-## Required implementation proof
-
-Application E2E is the truthful lane for complete production behavior.
-
-Required coverage after migration:
-
-- existing Database item/view/query/relation scenarios remain green;
-- short filtered -> full large -> short switching with sentinels and no stale cells;
-- bounded actual mounted rows, headers, and expensive `<td>` cells;
-- deep vertical/horizontal scroll correctness;
-- actual `.database-view` root and non-zero surface offset;
-- dynamic row resizing under representative product content;
-- progressive column sizing/remount stability;
-- sticky header/action behavior;
-- inline commit/cancel plus vertical eviction, horizontal eviction, and view-switch draft safety;
-- nested relation table using explicit relation root;
-- logical table counts/indices;
-- desktop/mobile execution according to existing applicability metadata.
-
-Use public DOM and user input. Do not inspect TanStack private state.
-
-## Performance stage after migration
-
-Run the matrix in `docs/database-virtualization-profiling.md`, with G1 = 30,000 × 300 mandatory.
-
-Record actual mounted DOM counts and in-page timing for the real short-filtered -> full-view interaction.
-
-Do not add worker/query/storage optimizations until this evidence identifies a remaining bottleneck.
+Release behavior/data safety: no release or persisted schema contract changes are intended.
 
 ## Acceptance criteria
 
-Production migration implementation is complete when:
-
-- real Database uses the accepted two-axis virtualization architecture;
-- expensive mounted DOM is bounded for fixed viewport/overscan;
-- filter/sort/view source-of-truth behavior is unchanged;
-- edit eviction and view switching cannot silently lose a draft;
+- real Database uses the accepted two-axis native-table virtualization architecture;
+- fixed viewport/overscan keeps expensive mounted rows, columns, and cells bounded independently of logical dataset size;
+- canonical filter/sort/view behavior is unchanged;
+- edit eviction/view switching cannot silently lose a draft;
 - nested relation rendering uses explicit roots;
 - toolbar/`after` is outside table semantics;
-- logical native table accessibility is preserved;
-- product browser proof covers the changed risks;
+- native logical table accessibility is preserved;
+- required product E2E proof exists;
 - no parallel geometry/range/cache/pinning system exists.
 
-This does not complete PR #217 by itself. Profiling and any evidence-gated remaining performance work follow in the same PR.
+This pass does not complete PR #217: profiling and any measurement-justified follow-up remain in the same PR.
 
-## Verification during implementation
+## Final verification
 
-Coding-agent feedback should use focused verifier-managed checks needed for the changed risks, for example:
+Coding agent uses focused verifier-managed checks needed for implementation feedback, e.g. type-check and affected E2E specs. Existing capability browser specs are rerun when their owning shared/native contracts are touched or when diagnosing a geometry regression.
 
-```text
-pnpm verify --only type-check
-pnpm verify --only e2e --files <affected production database specs>
-pnpm verify --only storybook-behavior --files <existing capability owner specs when shared/native geometry is touched>
-```
-
-Do not require a coding agent to run a broad final repository gate merely for handoff. Exact-head GitHub CI remains architect-owned after the full PR is ready.
+The architect owns final full-result review, profiling acceptance, and exact-head GitHub CI. Do not require a coding-agent broad local repository gate solely for handoff.
 
 ## Forbidden
 
-- separate PR for production migration or profiling;
-- row-only virtualization as the final solution;
+- separate PR for migration/profiling;
+- row-only final solution;
 - UI-side filter/sort/slice ownership;
-- new paging/range worker API without profiling evidence;
-- direct TanStack usage outside the accepted shared wrapper;
+- paging/range worker API without profiling evidence;
+- direct TanStack usage outside `useVirtualCollection`;
 - direct widget `shared/service` access for edit persistence;
-- generic `VirtualGrid`, `VirtualTable`, `VirtualList`, pinning, edit manager, or 2D coordinator;
-- independent row-height/column-width map;
-- second ResizeObserver/range/anchor engine;
+- generic virtual grid/table/list, pinning, edit manager, or 2D coordinator;
+- independent row-height/column-width map or second virtual geometry observer;
 - heuristic scroll-root discovery;
-- keeping `after` inside `<tfoot>`;
-- silent active-draft loss on cell eviction;
-- weakening browser proof with sleeps, force, broad retries, larger tolerances, or timeout inflation.
+- `after` inside `<tfoot>`;
+- silent active-draft loss;
+- capability-only nowrap styling that changes production wrapping;
+- sleeps, force, broad retries, tolerance weakening, or timeout inflation in proof.
 
 ## Preflight result
 
-Architecture decision: **ready**.
+Architecture handoff: **ready**.
 
-Implementation owner boundaries: **resolved**.
+TEST IMPACT: **resolved**.
 
-Known production lifecycle blocker (inline draft eviction): **resolved architecturally by lifting only the active edit session**.
+Pass order and owners: **resolved**.
 
-Worker/query redesign: **not justified before profiling**.
+Unresolved blockers before production implementation: **none**.
 
-Production implementation may begin on `fix/database-large-data-performance` in PR #217.
+Verdict: **ready**.
