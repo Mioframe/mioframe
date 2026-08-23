@@ -1,12 +1,12 @@
 # Verify release-impact correction
 
-Status: **architecture redesigned and ready; implementation pending**.
+Status: **architecture simplified and ready; implementation pending**.
 
 This document is the durable Pass E architecture for PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
 
 ## Goal
 
-Make source-impact release planning closed over the real current release execution and production-build input mechanisms without introducing a generic dependency graph or broad repository taxonomy.
+Make source-impact release planning closed over the real current release execution and production-build input mechanisms without introducing a generic dependency graph, a build-tool configuration registry, or a broad repository taxonomy.
 
 The six source-impact checks remain:
 
@@ -43,13 +43,43 @@ It provides:
 
 Do not redesign or duplicate that sub-boundary.
 
-Pass E is reopened only because the production-build input population was still defined too narrowly from static config imports. The real `vite build` also consumes repository files through tool discovery, TypeScript/build metadata and file-as-data/artifact roots.
+Pass E is reopened only because the production-build input population was defined too narrowly from static imports. The real release build also consumes repository files through tool discovery, TypeScript/build metadata, dependency-install control and file-as-data/artifact roots.
+
+## Design rule
+
+Use the minimum complete mechanism-based model:
+
+```text
+positively-known current production-build input
+→ focused truthful consumers
+
+whole tool-owned artifact population
+→ focused truthful consumers
+
+path inside a confirmed build-tool/config family,
+but not positively classified as a current input or known negative
+→ full six release checks
+
+positively-known non-production member
+→ no release ownership from that family
+```
+
+The verifier must not copy exhaustive extension lists from PostCSS, Vite PWA asset loaders, or similar dependencies. Those lists are dependency implementation detail and would create a new maintenance source of truth.
+
+The normal focused production-build consumer set is:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+`full` means all six source-impact checks and remains the conservative answer for significant release-sensitive paths whose exact consumer set is not positively established.
 
 ## Confirmed real build mechanisms
 
 `scripts/release/buildArtifact.mjs` executes the real production `vite build`.
-
-The current repository has these distinct source-input mechanisms.
 
 ### 1. Static production-build control
 
@@ -73,114 +103,107 @@ config/vueCustomElements.ts
 config/plugins/**
 ```
 
-has the truthful production-build consumer set:
-
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
+selects the focused production-build consumer set.
 
 Proof/test/declaration-only files under `config/plugins/**` remain excluded before the runtime prefix rule.
 
+Do not broaden this into `config/**`.
+
 ### 2. Tool-discovered production configuration
 
-Static imports are not the only ownership mechanism.
+Static imports are not the only ownership mechanism. The planner must represent the current repository-owned inputs and a small fail-closed family boundary for plausible replacements, without reproducing loader extension matrices.
 
 #### Browserslist
 
-`vite.config.ts` calls `browserslistToEsbuild(undefined, { path: process.cwd() })`. With no explicit query, the tool resolves project Browserslist configuration. The current repository-owned source is:
+`vite.config.ts` calls `browserslistToEsbuild(undefined, { path: process.cwd() })`; the current repository-owned config is:
 
 ```text
 .browserslistrc
 ```
 
-`package.json` is another Browserslist configuration source and is already handled by the existing package-impact contract.
-
-Recognized repository-root Browserslist config paths are production-build inputs:
+Current input:
 
 ```text
 .browserslistrc
+→ focused production-build consumers
+```
+
+`package.json` remains handled by the existing package-impact contract.
+
+The alternative root name:
+
+```text
 browserslist
 ```
 
-They select:
+is inside the confirmed Browserslist config family but is not the current repository source. If it appears in a changed-path set, fail closed to **full six** until the repository adopts/audits it.
 
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
+Do not create a generic Browserslist registry.
 
 #### PostCSS
 
-Vite 7 searches project-root PostCSS configuration when no inline `css.postcss` configuration is supplied. The current source is `postcss.config.js`.
+Vite searches root PostCSS configuration when no inline `css.postcss` is supplied. The current repository-owned source is:
 
-The release planner must own the complete root filename family supported by the current PostCSS loader, not only the current example:
+```text
+postcss.config.js
+```
+
+Current input:
+
+```text
+postcss.config.js
+→ focused production-build consumers
+```
+
+The fail-closed root family is structural, not an exhaustive supported-extension table:
 
 ```text
 .postcssrc
-.postcssrc.json
-.postcssrc.yaml
-.postcssrc.yml
-.postcssrc.js
-.postcssrc.mjs
-.postcssrc.cjs
-.postcssrc.ts
-.postcssrc.mts
-.postcssrc.cts
-postcss.config.js
-postcss.config.mjs
-postcss.config.cjs
+.postcssrc.*
+postcss.config.*
+```
+
+After ordinary proof/declaration exclusions, another path matching that family but not the current exact input selects **full six** until audited. This intentionally avoids copying PostCSS loader extension support into Mioframe.
+
+Examples:
+
+```text
 postcss.config.ts
-postcss.config.mts
-postcss.config.cts
+.postcssrc.mjs
+→ full six
+
+postcss.config.test.ts
+→ proof-only negative; not release-owned solely by the family
 ```
 
 `package.json` PostCSS configuration remains covered by the existing package-impact contract.
 
-Every path in this root discovery family selects:
-
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-A nearby file such as `postcss.config.test.ts` is not a supported discovered config name and must not inherit release ownership.
-
 #### PWA assets
 
-Production PWA configuration enables PWA assets with `config: true`, so the asset generator resolves a root `pwa-assets.config.*` file. The current repository source is `pwa-assets.config.ts`.
-
-Own the supported root configuration family:
+Production PWA configuration enables PWA assets with `config: true`. The current repository-owned config is:
 
 ```text
-pwa-assets.config.js
-pwa-assets.config.mjs
-pwa-assets.config.cjs
 pwa-assets.config.ts
-pwa-assets.config.mts
-pwa-assets.config.cts
 ```
 
-Every path in this family selects:
+Current input:
 
 ```text
-artifact
-build
-managed-updates
-release-smoke
+pwa-assets.config.ts
+→ focused production-build consumers
 ```
 
-Do not infer ownership from arbitrary `*pwa*` names.
+The fail-closed root family is:
+
+```text
+pwa-assets.config.*
+```
+
+After ordinary proof/declaration exclusions, another matching root path selects **full six** until audited. Do not duplicate the asset generator's supported extension list or infer ownership from arbitrary `*pwa*` names.
 
 #### Production Vite env files
 
-`vite.config.ts` explicitly calls `loadEnv(mode, process.cwd(), '')`, and the production release build uses production mode. Repository-tracked files that match Vite's production env discovery contract are build inputs:
+`vite.config.ts` explicitly calls `loadEnv(mode, process.cwd(), '')`, and the release build uses production mode. The small production env contract is stable and explicit:
 
 ```text
 .env
@@ -189,22 +212,13 @@ Do not infer ownership from arbitrary `*pwa*` names.
 .env.production.local
 ```
 
-The repository currently ignores `.env` and `*.local`, so ordinary changed-file planning will normally never receive those local files. That does not make `.env.production` or a deliberately tracked env file irrelevant if it is present in Git.
+If one of these paths is tracked/changed, select the focused production-build consumers.
 
-If one of these exact production env paths appears in the changed-file set, select:
-
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-`.env.example` is documentation/example input and must remain outside this rule.
+The repository currently ignores `.env` and `*.local`, so ordinary changed-path planning normally sees only deliberately tracked members. `.env.example` remains a negative example/documentation path.
 
 ### 3. TypeScript transform/config ownership
 
-Vite 7's TypeScript transform can consume `tsconfig.json` compiler options that affect emitted/transformed code. In this repository, source and config TypeScript projects are split across a small root family. Treat the current production/config chain conservatively as production-build control:
+Treat the current production/config chain conservatively as production-build control:
 
 ```text
 tsconfig.json
@@ -213,62 +227,46 @@ tsconfig.src.json
 tsconfig.node.json
 ```
 
-These select:
+These select the focused production-build consumer set.
 
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-Current known non-production TypeScript projects remain release-impact negative:
+Current known non-production TypeScript projects remain release-impact negative solely from this family:
 
 ```text
 tsconfig.storybook.json
 tsconfig.scripts.json
 ```
 
-To prevent another filename-example gap, any new repository-root `tsconfig*.json` that is neither in the confirmed production/config set nor the confirmed non-production set is significant-but-unresolved and must fail closed to **full six release checks** until ownership is audited.
+Any other repository-root `tsconfig*.json` is inside a confirmed significant build/config family but has unresolved ownership. It must fail closed to **full six** until audited.
 
 Do not classify arbitrary JSON files this way.
 
 ### 4. Production artifact/file inputs
 
-Vite's default `publicDir` is `public`; every file under that directory is copied to the production output as-is. Therefore the bounded artifact population is:
+Vite's default `publicDir` is `public`; every file in that tree is copied into the production output as-is. Therefore this is a complete tool-owned artifact population rather than adjacency inference:
 
 ```text
 public/**
+→ focused production-build consumers
 ```
 
-Every changed file under `public/**` selects:
+Do not apply proof/test filename exclusions inside `public/**`; a file there is an artifact input regardless of filename.
 
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-This is intentionally directory-wide. It is not adjacency inference: the build tool copies the whole directory into the artifact.
-
-Do not apply proof/test filename exclusions inside `public/**`; a file there is an artifact input regardless of its filename.
-
-`pwa-assets.config.ts` currently names `public/favicon.svg` as an additional file-as-data source, but no special favicon mapping is needed because `public/**` already owns that complete artifact population.
+`pwa-assets.config.ts` currently names `public/favicon.svg` as an additional file-as-data source, but no favicon-specific mapping is needed because `public/**` already owns the complete population.
 
 ### 5. Dependency-install control
 
-The production build and release proof run on the dependency installation produced by pnpm. The current root `pnpm-workspace.yaml` controls allowed dependency build scripts and therefore can change installed build tooling behavior.
+The release build runs on the dependency installation produced by pnpm. The root workspace file controls allowed dependency build scripts and can therefore alter installed build-tool behavior.
 
-Treat:
+Use the simplest conservative contract:
 
 ```text
 pnpm-workspace.yaml
+→ full six release checks
 ```
 
-as release infrastructure and fail closed to **full six release checks**.
+Keep existing `package.json` and `pnpm-lock.yaml` semantics unchanged. Do not introduce narrower per-consumer reasoning for `allowBuilds`; this path changes rarely and conservative full execution is simpler and safer.
 
-Keep existing `package.json` and `pnpm-lock.yaml` semantics unchanged. Do not broaden this into arbitrary package-manager dotfiles without repository evidence.
+Do not broaden this into arbitrary package-manager dotfiles without repository evidence.
 
 ## What is not part of this release-impact boundary
 
@@ -278,9 +276,9 @@ Do not turn ordinary application source into release-impact ownership merely bec
 src/**
 ```
 
-Ordinary product source remains owned by its existing unit/application-E2E/Storybook/visual rules, except for already confirmed release-specific runtime boundaries such as managed-update code and `src/sw.ts`.
+Ordinary product source remains owned by existing unit/application-E2E/Storybook/visual rules, except already confirmed release-specific runtime boundaries such as managed-update code and `src/sw.ts`.
 
-Also do not classify arbitrary repository-root files, arbitrary `config/**`, review metadata, editor configuration, lint configuration, or documentation as production-build inputs.
+Also do not classify arbitrary root files, arbitrary `config/**`, editor/lint configuration, review metadata, or documentation as production-build inputs.
 
 Representative negatives:
 
@@ -294,33 +292,32 @@ config/unrelatedRuntimeConfig.ts
 postcss.config.test.ts
 ```
 
-Existing ownership in other verifier lanes is unaffected.
-
 ## Planner ownership model
 
-Keep the implementation local to `scripts/lib/releaseRisk.ts`. A new generic registry/module is not justified.
+Keep implementation local to `scripts/lib/releaseRisk.ts`. No new registry/module is justified.
 
-The planner should have explicit mechanism-level predicates/constants for:
+The local model needs only:
 
 ```text
-static production-build support
-tool-discovered root config families
-production Vite env files
-TypeScript config family
-public artifact root
-pnpm install-control input
+current exact production-build inputs
+small structural fail-closed config families
+production Vite env exact paths
+known production/non-production tsconfig sets + unknown-family fallback
+public/** artifact root
+pnpm-workspace.yaml full fallback
 ```
 
-Known build mechanisms map to their truthful four-check consumer set. Only unresolved paths inside an explicitly confirmed fail-closed family (currently an unknown root `tsconfig*.json`) use `full`.
+Do not encode exhaustive third-party loader extension lists.
 
-This is preferable to both rejected alternatives:
+This is simpler than both rejected alternatives:
 
-1. **example patch** — adding only `.browserslistrc`, `postcss.config.js`, `pwa-assets.config.ts`, `public/favicon.svg` repeats the ownership-completeness failure;
-2. **generic root/config fallback** — `config/**`, all `*.config.*`, or all root files would create large false-positive ownership and contradict smallest-reliable-proof design.
+1. **example patch** — adding only the currently missed paths repeats the ownership-completeness failure;
+2. **loader mirror / generic registry** — copying every supported config extension creates another source of truth and future drift;
+3. **generic root/config fallback** — `config/**`, all `*.config.*`, or all root files creates broad false positives.
 
 ## Existing Pass E ownership to preserve
 
-Keep all accepted relations not superseded by the mechanism-based production-build boundary, including:
+Keep all accepted relations not superseded by this production-build boundary, including:
 
 ```text
 scripts/release/buildArtifact.mjs
@@ -361,11 +358,11 @@ Also preserve:
 
 Use a fresh test-author context before production edits. Primary owner: `scripts/lib/releaseRisk.test.ts`.
 
-The oracle must be the real build mechanisms above, not production planner constants.
+The oracle is the real build mechanisms above, not production planner constants.
 
-### RED A — current implicit build inputs
+### RED A — current real production-build inputs
 
-Prove current real paths cannot skip:
+Prove:
 
 ```text
 .browserslistrc
@@ -373,89 +370,65 @@ postcss.config.js
 pwa-assets.config.ts
 public/favicon.svg
 public/robots.txt
+tsconfig.json
 tsconfig.app.json
 tsconfig.src.json
 tsconfig.node.json
+.env.production
 ```
 
-Expected for each:
+Expected:
 
 ```text
 mode: focused
 checks: artifact + build + managed-updates + release-smoke
 ```
 
-Current implementation must fail these expectations.
+The current implementation must fail the newly uncovered cases.
 
-### RED B — mechanism families, not examples
+### RED B — fail-closed config families without loader mirroring
 
-Use synthetic supported variants that need not exist because this proof is path classification, not registry existence validation:
+Synthetic/non-current family members:
 
 ```text
-.postcssrc.mjs
-postcss.config.ts
-pwa-assets.config.mts
 browserslist
-.env.production
+postcss.config.ts
+.postcssrc.mjs
+pwa-assets.config.mts
+tsconfig.future.json
 ```
 
-Expected: the same focused four-check consumer set.
+Expected:
 
-This proves the implementation owns the discovery mechanism instead of copying the current filenames into a table.
+```text
+mode: full
+checks: all six source-impact release checks
+```
+
+This proves unknown significant members do not silently skip while the verifier remains independent from third-party extension matrices.
 
 ### RED C — public artifact population
 
-Representative nested public path:
+Representative nested path:
 
 ```text
 public/icons/example.svg
 ```
 
-Expected: focused four-check production-build set.
+and a proof-looking filename under `public/**` both select the focused production-build consumers because Vite copies the whole population.
 
-A test/proof-looking filename under `public/**` must still be owned because Vite copies it as an artifact.
+### RED D — known negative members
 
-### RED D — TypeScript fail-closed family
-
-Known production configs:
-
-```text
-tsconfig.json
-tsconfig.app.json
-tsconfig.src.json
-tsconfig.node.json
-```
-
-→ focused four.
-
-Known non-production configs:
+Known non-production TypeScript configs:
 
 ```text
 tsconfig.storybook.json
 tsconfig.scripts.json
 ```
 
-→ no release impact solely from this family.
+remain release-negative solely from the tsconfig family.
 
-Synthetic:
-
-```text
-tsconfig.future.json
-```
-
-→ full six, never skip.
-
-### RED E — dependency install control
-
-```text
-pnpm-workspace.yaml
-```
-
-→ full six.
-
-### Negative proof
-
-Keep unrelated nearby paths negative:
+Keep nearby unrelated paths negative:
 
 ```text
 .env.example
@@ -467,11 +440,18 @@ config/unrelatedRuntimeConfig.ts
 postcss.config.test.ts
 ```
 
+### RED E — dependency install control
+
+```text
+pnpm-workspace.yaml
+→ full six
+```
+
 Do not weaken existing tests to obtain these results.
 
 ## Verification boundary
 
-Implementation scope should remain narrow:
+Implementation scope remains narrow:
 
 ```text
 scripts/lib/releaseRisk.ts
@@ -514,18 +494,18 @@ Broad local verify/release/browser suites remain architect-owned through exact-h
 Pass E production-build ownership is complete only when:
 
 1. release-spec inventory/execution behavior remains unchanged;
-2. the four current reviewer examples cannot resolve `skip`;
-3. ownership is expressed by the mechanism families above rather than four exact patches;
-4. all current `public/**` files are production artifact inputs;
-5. supported PostCSS/PWA-assets/Browserslist discovery variants are classified consistently;
-6. production env filenames are covered while `.env.example` stays negative;
-7. current production/config TypeScript configs are release-owned;
-8. known non-production TypeScript configs remain negative;
-9. unknown root `tsconfig*.json` fails closed to full six;
-10. `pnpm-workspace.yaml` fails closed to full six;
-11. existing package/release-fixture/publisher/managed-update ownership remains unchanged;
-12. no broad `config/**`, all-root-files, or generic `*.config.*` fallback is introduced;
-13. no new generic registry/graph/module is introduced;
+2. `.browserslistrc`, `postcss.config.js`, `pwa-assets.config.ts` and `public/favicon.svg` cannot resolve `skip`;
+3. current positively-known production-build inputs select the focused four consumers;
+4. non-current paths inside the confirmed Browserslist/PostCSS/PWA-assets/tsconfig families fail closed to full rather than being treated as known focused consumers;
+5. no exhaustive third-party loader extension table is introduced;
+6. all `public/**` paths are production artifact inputs;
+7. production env filenames are covered while `.env.example` stays negative;
+8. current production/config TypeScript configs are release-owned;
+9. known non-production TypeScript configs remain negative solely from this family;
+10. unknown root `tsconfig*.json` fails closed to full six;
+11. `pnpm-workspace.yaml` fails closed to full six;
+12. existing package/release-fixture/publisher/managed-update ownership remains unchanged;
+13. no broad `config/**`, all-root-files, generic `*.config.*`, generic registry, graph or new module is introduced;
 14. focused independent proof is green;
 15. architect reviews the complete Pass E boundary again before closure.
 
@@ -533,8 +513,8 @@ Pass E production-build ownership is complete only when:
 
 Pass E remains open until:
 
-1. fresh independent proof establishes the mechanism-level REDs;
-2. the local `releaseRisk.ts` ownership correction is implemented;
+1. fresh independent proof establishes these mechanism-level REDs;
+2. the local `releaseRisk.ts` correction is implemented;
 3. focused proof/static feedback is green;
 4. architect reviews the entire release-impact boundary, including retained release-spec inventory;
 5. the separate output-contract minors are corrected;
