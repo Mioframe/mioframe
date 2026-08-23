@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **architecture accepted; implementation semantics and product proof accepted; performance acceptance blocked pending attribution of the fresh current-geometry slowdown**.
+Status: **architecture accepted; implementation semantics and product proof accepted; performance acceptance blocked pending verifier-owned current-head reproduction of the reported slowdown**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -9,6 +9,7 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - final semantic correction: `docs/database-virtualization-final-correction-handoff.md`, `docs/database-virtualization-final-correction-preflight.md`;
 - final proof correction: `docs/database-virtualization-final-proof-handoff.md`, `docs/database-virtualization-final-proof-preflight.md`;
+- current performance diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
 - implemented full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
 - superseded mutation-proof correction record: `docs/database-virtualization-mutation-proof-correction-handoff.md`, `docs/database-virtualization-mutation-proof-correction-preflight.md`;
 - active review finding: `src/entities/databaseData/REVIEW.md`;
@@ -90,7 +91,7 @@ Requirements:
 
 Passing the physical `HTMLElement` root explicitly is intentional browser-resource dependency injection. Do not replace it with DOM discovery, `provide/inject`, a root manager, or a generic context solely to hide the prop.
 
-The current implementation uses root/table bounding measurements plus mutation/update-driven refresh. That ownership remains architecture-compatible. Fresh S0/G1 measurement confirms the bounded mounted-work invariant on this implementation but reports materially slower usable-state completion and repeated 291–429 ms Long Tasks compared with the retained `68a71e89...` baseline. Do not redesign or replace the geometry mechanism until same-environment attribution proves that it is the regression source.
+The current implementation uses root/table bounding measurements plus mutation/update-driven refresh. That ownership remains architecture-compatible. A later temporary current-geometry measurement confirmed the bounded mounted-work invariant but reported materially slower usable-state completion and repeated 291–429 ms Long Tasks compared with retained historical evidence. Because that later run was not produced through the canonical focused verifier workflow, it is not sufficient by itself to select a production correction. First reproduce or reject the slowdown on the current PR head through the verifier-managed E2E diagnostic. Change geometry only after a separate evidence-backed attribution pass identifies it as the actual owner.
 
 ## Composition
 
@@ -239,18 +240,18 @@ Mutation proof for the touched feature/widget owners is local to their colocated
 
 The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline remains useful historical evidence. The retained S0/G1 revalidation at `68a71e89d03713452946819cb52ba80a64157424` showed bounded DOM and zero Long Tasks.
 
-Fresh S0/G1 revalidation on the current table-owned geometry implementation also keeps mounted work fixed at 12 rows / 8 property headers / 96 expensive cells and passes deep correctness, including G1's 30,000 × 300 logical shape. Structural scalability is therefore confirmed.
+A later S0/G1 revalidation on the current table-owned geometry implementation also kept mounted work fixed at 12 rows / 8 property headers / 96 expensive cells and passed deep correctness, including G1's 30,000 × 300 logical shape. Structural scalability is therefore confirmed.
 
-Responsiveness acceptance is **blocked**. The fresh samples report:
+Responsiveness acceptance remains **blocked** because that later temporary run reported:
 
 - S0 usable 1582.5–1950.8 ms, worst Long Task 313 ms;
 - G1 usable 1950.7–2516.8 ms, worst Long Task 429 ms.
 
-These results are materially slower than the retained `68a71e89...` baseline and exceed the 100 ms main-thread research target in every fresh sample. The slowdown affects S0 as well as G1, so it cannot currently be classified as a scale-only problem.
+The next required proof is deliberately narrower than the superseded historical A/B plan: collect exactly three current-head S0 and three current-head G1 samples through a temporary nested application-E2E diagnostic executed only by `pnpm verify --only e2e`. Historical refs are comparison context only; the coding agent must not checkout/worktree/bisect them.
 
-Before any production optimization or geometry change, reproduce `68a71e89...` and the current implementation with the same temporary runner and environment. If the historical implementation is also slow, correct the measurement environment/protocol. If the historical implementation remains materially faster, isolate the first production regression and route the correction to the actual owner. Only then perform a production correction and repeat three final S0 and three final G1 samples.
+Classify only whether the slowdown is reproduced, not reproduced, or ambiguous in the canonical verifier-owned environment. If reproduced, stop and route a separate current-head attribution pass before any production correction. If not reproduced, the architect decides whether the earlier temporary measurement was an environment/protocol mismatch and whether performance acceptance can close. If ambiguous, do not add retries or broaden the diagnostic.
 
-The full matrix is not required before attribution unless new evidence shows S0/G1 is insufficient.
+The full matrix is not required unless later evidence shows S0/G1 is insufficient.
 
 ## Forbidden
 
@@ -271,8 +272,10 @@ The full matrix is not required before attribution unless new evidence shows S0/
 - broad cleanup of pre-existing Database widget debt;
 - weakening mutation thresholds/configuration, excluding touched production behavior, adding test-only production seams, or changing production behavior merely to make mutation verification pass;
 - timeout inflation, sleeps, force, or retry-as-success to hide E2E failures;
-- treating performance evidence from an earlier geometry implementation as final proof;
-- changing geometry or other production ownership before same-environment performance attribution;
+- treating historical performance evidence as current-head proof;
+- manual historical Git/worktree/bisect orchestration for coding-agent performance proof;
+- direct Playwright/Vite/browser execution when the diagnostic is owned by `pnpm verify --only e2e`;
+- changing geometry or another production owner before verifier-owned reproduction and a separate evidence-backed attribution pass;
 - worker/query/storage optimization without measured attribution.
 
 ## Readiness
@@ -283,7 +286,7 @@ Production virtualization architecture: **accepted**.
 
 Bounded mounted-DOM invariant: **accepted on the current geometry implementation**.
 
-Current geometry performance acceptance: **blocked; fresh S0/G1 exposes a material responsiveness regression or measurement-environment mismatch that must be attributed before correction**.
+Current geometry performance acceptance: **blocked; canonical current-head S0/G1 reproduction through the verifier-managed E2E lane is required before attribution or correction**.
 
 Inline-edit ownership, persistence-error semantics, and owner-local proof: **accepted**.
 
@@ -291,4 +294,4 @@ Owner-local mutation threshold: **passing with unchanged configuration**.
 
 Application-E2E ownership and behavior decomposition: **accepted**; the historical relation-property timeout was corrected as a test-state leak without production change.
 
-Merge readiness: **blocked; attribute the performance regression, correct the actual owner if needed, obtain final accepted S0/G1 evidence, then require green exact-head GitHub CI**.
+Merge readiness: **blocked; obtain canonical current-head performance evidence, then either close performance acceptance or route a separate attribution/correction, and finally require green exact-head GitHub CI**.
