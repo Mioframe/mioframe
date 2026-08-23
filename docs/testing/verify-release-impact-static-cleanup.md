@@ -1,6 +1,6 @@
 # Verify release-impact static cleanup
 
-Status: **completed historical cleanup; superseded as Pass E completion evidence by a later production-build ownership review**.
+Status: **completed historical cleanup; not Pass E completion evidence**.
 
 This document records the completed proof/static cleanup that followed the release-spec execution inventory correction in PR #216. The cleanup itself remains accepted. A later full PR review reopened a different Pass E boundary: production-build input ownership. Current architecture is in `docs/testing/verify-release-impact-correction.md`.
 
@@ -30,4 +30,4 @@ The cleanup did not change release-impact ownership or planner behavior.
 
 This cleanup does **not** establish that Pass E as a whole is closed.
 
-The later review found a separate ownership-completeness failure for production-build inputs consumed through tool discovery, TypeScript/build metadata, artifact/file inputs and dependency-install control. That architecture is now resolved in `verify-release-impact-correction.md` and remains pending implementation.
+The later review found a separate ownership-completeness failure for production-build inputs consumed through tool discovery, TypeScript/build metadata, artifact/file inputs and dependency-install control. That architecture is resolved in `verify-release-impact-correction.md` and remains pending implementation.
