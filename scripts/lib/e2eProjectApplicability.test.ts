@@ -17,7 +17,6 @@ const DESKTOP_ONLY_SPECS = [
   'tests/e2e/databaseItemFlows.spec.ts',
   'tests/e2e/databasePersistenceSmoke.spec.ts',
   'tests/e2e/databasePropertyFlows.spec.ts',
-  'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
   'tests/e2e/exportDocumentBrowserStorage.spec.ts',
   'tests/e2e/helpNavigation.spec.ts',
   'tests/e2e/reorderSurfaceCancellation.spec.ts',
@@ -28,7 +27,11 @@ const DESKTOP_ONLY_SPECS = [
   'tests/e2e/zipActionFlows.spec.ts',
 ];
 
-const BOTH_SPECS = ['tests/e2e/appSmoke.spec.ts', 'tests/e2e/reorderSurfaceBottomSheet.spec.ts'];
+const BOTH_SPECS = [
+  'tests/e2e/appSmoke.spec.ts',
+  'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+  'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
+];
 
 describe('E2E_PROJECT_APPLICABILITY', () => {
   it('classifies every current spec exactly as audited', () => {

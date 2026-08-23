@@ -13,10 +13,11 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import DatabaseViewLayout from './DatabaseViewLayout.vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
-import { isUndefined } from 'es-toolkit';
+import { isEqual, isUndefined } from 'es-toolkit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { useDatabaseProperties } from '@entity/databaseProperty';
+import { useDatabaseValueWrite } from '@entity/databaseValue';
 import { DomainError } from '@shared/lib/error';
 import { useDatabaseViewSelection } from '@entity/databaseView';
 import { useDatabaseData } from '@entity/databaseData/useDatabaseData';
@@ -38,6 +39,7 @@ const {
   viewList: databaseViewList,
   explicitViewId,
   effectiveViewId,
+  setExplicitViewId,
 } = useDatabaseViewSelection(path, documentId, stateExplicitViewId);
 
 const documentError = computed(() => {
@@ -61,6 +63,152 @@ const itemContextualButtons = defineMenuButtonList([
 const { addSnackbar } = useSnackbar();
 
 const { removeItem } = useDatabaseData(path, documentId);
+const { postValue } = useDatabaseValueWrite(path, documentId);
+
+interface ActiveInlineEditSession {
+  itemId: DatabaseItemId;
+  propertyId: DatabasePropertyId;
+  initialValue: unknown;
+  draft: unknown;
+  resolving: boolean;
+}
+
+const activeInlineEditSession = shallowRef<ActiveInlineEditSession>();
+let activeInlineEditResolution: Promise<boolean> | undefined;
+
+const isActiveInlineEdit = (
+  session: ActiveInlineEditSession | undefined,
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
+): session is ActiveInlineEditSession =>
+  session?.itemId === itemId && session.propertyId === propertyId;
+
+const getInlineEditSession = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
+  const session = activeInlineEditSession.value;
+
+  if (!isActiveInlineEdit(session, itemId, propertyId)) {
+    return undefined;
+  }
+
+  return {
+    draft: session.draft,
+    resolving: session.resolving,
+  };
+};
+
+const resolveActiveInlineEdit = (): Promise<boolean> => {
+  if (activeInlineEditResolution) {
+    return activeInlineEditResolution;
+  }
+
+  const session = activeInlineEditSession.value;
+
+  if (!session) {
+    return Promise.resolve(true);
+  }
+
+  activeInlineEditSession.value = {
+    ...session,
+    resolving: true,
+  };
+
+  const resolution = (async () => {
+    try {
+      if (!isEqual(session.initialValue, session.draft)) {
+        await postValue(session.itemId, session.propertyId, session.draft);
+      }
+
+      if (isActiveInlineEdit(activeInlineEditSession.value, session.itemId, session.propertyId)) {
+        activeInlineEditSession.value = undefined;
+      }
+
+      return true;
+    } catch {
+      const currentSession = activeInlineEditSession.value;
+
+      if (isActiveInlineEdit(currentSession, session.itemId, session.propertyId)) {
+        activeInlineEditSession.value = {
+          ...currentSession,
+          resolving: false,
+        };
+      }
+
+      return false;
+    }
+  })();
+
+  activeInlineEditResolution = resolution;
+  void resolution.finally(() => {
+    if (activeInlineEditResolution === resolution) {
+      activeInlineEditResolution = undefined;
+    }
+  });
+
+  return resolution;
+};
+
+const onRequestInlineEdit = async (
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
+  initialValue: unknown,
+) => {
+  if (isActiveInlineEdit(activeInlineEditSession.value, itemId, propertyId)) {
+    return;
+  }
+
+  if (!(await resolveActiveInlineEdit())) {
+    return;
+  }
+
+  activeInlineEditSession.value = {
+    itemId,
+    propertyId,
+    initialValue,
+    draft: initialValue,
+    resolving: false,
+  };
+};
+
+const onUpdateInlineEditDraft = (
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
+  draft: unknown,
+) => {
+  const session = activeInlineEditSession.value;
+
+  if (!isActiveInlineEdit(session, itemId, propertyId) || session.resolving) {
+    return;
+  }
+
+  activeInlineEditSession.value = {
+    ...session,
+    draft,
+  };
+};
+
+const onCommitInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
+  if (isActiveInlineEdit(activeInlineEditSession.value, itemId, propertyId)) {
+    void resolveActiveInlineEdit();
+  }
+};
+
+const onCancelInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
+  const session = activeInlineEditSession.value;
+
+  if (isActiveInlineEdit(session, itemId, propertyId) && !session.resolving) {
+    activeInlineEditSession.value = undefined;
+  }
+};
+
+const onRequestExplicitViewId = async (viewId: DatabaseViewId | undefined) => {
+  if (viewId === explicitViewId.value) {
+    return;
+  }
+
+  if (await resolveActiveInlineEdit()) {
+    setExplicitViewId(viewId);
+  }
+};
 
 const editedItemId = shallowRef<DatabaseItemId>();
 const isShowEditItemDialog = computed({
@@ -104,7 +252,7 @@ const hasProperties = computed(() =>
   propertiesIdList.value ? propertiesIdList.value.length > 0 : undefined,
 );
 
-const databaseViewRef = useTemplateRef('databaseViewRef');
+const databaseViewRef = useTemplateRef<HTMLElement>('databaseViewRef');
 
 const onCancelEditItemDialog = () => {
   isShowEditItemDialog.value = false;
@@ -135,10 +283,11 @@ const onUpdatedEditItemDialog = () => {
       </section>
 
       <DatabaseToolbar
-        v-model:explicit-view-id="explicitViewId"
+        :explicit-view-id="explicitViewId"
         :document-id="documentId"
         :directory-path="path"
         :auto-hide-target="databaseViewRef"
+        @update:explicit-view-id="onRequestExplicitViewId"
       />
     </div>
 
@@ -147,6 +296,7 @@ const onUpdatedEditItemDialog = () => {
       :document-id="documentId"
       :view-id="effectiveViewId"
       :path="path"
+      :scroll-root="databaseViewRef"
       class="database-view__layout"
     >
       <template #value="{ itemId, propertyId }">
@@ -155,6 +305,11 @@ const onUpdatedEditItemDialog = () => {
           :property-id="propertyId"
           :document-id="documentId"
           :directory-path="path"
+          :edit-session="getInlineEditSession(itemId, propertyId)"
+          @request-edit="onRequestInlineEdit(itemId, propertyId, $event)"
+          @update:draft="onUpdateInlineEditDraft(itemId, propertyId, $event)"
+          @commit-edit="onCommitInlineEdit(itemId, propertyId)"
+          @cancel-edit="onCancelInlineEdit(itemId, propertyId)"
           @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
@@ -168,10 +323,11 @@ const onUpdatedEditItemDialog = () => {
 
       <template #after>
         <DatabaseToolbar
-          v-model:explicit-view-id="explicitViewId"
+          :explicit-view-id="explicitViewId"
           :document-id="documentId"
           :directory-path="path"
           :auto-hide-target="databaseViewRef"
+          @update:explicit-view-id="onRequestExplicitViewId"
         />
       </template>
     </DatabaseViewLayout>

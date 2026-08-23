@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, useTemplateRef, watch } from 'vue';
-import ValueInline from './ValueInline.vue';
-import { isEqual, isUndefined } from 'es-toolkit';
-import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
-import type { DatabaseItemId } from '@shared/lib/databaseDocument';
-import {
-  type DatabasePropertyId,
-  type DatabaseUnknownProperty,
-} from '@shared/lib/databaseDocument';
-import { MDOverlayTooltip } from '@shared/ui/Tooltips';
-import { toggleBoolean } from '@shared/ui/Checkbox';
-import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/State';
-import { useElementSize } from '@vueuse/core';
 import { zodBooleanProperty } from '@entity/databaseBoolean';
 import { useDatabaseProperty } from '@entity/databaseProperty';
-import { zodIs } from '@shared/lib/validateZodScheme';
 import { useDatabaseEffectiveValue, useDatabaseStoredValue } from '@entity/databaseValue';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import type {
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseUnknownProperty,
+} from '@shared/lib/databaseDocument';
+import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/State';
+import { MDOverlayTooltip } from '@shared/ui/Tooltips';
+import { toggleBoolean } from '@shared/ui/Checkbox';
+import { zodIs } from '@shared/lib/validateZodScheme';
 import { zodStringProperty } from '@entity/databaseString';
+import { isUndefined } from 'es-toolkit';
+import { useElementSize } from '@vueuse/core';
+import { computed, onBeforeUnmount, ref, toRefs, useTemplateRef } from 'vue';
+import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
+import ValueInline from './ValueInline.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -25,12 +25,17 @@ const props = withDefaults(
     propertyId: DatabasePropertyId;
     directoryPath: string;
     documentId: AMDocumentId;
+    editSession?: Readonly<{ draft: unknown; resolving: boolean }> | undefined;
     class?: unknown;
   }>(),
   {},
 );
 
 const emit = defineEmits<{
+  requestEdit: [initialValue: unknown];
+  'update:draft': [draft: unknown];
+  commitEdit: [];
+  cancelEdit: [];
   'update:property': [property: DatabaseUnknownProperty];
 }>();
 
@@ -41,23 +46,17 @@ const { property } = useDatabaseProperty(path, documentId, propertyId);
 const { value } = useDatabaseEffectiveValue(path, documentId, itemId, propertyId);
 const { post: postValue } = useDatabaseStoredValue(path, documentId, itemId, propertyId);
 
-const showEditForm = ref(false);
+const isEditorOpen = computed(() => props.editSession !== undefined);
+const isCancellationRequested = ref(false);
 
-const stateValue = ref<unknown>();
-const syncStateValue = () => {
-  stateValue.value = value.value;
-};
-
-const tryEmitValue = async () => {
-  if (!isEqual(value.value, stateValue.value)) {
-    await postValue(stateValue.value);
-  }
-};
-
-const startEditing = () => {
-  stateValue.value = value.value;
-  showEditForm.value = true;
-};
+const editorValue = computed<unknown>({
+  get: () => props.editSession?.draft ?? value.value,
+  set: (draft) => {
+    if (isEditorOpen.value) {
+      emit('update:draft', draft);
+    }
+  },
+});
 
 const isBooleanProperty = computed(() => zodIs(property.value, zodBooleanProperty));
 const isStringProperty = computed(() => zodIs(property.value, zodStringProperty));
@@ -70,12 +69,18 @@ const triggerBooleanToggle = async () => {
   }
 
   const newState = toggleBoolean(
-    isUndefined(stateValue.value) ? stateValue.value : !!stateValue.value,
+    isUndefined(value.value) ? value.value : !!value.value,
     booleanProperty.indeterminate,
   );
 
-  stateValue.value = newState;
-  await tryEmitValue();
+  await postValue(newState);
+};
+
+const requestEditor = () => {
+  if (!isEditorOpen.value) {
+    isCancellationRequested.value = false;
+    emit('requestEdit', value.value);
+  }
 };
 
 const activateInlineValue = async () => {
@@ -84,18 +89,26 @@ const activateInlineValue = async () => {
     return;
   }
 
-  startEditing();
+  requestEditor();
 };
 
-const commitEditor = async () => {
-  showEditForm.value = false;
-  await tryEmitValue();
-  syncStateValue();
+const commitEditor = () => {
+  if (isEditorOpen.value) {
+    emit('commitEdit');
+  }
 };
 
 const cancelEditor = () => {
-  showEditForm.value = false;
-  syncStateValue();
+  if (isEditorOpen.value) {
+    isCancellationRequested.value = true;
+    emit('cancelEdit');
+  }
+};
+
+const onEditorShowUpdate = (isShown: boolean) => {
+  if (!isShown) {
+    cancelEditor();
+  }
 };
 
 const onRootClick = async () => {
@@ -111,35 +124,24 @@ const onRootKeydown = async (event: KeyboardEvent) => {
   await activateInlineValue();
 };
 
-watch(
-  value,
-  () => {
-    if (!showEditForm.value) {
-      syncStateValue();
-    }
-  },
-  {
-    immediate: true,
-  },
-);
-
-watch(
-  showEditForm,
-  (isVisible) => {
-    if (!isVisible) {
-      syncStateValue();
-    }
-  },
-  {
-    immediate: true,
-  },
-);
+onBeforeUnmount(() => {
+  // A virtual range update can unmount this cell without a component-level close event. The
+  // widget-owned session already holds its draft, so resolving here uses the same normal commit
+  // path instead of silently discarding it.
+  if (!isCancellationRequested.value) {
+    commitEditor();
+  }
+});
 
 const inlineEl = useTemplateRef<HTMLElement>('inlineEl');
 const { width: inlineWidth } = useElementSize(inlineEl);
 
-const onUpdateProperty = (v: DatabaseUnknownProperty) => {
-  emit('update:property', v);
+const onUpdateProperty = (nextProperty: DatabaseUnknownProperty) => {
+  emit('update:property', nextProperty);
+};
+
+const onUpdateEditorValue = (draft: unknown) => {
+  editorValue.value = draft;
 };
 
 const stringInputSize = computed(() => {
@@ -147,7 +149,7 @@ const stringInputSize = computed(() => {
     return undefined;
   }
 
-  const currentValue = stateValue.value ?? value.value;
+  const currentValue = editorValue.value;
   const currentValueString = typeof currentValue === 'string' ? currentValue : String(currentValue);
 
   return Math.max(currentValueString.length, 12);
@@ -196,7 +198,7 @@ useRipple(inlineEl);
     :role="interactiveRole"
     :aria-checked="ariaChecked"
     :aria-haspopup="isBooleanProperty ? undefined : 'dialog'"
-    :aria-expanded="isBooleanProperty ? undefined : showEditForm"
+    :aria-expanded="isBooleanProperty ? undefined : isEditorOpen"
     :aria-label="property?.name"
     :class="[
       propClass,
@@ -221,19 +223,21 @@ useRipple(inlineEl);
 
   <MDOverlayTooltip
     v-if="property"
-    v-model:show="showEditForm"
+    :show="isEditorOpen"
     :target-element="inlineEl"
+    @update:show="onEditorShowUpdate"
     @interaction-outside="commitEditor"
   >
     <div class="editable-inline-value__edit-popover" :style="editPopoverStyle">
       <DatabasePropertyValueFieldById
-        v-model:value="stateValue"
+        :value="editorValue"
         class="editable-inline-value__value-field"
         :directory-path="path"
         :document-id="documentId"
         :property-id="propertyId"
         :input-size="stringInputSize ?? 0"
         autofocus
+        @update:value="onUpdateEditorValue"
         @keydown.enter="commitEditor"
         @keydown.escape="cancelEditor"
         @update:property="onUpdateProperty"
@@ -260,6 +264,7 @@ useRipple(inlineEl);
     flex-direction: column;
     padding-top: 1step;
     max-width: 100%;
+    min-height: 0;
   }
 
   &__value-field {

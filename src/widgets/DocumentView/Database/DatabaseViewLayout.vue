@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import type { AMDocumentId } from '@shared/lib/automerge';
-import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { type DatabaseViewId } from '@shared/lib/databaseDocument';
-import { computed, toRefs, useTemplateRef } from 'vue';
-import ValueInline from './ValueInline.vue';
 import { DatabaseDataTable } from '@entity/databaseData';
-import type { ItemIdQuery } from '@shared/service';
-import { unrefElement, useScroll } from '@vueuse/core';
-import { useDatabaseProperties } from '@entity/databaseProperty';
 import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBlock.vue';
+import { useDatabaseProperties } from '@entity/databaseProperty';
+import type { AMDocumentId } from '@shared/lib/automerge';
+import type {
+  DatabaseItemId,
+  DatabasePropertyId,
+  DatabaseViewId,
+} from '@shared/lib/databaseDocument';
+import type { ItemIdQuery } from '@shared/service';
+import { unrefElement, useElementBounding, useMutationObserver, useScroll } from '@vueuse/core';
+import { computed, onUpdated, toRefs, useTemplateRef } from 'vue';
+import ValueInline from './ValueInline.vue';
 
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
+  scrollRoot: HTMLElement | null | undefined;
   viewId?: DatabaseViewId | undefined;
   itemIdQuery?: ItemIdQuery | undefined;
 }>();
@@ -24,13 +28,47 @@ const slots = defineSlots<{
   after: () => unknown;
 }>();
 
-const { path, documentId } = toRefs(props);
+const { documentId, path, scrollRoot } = toRefs(props);
 
-const scrollTarget = useTemplateRef('scrollTarget');
+const tableSurface = useTemplateRef<HTMLElement>('tableSurface');
+const scrollRootEl = computed(() => unrefElement(scrollRoot.value));
 
-const scrollTargetEl = computed(() => unrefElement(scrollTarget));
+const rootBounding = useElementBounding(scrollRootEl);
+const tableBounding = useElementBounding(tableSurface);
 
-const { arrivedState } = useScroll(scrollTargetEl, {
+const updateSurfaceBounds = () => {
+  rootBounding.update();
+  tableBounding.update();
+};
+
+// Only direct composition children of the explicit scroll root can move the table before it.
+// Virtual rows/cells are descendants of the table-surface wrapper and therefore cannot trigger
+// this observer; TanStack remains the only virtual-item measurement owner.
+useMutationObserver(scrollRootEl, updateSurfaceBounds, { childList: true });
+
+onUpdated(updateSurfaceBounds);
+
+const verticalSurfaceOffset = computed(() => {
+  const root = scrollRootEl.value;
+
+  if (!root || !tableSurface.value) {
+    return 0;
+  }
+
+  return tableBounding.top.value - rootBounding.top.value - root.clientTop + root.scrollTop;
+});
+
+const horizontalSurfaceOffset = computed(() => {
+  const root = scrollRootEl.value;
+
+  if (!root || !tableSurface.value) {
+    return 0;
+  }
+
+  return tableBounding.left.value - rootBounding.left.value - root.clientLeft + root.scrollLeft;
+});
+
+const { arrivedState } = useScroll(scrollRootEl, {
   throttle: 1e3 / 20,
   observe: true,
 });
@@ -41,56 +79,68 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
-  <DatabaseDataTable
-    v-if="propertiesIdList"
-    ref="scrollTarget"
-    :directory-path="path"
-    :document-id="documentId"
-    :view-id="viewId"
-    class="database-view-layout"
-    :id-query="itemIdQuery"
-    :properties="propertiesIdList"
-  >
-    <template #property="{ propertyId }">
-      <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />
-    </template>
-
-    <template #value="{ itemId, propertyId }">
-      <slot name="value" :item-id="itemId" :property-id="propertyId">
-        <ValueInline
-          :directory-path="path"
-          :document-id="documentId"
-          :property-id="propertyId"
-          :item-id="itemId"
-        />
-      </slot>
-    </template>
-
-    <template v-if="!!slots.action" #action="{ itemId }">
-      <div
-        class="database-view-layout__action"
-        :class="{
-          _elevation: !arrivedRight,
-        }"
+  <div class="database-view-layout">
+    <div ref="tableSurface" class="database-view-layout__table-surface">
+      <DatabaseDataTable
+        v-if="propertiesIdList"
+        :directory-path="path"
+        :document-id="documentId"
+        :view-id="viewId"
+        :id-query="itemIdQuery"
+        :properties="propertiesIdList"
+        :scroll-root="scrollRootEl"
+        :vertical-surface-offset="verticalSurfaceOffset"
+        :horizontal-surface-offset="horizontalSurfaceOffset"
       >
-        <slot name="action" :item-id="itemId" />
-      </div>
-    </template>
+        <template #property="{ propertyId }">
+          <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />
+        </template>
 
-    <template v-if="!!slots.actionHead" #actionHead>
-      <slot name="actionHead" />
-    </template>
+        <template #value="{ itemId, propertyId }">
+          <slot name="value" :item-id="itemId" :property-id="propertyId">
+            <ValueInline
+              :directory-path="path"
+              :document-id="documentId"
+              :property-id="propertyId"
+              :item-id="itemId"
+            />
+          </slot>
+        </template>
 
-    <template v-if="!!slots.after" #after>
+        <template v-if="!!slots.action" #action="{ itemId }">
+          <div
+            class="database-view-layout__action"
+            :class="{
+              _elevation: !arrivedRight,
+            }"
+          >
+            <slot name="action" :item-id="itemId" />
+          </div>
+        </template>
+
+        <template v-if="!!slots.actionHead" #actionHead>
+          <slot name="actionHead" />
+        </template>
+      </DatabaseDataTable>
+
+      <div v-else>properties in undefined</div>
+    </div>
+
+    <div v-if="!!slots.after" class="database-view-layout__after">
       <slot name="after" />
-    </template>
-  </DatabaseDataTable>
-
-  <div v-else>properties in undefined</div>
+    </div>
+  </div>
 </template>
 
 <style lang="css" scoped>
 .database-view-layout {
+  display: flex;
+  flex-direction: column;
+
+  &__table-surface {
+    min-width: 100%;
+  }
+
   &__action {
     background-color: var(--md-container-color);
     padding: 1step 0;

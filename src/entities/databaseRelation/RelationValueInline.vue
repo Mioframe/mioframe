@@ -29,6 +29,7 @@ defineSlots<{
     relationDirectoryPath: string;
     viewId?: DatabaseViewId | undefined;
     parentRelation: ParentRelation;
+    scrollRoot: HTMLElement | null | undefined;
   }) => unknown;
 }>();
 
@@ -66,6 +67,7 @@ const mergedParentRelation = computed((): ParentRelation => {
 const showValue = ref<boolean | undefined>(false);
 
 const showSubRelationButton = useTemplateRef<MaybeElement>('showSubRelationButton');
+const relationValueEl = useTemplateRef<HTMLElement>('relationValueEl');
 
 const interactionOutside = (e: Event) => {
   if (
@@ -84,7 +86,7 @@ const onClickShowValueButton = (e: Event) => {
 </script>
 
 <template>
-  <div class="relation-value">
+  <div ref="relationValueEl" class="relation-value">
     <MDSymbol
       v-if="isNil(verifiedValue) || !relationDocumentId"
       name="unknown_med"
@@ -120,6 +122,7 @@ const onClickShowValueButton = (e: Event) => {
             :relation-directory-path="directoryPath"
             :view-id="viewId"
             :parent-relation="mergedParentRelation"
+            :scroll-root="relationValueEl"
           >
             {{ verifiedValue }}
           </slot>
@@ -134,6 +137,7 @@ const onClickShowValueButton = (e: Event) => {
         :relation-directory-path="directoryPath"
         :view-id="viewId"
         :parent-relation="mergedParentRelation"
+        :scroll-root="relationValueEl"
       >
         {{ verifiedValue }}
       </slot>

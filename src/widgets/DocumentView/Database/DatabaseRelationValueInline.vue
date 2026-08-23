@@ -48,6 +48,7 @@ const { effectiveViewId } = useDatabaseViewSelection(
         viewId,
         value: relationValue,
         parentRelation: relationParentRelation,
+        scrollRoot,
       }"
     >
       <DatabaseViewLayout
@@ -55,6 +56,7 @@ const { effectiveViewId } = useDatabaseViewSelection(
         :path="relationDirectory"
         :view-id="viewId"
         :item-id-query="{ $in: relationValue }"
+        :scroll-root="scrollRoot"
       >
         <template #value="{ propertyId: relationPropertyId, itemId: relationItemId }">
           <ValueInline

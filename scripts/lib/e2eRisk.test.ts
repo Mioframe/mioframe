@@ -386,6 +386,17 @@ describe('resolveAppE2EPlan', () => {
 });
 
 describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
+  it('routes the virtualized Database table through its persistence, item, and view owners', () => {
+    const plan = resolveAppE2EPlan(['src/entities/databaseData/DatabaseDataTable.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/databaseItemFlows.spec.ts',
+      'tests/e2e/databasePersistenceSmoke.spec.ts',
+      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+    ]);
+  });
+
   it.each([
     ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
     [
