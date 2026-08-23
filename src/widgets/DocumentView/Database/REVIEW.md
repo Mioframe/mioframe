@@ -46,7 +46,7 @@ Evidence:
 
 Basis:
 
-- [`../../../../.agents/skills/vue-component-implementation/SKILL.md`](../../../../.agents/skills/vue-component-implementation/SKILL.md) — component communication is props down, emits up, with parent composition owning show/hidden state when upstream orchestration decides whether a surface may render.
+- [`../../../../.agents/skills/vue-component-implementation/SKILL.md`](../../../../.agents/skills/vue-component-implementation/SKILL.md) — parent-owned commands/permission gates are upward intents; async approval must be represented through emits plus controlled parent state, not callback props.
 - [`AGENTS.md`](AGENTS.md) — Database widget composition prefers explicit props and named event handlers and must keep responsibilities readable and local.
 
 Risk: orchestration direction is inverted, the toolbar cannot be understood from declarative inputs alone, tests protect an imperative callback channel, and future async gates can multiply function props instead of one controlled state transition.
