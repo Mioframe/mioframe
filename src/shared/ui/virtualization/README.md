@@ -284,8 +284,8 @@ Database-specific native-table proof remains owned by `src/entities/databaseData
 
 ## Readiness
 
-Architecture/public API: **ready**.
+Architecture/public API: **accepted**.
 
 Implementation/browser capability proof: **passed**.
 
-Production database migration is a separate consumer stage and has not started. See [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
+Production Database consumer migration and profiling are **complete** in PR #217. Remaining merge work, if any, belongs to the Database consumer/review scope and must not reopen this shared abstraction without new evidence. See [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
