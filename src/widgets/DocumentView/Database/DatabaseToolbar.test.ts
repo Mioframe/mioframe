@@ -1,9 +1,10 @@
 /* eslint-disable vue/one-component-per-file -- This test file defines focused child stubs. */
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { zodDocumentId } from '@shared/lib/automerge';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
+import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 vi.mock('@entity/databaseView', () => ({
   useDatabaseViewSelection: () => ({
@@ -52,19 +53,32 @@ const MDToolbarContainerStub = defineComponent({
 const createConfigurationSheetStub = (name: string, testId: string) =>
   defineComponent({
     name,
-    setup() {
-      return () => h('div', { 'data-testid': testId });
+    emits: ['closed'],
+    setup(_props, { emit, slots }) {
+      return () =>
+        h('div', { 'data-testid': testId }, [
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('closed');
+              },
+            },
+            'close',
+          ),
+          slots.default?.(),
+        ]);
     },
   });
 
 /* eslint-enable vue/one-component-per-file -- Child stubs end here. */
 
-const mountDatabaseToolbar = (resolveInlineEditBeforeConfiguration: () => Promise<boolean>) =>
+const mountDatabaseToolbar = () =>
   mount(DatabaseToolbar, {
     props: {
       directoryPath: '/database',
       documentId: zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu'),
-      resolveInlineEditBeforeConfiguration,
     },
     global: {
       stubs: {
@@ -84,21 +98,29 @@ const mountDatabaseToolbar = (resolveInlineEditBeforeConfiguration: () => Promis
   });
 
 describe('DatabaseToolbar', () => {
-  it('does not open source or property-shape configuration after failed edit resolution', async () => {
-    const resolveInlineEditBeforeConfiguration = vi.fn().mockResolvedValue(false);
-    const wrapper = mountDatabaseToolbar(resolveInlineEditBeforeConfiguration);
+  it('emits configuration intents without opening sheets and renders only controlled state', async () => {
+    const wrapper = mountDatabaseToolbar();
+    const requests: DatabaseConfigurationSurface[] = ['views', 'sort', 'filter', 'properties'];
+    const controls = ['view settings', 'sort', 'filter', 'configure properties'];
 
-    for (const controlName of ['view settings', 'sort', 'filter', 'configure properties']) {
-      // eslint-disable-next-line no-await-in-loop -- Each control must independently await the gate.
+    for (const [index, controlName] of controls.entries()) {
+      // eslint-disable-next-line no-await-in-loop -- Each control must emit its own request intent.
       await wrapper.get(`button[aria-label="${controlName}"]`).trigger('click');
-      // eslint-disable-next-line no-await-in-loop -- The click handler awaits the composition gate.
-      await flushPromises();
+      expect(wrapper.emitted('requestConfiguration')?.at(-1)).toEqual([requests[index]]);
     }
 
-    expect(resolveInlineEditBeforeConfiguration).toHaveBeenCalledTimes(4);
     expect(wrapper.find('[data-testid="views-sheet"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="sort-sheet"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="filters-sheet"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="properties-sheet"]').exists()).toBe(false);
+
+    await wrapper.setProps({ activeConfigurationSurface: 'filter' });
+    expect(wrapper.find('[data-testid="filters-sheet"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="views-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="sort-sheet"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="properties-sheet"]').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="filters-sheet"] button').trigger('click');
+    expect(wrapper.emitted('closeConfiguration')).toHaveLength(1);
   });
 });

@@ -46,7 +46,10 @@ const { property } = useDatabaseProperty(path, documentId, propertyId);
 const { value } = useDatabaseEffectiveValue(path, documentId, itemId, propertyId);
 const { post: postValue } = useDatabaseStoredValue(path, documentId, itemId, propertyId);
 
-const isEditorOpen = computed(() => props.editSession !== undefined);
+const isEditorOpen = computed(
+  () => props.editSession !== undefined && !props.editSession.resolving,
+);
+const isInteractionEnabled = computed(() => !props.editSession?.resolving);
 const isCancellationRequested = ref(false);
 
 const editorValue = computed<unknown>({
@@ -62,6 +65,10 @@ const isBooleanProperty = computed(() => zodIs(property.value, zodBooleanPropert
 const isStringProperty = computed(() => zodIs(property.value, zodStringProperty));
 
 const triggerBooleanToggle = async () => {
+  if (!isInteractionEnabled.value) {
+    return;
+  }
+
   const booleanProperty = property.value;
 
   if (!zodIs(booleanProperty, zodBooleanProperty)) {
@@ -77,7 +84,7 @@ const triggerBooleanToggle = async () => {
 };
 
 const requestEditor = () => {
-  if (!isEditorOpen.value) {
+  if (isInteractionEnabled.value && !isEditorOpen.value) {
     isCancellationRequested.value = false;
     emit('requestEdit', value.value);
   }
@@ -120,6 +127,10 @@ const onRootKeydown = async (event: KeyboardEvent) => {
     return;
   }
 
+  if (!isInteractionEnabled.value) {
+    return;
+  }
+
   event.preventDefault();
   await activateInlineValue();
 };
@@ -128,7 +139,7 @@ onBeforeUnmount(() => {
   // A virtual range update can unmount this cell without a component-level close event. The
   // widget-owned session already holds its draft, so resolving here uses the same normal commit
   // path instead of silently discarding it.
-  if (!isCancellationRequested.value) {
+  if (!isCancellationRequested.value && isEditorOpen.value) {
     commitEditor();
   }
 });
@@ -169,7 +180,9 @@ const editPopoverStyle = computed(() => {
   return style;
 });
 
-const interactiveRole = computed(() => (isBooleanProperty.value ? 'checkbox' : 'button'));
+const interactiveRole = computed(() =>
+  isInteractionEnabled.value ? (isBooleanProperty.value ? 'checkbox' : 'button') : undefined,
+);
 
 const ariaChecked = computed(() => {
   const booleanProperty = property.value;
@@ -194,10 +207,10 @@ useRipple(inlineEl);
   <div
     ref="inlineEl"
     class="editable-inline-value"
-    tabindex="0"
+    :tabindex="isInteractionEnabled ? 0 : undefined"
     :role="interactiveRole"
     :aria-checked="ariaChecked"
-    :aria-haspopup="isBooleanProperty ? undefined : 'dialog'"
+    :aria-haspopup="isInteractionEnabled && !isBooleanProperty ? 'dialog' : undefined"
     :aria-expanded="isBooleanProperty ? undefined : isEditorOpen"
     :aria-label="property?.name"
     :class="[

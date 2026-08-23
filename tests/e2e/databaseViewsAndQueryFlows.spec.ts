@@ -869,14 +869,20 @@ test('keeps real preceding Database content connected to the table-owned surface
   // This remains a real table-owned virtual collection even while the success card moves its
   // surface down inside the physical root. Exercise a deep mounted range instead of stopping at
   // a rectangle calculation, then dismiss the card so the same surface moves again.
-  const readMountedRange = () =>
+  const readLogicalRange = () =>
     table.evaluate((tableElement) => {
       const rows = Array.from(
         tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])'),
       );
+      const indices = rows
+        .map((row) => Number(row.getAttribute('aria-rowindex')))
+        .filter((index) => Number.isFinite(index));
+      const rowCount = Number(tableElement.getAttribute('aria-rowcount'));
 
       return {
-        indices: rows.map((row) => Number(row.getAttribute('data-mioframe-virtual-index'))),
+        firstRowIndex: Math.min(...indices),
+        lastRowIndex: Math.max(...indices),
+        rowCount,
         rows: rows.length,
       };
     });
@@ -884,18 +890,28 @@ test('keeps real preceding Database content connected to the table-owned surface
   await root.evaluate((rootElement) => {
     rootElement.scrollTop = 0;
   });
-  const initialRange = await readMountedRange();
+  const initialRange = await readLogicalRange();
   expect(initialRange.rows).toBeGreaterThan(0);
   expect(initialRange.rows).toBeLessThan(deepRangeRows.length + 5);
+  expect(initialRange.firstRowIndex).toBe(2);
 
   await root.evaluate((rootElement) => {
     rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
   });
   await expect
-    .poll(readMountedRange, {
-      message: 'the success-card-displaced table must reach a different deep virtual row range',
-    })
-    .not.toEqual(initialRange);
+    .poll(
+      async () => {
+        const range = await readLogicalRange();
+        return range.lastRowIndex === range.rowCount;
+      },
+      {
+        message: 'the success-card-displaced table must reach its logical deep row range',
+      },
+    )
+    .toBe(true);
+  const displacedDeepRange = await readLogicalRange();
+  expect(displacedDeepRange.rows).toBeLessThan(displacedDeepRange.rowCount - 1);
+  expect(displacedDeepRange.lastRowIndex).toBe(displacedDeepRange.rowCount);
 
   await page.getByRole('button', { name: /^got it$/i }).click();
   await expect(page.getByText('Example created', { exact: true })).toHaveCount(0);
@@ -909,7 +925,31 @@ test('keeps real preceding Database content connected to the table-owned surface
   });
 
   expect(dismissedSurfaceOffset).toBeLessThan(surfaceOffset.vertical);
-  await expect(table.locator('tbody > tr:not([aria-hidden="true"])')).not.toHaveCount(0);
+
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = 0;
+  });
+  const movedInitialRange = await readLogicalRange();
+  expect(movedInitialRange.firstRowIndex).toBe(2);
+  expect(movedInitialRange.rows).toBeLessThan(movedInitialRange.rowCount - 1);
+
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
+  });
+  await expect
+    .poll(
+      async () => {
+        const range = await readLogicalRange();
+        return range.lastRowIndex === range.rowCount;
+      },
+      {
+        message: 'the moved table must reach its logical deep row range again',
+      },
+    )
+    .toBe(true);
+  const movedDeepRange = await readLogicalRange();
+  expect(movedDeepRange.lastRowIndex).toBe(movedDeepRange.rowCount);
+  expect(movedDeepRange.rows).toBeLessThan(movedDeepRange.rowCount - 1);
 });
 
 test('virtualizes the real Database root across deep native-table row and property ranges', async ({

@@ -26,6 +26,7 @@ import {
   useDatabaseExampleDocumentCreateSuccess,
 } from '@feature/exampleDocumentsCreate';
 import { useDatabaseInlineEditSession } from './useDatabaseInlineEditSession';
+import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -75,6 +76,8 @@ const {
   updateDraft: updateInlineEditDraft,
 } = useDatabaseInlineEditSession(postValue);
 
+const activeConfigurationSurface = shallowRef<DatabaseConfigurationSurface>();
+
 const onRequestInlineEdit = async (
   itemId: DatabaseItemId,
   propertyId: DatabasePropertyId,
@@ -107,6 +110,16 @@ const onRequestExplicitViewId = async (viewId: DatabaseViewId | undefined) => {
   if (await resolveActiveInlineEdit()) {
     setExplicitViewId(viewId);
   }
+};
+
+const onRequestConfiguration = async (surface: DatabaseConfigurationSurface) => {
+  if (await resolveActiveInlineEdit()) {
+    activeConfigurationSurface.value = surface;
+  }
+};
+
+const onCloseConfiguration = () => {
+  activeConfigurationSurface.value = undefined;
 };
 
 const editedItemId = shallowRef<DatabaseItemId>();
@@ -186,8 +199,10 @@ const onUpdatedEditItemDialog = () => {
         :document-id="documentId"
         :directory-path="path"
         :auto-hide-target="databaseViewRef"
-        :resolve-inline-edit-before-configuration="resolveActiveInlineEdit"
+        :active-configuration-surface="activeConfigurationSurface"
         @update:explicit-view-id="onRequestExplicitViewId"
+        @request-configuration="onRequestConfiguration"
+        @close-configuration="onCloseConfiguration"
       />
     </div>
 
@@ -227,8 +242,10 @@ const onUpdatedEditItemDialog = () => {
           :document-id="documentId"
           :directory-path="path"
           :auto-hide-target="databaseViewRef"
-          :resolve-inline-edit-before-configuration="resolveActiveInlineEdit"
+          :active-configuration-surface="activeConfigurationSurface"
           @update:explicit-view-id="onRequestExplicitViewId"
+          @request-configuration="onRequestConfiguration"
+          @close-configuration="onCloseConfiguration"
         />
       </template>
     </DatabaseViewLayout>

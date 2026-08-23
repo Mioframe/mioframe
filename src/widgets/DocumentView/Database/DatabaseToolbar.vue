@@ -15,6 +15,7 @@ import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { PartialDeep } from 'type-fest';
+import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
@@ -22,7 +23,12 @@ const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
   autoHideTarget?: MaybeElement | undefined;
-  resolveInlineEditBeforeConfiguration: () => Promise<boolean>;
+  activeConfigurationSurface?: DatabaseConfigurationSurface | undefined;
+}>();
+
+const emit = defineEmits<{
+  requestConfiguration: [surface: DatabaseConfigurationSurface];
+  closeConfiguration: [];
 }>();
 
 const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
@@ -31,14 +37,6 @@ const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelect
   documentId,
   explicitViewId,
 );
-
-const showViewSettings = ref(false);
-
-const showSortSettings = ref(false);
-
-const showPropertySettings = ref(false);
-
-const showFilterSettings = ref(false);
 
 const isShowAddItem = ref(false);
 
@@ -51,68 +49,28 @@ const onUpdateProperty = async (
   await patchProperty(path.value, documentId.value, propertyId, v);
 };
 
-const onToggleViewSettings = async () => {
-  if (showViewSettings.value) {
-    showViewSettings.value = false;
-    return;
-  }
-
-  if (await props.resolveInlineEditBeforeConfiguration()) {
-    showViewSettings.value = true;
-  }
+const onRequestViewSettings = () => {
+  emit('requestConfiguration', 'views');
 };
 
-const onToggleSortSettings = async () => {
-  if (showSortSettings.value) {
-    showSortSettings.value = false;
-    return;
-  }
-
-  if (await props.resolveInlineEditBeforeConfiguration()) {
-    showSortSettings.value = true;
-  }
+const onRequestSortSettings = () => {
+  emit('requestConfiguration', 'sort');
 };
 
 const onToggleAddItemDialog = () => {
   isShowAddItem.value = !isShowAddItem.value;
 };
 
-const onToggleFilterSettings = async () => {
-  if (showFilterSettings.value) {
-    showFilterSettings.value = false;
-    return;
-  }
-
-  if (await props.resolveInlineEditBeforeConfiguration()) {
-    showFilterSettings.value = true;
-  }
+const onRequestFilterSettings = () => {
+  emit('requestConfiguration', 'filter');
 };
 
-const onTogglePropertySettings = async () => {
-  if (showPropertySettings.value) {
-    showPropertySettings.value = false;
-    return;
-  }
-
-  if (await props.resolveInlineEditBeforeConfiguration()) {
-    showPropertySettings.value = true;
-  }
+const onRequestPropertySettings = () => {
+  emit('requestConfiguration', 'properties');
 };
 
-const onCloseViewsSheet = () => {
-  showViewSettings.value = false;
-};
-
-const onCloseSortSheet = () => {
-  showSortSettings.value = false;
-};
-
-const onClosePropertiesSheet = () => {
-  showPropertySettings.value = false;
-};
-
-const onCloseFiltersSheet = () => {
-  showFilterSettings.value = false;
+const onCloseConfiguration = () => {
+  emit('closeConfiguration');
 };
 
 const onItemAdded = () => {
@@ -137,7 +95,7 @@ const hasProperties = computed(() => {
       tooltip="view settings"
       md-symbol-name="view_quilt"
       color="standard"
-      @click="onToggleViewSettings"
+      @click="onRequestViewSettings"
     />
 
     <MDIconButton
@@ -145,7 +103,7 @@ const hasProperties = computed(() => {
       tooltip="sort"
       md-symbol-name="sort_by_alpha"
       color="standard"
-      @click="onToggleSortSettings"
+      @click="onRequestSortSettings"
     />
 
     <MDIconButton
@@ -162,45 +120,45 @@ const hasProperties = computed(() => {
       tooltip="filter"
       md-symbol-name="filter_alt"
       color="standard"
-      @click="onToggleFilterSettings"
+      @click="onRequestFilterSettings"
     />
 
     <MDIconButton
       tooltip="configure properties"
       md-symbol-name="tune"
       color="standard"
-      @click="onTogglePropertySettings"
+      @click="onRequestPropertySettings"
     />
 
     <DatabaseViewsSheet
-      v-if="showViewSettings"
+      v-if="props.activeConfigurationSurface === 'views'"
       v-model:explicit-view-id="viewSelection"
       :path="path"
       :document-id="documentId"
-      @closed="onCloseViewsSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabaseSortSheet
-      v-if="showSortSettings"
+      v-if="props.activeConfigurationSurface === 'sort'"
       :directory-path="path"
       :document-id="documentId"
       :view-id="effectiveViewId"
-      @closed="onCloseSortSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabasePropertiesSheet
-      v-if="showPropertySettings"
+      v-if="props.activeConfigurationSurface === 'properties'"
       :document-id="documentId"
       :directory-path="path"
-      @closed="onClosePropertiesSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabaseFiltersSheet
-      v-if="showFilterSettings && effectiveViewId"
+      v-if="props.activeConfigurationSurface === 'filter' && effectiveViewId"
       :document-id="documentId"
       :view-id="effectiveViewId"
       :directory-path="path"
-      @closed="onCloseFiltersSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DbItemAddDialog
