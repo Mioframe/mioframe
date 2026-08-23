@@ -39,9 +39,7 @@ Use the existing `isInteractionEnabled` fact as the only interaction gate.
 Expected wiring:
 
 ```ts
-const interactionTarget = computed(() =>
-  isInteractionEnabled.value ? inlineEl.value : null,
-);
+const interactionTarget = computed(() => (isInteractionEnabled.value ? inlineEl.value : null));
 
 const { hover, focused, durationPressedState } = useStateLayer(interactionTarget);
 useRipple(interactionTarget);
