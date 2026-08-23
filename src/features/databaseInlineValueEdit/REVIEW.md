@@ -4,62 +4,39 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 feature-owned inline-edit session lifecycle after the mutation-proof correction.
-- Public feature API, entity write dependency, identity/concurrency guards, success/failure settlement, error semantics, and focused tests.
-- The accepted inline-edit ownership contract in `docs/database-virtualization.md` and the mutation-proof correction contract.
+- PR #217 feature-owned inline-edit lifecycle after the review correction.
+- Explicit success/error resolution, cause preservation, feedback/diagnostics, serialization, retry, cancel, and focused tests.
 
 ## Blockers
 
-### B1 — Focused lifecycle proof still misses cancel and successful-resolution cleanup
+### B1 — Raw persistence-cause identity is implemented but not faithfully proved
 
 Owner: `src/features/databaseInlineValueEdit`
 
-Problem: the expanded feature tests now prove identity, no-op/changed resolve, concurrent in-flight reuse, switching, failure recovery, wrong-cell guards, and resolving-state guards, but two required public lifecycle contracts remain unproved. There is no focused assertion that `cancel()` clears the exact active non-resolving session without persistence. Also, the test named `serializes concurrent resolves and releases the completed operation` only opens a later session after the first successful resolve; a stale already-resolved `activeInlineEditResolution` could remain and that request would still succeed. The test does not change and resolve the later session to prove that a fresh persistence operation is actually used.
+Problem: the implementation correctly wraps a non-`DomainError` persistence rejection with the original thrown value as `DomainError.cause`, but the focused test only asserts that `cause` is some `Error`. It would still pass if the implementation replaced the original thrown object with a different `Error`, which violates the accepted cause-preservation contract.
 
 Evidence:
 
-- [`useDatabaseInlineEditSession.test.ts`](./useDatabaseInlineEditSession.test.ts) — exact-cell cancel is exercised only while `resolving` (where it must be ignored), and the post-success case stops after requesting the later session.
-- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) — `cancel()` must clear the exact non-resolving session, and `activeInlineEditResolution` must be released after settlement so later edits can start a fresh resolve/write.
-- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — explicitly requires exact non-resolving cancel and proves that a later resolve/request is not tied to a completed in-flight promise.
+- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) passes the caught `cause` directly into the feature-local `DomainError`.
+- [`useDatabaseInlineEditSession.test.ts`](./useDatabaseInlineEditSession.test.ts) checks `cause: expect.any(Error)` / `toBeInstanceOf(Error)` rather than identity with the rejected object.
 
-Basis:
+Required final state: reject with a named raw error object and assert that the returned feature error has `cause === rawError`. Keep the existing exact `DomainError` preservation, recoverable draft, single feedback/diagnostic emission, independent retry, cancel, and fresh-resolution proofs.
 
-- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires the listed feature lifecycle behavior represented by the current implementation to be protected by focused tests.
-- [`../AGENTS.md`](../AGENTS.md) — the feature owns the user-action cancel/success/error lifecycle.
-- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — missing required risk-specific proof remains a review finding even when another automated threshold is green.
+Verification: focused feature unit test and existing mutation target.
 
-Risk: the focused suite could stay green if exact cancel stopped clearing the session, or if a completed successful resolution remained cached and caused a later changed session to return the old result instead of persisting its own draft. The product E2E covers user Escape cancellation, but it does not replace the explicitly required owner-local lifecycle proof for this mutation target.
+### B2 — Exact-head oxlint rejects two unhandled `commit()` promises in the focused test
 
-Required final state: focused feature tests must prove (1) exact active non-resolving cancel clears the session and performs no write, and (2) after one successful changed resolve completes, a newly requested session can be changed and resolved through a second distinct persistence call with its own identity/draft. Do not expose internals.
+Owner: `src/features/databaseInlineValueEdit`
 
-Verification: focused feature unit tests and the unchanged verifier-managed mutation target after the test correction.
+Problem: `commit()` now intentionally returns the explicit resolution result, but two test calls ignore the returned promise. Exact-head CI run `32661076560` reports `typescript(no-floating-promises)` at the two calls.
+
+Required final state: await/assert the returned results where the test exercises wrong-cell and exact-cell commit behavior; do not suppress the rule or use a meaningless `void` when the result is part of the contract being tested.
+
+Verification: focused oxlint plus the feature unit test.
 
 ## Major issues
 
-### M1 — Persistence failure is collapsed to a boolean instead of an explicit feature error state/result
-
-Owner: `src/features/databaseInlineValueEdit`
-
-Problem: `resolve()` catches every rejected value write, restores `resolving: false`, and returns only `false`. The original failure is not retained in feature state or returned to the caller, and `commit()` discards the resolution entirely. Draft recovery is correct, but the feature does not explicitly represent or handle the error outcome it owns.
-
-Evidence:
-
-- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) — the broad `catch` discards the caught value and exposes only `Promise<boolean>` success/failure semantics.
-- [`../../widgets/DocumentView/Database/DatabaseViewWidget.vue`](../../widgets/DocumentView/Database/DatabaseViewWidget.vue) — view/configuration transitions can only observe `false`; ordinary commit has no failure result at all.
-- [`../../entities/databaseValue/useDatabaseValueWrite.ts`](../../entities/databaseValue/useDatabaseValueWrite.ts) — the entity writer forwards the service rejection and does not replace it with a separate handled feature error outcome.
-
-Basis:
-
-- [`../AGENTS.md`](../AGENTS.md) — a feature must handle loading, cancel, reset, success, and error states explicitly.
-- [`../../AGENTS.md`](../../AGENTS.md) — source-code error policy requires boundary failures to retain the raw runtime cause rather than silently discarding actionable failure context.
-- [`../../../.agents/skills/diagnostic-events/SKILL.md`](../../../.agents/skills/diagnostic-events/SKILL.md) — when a handled failure is reported, preserve the real error/cause and do not replace it with a synthetic classifier-only representation.
-- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — error semantics and failure paths are part of semantic review even when automated checks are green.
-
-Risk: a rejected inline write leaves the draft recoverable but gives the user/caller no explicit error outcome beyond a blocked transition, and the original failure context is unavailable to the feature-level handling path. A commit can therefore fail without a truthful feature error state/result.
-
-Required final state: keep the single recoverable draft/session and transition blocking, but represent persistence failure explicitly at the feature owner without discarding the original cause. The owning flow must have a truthful failure outcome that can be handled through existing user-facing/diagnostic policy. Do not add a classifier, manager, provider, second draft/session state, or move persistence back to the widget.
-
-Verification: focused feature tests must prove the failure outcome retains the original cause (directly or as the cause of the project-standard error), keeps the exact draft recoverable, clears the failure on the defined retry/reset path, and still blocks dependent transitions until persistence succeeds.
+None. The previous persistence-error semantic defect is resolved: failure is explicit, the original `DomainError` is preserved, raw failures are wrapped with a feature-local stable code and raw cause, draft recovery remains exact, feedback is feature-owned, and retry/serialization behavior is preserved.
 
 ## Minor issues
 
