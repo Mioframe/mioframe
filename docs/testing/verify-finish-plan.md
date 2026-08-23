@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **PR #216 is blocked by reopened Pass E production-build input ownership and the mandatory final benchmark; two verifier-output minor findings also remain**.
+Status: **PR #216 is blocked by ready-but-unimplemented Pass E production-build ownership and the mandatory final benchmark; two verifier-output minor findings also remain**.
 
 This document owns final integration order. Lane semantics remain in their architecture documents.
 
@@ -11,7 +11,7 @@ This document owns final integration order. Lane semantics remain in their archi
 - `docs/testing/verify-agent-output.md` — output contract;
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact correction;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — current Pass E architecture handoff;
+- `docs/testing/verify-release-impact-correction.md` — current ready Pass E architecture handoff;
 - `docs/testing/verify-modernization.md` — implementation/benchmark status;
 - `scripts/lib/REVIEW.md` — active Pass E production-build ownership finding;
 - `scripts/REVIEW.md` — two active output-contract minors;
@@ -65,14 +65,14 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The architecture has therefore been redone at the mechanism boundary in `verify-release-impact-correction.md`.
+The architecture has been redone at the mechanism boundary in `verify-release-impact-correction.md` and is **ready for implementation**.
 
 The resolved model keeps ownership local to `scripts/lib/releaseRisk.ts` and covers:
 
 - existing static Vite support inputs;
 - complete current Browserslist/PostCSS/PWA-assets config filename families;
 - production Vite env filenames when tracked;
-- current production TypeScript config chain, with unknown root `tsconfig*.json` fail-closed;
+- current production/config TypeScript chain, with unknown root `tsconfig*.json` fail-closed;
 - the complete `public/**` artifact population;
 - current `pnpm-workspace.yaml` install-control input.
 
