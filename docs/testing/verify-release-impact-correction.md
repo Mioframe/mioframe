@@ -1,12 +1,14 @@
 # Verify release-impact correction
 
-Status: **architecture handoff ready; implementation pending**.
+Status: **architecture redesigned and ready; implementation pending**.
 
-This document is the durable architecture/handoff for the final Pass E correction in PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
+This document is the durable Pass E architecture for PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
 
 ## Goal
 
-Make `scripts/lib/releaseRisk.ts` a closed, truthful source-impact model for the six existing release checks:
+Make source-impact release planning closed over the real current release execution and production-build input mechanisms without introducing a generic dependency graph or broad repository taxonomy.
+
+The six source-impact checks remain:
 
 ```text
 release-config
@@ -19,251 +21,51 @@ managed-updates
 
 `release-version` remains independent PR/release policy.
 
-The correction must close two populations that the previous implementation did not actually exhaust:
+## Architecture status
 
-1. production Vite/PWA configuration consumed by the real release artifact build;
-2. every `tests/e2e/release/**/*.spec.ts` versus the release contract that actually executes it.
-
-Required final invariants:
-
-- real production Vite/PWA configuration cannot silently resolve `skip`;
-- every current release Playwright spec is assigned to exactly one real executing release check;
-- adding a release spec without assigning it to an executing contract makes release planning `invalid`;
-- planner ownership and actual release command arguments derive from the same spec inventory;
-- filename shape never creates execution ownership;
-- unknown release-check values make the mapping invalid;
-- unknown significant input inside an explicitly confirmed release-sensitive boundary never silently skips.
-
-## Confirmed current behavior and evidence
-
-Current defects are confirmed in the repository:
-
-```text
-vite.config.ts
-→ imports config/plugins
-→ getPwaPlugins()/resolveManagedAppUpdateChannel()
-→ real production artifact build consumes config/plugins/pwa.ts
-→ current releaseRisk.ts can resolve config/plugins/pwa.ts to skip
-```
-
-Application E2E does not cover this gap because `playwright.config.ts` explicitly builds with `VITE_DISABLE_PWA=1`.
-
-Release-spec execution is also duplicated today:
-
-```text
-scripts/verify.ts
-→ hard-coded artifact spec
-→ hard-coded release-smoke spec
-
-scripts/release/managedUpdatesProof.mjs
-→ four hard-coded managed-update spec arrays
-
-scripts/lib/releaseRisk.ts
-→ exact mappings for two specs
-→ filename heuristic for managedUpdates*.spec.ts
-```
-
-The managed-update filename heuristic can therefore claim ownership for a spec that the real managed-update orchestrator never executes, while a different new release spec can fall through to `skip`.
-
-The exact-mapping validator currently checks empty/missing/duplicate mapping data but does not reject a runtime check value outside `RELEASE_IMPACT_CHECKS`.
-
-## Non-goals
-
-Do not introduce:
-
-- a generic import/dependency graph;
-- a generic test registry or repository-wide path taxonomy;
-- a new release check;
-- a new CI job;
-- release-version inference;
-- broad `config/**` release ownership;
-- directory adjacency as proof of a specific consumer;
-- new managed-update grouping/order/retry semantics;
-- Playwright configuration changes;
-- benchmark infrastructure.
-
-## Boundaries
-
-### Changes
-
-Expected production boundary:
-
-```text
-new scripts/release/releaseSpecInventory.ts
-scripts/release/managedUpdatesProof.mjs
-scripts/lib/releaseRisk.ts
-scripts/verify.ts
-```
-
-Expected proof boundary:
-
-```text
-scripts/lib/releaseRisk.test.ts
-scripts/release/managedUpdatesProof.test.mjs
-scripts/verify.test.ts
-```
-
-A narrow type-project inclusion change is allowed only if the new TypeScript module is otherwise outside the current tooling project and focused type-check proves it necessary.
-
-### Must not change
-
-- release check names or semantics;
-- `release-version` ownership;
-- `playwright.release.config.ts` execution policy;
-- managed-update four-group order/isolation/stop-on-failure behavior;
-- release timeout policy;
-- CI topology or workflow timeouts;
-- existing publisher/runtime ownership that is unrelated to the reopened populations;
-- application E2E, Storybook, visual, unit, or mutation architecture.
-
-## Ownership matrix
-
-This is repository verification/release tooling; product FSD layers are not changed.
-
-| Concern                                                  | Owner                                                     |
-| -------------------------------------------------------- | --------------------------------------------------------- |
-| Release spec path inventory                              | `scripts/release/releaseSpecInventory.ts`                 |
-| Artifact / release-smoke command construction            | `scripts/verify.ts`                                       |
-| Managed-update labels, four-group ordering and execution | `scripts/release/managedUpdatesProof.mjs`                 |
-| Source-impact release selection and validation           | `scripts/lib/releaseRisk.ts`                              |
-| Production Vite configuration behavior                   | existing `vite.config.ts` / `config/**` owners; unchanged |
-| CI placement                                             | `.github/workflows/verify.yml`; unchanged                 |
-
-## Source of truth
-
-- Six source-impact checks: `RELEASE_IMPACT_CHECKS` / current release commands.
-- Release spec execution membership: new `RELEASE_SPEC_EXECUTION_INVENTORY`.
-- Managed-update execution order and labels: `managedUpdatesProof.mjs`.
-- Actual release-spec population: bounded recursive `tests/e2e/release/**/*.spec.ts` scan.
-- Production build configuration boundary: actual modules consumed by `vite.config.ts` / `buildArtifact.mjs`.
-
-## State shape / public API
-
-Create one pure module:
+The release-spec execution sub-boundary is implemented and remains accepted:
 
 ```text
 scripts/release/releaseSpecInventory.ts
+        │
+        ├─ scripts/verify.ts
+        ├─ scripts/release/managedUpdatesProof.mjs
+        └─ scripts/lib/releaseRisk.ts
 ```
 
-Its complete public API is:
+It provides:
 
-```ts
-export interface ReleaseSpecExecutionInventory {
-  readonly artifact: readonly string[];
-  readonly releaseSmoke: readonly string[];
-  readonly managedUpdates: {
-    readonly lifecycle: readonly string[];
-    readonly migrationIsolation: readonly string[];
-    readonly crossEngine: readonly string[];
-    readonly dataCompatibility: readonly string[];
-  };
-}
+- one real execution inventory for artifact, release-smoke and the four managed-update groups;
+- exhaustive bounded validation of `tests/e2e/release/**/*.spec.ts`;
+- `invalid` for unowned, missing or conflicting release-spec ownership;
+- no filename-based `managedUpdates*.spec.ts` ownership;
+- runtime validation of release-check identity.
 
-export const RELEASE_SPEC_EXECUTION_INVENTORY: ReleaseSpecExecutionInventory;
-```
+Do not redesign or duplicate that sub-boundary.
 
-No functions, filesystem access, release-check labels, command labels, runner code, or generic registry helpers belong in this module.
+Pass E is reopened only because the production-build input population was still defined too narrowly from static config imports. The real `vite build` also consumes repository files through tool discovery, TypeScript/build metadata and file-as-data/artifact roots.
 
-Seed it from the current real execution corpus:
+## Confirmed real build mechanisms
+
+`scripts/release/buildArtifact.mjs` executes the real production `vite build`.
+
+The current repository has these distinct source-input mechanisms.
+
+### 1. Static production-build control
+
+Already represented by the current planner:
 
 ```text
-artifact
-- tests/e2e/release/productionArtifactSmoke.spec.ts
-
-releaseSmoke
-- tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts
-
-managedUpdates.lifecycle
-- tests/e2e/release/managedUpdatesLifecycle.spec.ts
-- tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts
-- tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts
-- tests/e2e/release/managedUpdatesActivationUi.spec.ts
-- tests/e2e/release/managedUpdatesRecovery.spec.ts
-- tests/e2e/release/managedUpdatesVueBootFailure.spec.ts
-- tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts
-
-managedUpdates.migrationIsolation
-- tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts
-- tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts
-- tests/e2e/release/managedUpdatesDevelop.spec.ts
-- tests/e2e/release/managedUpdatesMigration.spec.ts
-
-managedUpdates.crossEngine
-- tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts
-
-managedUpdates.dataCompatibility
-- tests/e2e/release/managedReleaseDataCompatibility.spec.ts
+vite.config.ts
+config/tooling.json
+config/alias.ts
+config/vueCustomElements.ts
+config/plugins/**
 ```
 
-The current audited execution inventory therefore contains 15 release specs: 1 artifact + 1 release-smoke + 13 managed-updates specs. The bounded filesystem validation, not this count, is the durable completeness rule.
+`vite.config.ts` and `config/tooling.json` keep their existing stronger fail-closed handling.
 
-## Minimum sufficient design
-
-### 1. Migrate actual execution to the inventory
-
-`scripts/verify.ts` imports `RELEASE_SPEC_EXECUTION_INVENTORY` and constructs existing commands as:
-
-```text
-artifact
-→ pnpm e2e:release --label artifact <...inventory.artifact>
-
-release-smoke
-→ pnpm e2e:release --label release-smoke <...inventory.releaseSmoke>
-```
-
-No hard-coded release spec path remains in `RELEASE_CHECK_COMMANDS`.
-
-`managedUpdatesProof.mjs` imports the same inventory. Preserve its existing public spec-array exports for current consumers/tests, but make them aliases/references to the inventory arrays rather than independent literals:
-
-```text
-MANAGED_UPDATES_LIFECYCLE_SPECS
-MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS
-MANAGED_UPDATES_CROSS_ENGINE_SPECS
-MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS
-```
-
-`MANAGED_UPDATES_GROUPS`, labels, order, sequential execution and failure propagation stay owned by `managedUpdatesProof.mjs`.
-
-### 2. Make release-spec ownership exhaustive
-
-`releaseRisk.ts` imports the inventory and builds the spec → release-check relation from it:
-
-```text
-inventory.artifact[*] → artifact
-inventory.releaseSmoke[*] → release-smoke
-all inventory.managedUpdates groups[*] → managed-updates
-```
-
-Remove:
-
-- exact narrow mapping entries whose only purpose is the artifact/release-smoke spec path ownership now provided by the inventory;
-- `isManagedUpdatesReleaseSpecPath()` and every basename/prefix heuristic that claims managed-update execution ownership.
-
-Before changed-file planning, validate the complete inventory against a bounded recursive scan of `tests/e2e/release/**` for `.spec.ts` files.
-
-Validation must return `invalid` when:
-
-- an inventory spec does not exist;
-- one spec appears under more than one executing release check/group;
-- an actual repository release spec is absent from the inventory;
-- inventory ownership is otherwise conflicting.
-
-An unowned release spec is `invalid`, not `full`: running all six existing commands cannot prove a spec that none of those commands executes.
-
-For focused tests, extend the existing narrow test-seam pattern rather than creating test-only production helpers. `ResolveReleasePlanOptions` may add replacement-only test seams for:
-
-```text
-releaseSpecInventoryOverride
-releaseSpecFilesOverride
-```
-
-They must replace the production inventory/discovered list for one resolver call, never append to them, and production callers must omit them.
-
-### 3. Close the production Vite configuration boundary
-
-Keep the current broader handling for `vite.config.ts` and `config/tooling.json`.
-
-Add a bounded production-build support relation for:
+The bounded support surface:
 
 ```text
 config/alias.ts
@@ -271,47 +73,265 @@ config/vueCustomElements.ts
 config/plugins/**
 ```
 
-Proof/test/declaration-only exclusions must run before the `config/plugins/**` boundary so a `*.test.ts`, `*.test.mjs`, `*.testUtils.ts`, or declaration-only file does not inherit release runtime ownership solely from its directory.
-
-Truthful consumer set for this boundary:
+has the truthful production-build consumer set:
 
 ```text
-build
 artifact
-release-smoke
+build
 managed-updates
+release-smoke
 ```
 
-Do not add `release-config` or `publisher-node-import`: they do not execute the production Vite build.
+Proof/test/declaration-only files under `config/plugins/**` remain excluded before the runtime prefix rule.
 
-Do not broaden to all `config/**`.
+### 2. Tool-discovered production configuration
 
-### 4. Validate release-check identity at runtime
+Static imports are not the only ownership mechanism.
 
-Exact mapping validation must reject any `mapping.checks` value not present in `RELEASE_IMPACT_CHECKS`.
+#### Browserslist
 
-Keep compile-time `ReleaseImpactCheck` typing. A narrow deliberate test cast/override is acceptable solely to prove runtime rejection of impossible/corrupted input; do not weaken the production mapping type to `string[]`.
+`vite.config.ts` calls `browserslistToEsbuild(undefined, { path: process.cwd() })`. With no explicit query, the tool resolves project Browserslist configuration. The current repository-owned source is:
 
-### 5. Classify the new inventory owner itself
+```text
+.browserslistrc
+```
 
-`scripts/release/releaseSpecInventory.ts` changes release execution and release-impact ownership simultaneously. Treat it as release-impact infrastructure and fail closed to **full six checks**.
+`package.json` is another Browserslist configuration source and is already handled by the existing package-impact contract.
 
-Do not give it Storybook/application-E2E/mutation ownership merely because it is tooling code; other planners keep their existing rules.
+Recognized repository-root Browserslist config paths are production-build inputs:
 
-## Existing ownership retained
+```text
+.browserslistrc
+browserslist
+```
 
-Keep the previously reviewed relations unless the inventory replaces only the spec-path source of truth:
+They select:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+#### PostCSS
+
+Vite 7 searches project-root PostCSS configuration when no inline `css.postcss` configuration is supplied. The current source is `postcss.config.js`.
+
+The release planner must own the complete root filename family supported by the current PostCSS loader, not only the current example:
+
+```text
+.postcssrc
+.postcssrc.json
+.postcssrc.yaml
+.postcssrc.yml
+.postcssrc.js
+.postcssrc.mjs
+.postcssrc.cjs
+.postcssrc.ts
+.postcssrc.mts
+.postcssrc.cts
+postcss.config.js
+postcss.config.mjs
+postcss.config.cjs
+postcss.config.ts
+postcss.config.mts
+postcss.config.cts
+```
+
+`package.json` PostCSS configuration remains covered by the existing package-impact contract.
+
+Every path in this root discovery family selects:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+A nearby file such as `postcss.config.test.ts` is not a supported discovered config name and must not inherit release ownership.
+
+#### PWA assets
+
+Production PWA configuration enables PWA assets with `config: true`, so the asset generator resolves a root `pwa-assets.config.*` file. The current repository source is `pwa-assets.config.ts`.
+
+Own the supported root configuration family:
+
+```text
+pwa-assets.config.js
+pwa-assets.config.mjs
+pwa-assets.config.cjs
+pwa-assets.config.ts
+pwa-assets.config.mts
+pwa-assets.config.cts
+```
+
+Every path in this family selects:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+Do not infer ownership from arbitrary `*pwa*` names.
+
+#### Production Vite env files
+
+`vite.config.ts` explicitly calls `loadEnv(mode, process.cwd(), '')`, and the production release build uses production mode. Repository-tracked files that match Vite's production env discovery contract are build inputs:
+
+```text
+.env
+.env.local
+.env.production
+.env.production.local
+```
+
+The repository currently ignores `.env` and `*.local`, so ordinary changed-file planning will normally never receive those local files. That does not make `.env.production` or a deliberately tracked env file irrelevant if it is present in Git.
+
+If one of these exact production env paths appears in the changed-file set, select:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+`.env.example` is documentation/example input and must remain outside this rule.
+
+### 3. TypeScript transform/config ownership
+
+Vite's TypeScript transformation can consume matching project TypeScript configuration. The current production/config chain is rooted in:
+
+```text
+tsconfig.json
+tsconfig.app.json
+tsconfig.src.json
+tsconfig.node.json
+```
+
+These are production-build control inputs and select:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+Current known non-production TypeScript projects remain release-impact negative:
+
+```text
+tsconfig.storybook.json
+tsconfig.scripts.json
+```
+
+To prevent another filename-example gap, any new repository-root `tsconfig*.json` that is neither in the confirmed production set nor the confirmed non-production set is significant-but-unresolved and must fail closed to **full six release checks** until ownership is audited.
+
+Do not classify arbitrary JSON files this way.
+
+### 4. Production artifact/file inputs
+
+Vite's default `publicDir` is `public`; every file under that directory is copied to the production output as-is. Therefore the bounded artifact population is:
+
+```text
+public/**
+```
+
+Every changed file under `public/**` selects:
+
+```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+This is intentionally directory-wide. It is not adjacency inference: the build tool copies the whole directory into the artifact.
+
+Do not apply proof/test filename exclusions inside `public/**`; a file there is an artifact input regardless of its filename.
+
+`pwa-assets.config.ts` currently names `public/favicon.svg` as an additional file-as-data source, but no special favicon mapping is needed because `public/**` already owns that complete artifact population.
+
+### 5. Dependency-install control
+
+The production build and release proof run on the dependency installation produced by pnpm. The current root `pnpm-workspace.yaml` controls allowed dependency build scripts and therefore can change installed build tooling behavior.
+
+Treat:
+
+```text
+pnpm-workspace.yaml
+```
+
+as release infrastructure and fail closed to **full six release checks**.
+
+Keep existing `package.json` and `pnpm-lock.yaml` semantics unchanged. Do not broaden this into arbitrary package-manager dotfiles without repository evidence.
+
+## What is not part of this release-impact boundary
+
+Do not turn ordinary application source into release-impact ownership merely because Vite bundles it:
+
+```text
+src/**
+```
+
+Ordinary product source remains owned by its existing unit/application-E2E/Storybook/visual rules, except for already confirmed release-specific runtime boundaries such as managed-update code and `src/sw.ts`.
+
+Also do not classify arbitrary repository-root files, arbitrary `config/**`, review metadata, editor configuration, lint configuration, or documentation as production-build inputs.
+
+Representative negatives:
+
+```text
+.env.example
+.nvmrc
+eslint.config.mjs
+vitest.config.ts
+README.md
+config/unrelatedRuntimeConfig.ts
+postcss.config.test.ts
+```
+
+Existing ownership in other verifier lanes is unaffected.
+
+## Planner ownership model
+
+Keep the implementation local to `scripts/lib/releaseRisk.ts`. A new generic registry/module is not justified.
+
+The planner should have explicit mechanism-level predicates/constants for:
+
+```text
+static production-build support
+tool-discovered root config families
+production Vite env files
+TypeScript config family
+public artifact root
+pnpm install-control input
+```
+
+Known build mechanisms map to their truthful four-check consumer set. Only unresolved paths inside an explicitly confirmed fail-closed family (currently an unknown root `tsconfig*.json`) use `full`.
+
+This is preferable to both rejected alternatives:
+
+1. **example patch** — adding only `.browserslistrc`, `postcss.config.js`, `pwa-assets.config.ts`, `public/favicon.svg` repeats the ownership-completeness failure;
+2. **generic root/config fallback** — `config/**`, all `*.config.*`, or all root files would create large false-positive ownership and contradict smallest-reliable-proof design.
+
+## Existing Pass E ownership to preserve
+
+Keep all accepted relations not superseded by the mechanism-based production-build boundary, including:
 
 ```text
 scripts/release/buildArtifact.mjs
-→ build + artifact + release-smoke + managed-updates
+→ build + artifact + managed-updates + release-smoke
 
 scripts/release/artifactServer.mjs
 playwright.release.config.ts
 scripts/e2eReleaseContainer.mjs
 scripts/playwrightContainer.ts
 tests/e2e/helpers.ts
-→ artifact + release-smoke + managed-updates
+→ artifact + managed-updates + release-smoke
 
 scripts/release/publisherWireContractImportProof.mjs
 → publisher-node-import
@@ -319,204 +339,206 @@ scripts/release/publisherWireContractImportProof.mjs
 scripts/pages/lib/releasePublish.mjs
 scripts/pages/lib/releaseDescriptor.mjs
 src/shared/service/appUpdate/releaseWireContract.ts
-→ publisher-node-import + managed-updates
+→ managed-updates + publisher-node-import
 
 src/sw.ts
 → artifact + managed-updates
 ```
 
-Keep existing executable fixture exact mappings, proof/declaration exclusions, unknown executable `tests/e2e/release/fixtures/**` full fallback, and conservative `scripts/pages/lib/**` fallback.
+Also preserve:
 
-## Simplest viable alternative rejected
-
-A patch that only adds:
-
-```text
-config/plugins/pwa.ts → checks
-unknown release spec → full
-unknown check validation
-```
-
-is insufficient because:
-
-- managed-update ownership would still be inferred independently from actual execution;
-- `full` cannot execute a spec absent from every real command;
-- artifact/release-smoke/managed-update spec literals would remain duplicated between planner and runners;
-- the same drift could recur on the next spec addition.
-
-The shared release execution inventory is the minimum complete abstraction justified by an already-observed ownership failure.
-
-## Acceptance matrix
-
-| Population / mechanism         | Required owner                                 | Representative case                                            | Must reject                               |
-| ------------------------------ | ---------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------- |
-| Artifact release spec          | inventory → `artifact` command/planner         | `productionArtifactSmoke.spec.ts`                              | planner/command literal drift             |
-| Release-smoke spec             | inventory → `release-smoke` command/planner    | `firstUserAndReturningUserSmoke.spec.ts`                       | planner/command literal drift             |
-| Managed-update spec            | inventory group → managed orchestrator/planner | `managedUpdatesLifecycle.spec.ts`                              | basename ownership for an unexecuted spec |
-| Entire release spec corpus     | bounded recursive scan                         | `tests/e2e/release/**/*.spec.ts`                               | unowned new spec silently skip/full       |
-| Production PWA/build config    | four-check production-build boundary           | `config/plugins/pwa.ts`                                        | production PWA input → skip               |
-| Nearby config negative         | no release ownership from broad config         | unrelated `config/**` outside named boundary                   | accidental broad `config/**` full/focused |
-| Proof-only plugin file         | proof exclusion before plugin prefix           | representative `config/plugins/*.test.ts` if present/test seam | test file inherits release ownership      |
-| Exact mapping runtime identity | mapping validator                              | known mapping                                                  | unknown check value accepted              |
-| Release inventory module       | release-impact infrastructure                  | `scripts/release/releaseSpecInventory.ts`                      | inventory change skips release lane       |
-
-## Risk matrix
-
-| Risk                                                 | Required protection                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------ |
-| Planner claims a spec that no command runs           | one shared execution inventory                                     |
-| New release spec is forgotten                        | exhaustive bounded filesystem validation → `invalid`               |
-| PWA build semantics bypass release gate              | bounded production Vite config relation                            |
-| Generic config changes become expensive release work | only named exact files + `config/plugins/**`; no broad `config/**` |
-| Existing managed-update execution semantics drift    | preserve labels/order/group count/stop-on-failure                  |
-| Test seam becomes a second production API            | replacement-only options documented test-only                      |
-
-## Required test proof
-
-Use a fresh dedicated test-author context before production implementation. Follow `test-first`, `test-authoring`, `unit-testing`, and the verifier/release ownership rules.
-
-### PROOF INTENT A — production Vite configuration
-
-```text
-Contract/scenario:
-  Production Vite/PWA configuration consumed by buildArtifact cannot skip release impact.
-Oracle source:
-  vite.config.ts + buildArtifact.mjs + this handoff.
-Primary proof owner:
-  scripts/lib/releaseRisk.test.ts
-Must reject:
-  config/plugins/pwa.ts → skip.
-Red phase:
-  required; current planner demonstrably skips it.
-```
-
-Required cases:
-
-```text
-config/plugins/pwa.ts
-config/plugins/base.ts
-config/alias.ts
-config/vueCustomElements.ts
-→ focused build + artifact + release-smoke + managed-updates
-```
-
-Preserve safe stronger existing behavior for `vite.config.ts` / `config/tooling.json`.
-
-Also prove a nearby `config/**` path outside the confirmed boundary does not gain release ownership merely from `config/`.
-
-### PROOF INTENT B — release spec population
-
-```text
-Contract/scenario:
-  Every release spec must be owned by exactly one real executing release check.
-Oracle source:
-  current verify commands + managedUpdatesProof execution + this handoff.
-Primary proof owner:
-  releaseRisk.test.ts + managedUpdatesProof.test.mjs + verify.test.ts
-Must reject:
-  a new/unowned release spec silently skips or is claimed from its filename.
-Red phase:
-  required through current public planner behavior; do not import the not-yet-created module solely to create module-not-found.
-```
-
-Required proof:
-
-- actual current filesystem release-spec population equals the shared execution inventory;
-- current 15-spec corpus is uniquely owned;
-- a replacement discovered list containing one extra unowned `tests/e2e/release/newReleaseContract.spec.ts` → `invalid`;
-- a replacement discovered list containing `managedUpdatesUnowned.spec.ts` but no inventory membership → `invalid`, never focused managed-updates;
-- inventory duplicate/conflicting owner → `invalid` through the narrow replacement test seam;
-- missing inventory path → `invalid`;
-- changed inventory-owned artifact/release-smoke/managed-update spec selects its truthful focused check;
-- `scripts/verify.ts` command arguments are derived from the shared artifact/release-smoke arrays;
-- managed-update exported spec arrays/groups are derived from the shared managed-update arrays while labels/order remain unchanged.
-
-### PROOF INTENT C — mapping check identity
-
-```text
-Contract/scenario:
-  Runtime malformed exact mapping cannot introduce an unknown release check.
-Oracle source:
-  RELEASE_IMPACT_CHECKS + target architecture validation contract.
-Primary proof owner:
-  scripts/lib/releaseRisk.test.ts
-Must reject:
-  exact mapping with a check outside RELEASE_IMPACT_CHECKS is accepted.
-Red phase:
-  required; current validator does not inspect check identity.
-```
-
-### Retained regression proof
-
-Keep green proof for:
-
-- existing narrow runtime/fixture mappings;
+- release-spec execution inventory and exhaustive spec validation;
+- executable release fixture exact mappings;
 - unknown executable release fixture → full;
-- proof/declaration-only paths → skip;
-- `release-version` remains separate;
-- current artifact timeout correction and 120-minute envelope remain unchanged.
+- proof/declaration-only exclusions where the path is not itself a copied `public/**` artifact;
+- conservative `scripts/pages/lib/**` full fallback;
+- package version-only refinement;
+- artifact 17-minute outer timeout;
+- current 120-minute `verification-release` job envelope;
+- CI topology and independent `release-version` gate.
 
-## Required verification
+## Required independent proof
 
-Test-author RED should use the smallest owning focused unit command and record exact contractual failures.
+Use a fresh test-author context before production edits. Primary owner: `scripts/lib/releaseRisk.test.ts`.
 
-After implementation, run focused verifier-managed unit proof for the touched owners, expected approximately:
+The oracle must be the real build mechanisms above, not production planner constants.
+
+### RED A — current implicit build inputs
+
+Prove current real paths cannot skip:
+
+```text
+.browserslistrc
+postcss.config.js
+pwa-assets.config.ts
+public/favicon.svg
+public/robots.txt
+tsconfig.app.json
+tsconfig.src.json
+tsconfig.node.json
+```
+
+Expected for each:
+
+```text
+mode: focused
+checks: artifact + build + managed-updates + release-smoke
+```
+
+Current implementation must fail these expectations.
+
+### RED B — mechanism families, not examples
+
+Use synthetic supported variants that need not exist because this proof is path classification, not registry existence validation:
+
+```text
+.postcssrc.mjs
+postcss.config.ts
+pwa-assets.config.mts
+browserslist
+.env.production
+```
+
+Expected: the same focused four-check consumer set.
+
+This proves the implementation owns the discovery mechanism instead of copying the current filenames into a table.
+
+### RED C — public artifact population
+
+Representative nested public path:
+
+```text
+public/icons/example.svg
+```
+
+Expected: focused four-check production-build set.
+
+A test/proof-looking filename under `public/**` must still be owned because Vite copies it as an artifact.
+
+### RED D — TypeScript fail-closed family
+
+Known production configs:
+
+```text
+tsconfig.json
+tsconfig.app.json
+tsconfig.src.json
+tsconfig.node.json
+```
+
+→ focused four.
+
+Known non-production configs:
+
+```text
+tsconfig.storybook.json
+tsconfig.scripts.json
+```
+
+→ no release impact solely from this family.
+
+Synthetic:
+
+```text
+tsconfig.future.json
+```
+
+→ full six, never skip.
+
+### RED E — dependency install control
+
+```text
+pnpm-workspace.yaml
+```
+
+→ full six.
+
+### Negative proof
+
+Keep unrelated nearby paths negative:
+
+```text
+.env.example
+.nvmrc
+eslint.config.mjs
+vitest.config.ts
+README.md
+config/unrelatedRuntimeConfig.ts
+postcss.config.test.ts
+```
+
+Do not weaken existing tests to obtain these results.
+
+## Verification boundary
+
+Implementation scope should remain narrow:
+
+```text
+scripts/lib/releaseRisk.ts
+scripts/lib/releaseRisk.test.ts
+```
+
+No changes are expected in:
+
+```text
+releaseSpecInventory.ts
+managedUpdatesProof.mjs
+scripts/verify.ts
+vite.config.ts
+postcss.config.js
+pwa-assets.config.ts
+public/**
+CI workflows
+```
+
+If implementation requires changing production build semantics instead of planner ownership, stop and return to architecture review.
+
+Focused coding-agent feedback only:
 
 ```bash
 pnpm verify --only unit-tests --files \
-  scripts/release/releaseSpecInventory.ts \
   scripts/lib/releaseRisk.ts \
-  scripts/lib/releaseRisk.test.ts \
-  scripts/release/managedUpdatesProof.mjs \
-  scripts/release/managedUpdatesProof.test.mjs \
-  scripts/verify.ts \
-  scripts/verify.test.ts
+  scripts/lib/releaseRisk.test.ts
+
+pnpm verify --fix-only --files \
+  scripts/lib/releaseRisk.ts \
+  scripts/lib/releaseRisk.test.ts
 ```
 
-Run focused type-check if the new TypeScript import boundary requires it.
+Run `pnpm verify --only type-check` only if useful for the touched TypeScript surface.
 
-Do not run broad `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, browser release proof, or reconstructed CI as a coding-agent completion ritual. Exact-head CI remains architect-owned after semantic review.
+Broad local verify/release/browser suites remain architect-owned through exact-head CI after semantic review.
 
-## Forbidden
+## Acceptance criteria
 
-- direct Git/GitHub commands from coding/test contexts;
-- editing `docs/testing/**`, any `REVIEW.md`, `AGENTS.md`, or skills;
-- a local `config/plugins/pwa.ts` mapping-only patch;
-- retaining filename-based managed-update spec ownership;
-- treating an unowned release spec as `full` instead of `invalid`;
-- a generic registry/scanner/graph framework;
-- broad `config/**` release ownership;
-- moving or renaming release specs;
-- changing managed-update group count/order/labels/retries/isolation;
-- changing release command labels/check names;
-- changing CI topology/workflow timeouts;
-- changing release-version policy;
-- weakening/removing existing narrow mappings or fixture fallbacks outside this correction;
-- implementing the two separate agent-output minor findings in this pass.
+Pass E production-build ownership is complete only when:
 
-## Implementation readiness
-
-- required behavior: resolved;
-- ownership: resolved;
-- source of truth: resolved;
-- state/API shape: resolved;
-- closed audit populations: resolved (`tests/e2e/release/**/*.spec.ts` and named production Vite config boundary);
-- proof ownership: resolved;
-- unresolved architecture blockers: none;
-- verdict: **ready**.
-
-If implementation requires a generic dependency mechanism, changes to release check semantics, Playwright config, managed-update scheduling, CI topology, or ownership outside the listed boundaries, stop and return to architecture review.
+1. release-spec inventory/execution behavior remains unchanged;
+2. the four current reviewer examples cannot resolve `skip`;
+3. ownership is expressed by the mechanism families above rather than four exact patches;
+4. all current `public/**` files are production artifact inputs;
+5. supported PostCSS/PWA-assets/Browserslist discovery variants are classified consistently;
+6. production env filenames are covered while `.env.example` stays negative;
+7. current production TypeScript configs are release-owned;
+8. known non-production TypeScript configs remain negative;
+9. unknown root `tsconfig*.json` fails closed to full six;
+10. `pnpm-workspace.yaml` fails closed to full six;
+11. existing package/release-fixture/publisher/managed-update ownership remains unchanged;
+12. no broad `config/**`, all-root-files, or generic `*.config.*` fallback is introduced;
+13. no new generic registry/graph/module is introduced;
+14. focused independent proof is green;
+15. architect reviews the complete Pass E boundary again before closure.
 
 ## Completion order
 
-Pass E is not closed until:
+Pass E remains open until:
 
-1. fresh independent proof establishes the current gaps;
-2. the shared execution inventory and production-config boundary are implemented;
-3. focused planner/orchestrator/verifier proof is green;
-4. architect reviews the complete release-impact owner boundary;
-5. the separate output-contract minor pass is completed;
+1. fresh independent proof establishes the mechanism-level REDs;
+2. the local `releaseRisk.ts` ownership correction is implemented;
+3. focused proof/static feedback is green;
+4. architect reviews the entire release-impact boundary, including retained release-spec inventory;
+5. the separate output-contract minors are corrected;
 6. full PR semantic review is clean;
-7. stable exact-head CI is healthy;
+7. exact-head CI is healthy;
 8. the mandatory representative benchmark records both critical-path/merge latency and aggregate expensive compute;
-9. architect records the stop/reopen decision and requires CI on the resulting final documentation head.
+9. architect records the final stop/reopen decision and requires CI on the resulting documentation head.
