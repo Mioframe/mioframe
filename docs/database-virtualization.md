@@ -9,7 +9,7 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - active review findings: `src/entities/databaseData/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`;
-- superseded switch-only diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`.
+- completed sparse all-string diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`.
 
 ## Goal
 
@@ -22,8 +22,6 @@ Primary structural invariant:
 Bounded DOM is necessary but not sufficient. Real heterogeneous databases must also remain responsive while switching views and scrolling.
 
 ## Accepted architecture
-
-These decisions remain accepted:
 
 - `@tanstack/vue-virtual` is the only virtual-item range/measurement/cache engine.
 - `useVirtualCollection` remains the Mioframe shared virtualization boundary.
@@ -81,7 +79,7 @@ A previous non-verifier current-geometry run reported 1.6–2.5 s usable times a
 
 ### Real heterogeneous Chrome defect
 
-Operator testing on the same laptop provides a different and now more relevant discriminator:
+Operator testing on the same laptop provides the relevant failing discriminator:
 
 - a real Database containing different property types still has a perceptible Short -> Full delay in Chrome;
 - scrolling that table in Chrome produces freezes/jank;
@@ -89,19 +87,19 @@ Operator testing on the same laptop provides a different and now more relevant d
 
 The all-string fixture therefore does not represent the failing content shape.
 
-Different property types do not share one render path. `DatabasePropertyValueInline` dispatches Boolean, Number, String, Date, and Relation values to different UI owners. Relation content is especially distinct because a relation value may compose a nested `DatabaseViewLayout`/virtualized Database inside an outer cell.
+`DatabasePropertyValueInline` dispatches Boolean, Number, String, Date, and Relation values to distinct render paths. Relation content is especially distinct because a relation value may compose a nested `DatabaseViewLayout`/virtualized Database inside an outer cell.
 
-## Root/surface geometry — candidate, not established root cause
+## Root/surface geometry — candidate only
 
 The current `DatabaseDataTable` derives root-to-table surface offsets and refreshes root/table bounds from its own update lifecycle. This remains a plausible hot-path amplifier because the component also updates as virtual ranges change.
 
-However, the canonical fast all-string verifier run uses this same implementation. Therefore current evidence does **not** justify declaring the geometry lifecycle the sole/root cause or immediately restoring the historical numeric-offset architecture.
+However, the canonical fast all-string verifier run uses this same implementation. Current evidence therefore does **not** justify declaring the geometry lifecycle the root cause or immediately restoring historical numeric-offset ownership.
 
 Required rule:
 
-> Do not change root/surface ownership until the heterogeneous Chrome reproduction shows that geometry refresh contributes materially to the failing path.
+> Do not change root/surface ownership until heterogeneous Chrome attribution shows that geometry refresh contributes materially to the failing path.
 
-If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. Numeric surface offsets, composition-owned measurement, or another local mechanism may then be reconsidered from evidence; no generic geometry manager/provider or second virtual-item measurement system is justified now.
+If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. Numeric surface offsets or composition-owned measurement may then be reconsidered from evidence; no generic geometry manager/provider or second virtual-item measurement system is justified now.
 
 ## Heterogeneous attribution requirement
 
@@ -110,7 +108,7 @@ Before the next production performance correction, reproduce the failing class w
 The attribution proof must:
 
 1. run the same fixture and product actions in desktop Chrome and Firefox;
-2. cover both Short -> Full and representative sustained vertical/horizontal scrolling;
+2. cover Short -> Full and representative sustained vertical/horizontal scrolling;
 3. retain the existing sparse all-string fixture as a fast control;
 4. record mounted outer rows/headers/cells and main-thread responsiveness/Long Tasks;
 5. narrow the discriminator with minimal fixture variants rather than production changes.
@@ -129,13 +127,7 @@ A bounded outer `12 / 8 / 96` count does not prove nested relation content is ch
 
 ## Accessibility
 
-Preserve native table semantics:
-
-- `aria-rowcount` = header + complete logical rows;
-- `aria-colcount` = complete logical properties + action column when present;
-- logical row/property indices remain truthful;
-- spacer DOM is hidden from logical semantics;
-- no ARIA-grid keyboard model is introduced.
+Preserve native table semantics and logical row/property indices; spacer DOM remains hidden from logical semantics; do not introduce an ARIA-grid keyboard model.
 
 ## Proof ownership
 
@@ -149,7 +141,7 @@ The visual border/radius contract requires separate bounded visual-regression pr
 
 1. Sparse all-string S0/G1 remains fast and bounded.
 2. A deterministic heterogeneous fixture matching the failing class is responsive in Chrome.
-3. The same heterogeneous fixture behaves consistently enough across Chrome/Firefox that any engine-specific difference is understood and intentionally handled.
+3. The same heterogeneous fixture is compared in Firefox so the engine-specific difference is understood.
 4. Short -> Full has no material perceptible freeze in the failing heterogeneous Chrome case.
 5. Sustained vertical and horizontal scrolling has no material repeated jank in that case.
 6. Mounted outer work remains bounded and deep correctness passes.
