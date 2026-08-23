@@ -2,7 +2,7 @@
 
 Status: **superseded — completed; do not execute again**.
 
-The sparse all-string current-head diagnostic owned by this preflight completed successfully through the verifier and did not reproduce the reported general slowdown.
+The sparse all-string current-head diagnostic owned by this preflight completed successfully through the verifier and did not reproduce a general slowdown.
 
 Accepted control result:
 
