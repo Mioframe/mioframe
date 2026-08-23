@@ -15,7 +15,7 @@ Verdict: blocked
 
 Owner: `src/widgets/DocumentView/Database`
 
-Problem: the expanded tests cover most of the requested component surface and the production runtime was not changed, but several required focused contracts are still not faithfully proved.
+Problem: the expanded tests cover most of the requested component surface and the component runtime was not changed by the mutation-proof correction, but several required focused contracts are still not faithfully proved.
 
 Evidence:
 
@@ -30,7 +30,7 @@ Basis:
 - [`../../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires the listed meaningful toolbar/inline-value public branches to be protected by focused component tests.
 - [`../../../../.agents/skills/project-review/SKILL.md`](../../../../.agents/skills/project-review/SKILL.md) — required proof must be faithful to the behavior it claims to test; a green threshold does not by itself prove an unexercised contract.
 
-Risk: the focused suite can remain green if the field Enter/Escape wiring regresses, if boolean activation writes a value other than the toggle result, if stored-true ARIA semantics regress, if the short-string minimum changes, or if property patching uses a wrong document identity. Existing product E2E already covers real Enter/Escape user behavior, so this is not a production-architecture defect; it is an incomplete owner-local proof correction.
+Risk: the focused suite can remain green if the field Enter/Escape wiring regresses, if boolean activation writes a value other than the toggle result, if stored-true ARIA semantics regress, if the short-string minimum changes, or if property patching uses a wrong document identity. Existing product E2E covers real keyboard user behavior, so this finding does not independently establish a widget runtime defect; it is an incomplete owner-local proof correction.
 
 Required final state: use a faithful `keydown` event with `KeyboardEvent.key` (or equivalent native fallthrough through the stub) to exercise field Enter and Escape; assert the stored-value writer receives the `toggleBoolean` result; cover stored `true` and the short-string minimum; assert the exact mounted document ID in property patch forwarding. Preserve production behavior and existing E2E ownership.
 
