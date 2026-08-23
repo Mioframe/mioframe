@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **PR #216 is blocked by ready-but-unimplemented Pass E production-build ownership and the mandatory final benchmark; two verifier-output minor findings also remain**.
+Status: **PR #216 is blocked by agent-ready Pass E production-build ownership and the mandatory final benchmark; two verifier-output minor findings also remain**.
 
 This document owns final integration order. Lane semantics remain in their architecture documents.
 
@@ -13,7 +13,7 @@ This document owns final integration order. Lane semantics remain in their archi
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
 - `docs/testing/verify-release-impact-correction.md` — current ready Pass E architecture handoff;
 - `docs/testing/verify-modernization.md` — implementation/benchmark status;
-- `scripts/lib/REVIEW.md` — active Pass E production-build ownership finding;
+- `scripts/lib/REVIEW.md` — active Pass E production-build ownership finding and next correction handoff;
 - `scripts/REVIEW.md` — two active output-contract minors;
 - `docs/testing/REVIEW.md` — mandatory benchmark blocker.
 
@@ -65,7 +65,7 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The architecture has been redone at the mechanism boundary and then simplified to the minimum complete model in `verify-release-impact-correction.md`. It is **ready for implementation**.
+The architecture has been redone at the mechanism boundary and then simplified to the minimum complete model in `verify-release-impact-correction.md`. It is **ready for agent execution**. The next pass must preserve test-first independence: a fresh test-author context changes only `scripts/lib/releaseRisk.test.ts`, then a separate implementation context changes `scripts/lib/releaseRisk.ts` against the accepted proof.
 
 The accepted model keeps ownership local to `scripts/lib/releaseRisk.ts`:
 
@@ -89,6 +89,29 @@ pnpm-workspace.yaml
 Production Vite env exact paths remain focused when tracked/changed.
 
 Do **not** copy exhaustive third-party loader extension tables into the verifier. Do not implement this as four exact mappings, a broad `config/**` fallback, generic `*.config.*`, an all-root fallback, or a generic registry/graph.
+
+### Pass E handoff boundary
+
+Primary proof owner:
+
+```text
+scripts/lib/releaseRisk.test.ts
+```
+
+Production owner:
+
+```text
+scripts/lib/releaseRisk.ts
+```
+
+The independent oracle is the mechanism-level contract in `verify-release-impact-correction.md`, backed by the real production-build inputs it identifies. The proof must reject both of these wrong outcomes:
+
+```text
+confirmed current production-build input → skip
+unknown significant member of a confirmed build/config family → skip or focused
+```
+
+A meaningful RED is required for the newly uncovered ownership cases before production edits. Production implementation must treat accepted test expectations/assertions as read-only. If the proof conflicts with repository evidence, stop and return the conflict to the architect/test owner rather than changing both sides together.
 
 ## Blocker 2 — mandatory benchmark
 
@@ -128,21 +151,22 @@ Neither minor changes proof selection.
 ## Remaining order
 
 ```text
-1. implement the ready Pass E production-build mechanism correction with fresh independent proof
-2. architect review the complete Pass E boundary, including retained release-spec inventory
-3. correct the two verifier-output minors with focused proof
-4. architect review the output contract
-5. perform one complete PR-level semantic review
-6. remove resolved REVIEW.md artifacts
-7. obtain a stable exact-head CI run for the corrected implementation
-8. perform and record the mandatory representative benchmark:
+1. fresh independent Pass E test-author pass in scripts/lib/releaseRisk.test.ts
+2. separate Pass E implementation pass in scripts/lib/releaseRisk.ts against the accepted proof
+3. architect review the complete Pass E boundary, including retained release-spec inventory
+4. correct the two verifier-output minors with focused proof
+5. architect review the output contract
+6. perform one complete PR-level semantic review
+7. remove resolved REVIEW.md artifacts
+8. obtain a stable exact-head CI run for the corrected implementation
+9. perform and record the mandatory representative benchmark:
    - critical path / merge latency
    - aggregate expensive compute
-9. record stop vs separate-follow-up decision in architect-owned docs
-10. require CI on the resulting final documentation head
-11. re-check current develop ancestry and exact PR head
-12. give merge-readiness verdict
-13. squash merge only when semantic review, benchmark and exact-head CI are all satisfied
+10. record stop vs separate-follow-up decision in architect-owned docs
+11. require CI on the resulting final documentation head
+12. re-check current develop ancestry and exact PR head
+13. give merge-readiness verdict
+14. squash merge only when semantic review, benchmark and exact-head CI are all satisfied
 ```
 
 ## Stop rule
