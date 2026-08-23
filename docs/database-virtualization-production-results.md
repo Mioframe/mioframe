@@ -1,5 +1,7 @@
 # Database virtualization production results — PR #217
 
+> **Current validity:** historical baseline only. The final S0/G1 revalidation below was measured at `68a71e89d03713452946819cb52ba80a64157424`. `DatabaseDataTable.vue` later changed its root-to-table geometry path to table-owned bounding measurements with mutation/update-driven refresh. Per `docs/database-virtualization.md`, final S0/G1 performance acceptance must therefore be repeated on the final runtime/geometry implementation after the remaining corrections are complete. Preserve the measurements below as the comparison baseline; do not treat them as current-head acceptance.
+
 Date: 2026-08-23  
 Branch: `fix/database-large-data-performance`  
 Repository HEAD while measured: `da16207afd0a5ff0be0381081963e8b9f53d6146`  
@@ -150,4 +152,8 @@ a timing metric.
   value sentinels. No G1 switch-associated Long Task exceeded 100 ms; none
   were observed.
 - Compared with the retained full-matrix baseline above, these bounded samples
-  show no material correction regression. No further optimization was made.
+  showed no material correction regression **for the measured `68a71e89...` implementation**. No further optimization was made at that measured head.
+
+## Required current-head follow-up
+
+The current geometry implementation is newer than `68a71e89...`, so the final acceptance statement above is historical rather than current-head proof. After all remaining runtime/geometry corrections in PR #217 are complete, repeat the established S0/G1 protocol on the final head and append the new exact measurements here. Do not rerun the full matrix unless the new S0/G1 evidence exposes a scale-sensitive regression.
