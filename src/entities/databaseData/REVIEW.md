@@ -17,27 +17,27 @@ Verdict: blocked
 
 Owner: `src/entities/databaseData`
 
-Problem: the canonical verifier-managed all-string fixture is fast on the current production implementation, while operator testing on the same laptop reports perceptible Short -> Full delay and scrolling freezes in Chrome for a real Database containing different property types; Firefox does not show the same problem. The previous synthetic fixture therefore does not reproduce the user-facing defect. This also means the current table-owned `onUpdated(updateSurfaceBounds)` lifecycle is not established as the sole/root cause: the same lifecycle is present in the fast all-string verifier run. The missing discriminator is heterogeneous cell/render composition and browser engine behavior.
+Problem: the canonical verifier-managed all-string fixture is fast, while operator testing on the same laptop reports perceptible Short -> Full delay and scrolling freezes in Chrome for a real heterogeneous Database; Firefox does not show the same problem. The missing discriminator is heterogeneous cell/render composition. The current table geometry lifecycle is not established as root cause because it is also present in the fast all-string control.
 
 Evidence:
 
-- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — current-head verifier-managed all-string S0 median usable 281.1 ms and G1 median usable 321.5 ms, with zero Long Tasks in all six samples, bounded 12 / 8 / 96 mounted work, and deep correctness passing.
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current table geometry lifecycle is present in the implementation that produced the fast all-string verifier result, so geometry refresh alone does not explain the observed defect.
-- [`../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue`](../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue) — different property types dispatch to distinct Boolean, Number, String, Date, and Relation render paths.
-- [`../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue`](../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue) — a rendered relation value can compose a nested `DatabaseViewLayout`/virtualized Database inside a cell, which is materially different from the all-string performance fixture.
-- Operator manual testing on the same laptop: heterogeneous table janks in Chrome during Full-view switching and scrolling; Firefox does not exhibit the same problem.
+- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — verifier-managed all-string S0 median 281.1 ms and G1 median 321.5 ms, zero Long Tasks, bounded 12 / 8 / 96 mounted work, deep correctness pass.
+- [`../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue`](../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue) — Boolean, Number, String, Date, and Relation use distinct render paths.
+- [`../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue`](../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue) — relation content may compose nested Database UI.
+- [`../../../playwright.config.ts`](../../../playwright.config.ts) — the current application-E2E verifier has desktop Chromium and Mobile Chrome projects, not Firefox.
+- Operator manual testing: heterogeneous table janks in Chrome during Full-view switching and scrolling; Firefox does not exhibit the same problem.
 
 Basis:
 
-- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve confirmed user scenarios, keep main-thread work bounded for large datasets/mobile browsers, and return to architecture when repeated correction rounds reveal missing scenarios.
-- [`../../../.agents/skills/ui-browser-behavior/SKILL.md`](../../../.agents/skills/ui-browser-behavior/SKILL.md) — browser-, scrolling-, geometry-, and rendering-dependent behavior requires faithful browser proof in the affected engine rather than proxy coverage.
-- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — attribute remaining main-thread work before selecting an optimization or architectural correction.
+- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve confirmed scenarios, keep main-thread work bounded, and attribute repeated missing scenarios before further architecture changes.
+- [`../../../.agents/skills/ui-browser-behavior/SKILL.md`](../../../.agents/skills/ui-browser-behavior/SKILL.md) — scrolling/rendering-dependent behavior requires faithful browser proof.
+- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — attribute remaining main-thread work before selecting an optimization.
 
-Risk: merging on the strength of the all-string benchmark would accept a real Chrome regression that remains visible in normal heterogeneous databases. Conversely, changing geometry, worker/query behavior, or shared virtualization before reproducing the heterogeneous discriminator risks correcting the wrong subsystem.
+Risk: accepting the all-string benchmark would leave the real Chrome defect unresolved; speculative geometry/shared/worker changes could target the wrong subsystem.
 
-Required final state: reproduce the real class of defect with one deterministic heterogeneous Database fixture and the same product actions in desktop Chrome and Firefox. The proof must isolate which property/render path or combination introduces the Chrome-only switch/scroll cost, while retaining bounded mounted work. Only then route a production correction to the narrowest actual owner. The all-string fast result remains a control case.
+Required final state: through verifier-managed desktop Chromium, reproduce the failing class with deterministic heterogeneous fixtures and isolate the smallest property/render path that introduces switch/scroll blocking while mounted outer work remains bounded. Treat the Firefox result as operator comparison evidence; do not add a Firefox verifier project in this attribution pass. Then route production correction to the narrowest evidence-backed owner.
 
-Verification: verifier-managed browser diagnostic using the same deterministic heterogeneous fixture in Chrome and Firefox, covering both Short -> Full and representative sustained vertical/horizontal scrolling. Record mounted work and main-thread responsiveness/Long Tasks. Use focused variants to narrow the discriminator (for example base scalar types versus relation content) without changing production code during attribution.
+Verification: follow [`../../../docs/database-virtualization-heterogeneous-attribution-handoff.md`](../../../docs/database-virtualization-heterogeneous-attribution-handoff.md) and its preflight. Cover Short -> Full plus vertical/horizontal wheel scrolling. Start with scalar mix, isolate scalar types only if needed, then test one representative relation case if scalars remain fast.
 
 ### B2 — Virtual spacer DOM breaks the existing table border and corner-radius contract
 
@@ -49,18 +49,17 @@ Evidence:
 
 - [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — every header/data row contains leading/trailing spacer cells and `tbody` contains leading/trailing spacer rows.
 - [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — outer radii depend on physical first/last sections/rows/cells and row side borders are drawn by `tr::after`.
-- Base `DatabaseDataTable.vue` before PR #217 rendered real properties/items at the physical table boundaries.
 
 Basis:
 
 - [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing user-visible behavior and control shared-UI blast radius.
-- [`../../../.agents/skills/visual-regression-testing/SKILL.md`](../../../.agents/skills/visual-regression-testing/SKILL.md) — stable visible appearance requires bounded visual proof owned by the truthful UI owner.
+- [`../../../.agents/skills/visual-regression-testing/SKILL.md`](../../../.agents/skills/visual-regression-testing/SKILL.md) — stable appearance requires bounded visual proof.
 
-Risk: the performance PR visibly degrades an ordinary Database table, while modifying shared `MDTable` merely for one virtualized consumer could spread the regression to unrelated tables.
+Risk: the performance PR visibly degrades ordinary Database presentation; changing shared `MDTable` for one consumer could spread the regression.
 
-Required final state: retain the pre-PR visible outer border and corner radii at the logical table boundary in initial and representative scrolled states. Spacer DOM remains presentation-only. Prefer a Database-table-local adaptation; do not change shared `MDTable` unless a separate shared-UI review proves a generic defect.
+Required final state: retain the pre-PR outer border and corner radii at the logical table boundary in initial and representative scrolled states. Spacer DOM remains presentation-only. Prefer a Database-local adaptation.
 
-Verification: bounded visual regression proof for the Database table at representative top-left and scrolled/end states, inspected as intentional compatibility evidence. Browser behavior proof remains separate.
+Verification: bounded Database-table visual proof at representative top-left and scrolled/end states.
 
 ## Major issues
 
@@ -76,13 +75,14 @@ None.
 
 ## Items not required
 
-- Replacing TanStack or rewriting `useVirtualCollection` without attribution showing the shared engine is responsible.
-- Worker/query/storage redesign, paging, indexes, or caches before the heterogeneous Chrome path is attributed.
-- Historical checkout/worktree/bisect orchestration by a coding agent.
-- Repeating the complete R1/R2/R3/R4/C1/C2/C3 matrix before the heterogeneous discriminator is understood.
+- Replacing TanStack or rewriting `useVirtualCollection` before attribution.
+- Worker/query/storage redesign, paging, indexes, or caches before attribution.
+- Adding Firefox to application-E2E verifier for this diagnostic.
+- Historical checkout/worktree/bisect orchestration.
+- Repeating the full performance matrix.
 
 ## Unresolved questions
 
-- Which heterogeneous property/render path first reproduces the Chrome-only jank: scalar Material-backed cells, relation/nested Database content, or another combination.
-- Whether `DatabaseDataTable` surface-bound refresh materially amplifies the heterogeneous Chrome path; the fast all-string run proves it is not sufficient by itself to explain the defect.
-- The smallest executable visual-proof location for `DatabaseDataTable` must follow the current `docs/testing/migration-plan.md` when correction preflight is prepared.
+- Which property/render path first reproduces the Chrome jank: scalar content, relation/nested Database content, or a combination.
+- Whether `DatabaseDataTable` surface-bound refresh materially amplifies that identified path.
+- The smallest executable visual-proof location for the later presentation correction.
