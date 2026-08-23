@@ -350,7 +350,7 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
     // chosen before the requested scroll/range/measurement state has settled.
     const readAnchorState = () =>
       page.evaluate(
-        ({ viewportTestId, rowSelector }) => {
+        ({ viewportTestId, mountedRowSelector }) => {
           const viewportEl = document.querySelector(`[data-testid="${viewportTestId}"]`);
           const viewportTop = viewportEl?.getBoundingClientRect().top ?? 0;
           const viewportBottom = viewportEl?.getBoundingClientRect().bottom ?? 0;
@@ -358,7 +358,7 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
           // classify by overlap with a small epsilon instead of exact edge comparisons.
           const EPSILON_PX = 0.5;
 
-          const rows = Array.from(document.querySelectorAll(rowSelector)).map((el) => ({
+          const rows = Array.from(document.querySelectorAll(mountedRowSelector)).map((el) => ({
             index: Number(el.getAttribute('aria-rowindex')) - 2,
             size: Number(el.getAttribute('data-row-size')),
             rect: el.getBoundingClientRect(),
@@ -382,7 +382,7 @@ test.describe('DatabaseVirtualizationCapability native-table model', () => {
             anchorY: anchor?.rect.top ?? null,
           };
         },
-        { viewportTestId: 'db-virt-viewport', rowSelector },
+        { viewportTestId: 'db-virt-viewport', mountedRowSelector: rowSelector },
       );
 
     // TanStack corrects scrollTop away from the raw requested pixel value once it measures real

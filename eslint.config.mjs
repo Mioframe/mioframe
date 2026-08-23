@@ -111,7 +111,13 @@ export default defineConfigWithVueTs(
 
   {
     files: vueUiCommunicationFiles,
-    ignores: ['**/*.test.{ts,mts,tsx}', '**/*.testUtils.{ts,mts,tsx}', '**/*.stories.{ts,mts,tsx}'],
+    ignores: [
+      '**/*.test.{ts,mts,tsx}',
+      '**/*.testUtils.{ts,mts,tsx}',
+      '**/*.stories.{ts,mts,tsx}',
+      '**/*.browser.spec.{ts,mts,tsx}',
+      '**/*.visual.spec.{ts,mts,tsx}',
+    ],
     name: 'app/vue-ui-imperative-dom-communication',
     rules: {
       'no-restricted-syntax': [

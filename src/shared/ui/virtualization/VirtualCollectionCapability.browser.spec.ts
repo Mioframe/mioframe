@@ -247,7 +247,8 @@ test.describe('VirtualCollectionCapability shared composable', () => {
     const readDeepGeometry = () =>
       page.evaluate(() => {
         const items = document.querySelectorAll('[data-testid^="vcc-item-"]');
-        const last = items.item(items.length - 1);
+        if (items.length === 0) throw new Error('Expected a mounted tail item');
+        const last = items[items.length - 1];
         const viewportEl = document.querySelector('[data-testid="vcc-viewport"]');
         return {
           leadingSize: Number(
@@ -257,9 +258,9 @@ test.describe('VirtualCollectionCapability shared composable', () => {
           trailingSize: Number(
             document.querySelector('[data-testid="vcc-trailing-size"]')?.textContent,
           ),
-          lastItemTestId: last?.getAttribute('data-testid') ?? null,
-          lastItemOffset: Number(last?.getAttribute('data-item-offset')),
-          lastItemSize: Number(last?.getAttribute('data-item-size')),
+          lastItemTestId: last.getAttribute('data-testid') ?? null,
+          lastItemOffset: Number(last.getAttribute('data-item-offset')),
+          lastItemSize: Number(last.getAttribute('data-item-size')),
           scrollHeight: viewportEl?.scrollHeight ?? 0,
         };
       });
