@@ -65,18 +65,30 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The architecture has been redone at the mechanism boundary in `verify-release-impact-correction.md` and is **ready for implementation**.
+The architecture has been redone at the mechanism boundary and then simplified to the minimum complete model in `verify-release-impact-correction.md`. It is **ready for implementation**.
 
-The resolved model keeps ownership local to `scripts/lib/releaseRisk.ts` and covers:
+The accepted model keeps ownership local to `scripts/lib/releaseRisk.ts`:
 
-- existing static Vite support inputs;
-- complete current Browserslist/PostCSS/PWA-assets config filename families;
-- production Vite env filenames when tracked;
-- current production/config TypeScript chain, with unknown root `tsconfig*.json` fail-closed;
-- the complete `public/**` artifact population;
-- current `pnpm-workspace.yaml` install-control input.
+```text
+current positively-known production-build input
+→ focused artifact + build + managed-updates + release-smoke
 
-Do not implement this as four exact mappings, a broad `config/**` fallback, an all-root fallback, or a generic registry/graph.
+public/**
+→ same focused consumers
+
+non-current path inside a confirmed Browserslist/PostCSS/PWA-assets/tsconfig family
+→ full six until audited
+
+known non-production member
+→ no release ownership from that family
+
+pnpm-workspace.yaml
+→ full six
+```
+
+Production Vite env exact paths remain focused when tracked/changed.
+
+Do **not** copy exhaustive third-party loader extension tables into the verifier. Do not implement this as four exact mappings, a broad `config/**` fallback, generic `*.config.*`, an all-root fallback, or a generic registry/graph.
 
 ## Blocker 2 — mandatory benchmark
 
