@@ -145,7 +145,7 @@ Invariants:
 Database widget composition owns one controlled configuration state:
 
 ```ts
-DatabaseConfigurationSurface | undefined
+DatabaseConfigurationSurface | undefined;
 ```
 
 where the surface is one of `views`, `sort`, `filter`, or `properties`.
