@@ -204,7 +204,7 @@ release-smoke
 
 ### 3. TypeScript transform/config ownership
 
-Vite's TypeScript transformation can consume matching project TypeScript configuration. The current production/config chain is rooted in:
+Vite 7's TypeScript transform can consume `tsconfig.json` compiler options that affect emitted/transformed code. In this repository, source and config TypeScript projects are split across a small root family. Treat the current production/config chain conservatively as production-build control:
 
 ```text
 tsconfig.json
@@ -213,7 +213,7 @@ tsconfig.src.json
 tsconfig.node.json
 ```
 
-These are production-build control inputs and select:
+These select:
 
 ```text
 artifact
@@ -229,7 +229,7 @@ tsconfig.storybook.json
 tsconfig.scripts.json
 ```
 
-To prevent another filename-example gap, any new repository-root `tsconfig*.json` that is neither in the confirmed production set nor the confirmed non-production set is significant-but-unresolved and must fail closed to **full six release checks** until ownership is audited.
+To prevent another filename-example gap, any new repository-root `tsconfig*.json` that is neither in the confirmed production/config set nor the confirmed non-production set is significant-but-unresolved and must fail closed to **full six release checks** until ownership is audited.
 
 Do not classify arbitrary JSON files this way.
 
@@ -519,7 +519,7 @@ Pass E production-build ownership is complete only when:
 4. all current `public/**` files are production artifact inputs;
 5. supported PostCSS/PWA-assets/Browserslist discovery variants are classified consistently;
 6. production env filenames are covered while `.env.example` stays negative;
-7. current production TypeScript configs are release-owned;
+7. current production/config TypeScript configs are release-owned;
 8. known non-production TypeScript configs remain negative;
 9. unknown root `tsconfig*.json` fails closed to full six;
 10. `pnpm-workspace.yaml` fails closed to full six;
