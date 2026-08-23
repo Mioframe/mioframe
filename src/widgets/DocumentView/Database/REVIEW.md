@@ -4,37 +4,37 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 current Database widget composition after the inline-edit feature extraction.
-- `EditableInlineValue` resolving-state interaction contract and focused component proof.
-- `DatabaseToolbar` controlled configuration contract and focused component proof.
-- Exact-head mutation verification for the touched widget components.
+- PR #217 Database widget proof after the mutation-proof correction.
+- `DatabaseToolbar` controlled configuration/add-item/property-patch contract.
+- `EditableInlineValue` activation, edit lifecycle, boolean semantics, sizing, resolving interaction, and current focused tests.
+- The accepted mutation-proof correction contract in `docs/database-virtualization-mutation-proof-correction-handoff.md`.
 
 ## Blockers
 
-### B1 — Touched Database widget contracts are below the required mutation-proof threshold
+### B1 — Component tests still leave required public contracts weak or falsely exercised
 
 Owner: `src/widgets/DocumentView/Database`
 
-Problem: the semantic correction is implemented correctly, but the focused component tests prove only the newly corrected paths. Exact-head mutation verification mutates the complete touched `DatabaseToolbar.vue` and `EditableInlineValue.vue` files and still leaves enough observable component behavior unproved that the required mutation gate fails. The current mutation scores are 40.00% for `DatabaseToolbar.vue` and 14.81% for `EditableInlineValue.vue`; the aggregate changed-source score is 32.84% against the repository breaking threshold of 60%.
+Problem: the expanded tests cover most of the requested component surface and the production runtime was not changed, but several required focused contracts are still not faithfully proved.
 
 Evidence:
 
-- [`DatabaseToolbar.test.ts`](./DatabaseToolbar.test.ts) — proves controlled configuration request/open/close behavior, but does not exercise several existing toolbar branches now included in the touched-file mutation scope, including add-item lifecycle and property-presence behavior.
-- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — correctly proves target detachment/recovery for a resolving session, but leaves other public inline-value states and actions in the touched component unproved under mutation.
-- [`DatabaseToolbar.vue`](./DatabaseToolbar.vue) and [`EditableInlineValue.vue`](./EditableInlineValue.vue) — both are current mutation targets because this PR changed them.
-- [`../../../../stryker.config.mjs`](../../../../stryker.config.mjs) — mutation verification has `thresholds.break: 60`.
-- [Exact-head verify run](https://github.com/Mioframe/mioframe/actions/runs/32644171094) — `verification-static` fails only at `Verify mutation`; format, oxlint, eslint, type-check, and unit tests pass. The mutation report records 32.84% overall, 40.00% for `DatabaseToolbar.vue`, and 14.81% for `EditableInlineValue.vue`.
+- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — `ValueFieldStub` declares and emits literal `keydown.enter` / `keydown.escape` custom events. Production uses Vue key modifiers `@keydown.enter` / `@keydown.escape`, which filter the `keydown` event by `KeyboardEvent.key`; clicking those stub buttons therefore does not exercise the production field-keyboard listeners. The same test then receives its one commit from `interaction-outside` and its one cancel from tooltip close, so it can pass while the field Enter/Escape paths are not exercised.
+- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — the boolean case checks `postValue` call count but not that each write receives the value returned by `toggleBoolean`; it proves stored `false`, `mixed`, and defaulted `true` ARIA states but not stored `true`; the sizing test proves a long string and non-string zero but not the required short-string minimum.
+- [`DatabaseToolbar.test.ts`](./DatabaseToolbar.test.ts) — property patch forwarding asserts the current path/property/patch, but accepts any string as `documentId` rather than the exact mounted document identity.
+- [`../../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — explicitly requires faithful Enter/Escape component proof, writing the toggled boolean result, stored true/false plus supported undefined ARIA semantics, minimum/longer string sizing, and current path/document/property identity for property patching.
+- [Vue event handling — key modifiers](https://vuejs.org/guide/essentials/event-handling.html#key-modifiers) — `.enter`/`.escape` are key modifiers on keyboard events, not literal event-name suffixes.
 
 Basis:
 
-- [`../../../../.agents/skills/project-review/SKILL.md`](../../../../.agents/skills/project-review/SKILL.md) — required mutation proof cannot be replaced by green unit tests or other checks.
-- [`../../../../stryker.config.mjs`](../../../../stryker.config.mjs) — the repository-defined breaking threshold is 60% and must not be weakened for the PR.
+- [`../../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires the listed meaningful toolbar/inline-value public branches to be protected by focused component tests.
+- [`../../../../.agents/skills/project-review/SKILL.md`](../../../../.agents/skills/project-review/SKILL.md) — required proof must be faithful to the behavior it claims to test; a green threshold does not by itself prove an unexercised contract.
 
-Risk: observable Database toolbar/inline-value behavior can regress while the current focused tests remain green, and exact-head verification cannot pass. Treating the failed gate as incidental would bypass a repository-required proof specifically triggered by the production files changed in this correction.
+Risk: the focused suite can remain green if the field Enter/Escape wiring regresses, if boolean activation writes a value other than the toggle result, if stored-true ARIA semantics regress, if the short-string minimum changes, or if property patching uses a wrong document identity. Existing product E2E already covers real Enter/Escape user behavior, so this is not a production-architecture defect; it is an incomplete owner-local proof correction.
 
-Required final state: add focused component-contract coverage for the meaningful public behavior of the two touched components until the normal verifier-managed mutation run passes the existing threshold. Preserve the current production architecture and behavior; do not alter production logic, mutation configuration, thresholds, exclusions, or verifier scope merely to improve the score.
+Required final state: use a faithful `keydown` event with `KeyboardEvent.key` (or equivalent native fallthrough through the stub) to exercise field Enter and Escape; assert the stored-value writer receives the `toggleBoolean` result; cover stored `true` and the short-string minimum; assert the exact mounted document ID in property patch forwarding. Preserve production behavior and existing E2E ownership.
 
-Verification: run the focused unit tests while developing, then `pnpm verify --only mutation` through the normal verifier-managed path. The exact-head GitHub verification must subsequently pass without threshold/configuration weakening.
+Verification: focused widget unit tests and the unchanged verifier-managed mutation targets after the test correction.
 
 ## Major issues
 
@@ -42,26 +42,7 @@ None.
 
 ## Minor issues
 
-### m1 — `EditableInlineValue` still describes the lifted session as widget-owned
-
-Owner: `src/widgets/DocumentView/Database`
-
-Problem: the `onBeforeUnmount` comment still says the session is `widget-owned`, although the session is now owned by `features/databaseInlineValueEdit`.
-
-Evidence:
-
-- [`EditableInlineValue.vue`](./EditableInlineValue.vue) — the virtual-unmount comment still says `widget-owned session`.
-- [`../../../../docs/database-virtualization.md`](../../../../docs/database-virtualization.md) — canonical ownership assigns the active inline-edit session to `features/databaseInlineValueEdit`.
-
-Basis:
-
-- [`AGENTS.md`](./AGENTS.md) — this directory is Database UI composition, not the user-action/domain owner.
-
-Risk: the stale ownership comment contradicts the current architecture and can mislead later maintenance back toward widget-owned session state.
-
-Required final state: make the comment ownership-neutral or identify the session as feature-owned; no behavior change.
-
-Verification: source review/type-check is sufficient.
+None.
 
 ## Accepted risks
 
