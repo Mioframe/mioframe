@@ -5,8 +5,8 @@ Verdict: blocked
 ## Scope reviewed
 
 - PR #217 feature-owned inline-edit session lifecycle after the mutation-proof correction.
-- Public feature API, entity write dependency, identity/concurrency guards, success/failure settlement, and focused tests.
-- The accepted mutation-proof correction contract in `docs/database-virtualization-mutation-proof-correction-handoff.md`.
+- Public feature API, entity write dependency, identity/concurrency guards, success/failure settlement, error semantics, and focused tests.
+- The accepted inline-edit ownership contract in `docs/database-virtualization.md` and the mutation-proof correction contract.
 
 ## Blockers
 
@@ -24,19 +24,42 @@ Evidence:
 
 Basis:
 
-- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires all listed feature lifecycle behavior represented by the current implementation to be protected by focused tests.
+- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires the listed feature lifecycle behavior represented by the current implementation to be protected by focused tests.
 - [`../AGENTS.md`](../AGENTS.md) — the feature owns the user-action cancel/success/error lifecycle.
 - [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — missing required risk-specific proof remains a review finding even when another automated threshold is green.
 
 Risk: the focused suite could stay green if exact cancel stopped clearing the session, or if a completed successful resolution remained cached and caused a later changed session to return the old result instead of persisting its own draft. The product E2E covers user Escape cancellation, but it does not replace the explicitly required owner-local lifecycle proof for this mutation target.
 
-Required final state: focused feature tests must prove (1) exact active non-resolving cancel clears the session and performs no write, and (2) after one successful changed resolve completes, a newly requested session can be changed and resolved through a second distinct persistence call with its own identity/draft. Do not expose internals or change production behavior.
+Required final state: focused feature tests must prove (1) exact active non-resolving cancel clears the session and performs no write, and (2) after one successful changed resolve completes, a newly requested session can be changed and resolved through a second distinct persistence call with its own identity/draft. Do not expose internals.
 
 Verification: focused feature unit tests and the unchanged verifier-managed mutation target after the test correction.
 
 ## Major issues
 
-None.
+### M1 — Persistence failure is collapsed to a boolean instead of an explicit feature error state/result
+
+Owner: `src/features/databaseInlineValueEdit`
+
+Problem: `resolve()` catches every rejected value write, restores `resolving: false`, and returns only `false`. The original failure is not retained in feature state or returned to the caller, and `commit()` discards the resolution entirely. Draft recovery is correct, but the feature does not explicitly represent or handle the error outcome it owns.
+
+Evidence:
+
+- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) — the broad `catch` discards the caught value and exposes only `Promise<boolean>` success/failure semantics.
+- [`../../widgets/DocumentView/Database/DatabaseViewWidget.vue`](../../widgets/DocumentView/Database/DatabaseViewWidget.vue) — view/configuration transitions can only observe `false`; ordinary commit has no failure result at all.
+- [`../../entities/databaseValue/useDatabaseValueWrite.ts`](../../entities/databaseValue/useDatabaseValueWrite.ts) — the entity writer forwards the service rejection and does not replace it with a separate handled feature error outcome.
+
+Basis:
+
+- [`../AGENTS.md`](../AGENTS.md) — a feature must handle loading, cancel, reset, success, and error states explicitly.
+- [`../../AGENTS.md`](../../AGENTS.md) — source-code error policy requires boundary failures to retain the raw runtime cause rather than silently discarding actionable failure context.
+- [`../../../.agents/skills/diagnostic-events/SKILL.md`](../../../.agents/skills/diagnostic-events/SKILL.md) — when a handled failure is reported, preserve the real error/cause and do not replace it with a synthetic classifier-only representation.
+- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — error semantics and failure paths are part of semantic review even when automated checks are green.
+
+Risk: a rejected inline write leaves the draft recoverable but gives the user/caller no explicit error outcome beyond a blocked transition, and the original failure context is unavailable to the feature-level handling path. A commit can therefore fail without a truthful feature error state/result.
+
+Required final state: keep the single recoverable draft/session and transition blocking, but represent persistence failure explicitly at the feature owner without discarding the original cause. The owning flow must have a truthful failure outcome that can be handled through existing user-facing/diagnostic policy. Do not add a classifier, manager, provider, second draft/session state, or move persistence back to the widget.
+
+Verification: focused feature tests must prove the failure outcome retains the original cause (directly or as the cause of the project-standard error), keeps the exact draft recoverable, clears the failure on the defined retry/reset path, and still blocks dependent transitions until persistence succeeds.
 
 ## Minor issues
 
