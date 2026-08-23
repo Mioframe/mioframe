@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **architecture accepted; production virtualization/profiling and CI-static cleanup complete; final quality correction ready and required before merge**.
+Status: **architecture accepted; production virtualization/profiling and CI-static cleanup complete; quality correction implemented; required mutation proof still blocked**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -9,7 +9,8 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - final semantic correction: `docs/database-virtualization-final-correction-handoff.md`, `docs/database-virtualization-final-correction-preflight.md`;
 - CI-static cleanup: `docs/database-virtualization-ci-cleanup-handoff.md`, `docs/database-virtualization-ci-cleanup-preflight.md`;
-- current full-review correction: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
+- current full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
+- active review findings: `src/features/databaseInlineValueEdit/REVIEW.md` and `src/widgets/DocumentView/Database/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`.
 
 ## Goal
@@ -123,7 +124,7 @@ The local widget root moves with slot content when tooltip composition teleports
 
 Rows and mounted property headers are measured through the shared per-instance `vItem`. TanStack owns measured size and scroll correction.
 
-Production wrapping remains intact. A mounted property may use public virtual-item `size` as remount `min-width`; no parallel width map exists.
+Production wrapping remains intact. A mounted property may use public virtual item `size` as remount `min-width`; no parallel width map exists.
 
 Native sticky header behavior remains presentation-owned. The trailing action column stays mounted for each mounted logical row and remains outside property virtualization.
 
@@ -209,7 +210,7 @@ The Database virtualization product scenarios have one dedicated root applicatio
 
 with persistent project applicability `both`.
 
-The historical `tests/e2e/databaseViewsAndQueryFlows.spec.ts` retains `desktop` applicability. Virtualization source impact selects the dedicated spec explicitly through `scripts/lib/e2eRisk.ts`, including the new `features/databaseInlineValueEdit` owner.
+The historical `tests/e2e/databaseViewsAndQueryFlows.spec.ts` retains `desktop` applicability. Virtualization source impact selects the dedicated spec explicitly through `scripts/lib/e2eRisk.ts`, including the `features/databaseInlineValueEdit` owner.
 
 Final product proof covers:
 
@@ -228,7 +229,7 @@ Product tests use public DOM/user behavior and must not read private virtualizer
 
 The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline and final S0/G1 revalidation are complete. G1 remains bounded and the final three G1 samples observed no Long Tasks.
 
-The current quality correction changes FSD placement/wiring, resolving interaction targeting/presentation, a template binding, and E2E ownership metadata/file placement. It must not change virtualization/geometry or the measured short-to-full rendering algorithm.
+The quality correction changes FSD placement/wiring, resolving interaction targeting/presentation, a template binding, and E2E ownership metadata/file placement. It does not change virtualization/geometry or the measured short-to-full rendering algorithm.
 
 Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
 
@@ -248,6 +249,7 @@ Do not rerun performance evidence unless implementation crosses those boundaries
 - private virtualizer markers in product proof;
 - broad historical views/query mobile reclassification merely to host virtualization proof;
 - broad cleanup of pre-existing Database widget debt;
+- weakening mutation thresholds/configuration or excluding touched production behavior to make verification pass;
 - worker/query/storage optimization without new evidence;
 - sleeps, force, retries-as-success, timeout inflation, or tolerance weakening.
 
@@ -261,8 +263,14 @@ Final semantic correction: **complete**.
 
 CI-static cleanup: **complete**.
 
-Fresh full-PR code-health/FSD/Vue/testing review: **blocked by one resolving-interaction blocker, two major ownership issues, and one minor Vue-template issue**.
+Quality-correction implementation: **complete and architecture-reviewed** — inline-edit ownership is feature-correct, resolving State/Ripple targeting is corrected, toolbar controlled-state binding is normalized, and virtualization product E2E has a dedicated audited owner.
 
-Current quality-correction handoff/preflight: **ready**.
+Application-E2E ownership review: **resolved**.
 
-Merge readiness: **not yet; complete the quality correction, re-review the full PR, then require green exact-head GitHub CI**.
+Focused type-check/unit/component proof: **passing**.
+
+Required mutation proof: **blocked** — the current verifier-managed mutation run scores 32.84% across the touched feature/widget source against the repository breaking threshold of 60%. Active proof findings live in the owner-local `REVIEW.md` files.
+
+Exact-head GitHub CI: **not green while mutation verification is unresolved**.
+
+Merge readiness: **not yet; close the mutation-proof findings, re-review the resulting correction, then require green exact-head GitHub CI**.
