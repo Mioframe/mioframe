@@ -1,6 +1,6 @@
 # Database virtualization production results — PR #217
 
-> **Current validity:** structural boundedness is confirmed on the current geometry implementation, but responsiveness acceptance is blocked. The retained `68a71e89...` S0/G1 baseline was fast and observed zero Long Tasks; the fresh current-geometry revalidation below remained bounded but measured materially slower usable-state completion and repeated 291–429 ms Long Tasks. Treat the fresh result as regression evidence requiring same-environment attribution, not as accepted final performance.
+> **Current validity:** structural boundedness is confirmed on the current geometry implementation, but responsiveness acceptance is blocked. The retained `68a71e89...` S0/G1 baseline was fast and observed zero Long Tasks; a later current-geometry temporary run remained bounded but measured materially slower usable-state completion and repeated 291–429 ms Long Tasks. That later run must now be reproduced or rejected on the current PR head through the canonical verifier-managed E2E environment before it is used to select a production correction.
 
 Date: 2026-08-23  
 Branch: `fix/database-large-data-performance`  
@@ -183,12 +183,22 @@ Findings:
 - Deep logical row/property/value correctness passed in every sample.
 - Responsiveness does **not** pass acceptance. Compared with the retained `68a71e89...` revalidation, median usable time is about 5.3× slower for S0 and 5.7× slower for G1, and every fresh sample contains one or more Long Tasks well above the 100 ms research target.
 - The slowdown affects S0 as well as G1, so the evidence does not support a scale-only explanation.
-- The current evidence cannot distinguish a production regression from a changed measurement environment/protocol. Per the profiling contract, attribution is required before geometry, worker/query, paging, cache, or other optimization changes are justified.
+- This run is retained as warning evidence, but the next coding-agent proof must reproduce or reject it through the canonical focused verifier-managed E2E lane before any production owner is selected.
 
-## Required attribution follow-up
+## Required current-head verifier follow-up
 
-Reproduce `68a71e89...` and the current production implementation using the **same** temporary runner and environment. Keep dataset seed, build/preview mode, browser version, viewport, worker count, fresh-context policy, in-page observer, and correctness checks identical.
+Do **not** run historical refs through manual checkout, worktree, bisect, or other coding-agent Git orchestration.
 
-- If `68a71e89...` is similarly slow under the same runner/environment, fix the measurement environment/protocol before making a production conclusion.
-- If `68a71e89...` remains materially faster, isolate the first production regression between the two states and route the correction to the actual owner.
-- After any production correction, collect three fresh S0 and three fresh G1 samples before final performance acceptance.
+Create a temporary nested spec at `tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts` and collect exactly three current-head S0 plus three current-head G1 samples through:
+
+```bash
+pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts
+```
+
+Keep the established 640 × 480 Chromium shape, real Short view -> Full view action, deterministic sparse dataset, in-page timing observer, mounted counts, and deep sentinels. Remove the temporary diagnostic spec before handoff.
+
+Classify only whether the slowdown is `reproduced`, `not reproduced`, or `ambiguous` in the verifier-owned environment.
+
+- If reproduced, stop and route a separate current-head attribution task before production correction.
+- If not reproduced, the architect decides whether this retained slow run was an environment/protocol mismatch and whether performance acceptance can close.
+- If ambiguous, stop with raw evidence; do not add retries, sleeps, broader infrastructure, or historical Git execution.
