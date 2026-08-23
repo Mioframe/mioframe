@@ -5,36 +5,41 @@ Verdict: blocked
 ## Scope reviewed
 
 - PR #217 current Database table virtualization and root-to-table geometry.
-- Fresh S0/G1 production revalidation reported for the current runtime/geometry implementation.
-- Historical accepted S0/G1 baseline at `68a71e89d03713452946819cb52ba80a64157424`.
-- Current bounded-DOM, responsiveness, and performance-attribution contracts.
+- Current bounded-DOM and deep-correctness evidence.
+- Retained historical S0/G1 evidence.
+- Later current-geometry slowdown measurement and its proof workflow.
 
 ## Blockers
 
-### B1 — Fresh S0/G1 keeps DOM bounded but exposes a material main-thread responsiveness regression
+### B1 — Current responsiveness must be reproduced in the verifier-owned environment
 
 Owner: `src/entities/databaseData`
 
-Problem: the required fresh measurement now exists, but it does not satisfy performance acceptance. The measured implementation keeps the bounded mounted-work invariant, yet both the small control and 30,000 × 300 stress case are several times slower than the retained accepted baseline and repeatedly produce long main-thread blocks far above the project research target. The current evidence does not yet establish whether the regression is caused by the newer table-owned geometry path or by a measurement-environment/protocol mismatch, so changing geometry before attribution would be speculative.
+Problem: current production structurally satisfies the bounded mounted-work invariant, but the latest temporary measurement reported S0/G1 usable-state delays of roughly 1.6–2.5 seconds and repeated 291–429 ms Long Tasks. That measurement was not produced through the canonical focused verifier workflow, and the attempted historical A/B follow-up required manual Git/worktree orchestration that proved unsuitable for the coding-agent workflow. The performance blocker therefore remains, but the next proof must be narrower and verifier-owned.
 
 Evidence:
 
-- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — retained `68a71e89...` S0 median usable 304.9 ms and G1 median usable 350.5 ms, with zero observed Long Tasks in all six samples.
-- Fresh revalidation on production state `8d62ba1f8adc66ebb82dd0734afc82824e112f6c` reported S0 usable 1582.5–1950.8 ms with 291–313 ms worst Long Tasks, and G1 usable 1950.7–2516.8 ms with 301–429 ms worst Long Tasks; all samples still mounted 12 rows / 8 headers / 96 expensive cells and passed deep correctness.
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current measured rendering owns root/table bounding reads, mutation-triggered refresh, and `onUpdated(updateSurfaceBounds)` inside the native-table owner.
-- The tracked delta after measured state `8d62ba1...` changes only tests, so production/geometry remained equivalent for the reported measurement.
+- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — historical `68a71e89...` S0/G1 evidence is fast and structurally bounded; later current-geometry measurement is structurally bounded but reports the slowdown and Long Tasks.
+- [`../../../docs/database-virtualization-performance-attribution-handoff.md`](../../../docs/database-virtualization-performance-attribution-handoff.md) — active replacement contract requires current-head reproduction only through `pnpm verify --only e2e`.
+- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current table implementation remains the measured product owner; no production correction is authorized by the current diagnostic pass.
 
 Basis:
 
-- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — the responsiveness research target is no switch-associated main-thread block above 100 ms; when a timing target misses, attribute the remaining work before changing architecture.
-- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — current geometry performance must be accepted on the final runtime implementation, and the geometry mechanism should change only when focused diagnosis establishes a regression.
+- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — switch-associated main-thread work above the 100 ms research target requires diagnosis before performance acceptance.
+- [`../../../.agents/skills/verification/SKILL.md`](../../../.agents/skills/verification/SKILL.md) — coding-agent browser diagnostics use focused verifier-managed proof; repository-wide final verification remains architect-owned.
 - [`../../../AGENTS.md`](../../../AGENTS.md) — main-thread work must remain bounded for large datasets and mobile browsers.
 
-Risk: the original freeze is structurally prevented by bounded DOM, but a short-to-full view switch still spends roughly 1.6–2.5 seconds reaching usable state and contains repeated 291–429 ms main-thread blocks in the measured environment. Accepting this would leave the core responsiveness goal unproved and potentially materially degraded.
+Risk: merging without canonical current-head responsiveness evidence could leave the original freeze replaced by a reproducible 1.6–2.5 second interaction delay, while treating a noncanonical measurement as definitive could also trigger unnecessary architecture changes.
 
-Required final state: first reproduce the historical `68a71e89...` baseline and the current production implementation with the same temporary measurement runner and environment. If the historical implementation is also slow, correct the measurement environment/protocol before drawing a production conclusion. If the historical implementation remains materially faster, isolate the first production regression between the two states and route the correction to the actual owner. Preserve the accepted virtualization architecture unless attribution proves it insufficient.
+Required final state: collect exactly three S0 and three G1 samples on the current PR head through the focused verifier-managed application-E2E lane, preserving the established timing, bounded-DOM, and deep-correctness observations. Classify only whether the slowdown is reproduced, not reproduced, or ambiguous. If reproduced, stop and route a separate current-head attribution task. If not reproduced, the architect evaluates whether the earlier result was an environment/protocol mismatch and whether performance acceptance can close.
 
-Verification: same-environment A/B S0/G1 evidence using identical production build/preview, Chromium, viewport, worker count, dataset seed, fresh-context policy, in-page timing observer, mounted counts, and correctness sentinels. After an identified production correction, repeat three current S0 and three current G1 samples before acceptance.
+Verification: one temporary nested diagnostic spec executed only through:
+
+```bash
+pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts
+```
+
+The temporary spec must be removed before handoff. No historical checkout/worktree or direct Playwright/Vite execution is part of this proof.
 
 ## Major issues
 
@@ -50,9 +55,11 @@ None.
 
 ## Items not required
 
-- Repeating the complete R1/R2/R3/R4/C1/C2/C3 matrix before attribution is not required.
-- Worker/query/storage redesign, paging, indexes, or caches are not justified without attribution.
+- Historical-ref A/B execution by the coding agent.
+- First-bad commit localization before canonical current-head reproduction.
+- Full R1/R2/R3/R4/C1/C2/C3 matrix.
+- Worker/query/storage redesign, paging, indexes, or caches.
 
 ## Unresolved questions
 
-- Whether the fresh slowdown is caused by current production runtime/geometry or by a changed measurement environment/protocol remains unresolved. Same-environment A/B evidence is required before selecting a coding correction.
+- Whether the reported current slowdown reproduces inside the canonical verifier-owned E2E environment.
