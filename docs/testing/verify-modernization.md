@@ -1,6 +1,6 @@
 # Verify modernization
 
-Status: **implementation substantially complete; Pass E production-build input ownership is reopened after full PR review; two output minors and the mandatory benchmark remain**.
+Status: **implementation substantially complete; Pass E production-build input architecture is redesigned and ready but not yet implemented; two output minors and the mandatory benchmark remain**.
 
 Branch: `refactor/verify-modernization-finish`  
 PR: `#216`
@@ -15,7 +15,7 @@ This document records current implementation/review/benchmark status. Canonical 
 - `docs/testing/verify-change-classification.md` — repository classification;
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact architecture;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — current Pass E architecture;
+- `docs/testing/verify-release-impact-correction.md` — current ready Pass E architecture;
 - `docs/testing/verify-finish-plan.md` — remaining integration order;
 - active `REVIEW.md` artifacts — unresolved findings.
 
@@ -60,7 +60,7 @@ Implemented and accepted through one explicit high-risk target registry shared b
 
 ### Pass E — release impact
 
-**Open: production-build input ownership architecture ready; implementation pending.**
+**Open: production-build input architecture ready; implementation pending.**
 
 Closed and retained:
 
@@ -80,7 +80,7 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The repeated ownership failure triggered the repository stop rule. The new architecture therefore defines mechanisms, not example paths:
+The repeated ownership failure triggered the repository stop rule. The architecture has been redesigned around mechanisms rather than examples:
 
 ```text
 static build-control inputs
@@ -91,7 +91,7 @@ public/** artifact population
 dependency-install control
 ```
 
-The complete decision, consumer sets, fail-closed rules and independent proof matrix are in `verify-release-impact-correction.md`.
+The complete ready decision, consumer sets, fail-closed rules and independent proof matrix are in `verify-release-impact-correction.md`.
 
 Ordinary `src/**` is not promoted to release-impact merely because Vite bundles it; existing scenario/lane ownership remains unchanged.
 
@@ -122,7 +122,7 @@ accepted risks: 0
 
 Blockers:
 
-1. Pass E production-build input ownership implementation is incomplete against the redesigned mechanism-based boundary;
+1. ready Pass E mechanism-based production-build ownership is not yet implemented/reviewed;
 2. the mandatory representative benchmark is not yet recorded.
 
 Minor findings:
