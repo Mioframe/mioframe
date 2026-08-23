@@ -9,7 +9,8 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - active review findings: `src/entities/databaseData/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`;
-- completed sparse all-string diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`.
+- completed sparse all-string diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
+- active heterogeneous attribution: `docs/database-virtualization-heterogeneous-attribution-handoff.md`, `docs/database-virtualization-heterogeneous-attribution-preflight.md`.
 
 ## Goal
 
@@ -103,17 +104,18 @@ If attribution later proves it significant, choose the smallest correction that 
 
 ## Heterogeneous attribution requirement
 
-Before the next production performance correction, reproduce the failing class with one deterministic heterogeneous fixture through repository verifier surfaces.
+Before the next production performance correction, reproduce the failing class with deterministic heterogeneous fixtures through repository verifier surfaces.
 
-The attribution proof must:
+The active attribution proof must:
 
-1. run the same fixture and product actions in desktop Chrome and Firefox;
-2. cover Short -> Full and representative sustained vertical/horizontal scrolling;
-3. retain the existing sparse all-string fixture as a fast control;
+1. use verifier-managed desktop Chromium, because the current application-E2E verifier has no Firefox project;
+2. cover Short -> Full and representative vertical/horizontal wheel scrolling;
+3. retain the accepted sparse all-string result as the fast control;
 4. record mounted outer rows/headers/cells and main-thread responsiveness/Long Tasks;
-5. narrow the discriminator with minimal fixture variants rather than production changes.
+5. distinguish scalar String/Number/Date/Boolean composition from representative relation/nested-Database content;
+6. narrow the first reproducing render path before selecting a production correction owner.
 
-Start with the smallest representative property mix. If it reproduces, narrow by property/render path. In particular, distinguish ordinary scalar types from relation/nested-Database content before selecting a correction owner.
+Firefox remains relevant operator comparison evidence, but adding a Firefox application-E2E project is not part of PR #217 attribution unless separately architected.
 
 Stop attribution once the smallest reproducible path and narrowest actual owner are established. Do not optimize worker/query/storage, shared virtualization, geometry, or Material components speculatively.
 
@@ -140,13 +142,12 @@ The visual border/radius contract requires separate bounded visual-regression pr
 ## Required scenarios before acceptance
 
 1. Sparse all-string S0/G1 remains fast and bounded.
-2. A deterministic heterogeneous fixture matching the failing class is responsive in Chrome.
-3. The same heterogeneous fixture is compared in Firefox so the engine-specific difference is understood.
-4. Short -> Full has no material perceptible freeze in the failing heterogeneous Chrome case.
-5. Sustained vertical and horizontal scrolling has no material repeated jank in that case.
-6. Mounted outer work remains bounded and deep correctness passes.
-7. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
-8. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
+2. The minimal heterogeneous path that reproduces Chrome jank is identified and corrected.
+3. Short -> Full has no material perceptible freeze in the failing heterogeneous Chrome case.
+4. Sustained vertical and horizontal scrolling has no material repeated jank in that case.
+5. Mounted outer work remains bounded and deep correctness passes.
+6. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
+7. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
 
 ## Forbidden
 
@@ -156,6 +157,7 @@ The visual border/radius contract requires separate bounded visual-regression pr
 - generic geometry manager/provider or automatic root discovery;
 - changing shared `MDTable` merely to understand Database spacer conventions;
 - spacer DOM owning visible borders/radii;
+- adding a Firefox app-E2E project as an incidental diagnostic workaround;
 - test-only production seams;
 - timeout inflation, sleeps, force, retry-as-success, or weakened performance criteria;
 - direct Playwright/Vite/browser execution for required proof;
@@ -170,7 +172,7 @@ Bounded mounted-DOM invariant: **accepted**.
 
 Sparse all-string current-head responsiveness: **accepted in verifier-owned Chrome evidence**.
 
-Heterogeneous real-table responsiveness: **blocked; Chrome-only switch/scroll jank must be reproduced and attributed by render path**.
+Heterogeneous real-table responsiveness: **blocked; Chrome switch/scroll jank must be reproduced and attributed by render path**.
 
 Root/surface geometry ownership: **not selected as correction yet; candidate only**.
 
