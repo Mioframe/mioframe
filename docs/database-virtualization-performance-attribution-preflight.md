@@ -1,25 +1,22 @@
 # Database virtualization performance diagnostic preflight
 
-Status: **superseded; do not execute**.
+Status: **superseded — completed; do not execute again**.
 
-This preflight belonged to the now-superseded current-head Short view -> Full view diagnostic.
+The sparse all-string current-head diagnostic owned by this preflight completed successfully through the verifier and did not reproduce the reported general slowdown.
 
-Manual Chrome testing exposed additional in-scope product regressions:
+Accepted result:
 
-- remaining freeze on Short -> Full;
-- perceptible freezes/jank during table scrolling;
-- broken table border/corner-radius appearance.
+- S0 median usable 281.1 ms;
+- G1 median usable 321.5 ms;
+- zero Long Tasks in all six samples;
+- mounted 12 rows / 8 headers / 96 expensive cells;
+- deep correctness passed;
+- temporary diagnostic spec removed.
 
-The previous preflight covered only S0/G1 switch timing and prohibited production correction, so it is no longer a complete implementation contract.
+This completed pass is now only the fast all-string control.
 
-Do not create `tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts` from this document and do not run the old switch-only pass as the next PR step.
+Manual testing subsequently established a different failing class: a real Database with heterogeneous property types janks in Chrome during Short -> Full and scrolling, while Firefox on the same laptop does not show the same issue. The old all-string pass must not be repeated as the next task.
 
-The replacement architecture/correction preflight must cover, together:
+The active next architecture requirement is type-sensitive browser attribution using one deterministic heterogeneous fixture in Chrome and Firefox, with the all-string case retained as control. Attribution must cover both view switching and sustained vertical/horizontal scrolling and must narrow the failing property/render path before any production correction owner is selected.
 
-1. root-to-surface geometry refresh ownership and avoidance of virtual-range-update hot-path layout reads;
-2. Short -> Full responsiveness;
-3. representative steady-state vertical and horizontal scrolling responsiveness;
-4. preservation of pre-virtualization table borders and corner radii despite spacer DOM;
-5. bounded mounted rows/properties/cells and existing correctness/accessibility behavior.
-
-Browser proof must use repository verifier commands. Coding agents must not use historical checkout/worktree/bisect orchestration or direct Playwright/Vite/browser commands.
+Required browser diagnostics continue to run through repository `pnpm verify` surfaces. Coding-agent historical checkout/worktree/bisect and direct Playwright/Vite/browser orchestration remain forbidden.
