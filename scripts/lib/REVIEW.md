@@ -24,7 +24,12 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The full audit also confirms that the architecture must account for current TypeScript/build metadata and `pnpm-workspace.yaml` rather than defining completeness from only those four examples.
+The complete mechanism audit also covers:
+
+- production Vite env-file discovery when such files are tracked;
+- current TypeScript source/config projects that can affect Vite transformation/config loading;
+- the complete `public/**` artifact population copied by Vite;
+- `pnpm-workspace.yaml`, which controls allowed dependency build scripts used by the installed build toolchain.
 
 This is a repeated ownership-completeness failure, so another exact-path patch is forbidden by the repository stop rule.
 
@@ -40,7 +45,7 @@ The resolved boundary is mechanism-based:
 - retained static production-build support;
 - complete current Browserslist/PostCSS/PWA-assets root discovery families;
 - production Vite env filenames when tracked;
-- current production TypeScript config chain, with unknown root `tsconfig*.json` fail-closed;
+- current production/config TypeScript chain, with unknown root `tsconfig*.json` fail-closed;
 - complete `public/**` production artifact population;
 - current `pnpm-workspace.yaml` install-control input.
 
