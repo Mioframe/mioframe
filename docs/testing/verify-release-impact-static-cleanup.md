@@ -30,4 +30,4 @@ The cleanup did not change release-impact ownership or planner behavior.
 
 This cleanup does **not** establish that Pass E as a whole is closed.
 
-The later review found a separate ownership-completeness failure for production-build inputs consumed through tool discovery, TypeScript/build metadata and artifact/file inputs. That architecture is now resolved in `verify-release-impact-correction.md` and remains pending implementation.
+The later review found a separate ownership-completeness failure for production-build inputs consumed through tool discovery, TypeScript/build metadata, artifact/file inputs and dependency-install control. That architecture is now resolved in `verify-release-impact-correction.md` and remains pending implementation.
