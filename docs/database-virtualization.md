@@ -36,15 +36,15 @@ The following decisions remain accepted and are not reopened by the new findings
 
 ## Accepted ownership outside the reopened integration boundary
 
-| Owner | Responsibility |
-| --- | --- |
-| `shared/ui/virtualization` | Generic one-axis collection virtualization and `vItem` measurement binding. |
-| `entities/databaseData` | Native Database table rendering, row/property virtual collections, spacer representation, logical accessibility, sticky action cells, and Database-local visual adaptation required by virtualization. |
-| `entities/databaseValue` | Narrow value read/write contracts used by inline editing. |
-| `features/databaseInlineValueEdit` | One active inline-edit session, serialized resolve/commit, recovery, and persistence-failure semantics. |
-| Database widget/composition | Physical-root choice, table/toolbar/relation composition, screen branches, view/configuration state, and cross-feature orchestration. |
-| service/worker | Canonical data/filter/sort/order. |
-| `shared/ui/Table` | Generic table presentation. It must not become Database-virtualization-aware merely to repair this consumer. |
+| Owner                              | Responsibility                                                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/ui/virtualization`         | Generic one-axis collection virtualization and `vItem` measurement binding.                                                                                                                            |
+| `entities/databaseData`            | Native Database table rendering, row/property virtual collections, spacer representation, logical accessibility, sticky action cells, and Database-local visual adaptation required by virtualization. |
+| `entities/databaseValue`           | Narrow value read/write contracts used by inline editing.                                                                                                                                              |
+| `features/databaseInlineValueEdit` | One active inline-edit session, serialized resolve/commit, recovery, and persistence-failure semantics.                                                                                                |
+| Database widget/composition        | Physical-root choice, table/toolbar/relation composition, screen branches, view/configuration state, and cross-feature orchestration.                                                                  |
+| service/worker                     | Canonical data/filter/sort/order.                                                                                                                                                                      |
+| `shared/ui/Table`                  | Generic table presentation. It must not become Database-virtualization-aware merely to repair this consumer.                                                                                           |
 
 Inline-edit ownership, persistence error semantics, product behavior decomposition, accessibility semantics, and existing service/entity sources of truth remain accepted from the earlier architecture and correction rounds.
 
