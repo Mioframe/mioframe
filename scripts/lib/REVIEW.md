@@ -11,11 +11,11 @@ Verdict: blocked
 
 ### B1 — Production-build ownership is not closed over real input mechanisms
 
-Owner: release-impact architecture / `scripts/lib/releaseRisk.ts`.
+Owner: `scripts/lib/releaseRisk.ts`.
 
-The release-spec execution correction remains accepted. The unresolved defect is on the production-build side: the planner currently owns statically imported Vite support but can still return `skip` for repository inputs consumed by the real production build through other mechanisms.
+The release-spec execution correction remains accepted. The unresolved defect is only on the production-build side: the planner can still return `skip` for repository inputs consumed by the real production build outside the static import boundary.
 
-Confirmed current missed examples include:
+Confirmed current missed examples:
 
 ```text
 .browserslistrc
@@ -24,43 +24,27 @@ pwa-assets.config.ts
 public/favicon.svg
 ```
 
-The complete mechanism audit also covers:
+The mechanism audit also covers production env discovery, TypeScript build/config metadata, the complete `public/**` artifact population and `pnpm-workspace.yaml` install control.
 
-- production Vite env-file discovery when such files are tracked;
-- current TypeScript source/config projects that can affect Vite transformation/config loading;
-- the complete `public/**` artifact population copied by Vite;
-- `pnpm-workspace.yaml`, which controls allowed dependency build scripts used by the installed build toolchain.
-
-This is a repeated ownership-completeness failure, so another exact-path patch is forbidden by the repository stop rule.
+This is a repeated ownership-completeness failure, so another example-only path patch is forbidden.
 
 Ready architecture handoff:
 
 ```text
 docs/testing/verify-release-impact-correction.md
-status: architecture redesigned and ready; implementation pending
+status: architecture simplified and ready; implementation pending
 ```
 
-The resolved boundary is mechanism-based:
+The accepted correction is deliberately small:
 
-- retained static production-build support;
-- complete current Browserslist/PostCSS/PWA-assets root discovery families;
-- production Vite env filenames when tracked;
-- current production/config TypeScript chain, with unknown root `tsconfig*.json` fail-closed;
-- complete `public/**` production artifact population;
-- current `pnpm-workspace.yaml` install-control input.
+- current positively-known production-build inputs → focused `artifact + build + managed-updates + release-smoke`;
+- `public/**` → the same focused consumer set because Vite copies the whole population;
+- production Vite env exact paths → the same focused set;
+- non-current paths inside confirmed Browserslist/PostCSS/PWA-assets/tsconfig families → fail closed to full six until audited;
+- `pnpm-workspace.yaml` → full six;
+- known non-production members remain negative.
 
-Known production-build mechanisms select their truthful consumer set:
-
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-Only explicitly unresolved significant inputs inside the confirmed fail-closed family use full six checks.
-
-Do not introduce a generic dependency graph/registry, broad `config/**`, broad `*.config.*`, or all-root fallback.
+Do not mirror exhaustive third-party loader extension lists. Do not introduce a generic dependency graph/registry, broad `config/**`, generic `*.config.*`, or all-root fallback.
 
 ## Major issues
 
@@ -94,7 +78,7 @@ scripts/lib/releaseRisk.test.ts
 
 Required pass order:
 
-1. fresh independent test-author proof against the mechanism matrix in `verify-release-impact-correction.md`;
+1. fresh independent test-author proof against `verify-release-impact-correction.md`;
 2. separate implementation context;
 3. focused unit/static feedback only;
 4. return to architect for complete Pass E re-review.
