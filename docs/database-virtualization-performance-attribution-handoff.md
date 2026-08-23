@@ -1,36 +1,45 @@
 # Database virtualization performance diagnostic handoff
 
-Status: **superseded; do not execute**.
+Status: **superseded — completed; do not execute again**.
 
-This current-head switch-only diagnostic was prepared after the earlier historical A/B workflow proved unsuitable for coding-agent execution. It is no longer the active PR #217 handoff.
+This record describes the completed sparse all-string current-head diagnostic for PR #217.
 
-## Why it is superseded
+## Result
 
-Manual testing of the current PR implementation in Chrome established additional user-visible regressions that this pass does not cover:
+The verifier-managed diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` did **not** reproduce the previously reported general slowdown.
 
-- the Short view -> Full view freeze is shorter than before but still perceptible;
-- scrolling the large table also produces perceptible freezes/jank;
-- table borders and corner radii no longer match the pre-virtualization appearance.
+Command used:
 
-Repository inspection also shows two integration risks that require architecture review before another coding pass:
+```bash
+pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts
+```
 
-- `DatabaseDataTable.vue` now refreshes root/table bounding geometry from its own `onUpdated()` lifecycle, which runs on the component that changes virtual ranges during scrolling;
-- the virtual table inserts leading/trailing column spacers and top/bottom row spacers as physical first/last table children, while `MDTable.vue` derives borders and corner radii from structural first/last-child selectors.
+S0 100 × 8:
 
-The previous handoff measured only the view switch and explicitly prohibited production/architecture correction. It therefore cannot resolve the newly confirmed scrolling and visual regressions.
+- usable 269.8 / 281.1 / 283.8 ms;
+- median 281.1 ms;
+- zero Long Tasks;
+- mounted 12 rows / 8 headers / 96 expensive cells;
+- deep correctness passed.
 
-## Current state
+G1 30,000 × 300:
 
-- Shared `useVirtualCollection` / TanStack ownership is not rejected by these findings.
-- Bounded mounted work remains accepted evidence.
-- Database table integration architecture is reopened for:
-  - root-to-surface geometry refresh ownership/frequency;
-  - steady-state vertical/horizontal scrolling responsiveness;
-  - preservation of the existing `MDTable` visual boundary contract with spacer DOM.
-- No coding-agent performance diagnostic should be started from this file.
+- usable 323.5 / 321.5 / 305.9 ms;
+- median 321.5 ms;
+- zero Long Tasks;
+- mounted 12 / 8 / 96;
+- deep correctness passed.
 
-## Next step
+The temporary diagnostic spec was removed and no tracked diagnostic files remain.
 
-Resolve the Database table integration architecture from the new review findings, then prepare one replacement correction handoff covering implementation and faithful proof.
+## Interpretation
 
-Historical checkout/worktree orchestration remains forbidden for coding-agent proof. Browser verification must continue through repository `pnpm verify` surfaces.
+This result is accepted as the fast control for the deterministic sparse all-string fixture. It means the earlier non-verifier 1.6–2.5 s measurement is not evidence of a general current-runtime slowdown.
+
+Subsequent operator testing exposed a different failing class: a real Database with heterogeneous property types still janks in Chrome during Short -> Full and scrolling, while Firefox on the same laptop does not show the same problem.
+
+Therefore this completed diagnostic must not be rerun or expanded as the next coding task. The active requirement is the heterogeneous Chrome/Firefox attribution described in `docs/database-virtualization.md` and `src/entities/databaseData/REVIEW.md`.
+
+## Historical workflow restriction
+
+Do not use coding-agent historical checkout, worktree, bisect, reset, rebase, or direct Playwright/Vite/browser orchestration. Required diagnostics use repository verifier surfaces.
