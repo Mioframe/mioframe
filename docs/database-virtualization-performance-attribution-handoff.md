@@ -29,13 +29,13 @@ Real Database short filtered view (~20 rows) -> explicit Full view switch on S0 
 
 ## Boundaries and ownership
 
-| Owner | This pass |
-| --- | --- |
-| `entities/databaseData` | Performance review owner only until attribution identifies a concrete runtime owner. |
-| Database widget/composition | Inspect only if history/evidence places the first regression here. |
-| `shared/ui/virtualization` | Preserve; do not change without evidence. |
-| service/worker | Preserve; no optimization without attribution. |
-| temporary measurement tooling | Diagnostic-only, untracked/temporary, removed before handoff. |
+| Owner                         | This pass                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| `entities/databaseData`       | Performance review owner only until attribution identifies a concrete runtime owner. |
+| Database widget/composition   | Inspect only if history/evidence places the first regression here.                   |
+| `shared/ui/virtualization`    | Preserve; do not change without evidence.                                            |
+| service/worker                | Preserve; no optimization without attribution.                                       |
+| temporary measurement tooling | Diagnostic-only, untracked/temporary, removed before handoff.                        |
 
 No public API, state shape, persistence contract, or source of truth changes in this pass.
 
