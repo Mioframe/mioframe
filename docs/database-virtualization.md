@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **architecture accepted; production virtualization/profiling and CI-static cleanup complete; quality correction implemented; required mutation proof still blocked**.
+Status: **architecture accepted; production virtualization/profiling and CI-static cleanup complete; quality correction implemented; mutation-proof correction ready and required before merge**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -9,7 +9,8 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - final semantic correction: `docs/database-virtualization-final-correction-handoff.md`, `docs/database-virtualization-final-correction-preflight.md`;
 - CI-static cleanup: `docs/database-virtualization-ci-cleanup-handoff.md`, `docs/database-virtualization-ci-cleanup-preflight.md`;
-- current full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
+- implemented full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
+- current mutation-proof correction: `docs/database-virtualization-mutation-proof-correction-handoff.md`, `docs/database-virtualization-mutation-proof-correction-preflight.md`;
 - active review findings: `src/features/databaseInlineValueEdit/REVIEW.md` and `src/widgets/DocumentView/Database/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`.
 
@@ -225,11 +226,13 @@ Final product proof covers:
 
 Product tests use public DOM/user behavior and must not read private virtualizer markers.
 
+Mutation proof for the touched feature/widget owners is local to their colocated unit/component tests. It protects their public lifecycle and component branches and must not duplicate complete product E2E scenarios or expose private production state.
+
 ## Performance
 
 The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline and final S0/G1 revalidation are complete. G1 remains bounded and the final three G1 samples observed no Long Tasks.
 
-The quality correction changes FSD placement/wiring, resolving interaction targeting/presentation, a template binding, and E2E ownership metadata/file placement. It does not change virtualization/geometry or the measured short-to-full rendering algorithm.
+The mutation-proof correction is test-only except for one stale ownership-comment correction. It must not change virtualization/geometry or the measured short-to-full rendering algorithm.
 
 Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
 
@@ -249,7 +252,7 @@ Do not rerun performance evidence unless implementation crosses those boundaries
 - private virtualizer markers in product proof;
 - broad historical views/query mobile reclassification merely to host virtualization proof;
 - broad cleanup of pre-existing Database widget debt;
-- weakening mutation thresholds/configuration or excluding touched production behavior to make verification pass;
+- weakening mutation thresholds/configuration, excluding touched production behavior, adding test-only production seams, or changing production behavior merely to make mutation verification pass;
 - worker/query/storage optimization without new evidence;
 - sleeps, force, retries-as-success, timeout inflation, or tolerance weakening.
 
@@ -267,10 +270,12 @@ Quality-correction implementation: **complete and architecture-reviewed** — in
 
 Application-E2E ownership review: **resolved**.
 
-Focused type-check/unit/component proof: **passing**.
+Focused type-check/unit/component proof: **passing but insufficient for the mutation gate**.
 
-Required mutation proof: **blocked** — the current verifier-managed mutation run scores 32.84% across the touched feature/widget source against the repository breaking threshold of 60%. Active proof findings live in the owner-local `REVIEW.md` files.
+Mutation-proof correction contract: **ready** — extend owner-local tests over the meaningful public lifecycle/component contracts; production runtime behavior stays unchanged.
+
+Required mutation proof: **blocked until the correction is implemented** — the current verifier-managed mutation run scores 32.84% across the touched feature/widget source against the repository breaking threshold of 60%. Active proof findings live in the owner-local `REVIEW.md` files.
 
 Exact-head GitHub CI: **not green while mutation verification is unresolved**.
 
-Merge readiness: **not yet; close the mutation-proof findings, re-review the resulting correction, then require green exact-head GitHub CI**.
+Merge readiness: **not yet; implement the mutation-proof correction, re-review the resulting scope, then require green exact-head GitHub CI**.
