@@ -4,37 +4,25 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 Database widget proof after the mutation-proof correction.
-- `DatabaseToolbar` controlled configuration/add-item/property-patch contract.
-- `EditableInlineValue` activation, edit lifecycle, boolean semantics, sizing, resolving interaction, and current focused tests.
-- The accepted mutation-proof correction contract in `docs/database-virtualization-mutation-proof-correction-handoff.md`.
+- PR #217 `DatabaseToolbar` and `EditableInlineValue` proof after the review correction.
+- Keyboard commit/cancel, boolean writer wiring/ARIA, string sizing, exact property-patch identity, and resolving interaction.
 
 ## Blockers
 
-### B1 — Component tests still leave required public contracts weak or falsely exercised
+### B1 — Boolean writer test does not distinguish `toggleBoolean` output from an independently recomputed toggle
 
 Owner: `src/widgets/DocumentView/Database`
 
-Problem: the expanded tests cover most of the requested component surface and the component runtime was not changed by the mutation-proof correction, but several required focused contracts are still not faithfully proved.
+Problem: the corrected test now asserts the value passed to the stored-value writer, but its mock returns `true` while the current stored value is `false`. That is also the natural result of `!false`, so the test can still pass if production stops using the returned `toggleBoolean` value and recomputes the toggle independently.
 
 Evidence:
 
-- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — `ValueFieldStub` declares and emits literal `keydown.enter` / `keydown.escape` custom events. Production uses Vue key modifiers `@keydown.enter` / `@keydown.escape`, which filter the `keydown` event by `KeyboardEvent.key`; clicking those stub buttons therefore does not exercise the production field-keyboard listeners. The same test then receives its one commit from `interaction-outside` and its one cancel from tooltip close, so it can pass while the field Enter/Escape paths are not exercised.
-- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — the boolean case checks `postValue` call count but not that each write receives the value returned by `toggleBoolean`; it proves stored `false`, `mixed`, and defaulted `true` ARIA states but not stored `true`; the sizing test proves a long string and non-string zero but not the required short-string minimum.
-- [`DatabaseToolbar.test.ts`](./DatabaseToolbar.test.ts) — property patch forwarding asserts the current path/property/patch, but accepts any string as `documentId` rather than the exact mounted document identity.
-- [`../../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — explicitly requires faithful Enter/Escape component proof, writing the toggled boolean result, stored true/false plus supported undefined ARIA semantics, minimum/longer string sizing, and current path/document/property identity for property patching.
-- [Vue event handling — key modifiers](https://vuejs.org/guide/essentials/event-handling.html#key-modifiers) — `.enter`/`.escape` are key modifiers on keyboard events, not literal event-name suffixes.
+- [`EditableInlineValue.vue`](./EditableInlineValue.vue) intentionally persists the exact `newState` returned by `toggleBoolean(...)`.
+- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) sets stored value to `false`, mocks `toggleBoolean` to return `true`, then expects `postValue(true)`; the expected dependency result is not distinguishable from a naive direct toggle.
 
-Basis:
+Required final state: make the mocked `toggleBoolean` result observably distinct from a direct toggle of the test input, then assert every activation persists that exact mocked result. Do not change production behavior.
 
-- [`../../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires the listed meaningful toolbar/inline-value public branches to be protected by focused component tests.
-- [`../../../../.agents/skills/project-review/SKILL.md`](../../../../.agents/skills/project-review/SKILL.md) — required proof must be faithful to the behavior it claims to test; a green threshold does not by itself prove an unexercised contract.
-
-Risk: the focused suite can remain green if the field Enter/Escape wiring regresses, if boolean activation writes a value other than the toggle result, if stored-true ARIA semantics regress, if the short-string minimum changes, or if property patching uses a wrong document identity. Existing product E2E covers real keyboard user behavior, so this finding does not independently establish a widget runtime defect; it is an incomplete owner-local proof correction.
-
-Required final state: use a faithful `keydown` event with `KeyboardEvent.key` (or equivalent native fallthrough through the stub) to exercise field Enter and Escape; assert the stored-value writer receives the `toggleBoolean` result; cover stored `true` and the short-string minimum; assert the exact mounted document ID in property patch forwarding. Preserve production behavior and existing E2E ownership.
-
-Verification: focused widget unit tests and the unchanged verifier-managed mutation targets after the test correction.
+Verification: focused `EditableInlineValue` component test and existing mutation target.
 
 ## Major issues
 
@@ -47,6 +35,14 @@ None.
 ## Accepted risks
 
 None.
+
+## Resolved in this correction
+
+- field Enter/Escape now use real `keydown` events carrying `KeyboardEvent.key`;
+- stored `true` ARIA is covered;
+- short-string minimum sizing is covered;
+- toolbar property patch asserts the exact mounted `documentId`;
+- existing resolving-target/draft-recovery proof remains intact.
 
 ## Items not required
 
