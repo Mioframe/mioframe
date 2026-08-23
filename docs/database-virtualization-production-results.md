@@ -1,6 +1,6 @@
 # Database virtualization production results — PR #217
 
-> **Current validity:** historical baseline only. The final S0/G1 revalidation below was measured at `68a71e89d03713452946819cb52ba80a64157424`. `DatabaseDataTable.vue` later changed its root-to-table geometry path to table-owned bounding measurements with mutation/update-driven refresh. Per `docs/database-virtualization.md`, final S0/G1 performance acceptance must therefore be repeated on the final runtime/geometry implementation after the remaining corrections are complete. Preserve the measurements below as the comparison baseline; do not treat them as current-head acceptance.
+> **Current validity:** structural boundedness is confirmed on the current geometry implementation, but responsiveness acceptance is blocked. The retained `68a71e89...` S0/G1 baseline was fast and observed zero Long Tasks; the fresh current-geometry revalidation below remained bounded but measured materially slower usable-state completion and repeated 291–429 ms Long Tasks. Treat the fresh result as regression evidence requiring same-environment attribution, not as accepted final performance.
 
 Date: 2026-08-23  
 Branch: `fix/database-large-data-performance`  
@@ -154,6 +154,41 @@ a timing metric.
 - Compared with the retained full-matrix baseline above, these bounded samples
   showed no material correction regression **for the measured `68a71e89...` implementation**. No further optimization was made at that measured head.
 
-## Required current-head follow-up
+## Current-geometry revalidation — acceptance failed
 
-The current geometry implementation is newer than `68a71e89...`, so the final acceptance statement above is historical rather than current-head proof. After all remaining runtime/geometry corrections in PR #217 are complete, repeat the established S0/G1 protocol on the final head and append the new exact measurements here. Do not rerun the full matrix unless the new S0/G1 evidence exposes a scale-sensitive regression.
+Date: 2026-08-24  
+Branch: `fix/database-large-data-performance`  
+Measured production state: `8d62ba1f8adc66ebb82dd0734afc82824e112f6c`  
+Environment: Chromium 149.0.7827.55 on Linux, production Vite preview, 640 × 480 viewport, one worker, retries disabled, fresh browser context per sample.
+
+The temporary measurement tooling was removed after collection. The tracked changes after `8d62ba1...` and before the reviewed coding head changed only tests, so the production/geometry implementation remained equivalent for these measurements.
+
+| Case | Logical shape | Sample | Yield |  rAF | Usable | LT count/max/total |     Mounted | Correctness |
+| ---- | ------------: | -----: | ----: | ---: | -----: | -----------------: | ----------: | ----------- |
+| S0   |       100 × 8 |      1 |   4.8 |  0.9 | 1603.3 |      2 / 291 / 564 | 12 / 8 / 96 | pass        |
+| S0   |       100 × 8 |      2 |   3.9 | 12.6 | 1582.5 |      3 / 313 / 644 | 12 / 8 / 96 | pass        |
+| S0   |       100 × 8 |      3 |  20.9 |  1.2 | 1950.8 |      3 / 292 / 613 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      1 |  20.3 |  0.7 | 2516.8 |      3 / 301 / 697 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      2 |   4.6 |  1.4 | 1950.7 |      4 / 412 / 863 | 12 / 8 / 96 | pass        |
+| G1   |  30,000 × 300 |      3 |   3.3 | 14.5 | 2013.1 |      3 / 429 / 862 | 12 / 8 / 96 | pass        |
+
+| Case | Median yield | Median rAF | Median usable | Worst usable | Long-task total across samples | Worst Long Task |
+| ---- | -----------: | ---------: | ------------: | -----------: | -----------------------------: | --------------: |
+| S0   |          4.8 |        1.2 |        1603.3 |       1950.8 |                           1821 |             313 |
+| G1   |          4.6 |        1.4 |        2013.1 |       2516.8 |                           2422 |             429 |
+
+Findings:
+
+- Structural scalability still passes: every sample mounted 12 data rows, 8 property headers, and 96 expensive cells, including G1, so the 9,000,000 logical intersections were not materialized.
+- Deep logical row/property/value correctness passed in every sample.
+- Responsiveness does **not** pass acceptance. Compared with the retained `68a71e89...` revalidation, median usable time is about 5.3× slower for S0 and 5.7× slower for G1, and every fresh sample contains one or more Long Tasks well above the 100 ms research target.
+- The slowdown affects S0 as well as G1, so the evidence does not support a scale-only explanation.
+- The current evidence cannot distinguish a production regression from a changed measurement environment/protocol. Per the profiling contract, attribution is required before geometry, worker/query, paging, cache, or other optimization changes are justified.
+
+## Required attribution follow-up
+
+Reproduce `68a71e89...` and the current production implementation using the **same** temporary runner and environment. Keep dataset seed, build/preview mode, browser version, viewport, worker count, fresh-context policy, in-page observer, and correctness checks identical.
+
+- If `68a71e89...` is similarly slow under the same runner/environment, fix the measurement environment/protocol before making a production conclusion.
+- If `68a71e89...` remains materially faster, isolate the first production regression between the two states and route the correction to the actual owner.
+- After any production correction, collect three fresh S0 and three fresh G1 samples before final performance acceptance.
