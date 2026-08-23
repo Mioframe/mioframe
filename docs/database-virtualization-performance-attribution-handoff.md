@@ -6,7 +6,7 @@ This record describes the completed sparse all-string current-head diagnostic fo
 
 ## Result
 
-The verifier-managed diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` did **not** reproduce the previously reported general slowdown.
+The verifier-managed diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` did **not** reproduce a general slowdown.
 
 Command used:
 
@@ -34,7 +34,7 @@ The temporary diagnostic spec was removed and no tracked diagnostic files remain
 
 ## Interpretation
 
-This result is accepted as the fast control for the deterministic sparse all-string fixture. It means the earlier non-verifier 1.6–2.5 s measurement is not evidence of a general current-runtime slowdown.
+This result is accepted as the fast control for the deterministic sparse all-string fixture. The earlier non-verifier 1.6–2.5 s measurement is retained only as environment/protocol warning evidence, not as proof of a general current-runtime regression.
 
 Subsequent operator testing exposed a different failing class: a real Database with heterogeneous property types still janks in Chrome during Short -> Full and scrolling, while Firefox on the same laptop does not show the same problem.
 
