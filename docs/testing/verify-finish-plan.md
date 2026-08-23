@@ -1,24 +1,23 @@
 # Verify modernization finish plan
 
-Status: **PR #216 is blocked by release-impact ownership completeness and the required final benchmark; two verifier-output minor findings also remain**.
+Status: **PR #216 is blocked by reopened Pass E production-build input ownership and the mandatory final benchmark; two verifier-output minor findings also remain**.
 
-This document owns verifier-modernization packaging and final integration order. It does not redefine lane semantics owned by the architecture documents.
+This document owns final integration order. Lane semantics remain in their architecture documents.
 
 ## Authority
 
 - `docs/testing/architecture.md` — canonical testing policy;
-- `docs/testing/verify-target-architecture.md` — verifier target architecture and exit criteria;
-- `docs/testing/verify-agent-output.md` — agent-facing output contract;
-- `docs/testing/verify-change-classification.md` — repository metadata classification;
+- `docs/testing/verify-target-architecture.md` — target architecture and exit criteria;
+- `docs/testing/verify-agent-output.md` — output contract;
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact correction;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — reopened/resolved architecture for the final release-impact ownership correction;
-- `docs/testing/verify-modernization.md` — implementation/selection/benchmark status;
-- `scripts/lib/REVIEW.md` — active release-impact blocker;
-- `docs/testing/REVIEW.md` — active benchmark completion blocker;
-- `scripts/REVIEW.md` — active verifier-output minor findings.
+- `docs/testing/verify-release-impact-correction.md` — current Pass E architecture handoff;
+- `docs/testing/verify-modernization.md` — implementation/benchmark status;
+- `scripts/lib/REVIEW.md` — active Pass E production-build ownership finding;
+- `scripts/REVIEW.md` — two active output-contract minors;
+- `docs/testing/REVIEW.md` — mandatory benchmark blocker.
 
-Architecture/status/benchmark documents are architect-owned. Coding/test-author contexts must not edit them unless explicitly assigned.
+Documentation, review state, PR metadata, CI interpretation and merge readiness are architect-owned.
 
 ## Branch / PR
 
@@ -29,149 +28,119 @@ base: develop
 release intent: version:patch
 ```
 
-Any review, architecture, correction, documentation, or autofix commit changes the authoritative head. Require CI on the resulting exact head only.
+Any architect-owned documentation/review commit changes the authoritative head. Final CI evidence must match the resulting exact head.
 
 ## Closed areas
 
-The following remain closed unless new repository evidence directly contradicts them:
+Keep closed unless new repository evidence directly contradicts them:
 
-- Pass A core bounded-output architecture;
-- Pass B repository metadata classification;
-- Pass C unit impact, exact Vitest discovery, real `vitest related`, file-as-data and bounded-scan ownership;
-- single-owner application-E2E path architecture and independent real collector proof;
+- Pass A bounded-output architecture, except the two presentation minors below;
+- Pass B metadata classification;
+- Pass C unit impact / real `vitest related` / file-as-data / bounded scan ownership;
+- root-only application-E2E discovery and real collector proof;
 - Pass D explicit mutation registry shared with Stryker;
-- Pass F parallel CI topology and independent `release-version` gate;
-- artifact outer timeout correction (`artifact` now uses the shared derived Playwright outer deadline).
+- Pass F CI topology and independent `release-version`;
+- artifact 17-minute outer timeout;
+- release-spec execution inventory, exhaustive release-spec validation and unknown release-check validation.
 
-Do not reopen these areas to solve the remaining findings.
+## Blocker 1 — Pass E production-build input ownership
 
-## Blocker 1 — release-impact ownership completeness
+The latest full review found a repeated ownership-completeness failure. The release-spec execution correction is sound, but production-build ownership still covered only static Vite/config imports.
 
-Pass E is reopened at the ownership boundary, not at CI placement or timeout behavior.
-
-Confirmed gaps:
-
-```text
-config/plugins/pwa.ts
-→ real production Vite/PWA build input
-→ current releaseRisk.ts can skip
-```
-
-and the release Playwright spec population is not tied exhaustively to actual execution:
+The real production `vite build` also consumes repository inputs through:
 
 ```text
-new release spec
-→ can be unowned / skipped
-
-new managedUpdates*.spec.ts
-→ can be claimed by filename
-→ managedUpdatesProof.mjs may not execute it
+tool-discovered root configuration
+TypeScript/build metadata
+public artifact/file inputs
+dependency-install control
 ```
 
-The exact mapping validator also does not reject unknown release-check values.
+Current representative missed inputs include:
 
-The resolved correction architecture is in `verify-release-impact-correction.md`:
+```text
+.browserslistrc
+postcss.config.js
+pwa-assets.config.ts
+public/favicon.svg
+```
 
-- one narrow `scripts/release/releaseSpecInventory.ts` shared by actual release runners and `releaseRisk.ts`;
-- exhaustive bounded validation of `tests/e2e/release/**/*.spec.ts` against that execution inventory;
-- removal of filename-based managed-update spec ownership;
-- bounded production Vite configuration ownership for the actual current build-config surface (`config/plugins/**` plus its named support inputs), without broad `config/**` classification;
-- runtime validation of release-check identity.
+The architecture has therefore been redone at the mechanism boundary in `verify-release-impact-correction.md`.
 
-Do not implement this as another example-list patch.
+The resolved model keeps ownership local to `scripts/lib/releaseRisk.ts` and covers:
 
-## Blocker 2 — required benchmark
+- existing static Vite support inputs;
+- complete current Browserslist/PostCSS/PWA-assets config filename families;
+- production Vite env filenames when tracked;
+- current production TypeScript config chain, with unknown root `tsconfig*.json` fail-closed;
+- the complete `public/**` artifact population;
+- current `pnpm-workspace.yaml` install-control input.
 
-`verify-target-architecture.md` requires a representative post-integration benchmark and makes it part of the modernization exit criterion.
+Do not implement this as four exact mappings, a broad `config/**` fallback, an all-root fallback, or a generic registry/graph.
 
-Required recorded metrics:
+## Blocker 2 — mandatory benchmark
+
+The target architecture requires a representative post-integration benchmark with both:
 
 ```text
 1. critical-path / merge latency
 2. aggregate expensive compute
 ```
 
-The current semantic selection matrix is not a substitute for this measurement.
+Benchmark only after Pass E, the two output minors and full semantic review are clean. Use bounded real CI evidence; do not build permanent benchmark infrastructure unless the measurements justify a separate architecture decision.
 
-Benchmark only after the release-impact semantic correction and output minors are closed. Use bounded real CI/run evidence; do not build permanent benchmark infrastructure unless measurements separately justify it.
+The final record must include source run/change class, both metrics, interpretation, and explicit stop/reopen decision.
 
-The resulting documentation must record:
+## Output-contract minors
 
-- exact source run(s)/change class used;
-- critical-path measurement;
-- aggregate expensive-compute measurement;
-- interpretation against the target architecture;
-- explicit stop/reopen decision.
-
-## Minor findings — agent-facing output
-
-Two behavior-level output findings remain in `scripts/REVIEW.md`.
+Tracked separately in `scripts/REVIEW.md`.
 
 ### M1 — release-impact progress indexing
 
-`--only release-impact` is a multi-check grouping when more than one release check is runnable, but current progress suppresses index/total for every non-null `--only` label.
-
-Final rule:
-
 ```text
 resolved runnable count > 1
-→ indexed progress [verify i/n]
+→ [verify i/n]
 
 resolved runnable count == 1
-→ focused [verify]
+→ [verify]
 ```
 
-The decision must depend on the resolved runnable population, not merely `onlyLabel !== null`.
+Progress mode must depend on resolved runnable population, not merely whether `--only` is present.
 
 ### M2 — warning duplication
 
-A passed-with-warnings command currently emits warning detail immediately and the compact final summary emits the same warning state again.
+Normal mode must present a passed-with-warnings state once with actionable log/rerun information. Verbose mode may contain additional immediate diagnostics.
 
-Final rule:
-
-- normal mode: one compact warning presentation with actionable log/rerun pointer;
-- verbose mode: additional immediate diagnostic detail is allowed.
-
-Do not change proof selection or warning/failure semantics.
+Neither minor changes proof selection.
 
 ## Remaining order
 
 ```text
-1. implement the resolved release-impact ownership architecture with fresh independent proof
-2. architect review the complete release-impact population/execution boundary
-3. correct the two verifier-output minor findings with focused proof
-4. architect re-review the affected output contract
-5. run one complete PR-level semantic review
+1. implement the ready Pass E production-build mechanism correction with fresh independent proof
+2. architect review the complete Pass E boundary, including retained release-spec inventory
+3. correct the two verifier-output minors with focused proof
+4. architect review the output contract
+5. perform one complete PR-level semantic review
 6. remove resolved REVIEW.md artifacts
 7. obtain a stable exact-head CI run for the corrected implementation
-8. perform and record the mandatory representative benchmark from bounded real run evidence:
+8. perform and record the mandatory representative benchmark:
    - critical path / merge latency
    - aggregate expensive compute
-9. record the stop vs separate-follow-up decision in architect-owned docs
+9. record stop vs separate-follow-up decision in architect-owned docs
 10. require CI on the resulting final documentation head
 11. re-check current develop ancestry and exact PR head
 12. give merge-readiness verdict
-13. squash merge only when review, benchmark, and final exact-head gates are all satisfied
+13. squash merge only when semantic review, benchmark and exact-head CI are all satisfied
 ```
-
-## Version policy
-
-PR #216 remains an ordinary internal tooling/refactor PR into `develop`:
-
-```text
-version:patch
-```
-
-Same-repository CI owns exact PATCH materialization.
 
 ## Stop rule
 
-Stop verifier modernization only when all of the following are true:
+Stop verifier modernization only when:
 
-- release-impact ownership is closed over the required current populations;
-- output-contract findings are closed;
+- release-impact ownership is closed over all confirmed current production-build mechanisms and release execution populations;
+- output findings are closed;
 - full PR semantic review has no unresolved findings;
-- the representative benchmark records both required metrics and does not justify more verifier infrastructure;
-- the final exact-head GitHub CI is healthy.
+- both benchmark metrics are recorded and do not justify more infrastructure;
+- final exact-head CI is healthy.
 
-Further sharding, cross-job artifacts, dependency graphs, generic registries, task runners, retries, worker changes, or speculative optimization require a separate measured need and architecture decision.
+Further sharding, generic dependency graphs/registries, task runners, retries or speculative optimization require a separate measured need and architecture decision.
