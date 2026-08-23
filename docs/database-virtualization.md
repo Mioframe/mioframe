@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; Database table integration architecture reopened for geometry-refresh performance and visual-boundary compatibility; merge blocked**.
+Status: **shared virtualization architecture accepted; Database table integration remains blocked by Chrome-only heterogeneous-content responsiveness and visual-boundary regressions**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -9,60 +9,35 @@ Related current contracts:
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - active review findings: `src/entities/databaseData/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`;
-- superseded switch-only diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
-- accepted semantic/proof correction history remains in the existing `docs/database-virtualization-*-handoff.md` / `*-preflight.md` records.
+- superseded switch-only diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`.
 
 ## Goal
 
-Scale Database rendering to at least 30,000 rows and hundreds of properties, including 30,000 × 300 = 9,000,000 logical row/property intersections, while preserving exact filter/sort/view behavior, editing, relations, native table semantics, accessibility, stable visual appearance, and desktop/Mobile Chrome usability.
+Scale Database rendering to at least 30,000 rows and hundreds of properties, including 30,000 × 300 = 9,000,000 logical row/property intersections, while preserving exact filter/sort/view behavior, editing, relations, native table semantics, accessibility, stable appearance, and responsive desktop/mobile use.
 
 Primary structural invariant:
 
 > For fixed viewport and overscan, mounted expensive rows, properties, and cells are bounded independently of total logical dataset size.
 
-Responsiveness and presentation are also required product behavior. Bounded DOM alone is not acceptance when the view still freezes during switching/scrolling or the table loses its established border/radius appearance.
+Bounded DOM is necessary but not sufficient. Real heterogeneous databases must also remain responsive while switching views and scrolling.
 
-## Accepted virtualization architecture
+## Accepted architecture
 
-The following decisions remain accepted and are not reopened by the new findings:
+These decisions remain accepted:
 
 - `@tanstack/vue-virtual` is the only virtual-item range/measurement/cache engine.
-- `useVirtualCollection` is the only Mioframe shared virtualization boundary and its public API remains unchanged unless new evidence proves it insufficient.
-- Database uses independent row and property virtual collections over the existing complete canonical sources.
+- `useVirtualCollection` remains the Mioframe shared virtualization boundary.
+- Database uses independent row and property virtual collections over canonical complete sources.
 - Native `<table>` flow remains the renderer.
-- Only mounted row × mounted property intersections instantiate expensive cells.
+- Only mounted row × mounted property intersections instantiate expensive outer cells.
 - Service/worker remains canonical for row membership/filter/sort/order.
-- No UI-side paging/source reconstruction, worker redesign, generic virtual grid/table, second virtual-item geometry system, pinning, independent size maps, or virtual-item registry is justified.
+- No UI-side paging/source reconstruction, worker redesign, generic virtual grid/table, second geometry engine, independent size maps, or virtual-item registry is justified by current evidence.
 
-## Accepted ownership outside the reopened integration boundary
-
-| Owner                              | Responsibility                                                                                                                                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `shared/ui/virtualization`         | Generic one-axis collection virtualization and `vItem` measurement binding.                                                                                                                            |
-| `entities/databaseData`            | Native Database table rendering, row/property virtual collections, spacer representation, logical accessibility, sticky action cells, and Database-local visual adaptation required by virtualization. |
-| `entities/databaseValue`           | Narrow value read/write contracts used by inline editing.                                                                                                                                              |
-| `features/databaseInlineValueEdit` | One active inline-edit session, serialized resolve/commit, recovery, and persistence-failure semantics.                                                                                                |
-| Database widget/composition        | Physical-root choice, table/toolbar/relation composition, screen branches, view/configuration state, and cross-feature orchestration.                                                                  |
-| service/worker                     | Canonical data/filter/sort/order.                                                                                                                                                                      |
-| `shared/ui/Table`                  | Generic table presentation. It must not become Database-virtualization-aware merely to repair this consumer.                                                                                           |
-
-Inline-edit ownership, persistence error semantics, product behavior decomposition, accessibility semantics, and existing service/entity sources of truth remain accepted from the earlier architecture and correction rounds.
-
-## Source of truth
-
-- rows/order/filter/sort: existing `filteredIdList` exposed through `useDatabaseData`;
-- properties/order: existing `propertiesIdList`;
-- view selection: existing `useDatabaseViewSelection`;
-- values: existing Database value entity/service contracts;
-- top-level physical root: `.database-view`;
-- relation editor root: `.relation-value-field__data`;
-- inline/recursive relation preview root: Database-widget-owned local overflow element that physically contains the nested layout;
-- edit draft/persistence failure: `features/databaseInlineValueEdit`;
-- active source/shape configuration surface: widget-owned controlled state.
+Accepted ownership outside the unresolved performance discriminator remains unchanged: `entities/databaseData` owns Database table rendering/integration; Database value/property owners render their domain content; widgets compose nested relation/value behavior; `shared/ui/Table` remains generic presentation.
 
 ## Native table virtualization
 
-`DatabaseDataTable` still renders the logical structure through physical spacer DOM:
+`DatabaseDataTable` renders physical spacer DOM around the mounted logical range:
 
 ```text
 <table>
@@ -74,71 +49,83 @@ Inline-edit ownership, persistence error semantics, product behavior decompositi
 
 The action column remains outside horizontal property virtualization. Spacer DOM is presentation-only and excluded from logical accessibility semantics.
 
-The spacer representation itself is not rejected, but it must not redefine the visible outer border/corner contract of the table. The current implementation does so because `MDTable` derives visible corners/borders from physical first/last children while Database virtualization inserts spacers at those structural boundaries.
+### Visual boundary
 
-### Required visual boundary
+The current spacer structure conflicts with `MDTable` structural first/last-child border and radius rules. The corrected Database table must preserve the pre-PR visible outer border/corner appearance at logical boundaries in initial and scrolled states.
 
-The corrected Database table must preserve the pre-PR visible table appearance:
+This adaptation belongs to `entities/databaseData` unless a separate shared-UI review proves a generic `MDTable` defect. Do not make shared `MDTable` Database-virtualization-aware merely to repair this consumer.
 
-- outer border remains visually continuous;
-- top-left/top-right/bottom-left/bottom-right radii belong to the logical visible table boundary, not to hidden spacer cells/rows;
-- scrolling horizontally or vertically must not reveal broken/missing duplicate outer edges;
-- sticky action/header surfaces remain visually integrated;
-- spacer elements remain presentation-only.
+## Performance evidence — current interpretation
 
-This adaptation belongs to `entities/databaseData` unless evidence shows a generic `MDTable` defect affecting ordinary non-virtualized consumers. Do not change shared `MDTable` merely to teach it about Database spacer conventions.
+### Structural scalability
 
-## Root and surface geometry — architecture reopened
+Accepted:
 
-A Database virtualizer needs the truthful distance from its physical scroll root origin to the table collection surface.
+- all measured S0/G1 runs retain 12 mounted rows / 8 property headers / 96 expensive outer cells;
+- G1 does not materialize the 9,000,000 logical row/property intersections;
+- deep logical row/property/value correctness passes.
 
-The previous accepted revision moved root/table bounding ownership into `DatabaseDataTable` and refreshed it from that component's `onUpdated()` lifecycle. New evidence invalidates acceptance of that lifecycle boundary:
+### Canonical all-string control
 
-- the current table component is also the component whose mounted virtual ranges change during scrolling;
-- every such component update can therefore trigger root/table bounding refresh/layout reads;
-- manual Chrome testing now reports perceptible scrolling freezes;
-- the retained faster `68a71e89...` implementation kept equivalent surface refresh in the parent layout lifecycle rather than the virtual-range-rendering table component.
+The verifier-managed current-head all-string diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` is fast:
 
-Therefore the requirement is now:
+- S0 usable: 269.8 / 281.1 / 283.8 ms; median 281.1 ms;
+- G1 usable: 323.5 / 321.5 / 305.9 ms; median 321.5 ms;
+- zero Long Tasks in all six samples;
+- mounted work remains 12 / 8 / 96;
+- deep correctness passes.
 
-> Root-to-surface position measurement must not be driven by ordinary virtual-range updates.
+This is canonical verifier-owned evidence for the sparse all-string rectangular fixture.
 
-The replacement architecture must keep geometry truthful when the table actually moves relative to its physical root while avoiding surface-position measurement on steady-state row/property range rendering.
+A previous non-verifier current-geometry run reported 1.6–2.5 s usable times and 291–429 ms Long Tasks. Because the canonical verifier run on the same production implementation does not reproduce that behavior, the earlier result is retained only as environment/protocol warning evidence, not as proof of a general runtime regression.
 
-### Simplest viable direction
+### Real heterogeneous Chrome defect
 
-The preferred architecture for the next correction is to restore geometry ownership to the component that owns the concrete table surface placement relative to the physical root, rather than the virtual-range-rendering `DatabaseDataTable` lifecycle:
+Operator testing on the same laptop provides a different and now more relevant discriminator:
 
-- `DatabaseViewLayout` owns its table-surface placement for top-level and recursive Database composition;
-- `RelationValueFieldData` owns its table-surface placement inside the relation editor root;
-- those concrete composition owners provide the resulting narrow vertical/horizontal surface offsets to `DatabaseDataTable`;
-- `DatabaseDataTable` consumes those offsets but does not run root/table bounding refresh from its own virtual-range `onUpdated()` path.
+- a real Database containing different property types still has a perceptible Short -> Full delay in Chrome;
+- scrolling that table in Chrome produces freezes/jank;
+- Firefox on the same laptop does not exhibit the same problem.
 
-This intentionally re-allows narrow numeric surface-offset inputs because measured/current user evidence shows that hiding the geometry completely inside `DatabaseDataTable` couples layout measurement to its hot virtual-render lifecycle. The earlier prohibition is superseded.
+The all-string fixture therefore does not represent the failing content shape.
 
-Do not introduce a shared root manager, provider/inject context, automatic scroll-parent discovery, generic geometry service, or second virtual-item measurement/cache system. Two explicit local composition owners are preferable to a new abstraction.
+Different property types do not share one render path. `DatabasePropertyValueInline` dispatches Boolean, Number, String, Date, and Relation values to different UI owners. Relation content is especially distinct because a relation value may compose a nested `DatabaseViewLayout`/virtualized Database inside an outer cell.
 
-The final correction may refine the exact event/observer triggers inside those composition owners, but they must correspond to real surface movement/resize/composition changes rather than every virtual range update.
+## Root/surface geometry — candidate, not established root cause
 
-## Dynamic sizing and sticky UI
+The current `DatabaseDataTable` derives root-to-table surface offsets and refreshes root/table bounds from its own update lifecycle. This remains a plausible hot-path amplifier because the component also updates as virtual ranges change.
 
-Rows and mounted property headers continue to be measured through the shared per-instance `vItem`. TanStack owns measured size and scroll correction.
+However, the canonical fast all-string verifier run uses this same implementation. Therefore current evidence does **not** justify declaring the geometry lifecycle the sole/root cause or immediately restoring the historical numeric-offset architecture.
 
-Production wrapping remains intact. A mounted property may use public virtual item `size` as remount `min-width`; no parallel width map exists.
+Required rule:
 
-The trailing action column stays mounted for each mounted logical row and remains outside property virtualization. Sticky header/action behavior remains part of the required product and visual contract.
+> Do not change root/surface ownership until the heterogeneous Chrome reproduction shows that geometry refresh contributes materially to the failing path.
 
-## Inline editing and source/configuration behavior
+If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. Numeric surface offsets, composition-owned measurement, or another local mechanism may then be reconsidered from evidence; no generic geometry manager/provider or second virtual-item measurement system is justified now.
 
-The previously accepted inline-edit architecture remains unchanged:
+## Heterogeneous attribution requirement
 
-- one lifted session in `features/databaseInlineValueEdit`;
-- exact draft recovery on failed persistence;
-- serialized resolve/commit;
-- resolve before switching explicit view or opening source/shape configuration;
-- no second/local draft, registry, provider, generic manager, or widget-owned value persistence.
+Before the next production performance correction, reproduce the failing class with one deterministic heterogeneous fixture through repository verifier surfaces.
 
-The Database widget continues to own cross-feature screen/configuration decisions, while entities/services remain the source of truth for domain data.
+The attribution proof must:
+
+1. run the same fixture and product actions in desktop Chrome and Firefox;
+2. cover both Short -> Full and representative sustained vertical/horizontal scrolling;
+3. retain the existing sparse all-string fixture as a fast control;
+4. record mounted outer rows/headers/cells and main-thread responsiveness/Long Tasks;
+5. narrow the discriminator with minimal fixture variants rather than production changes.
+
+Start with the smallest representative property mix. If it reproduces, narrow by property/render path. In particular, distinguish ordinary scalar types from relation/nested-Database content before selecting a correction owner.
+
+Stop attribution once the smallest reproducible path and narrowest actual owner are established. Do not optimize worker/query/storage, shared virtualization, geometry, or Material components speculatively.
+
+## Dynamic sizing and nested content
+
+Rows and mounted property headers continue to be measured through the shared `vItem`; TanStack owns measured size and scroll correction.
+
+Production wrapping, progressive widths, sticky header/action surfaces, nested relation roots, recursive relation previews, and inline editing remain required behavior.
+
+A bounded outer `12 / 8 / 96` count does not prove nested relation content is cheap: a mounted relation cell may compose additional nested Database UI. Heterogeneous performance proof must therefore describe the rendered content shape, not only the outer logical matrix.
 
 ## Accessibility
 
@@ -146,83 +133,57 @@ Preserve native table semantics:
 
 - `aria-rowcount` = header + complete logical rows;
 - `aria-colcount` = complete logical properties + action column when present;
-- row `i` uses `aria-rowindex = i + 2`;
-- property `j` uses `aria-colindex = j + 1`;
-- action uses the trailing logical column index;
-- spacer/fill DOM is hidden from logical semantics;
-- no `role=list/listitem` override;
-- no ARIA-grid keyboard model.
-
-## Required user scenarios after the reopen
-
-The next correction must preserve all previously accepted product behavior and additionally prove the newly reported scenarios:
-
-1. Short filtered view -> Full view does not exhibit the current remaining perceptible freeze.
-2. Representative sustained vertical scrolling through a large Database does not exhibit the current repeated freezes/jank.
-3. Representative horizontal scrolling across a wide Database does not exhibit equivalent jank.
-4. Mounted rows/properties/cells stay bounded during switching and scrolling.
-5. Deep logical row/property/value sentinels remain correct after scrolling.
-6. Table outer borders and corner radii match the established pre-virtualization appearance at the initial/top-left state and after representative deep scrolling.
-7. Existing nested relation roots, dynamic row sizing, sticky surfaces, inline editing, and desktop/Mobile Chrome behavior remain correct.
+- logical row/property indices remain truthful;
+- spacer DOM is hidden from logical semantics;
+- no ARIA-grid keyboard model is introduced.
 
 ## Proof ownership
 
-Application E2E remains the owner of complete cross-owner product behavior in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
+Application E2E remains the owner of complete product scenarios in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
 
-Browser proof must cover real scrolling/geometry behavior through verifier-managed execution. Screenshots must not be embedded in behavior specs.
+Task-specific performance attribution may use temporary nested E2E diagnostics, but execution must go through `pnpm verify` surfaces. No direct Playwright/Vite/browser orchestration and no coding-agent historical checkout/worktree/bisect workflow.
 
-The visual border/radius contract needs bounded visual regression proof at the executable owner/location allowed by the current `docs/testing/migration-plan.md`. The correction preflight must inspect that plan before selecting the durable visual spec location. Visual proof owns stable appearance only; scrolling responsiveness remains browser/performance evidence.
+The visual border/radius contract requires separate bounded visual-regression proof at the executable owner/location allowed by the current testing migration plan. Screenshots prove stable appearance only; they do not prove scrolling performance.
 
-Task-specific performance evidence must include:
+## Required scenarios before acceptance
 
-- current corrected Short -> Full behavior;
-- representative vertical and horizontal scrolling behavior;
-- mounted work counts;
-- relevant Long Task / responsiveness observations using the existing profiling contract.
-
-Do not use direct Playwright/Vite/browser commands or coding-agent historical checkout/worktree/bisect orchestration. Use repository verifier surfaces.
-
-## Performance status
-
-Structural scalability is accepted: current measurements keep 12 mounted rows / 8 property headers / 96 expensive cells for S0/G1 and do not materialize the 9,000,000 logical intersections.
-
-Responsiveness is not accepted:
-
-- the later current-geometry measurement reported S0 usable 1582.5–1950.8 ms and G1 1950.7–2516.8 ms with repeated 291–429 ms Long Tasks;
-- operator Chrome testing confirms the Full-view freeze is shorter than the original defect but remains perceptible;
-- operator Chrome testing additionally confirms perceptible freezes during scrolling.
-
-The former switch-only verifier diagnostic is superseded. The next pass is an implementation correction after the geometry/presentation architecture above is reflected in a dedicated handoff/preflight, not another switch-only measurement pass.
-
-After correction, collect fresh verifier-managed evidence for S0 and G1 plus representative scrolling. The full R1/R2/R3/R4/C1/C2/C3 matrix is not required unless the corrected evidence exposes a new scale-specific uncertainty.
+1. Sparse all-string S0/G1 remains fast and bounded.
+2. A deterministic heterogeneous fixture matching the failing class is responsive in Chrome.
+3. The same heterogeneous fixture behaves consistently enough across Chrome/Firefox that any engine-specific difference is understood and intentionally handled.
+4. Short -> Full has no material perceptible freeze in the failing heterogeneous Chrome case.
+5. Sustained vertical and horizontal scrolling has no material repeated jank in that case.
+6. Mounted outer work remains bounded and deep correctness passes.
+7. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
+8. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
 
 ## Forbidden
 
-- replacing TanStack or adding a second range/size/cache/anchor engine without new evidence;
-- worker/query/storage redesign, paging, caches, or indexes before the table-integration correction is measured;
-- root/table surface bounding refresh from ordinary `DatabaseDataTable` virtual-range updates;
-- generic root/geometry manager, provider/inject context, or automatic scroll-parent discovery;
-- changing shared `MDTable` to understand Database virtualization unless a separate shared-UI review proves a generic defect;
-- spacer DOM becoming the visible border/radius boundary;
-- private virtualizer markers in product proof;
+- selecting geometry, TanStack, worker/query/storage, or Material as root cause before heterogeneous attribution;
+- replacing TanStack or adding a second range/size/cache engine without evidence;
+- paging/index/cache redesign before the actual failing render path is identified;
+- generic geometry manager/provider or automatic root discovery;
+- changing shared `MDTable` merely to understand Database spacer conventions;
+- spacer DOM owning visible borders/radii;
 - test-only production seams;
 - timeout inflation, sleeps, force, retry-as-success, or weakened performance criteria;
 - direct Playwright/Vite/browser execution for required proof;
 - coding-agent historical checkout/worktree/bisect orchestration;
-- unrelated widget/service cleanup.
+- unrelated cleanup.
 
 ## Readiness
 
-Shared/native virtualization capability: **accepted**.
+Shared virtualization: **accepted**.
 
 Bounded mounted-DOM invariant: **accepted**.
 
-Database table integration geometry lifecycle: **reopened; current table-owned `onUpdated` surface refresh is not accepted**.
+Sparse all-string current-head responsiveness: **accepted in verifier-owned Chrome evidence**.
+
+Heterogeneous real-table responsiveness: **blocked; Chrome-only switch/scroll jank must be reproduced and attributed by render path**.
+
+Root/surface geometry ownership: **not selected as correction yet; candidate only**.
 
 Database table visual compatibility: **blocked; borders/corner radii regressed under spacer DOM**.
 
-Inline-edit ownership/error semantics: **accepted**.
+Inline-edit/error/accessibility ownership: **accepted**.
 
-Application-E2E behavior decomposition: **accepted but incomplete for the newly reported scrolling responsiveness scenario**.
-
-Merge readiness: **blocked; prepare and implement one architecture-resolved Database table integration correction, then obtain fresh switch/scroll/visual proof and green exact-head GitHub CI**.
+Merge readiness: **blocked; attribute and correct the heterogeneous Chrome path, restore table visual boundaries, then obtain focused switch/scroll/visual proof and green exact-head GitHub CI**.
