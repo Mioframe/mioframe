@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **architecture accepted; implementation review reopened for persistence-error semantics, final geometry performance proof, and E2E stability**.
+Status: **architecture accepted; implementation semantics and product proof accepted; performance acceptance blocked pending attribution of the fresh current-geometry slowdown**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -8,10 +8,10 @@ Related current contracts:
 
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
 - final semantic correction: `docs/database-virtualization-final-correction-handoff.md`, `docs/database-virtualization-final-correction-preflight.md`;
-- CI-static cleanup: `docs/database-virtualization-ci-cleanup-handoff.md`, `docs/database-virtualization-ci-cleanup-preflight.md`;
+- final proof correction: `docs/database-virtualization-final-proof-handoff.md`, `docs/database-virtualization-final-proof-preflight.md`;
 - implemented full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
 - superseded mutation-proof correction record: `docs/database-virtualization-mutation-proof-correction-handoff.md`, `docs/database-virtualization-mutation-proof-correction-preflight.md`;
-- active review findings: `src/entities/databaseData/REVIEW.md`, `src/features/databaseInlineValueEdit/REVIEW.md`, `src/widgets/DocumentView/Database/REVIEW.md`, and `tests/e2e/REVIEW.md`;
+- active review finding: `src/entities/databaseData/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`.
 
 ## Goal
@@ -90,7 +90,7 @@ Requirements:
 
 Passing the physical `HTMLElement` root explicitly is intentional browser-resource dependency injection. Do not replace it with DOM discovery, `provide/inject`, a root manager, or a generic context solely to hide the prop.
 
-The current implementation uses root/table bounding measurements plus mutation/update-driven refresh. That ownership is architecture-compatible, but its performance characteristics are not yet accepted because the final S0/G1 measurement predates this geometry implementation. Change this mechanism only if focused diagnosis shows it is responsible for a correctness/performance regression; do not redesign geometry merely because proof must be refreshed.
+The current implementation uses root/table bounding measurements plus mutation/update-driven refresh. That ownership remains architecture-compatible. Fresh S0/G1 measurement confirms the bounded mounted-work invariant on this implementation but reports materially slower usable-state completion and repeated 291–429 ms Long Tasks compared with the retained `68a71e89...` baseline. Do not redesign or replace the geometry mechanism until same-environment attribution proves that it is the regression source.
 
 ## Composition
 
@@ -229,7 +229,7 @@ The required product contracts remain:
 - resolving interval and rejected-write recovery through focused deterministic/component proof;
 - native accessibility, sticky surfaces, toolbar behavior, and desktop/Mobile Chrome virtualization applicability.
 
-The dedicated spec must not combine so many independent product behaviors into one stateful scenario that the normal per-test budget is exhausted and failures no longer identify one contract. Split behavior while preserving one proof owner; do not duplicate scenarios or raise timeouts to hide a test-design/runtime problem.
+The dedicated spec keeps these contracts behavior-focused under one product owner. Do not recombine independent edit/eviction/view/configuration behaviors into a single oversized scenario, duplicate them elsewhere, or raise timeouts to hide instability.
 
 Product tests use public DOM/user behavior and must not read private virtualizer markers.
 
@@ -237,11 +237,20 @@ Mutation proof for the touched feature/widget owners is local to their colocated
 
 ## Performance
 
-The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline remains useful historical evidence. The final S0/G1 revalidation at `68a71e89d03713452946819cb52ba80a64157424` showed bounded DOM and zero Long Tasks, but it predates the current `DatabaseDataTable` geometry implementation.
+The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline remains useful historical evidence. The retained S0/G1 revalidation at `68a71e89d03713452946819cb52ba80a64157424` showed bounded DOM and zero Long Tasks.
 
-Therefore current performance acceptance is **open**. After all runtime/geometry corrections are complete, rerun the established production S0/G1 revalidation against the final implementation and update `docs/database-virtualization-production-results.md`. The full matrix is not required unless S0/G1 exposes a regression or new scale-sensitive evidence.
+Fresh S0/G1 revalidation on the current table-owned geometry implementation also keeps mounted work fixed at 12 rows / 8 property headers / 96 expensive cells and passes deep correctness, including G1's 30,000 × 300 logical shape. Structural scalability is therefore confirmed.
 
-Do not run the final S0/G1 proof before a pending geometry/runtime correction that could invalidate it again.
+Responsiveness acceptance is **blocked**. The fresh samples report:
+
+- S0 usable 1582.5–1950.8 ms, worst Long Task 313 ms;
+- G1 usable 1950.7–2516.8 ms, worst Long Task 429 ms.
+
+These results are materially slower than the retained `68a71e89...` baseline and exceed the 100 ms main-thread research target in every fresh sample. The slowdown affects S0 as well as G1, so it cannot currently be classified as a scale-only problem.
+
+Before any production optimization or geometry change, reproduce `68a71e89...` and the current implementation with the same temporary runner and environment. If the historical implementation is also slow, correct the measurement environment/protocol. If the historical implementation remains materially faster, isolate the first production regression and route the correction to the actual owner. Only then perform a production correction and repeat three final S0 and three final G1 samples.
+
+The full matrix is not required before attribution unless new evidence shows S0/G1 is insufficient.
 
 ## Forbidden
 
@@ -263,7 +272,8 @@ Do not run the final S0/G1 proof before a pending geometry/runtime correction th
 - weakening mutation thresholds/configuration, excluding touched production behavior, adding test-only production seams, or changing production behavior merely to make mutation verification pass;
 - timeout inflation, sleeps, force, or retry-as-success to hide E2E failures;
 - treating performance evidence from an earlier geometry implementation as final proof;
-- worker/query/storage optimization without new evidence.
+- changing geometry or other production ownership before same-environment performance attribution;
+- worker/query/storage optimization without measured attribution.
 
 ## Readiness
 
@@ -271,14 +281,14 @@ Shared/native capability: **accepted**.
 
 Production virtualization architecture: **accepted**.
 
-Bounded mounted-DOM invariant: **structurally implemented and historically measured**.
+Bounded mounted-DOM invariant: **accepted on the current geometry implementation**.
 
-Current geometry performance acceptance: **blocked pending final S0/G1 revalidation after runtime/geometry corrections**.
+Current geometry performance acceptance: **blocked; fresh S0/G1 exposes a material responsiveness regression or measurement-environment mismatch that must be attributed before correction**.
 
-Inline-edit ownership: **accepted**, but persistence-error semantics are **not yet accepted** because the current implementation collapses rejection to `false` and discards the cause.
+Inline-edit ownership, persistence-error semantics, and owner-local proof: **accepted**.
 
-Owner-local mutation threshold: **passing**, but remaining feature/widget semantic proof gaps are active review blockers.
+Owner-local mutation threshold: **passing with unchanged configuration**.
 
-Application-E2E ownership: **accepted**, but the current combined inline-edit virtualization scenario exceeds the normal test budget and exact-head E2E is not green.
+Application-E2E ownership and behavior decomposition: **accepted**; the historical relation-property timeout was corrected as a test-state leak without production change.
 
-Merge readiness: **blocked; resolve active owner-local review findings, diagnose/fix E2E, perform final S0/G1 revalidation, then require green exact-head GitHub CI**.
+Merge readiness: **blocked; attribute the performance regression, correct the actual owner if needed, obtain final accepted S0/G1 evidence, then require green exact-head GitHub CI**.
