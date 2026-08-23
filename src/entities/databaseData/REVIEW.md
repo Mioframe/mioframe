@@ -4,61 +4,63 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 current Database table virtualization and root-to-table geometry.
+- PR #217 current Database virtualization and native-table integration.
 - Current bounded-DOM/deep-correctness evidence.
-- Current `DatabaseDataTable` geometry refresh lifecycle.
-- `MDTable` structural border/corner-radius styling against virtual spacer rows/columns.
-- Operator manual Chrome testing of Short -> Full switching, steady-state scrolling, and table appearance.
+- Verifier-managed all-string S0/G1 performance evidence.
+- Operator manual Chrome/Firefox testing of a real Database with heterogeneous property types.
+- Current `DatabaseDataTable` geometry lifecycle and virtual spacer DOM.
+- `MDTable` structural border/corner-radius styling.
 
 ## Blockers
 
-### B1 — Current geometry refresh participates in the virtual-scroll update hot path and scrolling responsiveness is not accepted
+### B1 — Current proof does not cover the Chrome-only heterogeneous-content jank seen in real use
 
 Owner: `src/entities/databaseData`
 
-Problem: the current PR reduces the original large-view freeze but does not eliminate it, and manual Chrome testing also exposes perceptible freezes while scrolling. The current `DatabaseDataTable` refreshes root/table bounding geometry from its own `onUpdated()` lifecycle. That component is the owner whose mounted virtual row/property ranges change while scrolling, so root-to-surface layout measurement is now coupled to virtual-range rendering. The previously retained faster implementation performed equivalent root/surface refresh from the parent `DatabaseViewLayout` lifecycle rather than from the range-rendering table component. The current switch-only diagnostic contract is therefore incomplete and superseded.
+Problem: the canonical verifier-managed all-string fixture is fast on the current production implementation, while operator testing on the same laptop reports perceptible Short -> Full delay and scrolling freezes in Chrome for a real Database containing different property types; Firefox does not show the same problem. The previous synthetic fixture therefore does not reproduce the user-facing defect. This also means the current table-owned `onUpdated(updateSurfaceBounds)` lifecycle is not established as the sole/root cause: the same lifecycle is present in the fast all-string verifier run. The missing discriminator is heterogeneous cell/render composition and browser engine behavior.
 
 Evidence:
 
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current implementation calls `onUpdated(updateSurfaceBounds)` and `updateSurfaceBounds()` forces both root and table bounding updates inside the component whose virtual items change on scroll.
-- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — current geometry remained bounded but the later run reported 1.6–2.5 s usable-state delays and repeated 291–429 ms Long Tasks.
-- [`../../../docs/database-virtualization-performance-attribution-handoff.md`](../../../docs/database-virtualization-performance-attribution-handoff.md) — the former switch-only diagnostic is now superseded because it does not cover scrolling or the visual regression.
-- Historical `DatabaseViewLayout.vue` at `68a71e89d03713452946819cb52ba80a64157424` kept the surface measurement lifecycle outside `DatabaseDataTable`; the retained S0/G1 measurements at that state were materially faster.
+- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — current-head verifier-managed all-string S0 median usable 281.1 ms and G1 median usable 321.5 ms, with zero Long Tasks in all six samples, bounded 12 / 8 / 96 mounted work, and deep correctness passing.
+- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current table geometry lifecycle is present in the implementation that produced the fast all-string verifier result, so geometry refresh alone does not explain the observed defect.
+- [`../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue`](../../widgets/DocumentView/Database/DatabasePropertyValueInline.vue) — different property types dispatch to distinct Boolean, Number, String, Date, and Relation render paths.
+- [`../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue`](../../widgets/DocumentView/Database/DatabaseRelationValueInline.vue) — a rendered relation value can compose a nested `DatabaseViewLayout`/virtualized Database inside a cell, which is materially different from the all-string performance fixture.
+- Operator manual testing on the same laptop: heterogeneous table janks in Chrome during Full-view switching and scrolling; Firefox does not exhibit the same problem.
 
 Basis:
 
-- [`../../../AGENTS.md`](../../../AGENTS.md) — main-thread work must remain bounded for large datasets and mobile browsers; new facts that invalidate a ready handoff require the architecture to be updated explicitly; repeated correction rounds with missing scenarios require returning to architecture.
-- [`../../../.agents/skills/ui-browser-behavior/SKILL.md`](../../../.agents/skills/ui-browser-behavior/SKILL.md) — scrolling, geometry, responsive rendering, and browser-observable jank require faithful browser proof through the owning browser lane.
-- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — switch-associated main-thread blocks above the 100 ms research target require diagnosis before performance acceptance.
+- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve confirmed user scenarios, keep main-thread work bounded for large datasets/mobile browsers, and return to architecture when repeated correction rounds reveal missing scenarios.
+- [`../../../.agents/skills/ui-browser-behavior/SKILL.md`](../../../.agents/skills/ui-browser-behavior/SKILL.md) — browser-, scrolling-, geometry-, and rendering-dependent behavior requires faithful browser proof in the affected engine rather than proxy coverage.
+- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — attribute remaining main-thread work before selecting an optimization or architectural correction.
 
-Risk: a large Database remains visibly unresponsive both when expanding to the full view and during ordinary navigation through that view. Moving more observers/recovery logic into the table without correcting the lifecycle boundary would increase hot-path complexity and risks further layout thrashing.
+Risk: merging on the strength of the all-string benchmark would accept a real Chrome regression that remains visible in normal heterogeneous databases. Conversely, changing geometry, worker/query behavior, or shared virtualization before reproducing the heterogeneous discriminator risks correcting the wrong subsystem.
 
-Required final state: root-to-surface position measurement must not be driven by ordinary virtual-range component updates. The integration must keep offsets truthful when the table actually moves relative to its physical root while keeping steady-state vertical/horizontal scrolling free from the current repeated freezes. Preserve TanStack as the only virtual-item range/size/cache engine and do not introduce a second geometry manager.
+Required final state: reproduce the real class of defect with one deterministic heterogeneous Database fixture and the same product actions in desktop Chrome and Firefox. The proof must isolate which property/render path or combination introduces the Chrome-only switch/scroll cost, while retaining bounded mounted work. Only then route a production correction to the narrowest actual owner. The all-string fast result remains a control case.
 
-Verification: focused verifier-managed browser proof must cover both the real Short -> Full transition and representative sustained vertical/horizontal scrolling on a large Database, while reporting bounded mounted work and relevant Long Tasks/responsiveness evidence. Existing desktop/Mobile Chrome behavior applicability must remain valid.
+Verification: verifier-managed browser diagnostic using the same deterministic heterogeneous fixture in Chrome and Firefox, covering both Short -> Full and representative sustained vertical/horizontal scrolling. Record mounted work and main-thread responsiveness/Long Tasks. Use focused variants to narrow the discriminator (for example base scalar types versus relation content) without changing production code during attribution.
 
 ### B2 — Virtual spacer DOM breaks the existing table border and corner-radius contract
 
 Owner: `src/entities/databaseData`
 
-Problem: virtualization inserts leading/trailing spacer columns and top/bottom spacer rows as physical first/last children of the native table. `MDTable` applies its visible outer corners and row side/bottom borders using structural `:first-child`, `:last-child`, and `tr::after` selectors. As a result, spacer elements become the structural visual boundaries instead of the real visible header/data/footer surfaces. Manual testing confirms broken borders and corner radii.
+Problem: virtualization inserts leading/trailing spacer columns and top/bottom spacer rows as physical first/last children of the native table. `MDTable` applies visible outer corners and row borders using structural `:first-child`, `:last-child`, and `tr::after` selectors. Spacer elements therefore become structural visual boundaries instead of real visible header/data surfaces. Manual testing confirms broken borders and corner radii.
 
 Evidence:
 
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — every header/data row now has leading/trailing spacer cells and `tbody` always has leading/trailing spacer rows.
-- [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — outer corner radii depend on the physical first/last table section, row, and cell; row side borders are drawn by `tr::after`.
-- Base `DatabaseDataTable.vue` at `13ae220900a2a724c867b01b5eb1f045c2a1d857` rendered real properties/items as the physical table boundaries and used the footer/real cells for the bottom visual edge.
+- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — every header/data row contains leading/trailing spacer cells and `tbody` contains leading/trailing spacer rows.
+- [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — outer radii depend on physical first/last sections/rows/cells and row side borders are drawn by `tr::after`.
+- Base `DatabaseDataTable.vue` before PR #217 rendered real properties/items at the physical table boundaries.
 
 Basis:
 
-- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing user scenarios and review shared/UI blast radius; a performance change must not silently regress presentation.
-- [`../../../.agents/skills/visual-regression-testing/SKILL.md`](../../../.agents/skills/visual-regression-testing/SKILL.md) — stable visible Mioframe appearance requires bounded visual regression proof owned by the truthful UI owner.
+- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing user-visible behavior and control shared-UI blast radius.
+- [`../../../.agents/skills/visual-regression-testing/SKILL.md`](../../../.agents/skills/visual-regression-testing/SKILL.md) — stable visible appearance requires bounded visual proof owned by the truthful UI owner.
 
-Risk: the performance PR visibly degrades the Database table in ordinary use, and changing shared `MDTable` globally merely to accommodate one virtualization consumer could create uncontrolled shared-UI blast radius.
+Risk: the performance PR visibly degrades an ordinary Database table, while modifying shared `MDTable` merely for one virtualized consumer could spread the regression to unrelated tables.
 
-Required final state: the virtualized Database table must retain the pre-PR visible outer border and corner radii at its logical/visible boundaries in normal and scrolled states. Spacer DOM must remain presentation-only and must not become the visible boundary owner. Prefer a Database-table-local adaptation; do not change shared `MDTable` unless review proves the shared contract itself is wrong for all consumers.
+Required final state: retain the pre-PR visible outer border and corner radii at the logical table boundary in initial and representative scrolled states. Spacer DOM remains presentation-only. Prefer a Database-table-local adaptation; do not change shared `MDTable` unless a separate shared-UI review proves a generic defect.
 
-Verification: add/restore bounded visual proof for the Database table showing its outer borders/corners in representative top-left and scrolled/end states, and inspect the resulting baselines. Browser behavior proof remains separate from screenshot proof.
+Verification: bounded visual regression proof for the Database table at representative top-left and scrolled/end states, inspected as intentional compatibility evidence. Browser behavior proof remains separate.
 
 ## Major issues
 
@@ -74,12 +76,13 @@ None.
 
 ## Items not required
 
-- Rewriting `useVirtualCollection` or replacing TanStack virtualization without evidence that the shared engine is the defect.
-- Worker/query/storage redesign, paging, indexes, or caches before the table-integration hot path is corrected and remeasured.
+- Replacing TanStack or rewriting `useVirtualCollection` without attribution showing the shared engine is responsible.
+- Worker/query/storage redesign, paging, indexes, or caches before the heterogeneous Chrome path is attributed.
 - Historical checkout/worktree/bisect orchestration by a coding agent.
-- Full R1/R2/R3/R4/C1/C2/C3 matrix before the corrected S0/G1 plus scrolling evidence is evaluated.
+- Repeating the complete R1/R2/R3/R4/C1/C2/C3 matrix before the heterogeneous discriminator is understood.
 
 ## Unresolved questions
 
-- The exact proportion of scroll jank attributable to table-owned root/surface bounding refresh versus other current table render/layout work remains to be measured after the architecture boundary is corrected.
-- The smallest executable visual-proof location for `DatabaseDataTable` must follow the current `docs/testing/migration-plan.md` when the correction preflight is prepared.
+- Which heterogeneous property/render path first reproduces the Chrome-only jank: scalar Material-backed cells, relation/nested Database content, or another combination.
+- Whether `DatabaseDataTable` surface-bound refresh materially amplifies the heterogeneous Chrome path; the fast all-string run proves it is not sufficient by itself to explain the defect.
+- The smallest executable visual-proof location for `DatabaseDataTable` must follow the current `docs/testing/migration-plan.md` when correction preflight is prepared.
