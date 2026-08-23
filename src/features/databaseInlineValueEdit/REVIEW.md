@@ -4,36 +4,35 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 feature-owned inline-edit session lifecycle after extraction from the Database widget.
-- Public feature API, entity write dependency, failure recovery, concurrency/identity guards, and focused tests.
-- Exact-head mutation verification for the feature source.
+- PR #217 feature-owned inline-edit session lifecycle after the mutation-proof correction.
+- Public feature API, entity write dependency, identity/concurrency guards, success/failure settlement, and focused tests.
+- The accepted mutation-proof correction contract in `docs/database-virtualization-mutation-proof-correction-handoff.md`.
 
 ## Blockers
 
-### B1 — Inline-edit session lifecycle is under-proved by mutation coverage
+### B1 — Focused lifecycle proof still misses cancel and successful-resolution cleanup
 
 Owner: `src/features/databaseInlineValueEdit`
 
-Problem: the feature implementation has the accepted single-session design, but its two focused rejection tests do not prove enough of the public lifecycle. Exact-head mutation verification reports 56.58% for `useDatabaseInlineEditSession.ts`, below the repository breaking threshold of 60%, with surviving mutants in behaviorally important guards such as cell identity, in-flight resolution reuse, request/update gating, and lifecycle cleanup.
+Problem: the expanded feature tests now prove identity, no-op/changed resolve, concurrent in-flight reuse, switching, failure recovery, wrong-cell guards, and resolving-state guards, but two required public lifecycle contracts remain unproved. There is no focused assertion that `cancel()` clears the exact active non-resolving session without persistence. Also, the test named `serializes concurrent resolves and releases the completed operation` only opens a later session after the first successful resolve; a stale already-resolved `activeInlineEditResolution` could remain and that request would still succeed. The test does not change and resolve the later session to prove that a fresh persistence operation is actually used.
 
 Evidence:
 
-- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) — one active session owns logical cell identity, serialized resolution, request/update/commit/cancel, and recoverable failure.
-- [`useDatabaseInlineEditSession.test.ts`](./useDatabaseInlineEditSession.test.ts) — currently proves deferred rejection and exact-draft recovery, but does not exercise the full public lifecycle and identity/concurrency branches.
-- [`../../../stryker.config.mjs`](../../../stryker.config.mjs) — mutation verification has `thresholds.break: 60`.
-- [Exact-head verify run](https://github.com/Mioframe/mioframe/actions/runs/32644171094) — mutation output reports 56.58% for this feature and surviving mutations including removal/weakening of property identity, active-resolution reuse, failed prior-session resolution gating, draft-update gating, and resolution cleanup.
+- [`useDatabaseInlineEditSession.test.ts`](./useDatabaseInlineEditSession.test.ts) — exact-cell cancel is exercised only while `resolving` (where it must be ignored), and the post-success case stops after requesting the later session.
+- [`useDatabaseInlineEditSession.ts`](./useDatabaseInlineEditSession.ts) — `cancel()` must clear the exact non-resolving session, and `activeInlineEditResolution` must be released after settlement so later edits can start a fresh resolve/write.
+- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — explicitly requires exact non-resolving cancel and proves that a later resolve/request is not tied to a completed in-flight promise.
 
 Basis:
 
-- [`../AGENTS.md`](../AGENTS.md) — a feature must explicitly own and handle its user-action loading/cancel/success/error lifecycle.
-- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — the accepted inline-edit contract requires one session, logical cell identity, serialized resolve/commit, exact draft recovery, previous-edit resolution before starting another editor, and no second state.
-- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — missing required mutation proof is a review finding and cannot be substituted with other green checks.
+- [`../../../docs/database-virtualization-mutation-proof-correction-handoff.md`](../../../docs/database-virtualization-mutation-proof-correction-handoff.md) — acceptance requires all listed feature lifecycle behavior represented by the current implementation to be protected by focused tests.
+- [`../AGENTS.md`](../AGENTS.md) — the feature owns the user-action cancel/success/error lifecycle.
+- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — missing required risk-specific proof remains a review finding even when another automated threshold is green.
 
-Risk: regressions in cell identity, concurrent resolve behavior, switching between edited cells, update gating, commit, or cancel can survive the current focused tests even though these are correctness invariants of the newly feature-owned lifecycle.
+Risk: the focused suite could stay green if exact cancel stopped clearing the session, or if a completed successful resolution remained cached and caused a later changed session to return the old result instead of persisting its own draft. The product E2E covers user Escape cancellation, but it does not replace the explicitly required owner-local lifecycle proof for this mutation target.
 
-Required final state: extend focused feature tests over the meaningful public lifecycle so cell identity, serialized/in-flight resolution, switching behavior, draft-update gating, commit/cancel, successful settlement, unchanged-draft behavior, and recoverable failure are adequately protected and the normal mutation gate passes. Do not expose internal state, add test-only production hooks, or change the session design merely to satisfy mutation tooling.
+Required final state: focused feature tests must prove (1) exact active non-resolving cancel clears the session and performs no write, and (2) after one successful changed resolve completes, a newly requested session can be changed and resolved through a second distinct persistence call with its own identity/draft. Do not expose internals or change production behavior.
 
-Verification: focused feature unit tests followed by the normal verifier-managed `pnpm verify --only mutation`; exact-head GitHub verification must pass with the existing mutation configuration and threshold.
+Verification: focused feature unit tests and the unchanged verifier-managed mutation target after the test correction.
 
 ## Major issues
 
