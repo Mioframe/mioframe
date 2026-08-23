@@ -966,7 +966,7 @@ test('resolves an edit before another-cell activation and explicit view switchin
 });
 
 test('resolves before one configuration surface and current-view removal', async ({ page }) => {
-  const { fixture, table, rootTable, rootFirstRow, labelField, labelButton } =
+  const { table, rootTable, rootFirstRow, labelField, labelButton } =
     await setupInlineEditVirtualizationFlow(page);
 
   const sortDraft = createUniqueName('sort configuration draft');

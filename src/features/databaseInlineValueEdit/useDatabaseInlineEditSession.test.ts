@@ -166,17 +166,19 @@ describe('useDatabaseInlineEditSession', () => {
       resolving: false,
     });
 
-    session.commit(wrongCell.itemId, wrongCell.propertyId);
+    await expect(session.commit(wrongCell.itemId, wrongCell.propertyId)).resolves.toEqual({
+      status: 'success',
+    });
     expect(postValue).not.toHaveBeenCalled();
     session.updateDraft(cell.itemId, cell.propertyId, 'changed');
-    session.commit(cell.itemId, cell.propertyId);
+    const commitResult = session.commit(cell.itemId, cell.propertyId);
     expect(session.getSession(cell.itemId, cell.propertyId)?.resolving).toBe(true);
     session.updateDraft(cell.itemId, cell.propertyId, 'ignored');
     session.cancel(cell.itemId, cell.propertyId);
+    await expect(commitResult).resolves.toEqual({ status: 'success' });
     await vi.waitFor(() => {
       expect(postValue).toHaveBeenCalledOnce();
     });
-    await session.resolve();
     expect(session.getSession(cell.itemId, cell.propertyId)).toBeUndefined();
   });
 
@@ -207,7 +209,8 @@ describe('useDatabaseInlineEditSession', () => {
   });
 
   it('returns failed resolution and keeps the exact draft recoverable after persistence rejects', async () => {
-    postValue.mockRejectedValueOnce(new Error('write rejected'));
+    const rawError = new Error('write rejected');
+    postValue.mockRejectedValueOnce(rawError);
     const itemId = generateItemId();
     const propertyId = generatePropertyId();
     const initialValue = { label: 'initial value' };
@@ -222,9 +225,9 @@ describe('useDatabaseInlineEditSession', () => {
     if (result.status !== 'error') throw new Error('expected persistence error');
     expect(result.error).toMatchObject({
       code: 'databaseInlineValueEdit.persistenceFailed',
-      cause: expect.any(Error),
+      cause: rawError,
     });
-    expect(result.error.cause).toBeInstanceOf(Error);
+    expect(result.error.cause).toBe(rawError);
     expect(postValue).toHaveBeenCalledWith(itemId, propertyId, draft);
 
     const recovered = session.getSession(itemId, propertyId);

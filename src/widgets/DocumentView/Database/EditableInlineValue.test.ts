@@ -139,7 +139,7 @@ describe('EditableInlineValue', () => {
     valueFixture.current = 'initial';
     controls.postValue.mockReset();
     controls.toggleBoolean.mockReset();
-    controls.toggleBoolean.mockReturnValue(true);
+    controls.toggleBoolean.mockReturnValue(false);
   });
 
   const mountEditor = (
@@ -261,9 +261,9 @@ describe('EditableInlineValue', () => {
     await root.trigger('keydown', { key: ' ' });
     expect(controls.toggleBoolean).toHaveBeenCalledWith(false, true);
     expect(controls.postValue).toHaveBeenCalledTimes(3);
-    expect(controls.postValue).toHaveBeenNthCalledWith(1, true);
-    expect(controls.postValue).toHaveBeenNthCalledWith(2, true);
-    expect(controls.postValue).toHaveBeenNthCalledWith(3, true);
+    expect(controls.postValue).toHaveBeenNthCalledWith(1, false);
+    expect(controls.postValue).toHaveBeenNthCalledWith(2, false);
+    expect(controls.postValue).toHaveBeenNthCalledWith(3, false);
     expect(wrapper.emitted('requestEdit')).toBeUndefined();
 
     wrapper.unmount();
