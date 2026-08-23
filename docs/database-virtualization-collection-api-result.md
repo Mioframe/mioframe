@@ -1,12 +1,12 @@
 # Database virtualization collection API result
 
-Status: **Ready**.
+Status: **Ready — capability stage complete; PR #217 continues into production migration and profiling**.
 
 Authoring source: `docs/database-virtualization-collection-api-handoff.md`, `docs/database-virtualization-collection-api-preflight.md`, `docs/database-virtualization-stability-handoff.md`, `docs/database-virtualization-stability-preflight.md`, `src/shared/ui/virtualization/README.md`, `docs/database-virtualization.md`, `docs/database-virtualization-browser-proof.md`.
 
 ## Architecture status
 
-The architecture, ownership, and public API are accepted.
+The shared virtualization architecture, ownership, and public API are accepted.
 
 Accepted:
 
@@ -17,7 +17,7 @@ Accepted:
 - no TanStack instance/types are exposed;
 - no second observer/cache/range/anchor engine exists;
 - database capability consumes only the shared API and uses actual `MDTable`;
-- production database rendering is still unchanged.
+- this result records the completed capability stage only; production migration is governed by `docs/database-virtualization-production-handoff.md` and `docs/database-virtualization-production-preflight.md`.
 
 ## Resolved versions
 
@@ -94,7 +94,7 @@ Reported result: **300/300 test executions passed with no retries or flaky class
 
 Focused type-check also passed.
 
-Exact-head GitHub CI remains the architect-owned automatic merge gate.
+This evidence closes the capability stage only. Exact-head GitHub CI remains the architect-owned automatic merge gate for the final complete PR.
 
 ## Documentation status
 
@@ -102,11 +102,13 @@ Exact-head GitHub CI remains the architect-owned automatic merge gate.
 - shared browser capability: passed;
 - database native-table capability: passed;
 - capability stability gate: passed;
-- production database migration: not started, ready for architecture/preflight;
-- product performance profiling/acceptance: pending production migration.
+- production migration architecture/handoff/preflight: ready;
+- production implementation: pending;
+- product performance profiling/acceptance: pending production implementation;
+- entire remaining work stays in PR #217.
 
 ## Final verdict
 
-**Ready.**
+**Capability stage ready and closed.**
 
-The virtualization capability/foundation stage is complete. Production database migration is the next separate stage and is not implemented by this PR.
+The virtualization capability/foundation stage is complete. It is a prerequisite within PR #217, not a standalone PR result. Continue the same branch with the production migration defined by `docs/database-virtualization-production-handoff.md` and `docs/database-virtualization-production-preflight.md`, then complete product profiling and final merge review in the same PR.
