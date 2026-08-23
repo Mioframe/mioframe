@@ -38,14 +38,14 @@ The complete Notion performance task, including production migration, product pr
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `shared/ui/virtualization` | Generic one-axis logical collection -> virtual items/extents + `vItem` measurement directive. |
-| `entities/databaseData` | Native table DOM, row/column collection composition, spacer DOM, database column sizing policy, logical table accessibility, sticky action-cell integration. |
-| `entities/databaseValue` | Narrow domain value read/write entry points used by inline editing; no widget-owned service access. |
-| database widget/composition | Physical scroll-root wiring, truthful surface offsets, toolbar/`after` composition, active inline-edit session lifecycle, relation/nested-view root wiring. |
-| service/worker | Canonical filter/sort/order/data contracts. |
-| `shared/ui/Table` | Existing table presentation only; no virtualization responsibility. |
+| Owner                       | Responsibility                                                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/ui/virtualization`  | Generic one-axis logical collection -> virtual items/extents + `vItem` measurement directive.                                                                |
+| `entities/databaseData`     | Native table DOM, row/column collection composition, spacer DOM, database column sizing policy, logical table accessibility, sticky action-cell integration. |
+| `entities/databaseValue`    | Narrow domain value read/write entry points used by inline editing; no widget-owned service access.                                                          |
+| database widget/composition | Physical scroll-root wiring, truthful surface offsets, toolbar/`after` composition, active inline-edit session lifecycle, relation/nested-view root wiring.  |
+| service/worker              | Canonical filter/sort/order/data contracts.                                                                                                                  |
+| `shared/ui/Table`           | Existing table presentation only; no virtualization responsibility.                                                                                          |
 
 ## Source of truth
 

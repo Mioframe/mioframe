@@ -33,14 +33,14 @@ Migrate the real Database UI in PR #217 to the accepted native-table two-axis vi
 
 ## Boundaries and ownership
 
-| Layer | Decision |
-| --- | --- |
-| feature | Existing mutation flows remain unchanged. |
-| entity | `databaseData` owns table virtualization DOM; `databaseValue` owns the narrow value write entry point needed by lifted edit lifecycle. |
-| widget | Own explicit scroll roots, surface offsets, toolbar/`after`, and one active inline-edit session. |
-| page/pane | No new responsibility. |
-| shared | `useVirtualCollection` remains the only virtualization API; `MDTable` remains presentation-only. |
-| service/worker | Existing row membership/filter/sort/order remain source of truth. |
+| Layer          | Decision                                                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| feature        | Existing mutation flows remain unchanged.                                                                                              |
+| entity         | `databaseData` owns table virtualization DOM; `databaseValue` owns the narrow value write entry point needed by lifted edit lifecycle. |
+| widget         | Own explicit scroll roots, surface offsets, toolbar/`after`, and one active inline-edit session.                                       |
+| page/pane      | No new responsibility.                                                                                                                 |
+| shared         | `useVirtualCollection` remains the only virtualization API; `MDTable` remains presentation-only.                                       |
+| service/worker | Existing row membership/filter/sort/order remain source of truth.                                                                      |
 
 ## Source of truth and state shape
 
