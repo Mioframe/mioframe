@@ -1,96 +1,99 @@
-# Database virtualization performance attribution handoff
+# Database virtualization performance diagnostic handoff
 
 Status: **ready**.
 
-This contract owns the next PR #217 step after the fresh current-geometry S0/G1 revalidation failed responsiveness acceptance while preserving bounded DOM and correctness.
+This contract replaces the previous historical A/B attribution pass for PR #217.
 
 ## Goal
 
-Determine whether the fresh slowdown is a real production regression or a measurement environment/protocol mismatch, and, only if the regression is confirmed, identify the first production change that introduced it.
+Determine whether the reported current-geometry slowdown reproduces on the **current PR head** inside the canonical verifier-owned application E2E environment.
 
-## Confirmed current behavior and evidence
+This pass does not identify the historical first-bad commit and does not implement a production correction.
 
-- Accepted historical comparison: `68a71e89d03713452946819cb52ba80a64157424` — S0 median usable 304.9 ms, G1 median 350.5 ms, zero Long Tasks in all six final samples.
-- Fresh measured production state `8d62ba1f8adc66ebb82dd0734afc82824e112f6c` — S0 median usable 1603.3 ms, G1 median 2013.1 ms, repeated 291–429 ms Long Tasks.
-- Both states preserve the structural target in their recorded proof: 12 mounted rows / 8 headers / 96 expensive cells and deep correctness.
-- Tracked changes after `8d62ba1...` are test/docs only for this performance path; the current production geometry is equivalent to the fresh measured state.
-- The cause is not established. Current geometry is a candidate only because it changed after the historical proof; it is not yet an accepted root cause.
+## Confirmed current evidence
+
+- Structural scalability is already confirmed on the current production implementation: S0/G1 retained 12 mounted rows / 8 property headers / 96 expensive cells and passed deep correctness.
+- A prior temporary measurement reported S0 usable 1582.5–1950.8 ms and G1 usable 1950.7–2516.8 ms with repeated 291–429 ms Long Tasks.
+- Historical `68a71e89...` evidence was much faster, but reproducing historical refs through manual checkout/worktree orchestration is no longer part of the coding-agent task.
+- The prior diagnostic workflow was too broad and mixed repository orchestration with performance proof.
 
 ## Non-goals
 
-- no production correction in this attribution pass;
-- no geometry redesign, worker/query/storage work, paging, indexes, caches, or generic benchmark infrastructure;
-- no full matrix rerun;
-- no CI or unrelated test cleanup.
+- no historical checkout, detached worktree, bisect, reset, rebase, cherry-pick, or ref movement;
+- no direct Playwright, Vite, browser-launch, or shell-built benchmark orchestration;
+- no production, geometry, virtualization, worker, query, storage, paging, cache, index, API, or state change;
+- no permanent benchmark or diagnostic infrastructure;
+- no full R1/R2/R3/R4/C1/C2/C3 matrix.
 
-## Affected scenario
+## Ownership
 
-Real Database short filtered view (~20 rows) -> explicit Full view switch on S0 (100×8) and G1 (30,000×300), using the same sparse deterministic dataset and deep correctness sentinels as the retained production proof.
-
-## Boundaries and ownership
-
-| Owner                         | This pass                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------ |
-| `entities/databaseData`       | Performance review owner only until attribution identifies a concrete runtime owner. |
-| Database widget/composition   | Inspect only if history/evidence places the first regression here.                   |
-| `shared/ui/virtualization`    | Preserve; do not change without evidence.                                            |
-| service/worker                | Preserve; no optimization without attribution.                                       |
-| temporary measurement tooling | Diagnostic-only, untracked/temporary, removed before handoff.                        |
-
-No public API, state shape, persistence contract, or source of truth changes in this pass.
+- `pnpm verify --only e2e`: owns browser/build/runtime execution for this diagnostic;
+- temporary diagnostic spec: owns only S0/G1 measurement logic and is removed before handoff;
+- `src/entities/databaseData`: remains the active review location until canonical current-head evidence is evaluated;
+- architect: owns interpretation, next attribution/correction task, canonical docs, PR metadata, and final CI.
 
 ## Minimum sufficient design
 
-### Phase A — same-environment A/B
+Create one temporary **nested** application-E2E diagnostic spec, for example:
 
-Use one identical temporary measurement runner/protocol for both:
+`tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts`
 
-- historical ref `68a71e89d03713452946819cb52ba80a64157424`;
-- current production ref resolved from the branch when measurement starts.
+Do not create a new root `tests/e2e/*.spec.ts`; root specs require durable project-applicability ownership.
 
-Keep browser executable/version, Linux environment, Node/pnpm, viewport 640×480, one worker, retries off, production Vite build/preview, deterministic seed `pr-217-production-v1`, fresh context policy, in-page observer, timing boundaries, mounted-count checks, and deep sentinels identical.
+The temporary spec must:
 
-Collect three S0 and three G1 samples for **each** ref. Prefer alternating baseline/current pairs so host drift cannot explain one side. Do not include import/setup time in switch timing.
+- run only the current checkout/runtime;
+- use existing application-E2E helpers and the established JSON-import/full-view product action;
+- use viewport 640×480;
+- use deterministic seed/data equivalent to `pr-217-production-v1`;
+- measure S0 100×8 and G1 30,000×300;
+- collect exactly three fresh samples per case;
+- keep setup/import/build outside the switch timing;
+- record MessageChannel yield, first rAF, switch-to-usable, Long Task count/max/total, mounted rows/headers/cells, logical metadata, and deep final row/property/value sentinels;
+- skip non-Chromium project execution inside the temporary diagnostic when necessary so the performance evidence is one canonical desktop Chromium environment;
+- execute only through the verifier command below.
 
-Decision:
+Required diagnostic command:
 
-- if the historical ref is also materially slow under the identical runner/environment, stop: attribution is a measurement environment/protocol mismatch until corrected;
-- if the historical ref reproduces the prior fast/no-Long-Task behavior while current remains materially slower, production regression is confirmed and Phase B is allowed;
-- if evidence is ambiguous, stop and report raw results; do not choose a production owner by guess.
+```bash
+pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationPerformance.spec.ts
+```
 
-### Phase B — first-regression localization
+No direct `playwright`, `vite`, Chromium executable launch, or custom web-server command is allowed.
 
-Only after an unambiguous Phase A production regression:
+## Classification
 
-1. inspect local Git history between `68a71e89...` and current for production files on the measured render/view-switch path;
-2. exclude docs/tests/review-only commits from candidate runtime boundaries;
-3. use S0 as the primary cheap discriminator because the slowdown reproduces in S0;
-4. probe selected historical production states with the **same** runner/environment, normally two S0 samples per probe and a third only when results are ambiguous;
-5. narrow to the first bad production state and its immediately preceding good production state;
-6. compare that production delta and report the narrowest evidence-backed owner/root-cause candidate;
-7. do not implement the correction in this pass.
+Return one evidence classification only:
 
-Do not use a permanent benchmark framework. Temporary detached worktrees are allowed for measurement; do not move/reset/rebase the PR branch and remove temporary worktrees/tooling after use.
+- `slowdown reproduced` — current-head S0/G1 again show material usable-state delay and repeated >100 ms switch-associated Long Tasks;
+- `slowdown not reproduced` — current-head verifier evidence returns near the retained fast envelope without repeated >100 ms Long Tasks;
+- `ambiguous` — samples are inconsistent enough that neither conclusion is reliable.
 
-## Acceptance matrix
+Do not infer the production owner/root cause in this pass.
 
-- Same-environment A/B has raw S0×3 and G1×3 results for both refs.
-- Exact runner/protocol/environment identity is recorded.
-- Mounted work remains bounded and deep correctness passes for measured refs.
-- Result is classified as `measurement mismatch`, `production regression confirmed`, or `ambiguous` with evidence.
-- If regression is confirmed, first bad / previous good production states and changed runtime files are identified.
-- No production code is changed in this pass.
+If `slowdown reproduced`, stop and report the measurements. The architect will create a separate current-head attribution task.
 
-## Required proof
+If `slowdown not reproduced`, stop and report the verifier-owned evidence. The architect will decide whether the prior non-verifier result is an environment/protocol mismatch and whether performance acceptance can close.
 
-Task-specific performance evidence only. Persistent unit/E2E/mutation proof is unchanged because no durable behavior is modified. Existing exact-head CI remains architect-owned and does not substitute for this attribution.
+If `ambiguous`, stop and report raw samples; do not add retries, sleeps, or broader tooling.
+
+## Acceptance
+
+- exactly three current-head S0 and three current-head G1 samples are reported;
+- all six samples come from the focused verifier-managed E2E run;
+- mounted work and deep correctness are reported for every sample;
+- the exact current head is recorded through ordinary repository inspection only;
+- no production file changes;
+- no Git worktree/checkout orchestration;
+- temporary diagnostic spec is removed before handoff;
+- final tracked diagnostic files: none.
 
 ## Forbidden
 
-Production fixes; architecture changes; changing `useVirtualCollection` or geometry based on suspicion; worker/query/storage optimization; paging/cache/index work; permanent benchmark infrastructure; changing performance thresholds to accept the fresh result; timing based on Playwright command duration; retries as success; sleeps/force; moving the PR ref; editing `REVIEW.md`, canonical virtualization docs, performance-results docs, or PR metadata.
+Historical ref execution by the coding agent; Git worktree/checkout/reset/rebase/bisect/cherry-pick/ref movement; direct Playwright/Vite/browser invocation; production changes; architecture changes; permanent benchmark infrastructure; root-level temporary E2E registration; retry-as-success; timeout inflation; sleeps; force; weakening the 100 ms research target; editing review/canonical/performance-result docs or PR metadata.
 
 ## Implementation readiness
 
 Required decisions: **resolved**.  
-Unresolved blocker: root cause intentionally remains an investigation output, not a coding choice.  
-Verdict: **ready for attribution; not ready for production correction**.
+Unresolved production owner/root cause: intentionally deferred until canonical current-head reproduction exists.  
+Verdict: **ready for verifier-managed current-head diagnostic only**.
