@@ -1,8 +1,8 @@
 # Database virtualization
 
-Status: **architecture accepted; production virtualization/profiling and semantic review complete; exact-head CI cleanup ready before merge**.
+Status: **architecture accepted; production virtualization/profiling and CI-static cleanup complete; final quality correction ready and required before merge**.
 
-This is the architecture source of truth for large Database rendering in PR #217. Final semantic correction contract: `docs/database-virtualization-final-correction-handoff.md` and `docs/database-virtualization-final-correction-preflight.md`. Remaining CI-static cleanup contract: `docs/database-virtualization-ci-cleanup-handoff.md` and `docs/database-virtualization-ci-cleanup-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
+This is the architecture source of truth for large Database rendering in PR #217. Final semantic correction contract: `docs/database-virtualization-final-correction-handoff.md` and `docs/database-virtualization-final-correction-preflight.md`. CI-static cleanup contract: `docs/database-virtualization-ci-cleanup-handoff.md` and `docs/database-virtualization-ci-cleanup-preflight.md`. Current full-review quality correction: `docs/database-virtualization-quality-correction-handoff.md` and `docs/database-virtualization-quality-correction-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
 
 ## Goal
 
@@ -132,8 +132,9 @@ Invariants:
 
 - Escape cancels without persistence while the session is interactive;
 - normal resolve clears only after successful persistence;
-- while `resolving`, UI must not expose editable/cancel interaction that the session intentionally rejects;
-- failed persistence restores the same exact draft to an interactive editor;
+- while `resolving`, UI must not expose editable/cancel interaction or Material activation feedback that the session intentionally rejects;
+- the resolving host must not remain the active state-layer/ripple target and must not keep a clickable cursor;
+- failed persistence restores the same exact draft and normal interaction surface;
 - eviction cannot silently lose a draft;
 - remount restores an unresolved draft;
 - starting another editor resolves the previous one first;
@@ -177,7 +178,9 @@ Preserve native table semantics:
 
 ## Proof
 
-Application E2E owns cross-owner product behavior. Final proof must cover:
+Application E2E owns cross-owner product behavior. The Database virtualization product scenarios have one dedicated root application owner, `tests/e2e/databaseVirtualizationFlows.spec.ts`, with persistent project applicability `both`. The historical `tests/e2e/databaseViewsAndQueryFlows.spec.ts` retains its prior `desktop` applicability; virtualization source impact selects the dedicated spec explicitly through `scripts/lib/e2eRisk.ts`.
+
+Final product proof covers:
 
 - bounded mounted rows/properties/cells and deep 2D sentinels;
 - real non-zero top-level surface displacement connected to correct virtualized range behavior;
@@ -189,7 +192,7 @@ Application E2E owns cross-owner product behavior. Final proof must cover:
 - successful resolve-before-configuration and no current-view-removal bypass;
 - resolving-interval and rejected-write recovery through deterministic/component proof;
 - toolbar request/controlled-open/close through component-contract proof;
-- native accessibility, sticky surfaces, toolbar behavior, and existing desktop/Mobile Chrome applicability.
+- native accessibility, sticky surfaces, toolbar behavior, and dedicated desktop/Mobile Chrome virtualization applicability.
 
 Use public DOM/user behavior. Product tests must not read Mioframe-private/TanStack measurement markers such as `data-mioframe-virtual-index`.
 
@@ -197,21 +200,22 @@ Use public DOM/user behavior. Product tests must not read Mioframe-private/TanSt
 
 The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline and final S0/G1 correction revalidation are complete. G1 remains bounded and the final three G1 samples observed no Long Tasks.
 
-The remaining CI cleanup is static/proof-code-only and must not change virtualization/geometry or the measured short-to-full rendering algorithm. Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
+CI-static cleanup is complete. The current quality correction changes only the inline interaction target/state presentation and application-E2E ownership metadata/file placement; it must not change virtualization/geometry or the measured short-to-full rendering algorithm. Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
 
 ## Forbidden
 
-- changing `useVirtualCollection`, `MDTable`, overlay/tooltip, or service/worker public APIs for convenience;
+- changing `useVirtualCollection`, `MDTable`, overlay/tooltip, shared State/Ripple public APIs, or service/worker public APIs for convenience;
 - consumer-provided numeric surface-offset props;
 - relation entity DOM-root API;
 - automatic root discovery;
-- generic virtualization/root/edit/configuration manager;
+- generic virtualization/root/edit/configuration/interaction manager;
 - second edit draft or geometry/range/cache/anchor system;
 - independent row/column size maps;
 - callback props for parent-owned commands, permission checks, confirmations, or async gates;
 - direct widget `shared/service` value persistence;
 - parallel canonical source state;
 - private virtualizer markers in product proof;
+- broad historical views/query mobile reclassification merely to host virtualization proof;
 - worker/query/storage optimization without new evidence;
 - sleeps, force, retries-as-success, timeout inflation, or tolerance weakening.
 
@@ -223,8 +227,10 @@ Production virtualization and performance evidence: **complete**.
 
 Final semantic correction: **complete**.
 
-Semantic review: **ready**.
+CI-static cleanup: **complete**.
 
-CI-static cleanup handoff/preflight: **ready**.
+Fresh full-PR code-health/FSD/Vue/testing review: **blocked by the interaction-surface blocker and E2E ownership major issue**.
 
-Merge readiness: **not yet; CI-static cleanup and green exact-head GitHub CI remain required**.
+Current quality-correction handoff/preflight: **ready**.
+
+Merge readiness: **not yet; complete the quality correction, re-review the full PR, then require green exact-head GitHub CI**.
