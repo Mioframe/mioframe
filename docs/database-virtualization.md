@@ -1,8 +1,8 @@
 # Database virtualization
 
-Status: **architecture accepted; production virtualization/profiling complete; final semantic correction ready and required before merge**.
+Status: **architecture accepted; production virtualization/profiling and semantic review complete; exact-head CI cleanup ready before merge**.
 
-This is the architecture source of truth for large Database rendering in PR #217. Final correction contract: `docs/database-virtualization-final-correction-handoff.md` and `docs/database-virtualization-final-correction-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
+This is the architecture source of truth for large Database rendering in PR #217. Final semantic correction contract: `docs/database-virtualization-final-correction-handoff.md` and `docs/database-virtualization-final-correction-preflight.md`. Remaining CI-static cleanup contract: `docs/database-virtualization-ci-cleanup-handoff.md` and `docs/database-virtualization-ci-cleanup-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
 
 ## Goal
 
@@ -197,7 +197,7 @@ Use public DOM/user behavior. Product tests must not read Mioframe-private/TanSt
 
 The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline and final S0/G1 correction revalidation are complete. G1 remains bounded and the final three G1 samples observed no Long Tasks.
 
-The remaining semantic correction does not change virtualization/geometry or the measured short-to-full rendering algorithm. Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
+The remaining CI cleanup is static/proof-code-only and must not change virtualization/geometry or the measured short-to-full rendering algorithm. Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
 
 ## Forbidden
 
@@ -221,8 +221,10 @@ Shared/native capability: **accepted**.
 
 Production virtualization and performance evidence: **complete**.
 
-Final semantic correction handoff/preflight: **ready**.
+Final semantic correction: **complete**.
 
-Semantic review: **blocked until final correction implementation and proof are complete**.
+Semantic review: **ready**.
 
-Merge readiness: **not yet; correction, full re-review, and exact-head GitHub CI remain required**.
+CI-static cleanup handoff/preflight: **ready**.
+
+Merge readiness: **not yet; CI-static cleanup and green exact-head GitHub CI remain required**.
