@@ -54,7 +54,7 @@ src/features/databaseInlineValueEdit/
 Public entry point:
 
 ```ts
-useDatabaseInlineEditSession(path, documentId)
+useDatabaseInlineEditSession(path, documentId);
 ```
 
 Inputs are the existing narrow reactive directory path and Database document identity used by entity composables.
@@ -120,9 +120,7 @@ Use the existing `isInteractionEnabled` fact as the only interaction gate.
 Expected wiring:
 
 ```ts
-const interactionTarget = computed(() =>
-  isInteractionEnabled.value ? inlineEl.value : null,
-);
+const interactionTarget = computed(() => (isInteractionEnabled.value ? inlineEl.value : null));
 
 const { hover, focused, durationPressedState } = useStateLayer(interactionTarget);
 useRipple(interactionTarget);

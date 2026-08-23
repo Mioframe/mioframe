@@ -101,7 +101,7 @@ Move the existing session implementation, preserving its simple model:
 Public feature API:
 
 ```ts
-useDatabaseInlineEditSession(path, documentId)
+useDatabaseInlineEditSession(path, documentId);
 ```
 
 returns the existing narrow lifecycle operations:

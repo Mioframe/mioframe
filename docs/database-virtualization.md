@@ -31,16 +31,16 @@ Primary invariant:
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `shared/ui/virtualization` | Generic one-axis collection virtualization and `vItem` measurement binding. |
-| `entities/databaseData` | Native table DOM, row/property virtual collections, spacers, column sizing, logical accessibility, sticky action cells, and geometry from an explicit physical root to its own table surface. |
-| `entities/databaseValue` | Narrow value read/write contracts used by inline editing. |
-| `features/databaseInlineValueEdit` | One active inline-edit session: draft, request/update/cancel, serialized resolve/commit, entity-backed persistence, and recoverable failure. |
-| Database widget/composition | Physical-root choice, table/toolbar/relation composition, screen branches, explicit view/configuration state, and cross-feature resolve-before-transition orchestration. |
-| relation entity UI | Domain/display behavior only; no Database virtualization DOM-root API. |
-| service/worker | Canonical data/filter/sort/order. |
-| `shared/ui/Table` | Presentation only. |
+| Owner                              | Responsibility                                                                                                                                                                                |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/ui/virtualization`         | Generic one-axis collection virtualization and `vItem` measurement binding.                                                                                                                   |
+| `entities/databaseData`            | Native table DOM, row/property virtual collections, spacers, column sizing, logical accessibility, sticky action cells, and geometry from an explicit physical root to its own table surface. |
+| `entities/databaseValue`           | Narrow value read/write contracts used by inline editing.                                                                                                                                     |
+| `features/databaseInlineValueEdit` | One active inline-edit session: draft, request/update/cancel, serialized resolve/commit, entity-backed persistence, and recoverable failure.                                                  |
+| Database widget/composition        | Physical-root choice, table/toolbar/relation composition, screen branches, explicit view/configuration state, and cross-feature resolve-before-transition orchestration.                      |
+| relation entity UI                 | Domain/display behavior only; no Database virtualization DOM-root API.                                                                                                                        |
+| service/worker                     | Canonical data/filter/sort/order.                                                                                                                                                             |
+| `shared/ui/Table`                  | Presentation only.                                                                                                                                                                            |
 
 ## Source of truth
 
@@ -160,7 +160,7 @@ Invariants:
 Database widget composition owns one controlled configuration state:
 
 ```ts
-DatabaseConfigurationSurface | undefined
+DatabaseConfigurationSurface | undefined;
 ```
 
 with `views`, `sort`, `filter`, or `properties`.
