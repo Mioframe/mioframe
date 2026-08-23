@@ -4,35 +4,37 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 current native Database table virtualization and root-to-table surface geometry.
-- Final S0/G1 production performance revalidation and the implementation chronology after that measurement.
-- Current bounded-DOM/performance acceptance contract in `docs/database-virtualization.md`.
+- PR #217 current Database table virtualization and root-to-table geometry.
+- Fresh S0/G1 production revalidation reported for the current runtime/geometry implementation.
+- Historical accepted S0/G1 baseline at `68a71e89d03713452946819cb52ba80a64157424`.
+- Current bounded-DOM, responsiveness, and performance-attribution contracts.
 
 ## Blockers
 
-### B1 — Current geometry implementation is newer than the accepted S0/G1 performance evidence
+### B1 — Fresh S0/G1 keeps DOM bounded but exposes a material main-thread responsiveness regression
 
 Owner: `src/entities/databaseData`
 
-Problem: the final S0/G1 production revalidation was measured at `68a71e89d03713452946819cb52ba80a64157424`, when `DatabaseDataTable` consumed already-computed numeric surface offsets. The current implementation instead owns root/table bounding measurements, mutation-triggered updates, and `onUpdated()` geometry refreshes inside `DatabaseDataTable`. That change crosses the canonical virtualization/geometry and measured-rendering boundary after the last timing evidence, so the existing performance results do not prove the current implementation.
+Problem: the required fresh measurement now exists, but it does not satisfy performance acceptance. The measured implementation keeps the bounded mounted-work invariant, yet both the small control and 30,000 × 300 stress case are several times slower than the retained accepted baseline and repeatedly produce long main-thread blocks far above the project research target. The current evidence does not yet establish whether the regression is caused by the newer table-owned geometry path or by a measurement-environment/protocol mismatch, so changing geometry before attribution would be speculative.
 
 Evidence:
 
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current geometry uses `useElementBounding` for root/table, `useMutationObserver`, and `onUpdated(updateSurfaceBounds)` before deriving the virtual collection surface offsets.
-- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — final S0/G1 revalidation records repository head `68a71e89d03713452946819cb52ba80a64157424`.
-- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — performance proof may be retained without rerun only while virtualization/geometry and the measured rendering algorithm remain unchanged.
+- [`../../../docs/database-virtualization-production-results.md`](../../../docs/database-virtualization-production-results.md) — retained `68a71e89...` S0 median usable 304.9 ms and G1 median usable 350.5 ms, with zero observed Long Tasks in all six samples.
+- Fresh revalidation on production state `8d62ba1f8adc66ebb82dd0734afc82824e112f6c` reported S0 usable 1582.5–1950.8 ms with 291–313 ms worst Long Tasks, and G1 usable 1950.7–2516.8 ms with 301–429 ms worst Long Tasks; all samples still mounted 12 rows / 8 headers / 96 expensive cells and passed deep correctness.
+- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — current measured rendering owns root/table bounding reads, mutation-triggered refresh, and `onUpdated(updateSurfaceBounds)` inside the native-table owner.
+- The tracked delta after measured state `8d62ba1...` changes only tests, so production/geometry remained equivalent for the reported measurement.
 
 Basis:
 
-- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — current architecture explicitly requires new performance evidence after crossing the virtualization/geometry/measured-rendering boundary.
-- [`../../../AGENTS.md`](../../../AGENTS.md) — main-thread work must remain bounded for large datasets and mobile browsers, and required risk-specific proof cannot be replaced by unrelated green checks.
-- [`../../../.agents/skills/project-review/SKILL.md`](../../../.agents/skills/project-review/SKILL.md) — missing required performance proof is a blocker even when the implementation is architecturally valid.
+- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — the responsiveness research target is no switch-associated main-thread block above 100 ms; when a timing target misses, attribute the remaining work before changing architecture.
+- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — current geometry performance must be accepted on the final runtime implementation, and the geometry mechanism should change only when focused diagnosis establishes a regression.
+- [`../../../AGENTS.md`](../../../AGENTS.md) — main-thread work must remain bounded for large datasets and mobile browsers.
 
-Risk: the current geometry path performs DOM-bound measurements during component updates. The previous S0/G1 timing and Long Task results therefore cannot establish that the current rendering path still meets the accepted performance behavior, even though the bounded mounted-DOM invariant remains structurally intact.
+Risk: the original freeze is structurally prevented by bounded DOM, but a short-to-full view switch still spends roughly 1.6–2.5 seconds reaching usable state and contains repeated 291–429 ms main-thread blocks in the measured environment. Accepting this would leave the core responsiveness goal unproved and potentially materially degraded.
 
-Required final state: after all runtime/geometry corrections for this PR are complete, revalidate the existing production S0 and G1 scenarios against the final geometry implementation using the established protocol, and update the performance/readiness documentation with the actual result. Do not repeat the full matrix unless new evidence shows S0/G1 is insufficient.
+Required final state: first reproduce the historical `68a71e89...` baseline and the current production implementation with the same temporary measurement runner and environment. If the historical implementation is also slow, correct the measurement environment/protocol before drawing a production conclusion. If the historical implementation remains materially faster, isolate the first production regression between the two states and route the correction to the actual owner. Preserve the accepted virtualization architecture unless attribution proves it insufficient.
 
-Verification: the same production Vite build/preview, real Database import/view-switch scenario, three controlled samples per S0/G1 case, mounted row/property/cell counts, switch-to-usable timing, Long Tasks, and deep correctness sentinels used by the existing final revalidation. Run this after any further geometry/runtime correction so the proof is not invalidated again.
+Verification: same-environment A/B S0/G1 evidence using identical production build/preview, Chromium, viewport, worker count, dataset seed, fresh-context policy, in-page timing observer, mounted counts, and correctness sentinels. After an identified production correction, repeat three current S0 and three current G1 samples before acceptance.
 
 ## Major issues
 
@@ -48,8 +50,9 @@ None.
 
 ## Items not required
 
-- Repeating the complete R1/R2/R3/R4/C1/C2/C3 matrix is not required unless the final S0/G1 revalidation reveals a scale-dependent regression.
+- Repeating the complete R1/R2/R3/R4/C1/C2/C3 matrix before attribution is not required.
+- Worker/query/storage redesign, paging, indexes, or caches are not justified without attribution.
 
 ## Unresolved questions
 
-- The current exact-head E2E slowdown may or may not be related to the newer geometry update path. The CI evidence alone does not establish causality; diagnose it before changing geometry solely for the E2E timeout.
+- Whether the fresh slowdown is caused by current production runtime/geometry or by a changed measurement environment/protocol remains unresolved. Same-environment A/B evidence is required before selecting a coding correction.
