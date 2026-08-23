@@ -1,8 +1,8 @@
 # Database virtualization
 
-Status: **architecture accepted; production virtualization/profiling baseline complete; simplification correction ready and required before merge**.
+Status: **architecture accepted; production virtualization/profiling complete; final semantic correction ready and required before merge**.
 
-This is the architecture source of truth for large Database rendering in PR #217. Active correction details are in `docs/database-virtualization-simplification-handoff.md` and `docs/database-virtualization-simplification-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
+This is the architecture source of truth for large Database rendering in PR #217. Final correction contract: `docs/database-virtualization-final-correction-handoff.md` and `docs/database-virtualization-final-correction-preflight.md`. Shared API: `src/shared/ui/virtualization/README.md`. Raw product measurements: `docs/database-virtualization-production-results.md`.
 
 ## Goal
 
@@ -42,7 +42,8 @@ Primary invariant:
 - top-level physical root: `.database-view`;
 - relation editor root: `.relation-value-field__data`;
 - inline/recursive relation preview root: a Database-widget-owned local overflow element that physically contains the nested layout, including after teleport;
-- edit draft: one widget-owned active session.
+- edit draft: one widget-owned active session;
+- active source/shape configuration surface: one widget-owned controlled union state.
 
 ## Table rendering
 
@@ -125,30 +126,41 @@ Virtual eviction requires one lifted active session:
 { itemId, propertyId, initialValue, draft, resolving }
 ```
 
-Database widget/composition owns it, implemented as one local `useDatabaseInlineEditSession` composable rather than embedding the state machine in `DatabaseViewWidget`.
-
-The composable may receive only the narrow `postValue(itemId, propertyId, value)` dependency and owns request/claim, draft update, cancel, serialized resolve/commit, and recoverable failure state.
+Database widget/composition owns it through one local `useDatabaseInlineEditSession` composable. The composable may receive only the narrow `postValue(itemId, propertyId, value)` dependency and owns request/claim, draft update, cancel, serialized resolve/commit, and recoverable failure state.
 
 Invariants:
 
-- Escape cancels without persistence;
+- Escape cancels without persistence while the session is interactive;
 - normal resolve clears only after successful persistence;
+- while `resolving`, UI must not expose editable/cancel interaction that the session intentionally rejects;
+- failed persistence restores the same exact draft to an interactive editor;
 - eviction cannot silently lose a draft;
-- failed persistence keeps the session recoverable;
 - remount restores an unresolved draft;
 - starting another editor resolves the previous one first;
 - direct explicit view change resolves before setting selection;
-- no pinning, global registry, provider, or generic edit manager.
+- no second/local draft, pinning, global registry, provider, or generic edit manager.
 
 ## Source/shape-changing user configuration
 
-Before opening view, filter, sort, or property configuration, Database widget composition resolves the active inline edit through one narrow pre-action gate.
+Database widget composition owns one controlled configuration state:
 
-If resolution fails, the configuration surface does not open, current table source/shape stays unchanged, and the draft remains recoverable.
+```ts
+DatabaseConfigurationSurface | undefined
+```
 
-This prevents current-view removal from bypassing edit resolution. Direct explicit-view resolve-before-set remains as defense in depth.
+where the surface is one of `views`, `sort`, `filter`, or `properties`.
 
-Do not add parallel view/filter/sort/property state. External canonical updates are not intercepted merely to preserve a locally deleted/stale view; an active draft must still remain recoverable through normal unmount resolution.
+`DatabaseToolbar` is controlled by that state. Toolbar actions emit typed request/close intents upward; parent-owned resolve/permission/async-gate functions are not passed down as callback props.
+
+Opening behavior:
+
+1. toolbar emits configuration request;
+2. `DatabaseViewWidget` resolves the active inline edit;
+3. only after success the parent sets the controlled configuration surface;
+4. failed resolution leaves the surface closed and the draft recoverable;
+5. toolbar close emits upward and the parent clears the state.
+
+Direct explicit-view resolve-before-set remains as defense in depth. Do not add parallel view/filter/sort/property source state.
 
 ## Accessibility
 
@@ -165,42 +177,41 @@ Preserve native table semantics:
 
 ## Proof
 
-Application E2E owns cross-owner product behavior. Final correction proof must cover:
+Application E2E owns cross-owner product behavior. Final proof must cover:
 
 - bounded mounted rows/properties/cells and deep 2D sentinels;
-- real non-zero top-level surface displacement connected to correct virtualized range behavior, not only measured DOM distance;
+- real non-zero top-level surface displacement connected to correct virtualized range behavior;
+- logical deep-range behavior again after preceding content moves/removes the table surface;
 - relation editor physical root;
 - normal inline relation preview local physical root;
-- recursive teleported preview where that root actually contains the nested table and a large case reaches deep row/property sentinels;
-- edit commit, Escape, vertical eviction, horizontal eviction after local-composable extraction;
-- resolve-before-open for source/shape configuration and no current-view-removal bypass;
-- recoverable failed edit resolution at the lowest faithful deterministic proof;
+- recursive teleported preview where that root contains the nested table and a large case reaches deep row/property sentinels;
+- edit commit, Escape, vertical eviction, horizontal eviction and direct view switching;
+- successful resolve-before-configuration and no current-view-removal bypass;
+- resolving-interval and rejected-write recovery through deterministic/component proof;
+- toolbar request/controlled-open/close through component-contract proof;
 - native accessibility, sticky surfaces, toolbar behavior, and existing desktop/Mobile Chrome applicability.
 
-Use public DOM/user behavior, never TanStack private state.
+Use public DOM/user behavior. Product tests must not read Mioframe-private/TanStack measurement markers such as `data-mioframe-virtual-index`.
 
 ## Performance
 
-The complete baseline S0/R1/R2/R3/R4/C1/C2/C3/G1 matrix is retained as evidence. G1 proved bounded mounted work and baseline Long Tasks of 76–89 ms.
+The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline and final S0/G1 correction revalidation are complete. G1 remains bounded and the final three G1 samples observed no Long Tasks.
 
-The correction changes ownership/topology but not the virtual collection algorithm. Final revalidation is therefore proportional:
-
-- focused bounded/deep product proof;
-- controlled final-code S0 and G1 short -> full samples with the same in-page MessageChannel/rAF/switch-to-usable/Long Task protocol;
-- G1 remains bounded and has no switch-associated Long Task > 100 ms;
-- widen profiling only if the correction creates a material regression.
+The remaining semantic correction does not change virtualization/geometry or the measured short-to-full rendering algorithm. Do not rerun performance evidence unless implementation crosses those boundaries or a focused proof reveals a regression.
 
 ## Forbidden
 
 - changing `useVirtualCollection`, `MDTable`, overlay/tooltip, or service/worker public APIs for convenience;
-- consumer-provided numeric surface-offset props after correction;
+- consumer-provided numeric surface-offset props;
 - relation entity DOM-root API;
 - automatic root discovery;
 - generic virtualization/root/edit/configuration manager;
-- second geometry/range/cache/anchor system;
+- second edit draft or geometry/range/cache/anchor system;
 - independent row/column size maps;
+- callback props for parent-owned commands, permission checks, confirmations, or async gates;
 - direct widget `shared/service` value persistence;
 - parallel canonical source state;
+- private virtualizer markers in product proof;
 - worker/query/storage optimization without new evidence;
 - sleeps, force, retries-as-success, timeout inflation, or tolerance weakening.
 
@@ -208,10 +219,10 @@ The correction changes ownership/topology but not the virtual collection algorit
 
 Shared/native capability: **accepted**.
 
-Production virtualization/profiling baseline: **complete**.
+Production virtualization and performance evidence: **complete**.
 
-Simplification correction handoff/preflight: **ready**.
+Final semantic correction handoff/preflight: **ready**.
 
-Semantic review: **blocked until correction implementation and proof are complete**.
+Semantic review: **blocked until final correction implementation and proof are complete**.
 
-Merge readiness: **not yet; correction, re-review, proportional final performance revalidation, and exact-head GitHub CI remain required**.
+Merge readiness: **not yet; correction, full re-review, and exact-head GitHub CI remain required**.
