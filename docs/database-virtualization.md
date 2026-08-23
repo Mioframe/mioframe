@@ -23,15 +23,15 @@ Primary invariant:
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `shared/ui/virtualization` | Generic one-axis collection virtualization and `vItem` measurement binding. |
-| `entities/databaseData` | Native table DOM, row/property virtual collections, spacers, column sizing, logical accessibility, sticky action cells, and geometry from an explicit physical root to **its own table surface**. |
-| `entities/databaseValue` | Narrow value read/write contracts used by inline editing. |
-| Database widget/composition | Chooses physical roots, composes table/toolbar/relation surfaces, owns one inline-edit lifecycle, and gates user configuration that can replace table source/shape. |
-| relation entity UI | Domain/display behavior only; no Database virtualization DOM-root API. |
-| service/worker | Canonical data/filter/sort/order. |
-| `shared/ui/Table` | Presentation only. |
+| Owner                       | Responsibility                                                                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/ui/virtualization`  | Generic one-axis collection virtualization and `vItem` measurement binding.                                                                                                                       |
+| `entities/databaseData`     | Native table DOM, row/property virtual collections, spacers, column sizing, logical accessibility, sticky action cells, and geometry from an explicit physical root to **its own table surface**. |
+| `entities/databaseValue`    | Narrow value read/write contracts used by inline editing.                                                                                                                                         |
+| Database widget/composition | Chooses physical roots, composes table/toolbar/relation surfaces, owns one inline-edit lifecycle, and gates user configuration that can replace table source/shape.                               |
+| relation entity UI          | Domain/display behavior only; no Database virtualization DOM-root API.                                                                                                                            |
+| service/worker              | Canonical data/filter/sort/order.                                                                                                                                                                 |
+| `shared/ui/Table`           | Presentation only.                                                                                                                                                                                |
 
 ## Source of truth
 
