@@ -4,67 +4,75 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- PR #217 Database widget composition, inline-edit ownership, controlled configuration state, Vue template conventions, and resolving-state interaction contract.
+- PR #217 current Database widget composition after the inline-edit feature extraction.
+- `EditableInlineValue` resolving-state interaction contract and focused component proof.
+- `DatabaseToolbar` controlled configuration contract and focused component proof.
+- Exact-head mutation verification for the touched widget components.
 
 ## Blockers
 
-### B1 — Resolving inline value still presents Material activation feedback
+### B1 — Touched Database widget contracts are below the required mutation-proof threshold
 
-Owner: `src/widgets/DocumentView/Database/EditableInlineValue.vue`.
+Owner: `src/widgets/DocumentView/Database`
 
-Problem: `EditableInlineValue` correctly hides the editor and removes keyboard/ARIA action semantics while `editSession.resolving`, but the same root still looks and reacts like an enabled action. The root keeps `cursor: pointer`, always renders the live state layer, and always attaches `useRipple`; `useRipple` starts a ripple on pointer-down independently of the edit-session gate.
+Problem: the semantic correction is implemented correctly, but the focused component tests prove only the newly corrected paths. Exact-head mutation verification mutates the complete touched `DatabaseToolbar.vue` and `EditableInlineValue.vue` files and still leaves enough observable component behavior unproved that the required mutation gate fails. The current mutation scores are 40.00% for `DatabaseToolbar.vue` and 14.81% for `EditableInlineValue.vue`; the aggregate changed-source score is 32.84% against the repository breaking threshold of 60%.
 
-Required final state: while the session is resolving, the inline value is both semantically and visibly non-interactive: no clickable cursor, hover/press/ripple activation feedback, editable field, draft mutation, cancel, or new edit request. A rejected write restores the exact same draft and normal interaction surface. Keep one interaction fact derived from the session; do not add a shared disabled API or second state.
+Evidence:
 
-Verification: retain the deterministic rejected-write session proof and make the component contract prove that the actual state/ripple target becomes `null` while resolving and is restored after recovery. If implementation keeps a live target attached and relies on CSS/event timing, browser-faithful pointer proof is required instead.
+- [`DatabaseToolbar.test.ts`](./DatabaseToolbar.test.ts) — proves controlled configuration request/open/close behavior, but does not exercise several existing toolbar branches now included in the touched-file mutation scope, including add-item lifecycle and property-presence behavior.
+- [`EditableInlineValue.test.ts`](./EditableInlineValue.test.ts) — correctly proves target detachment/recovery for a resolving session, but leaves other public inline-value states and actions in the touched component unproved under mutation.
+- [`DatabaseToolbar.vue`](./DatabaseToolbar.vue) and [`EditableInlineValue.vue`](./EditableInlineValue.vue) — both are current mutation targets because this PR changed them.
+- [`../../../../stryker.config.mjs`](../../../../stryker.config.mjs) — mutation verification has `thresholds.break: 60`.
+- [Exact-head verify run](https://github.com/Mioframe/mioframe/actions/runs/32644171094) — `verification-static` fails only at `Verify mutation`; format, oxlint, eslint, type-check, and unit tests pass. The mutation report records 32.84% overall, 40.00% for `DatabaseToolbar.vue`, and 14.81% for `EditableInlineValue.vue`.
+
+Basis:
+
+- [`../../../../.agents/skills/project-review/SKILL.md`](../../../../.agents/skills/project-review/SKILL.md) — required mutation proof cannot be replaced by green unit tests or other checks.
+- [`../../../../stryker.config.mjs`](../../../../stryker.config.mjs) — the repository-defined breaking threshold is 60% and must not be weakened for the PR.
+
+Risk: observable Database toolbar/inline-value behavior can regress while the current focused tests remain green, and exact-head verification cannot pass. Treating the failed gate as incidental would bypass a repository-required proof specifically triggered by the production files changed in this correction.
+
+Required final state: add focused component-contract coverage for the meaningful public behavior of the two touched components until the normal verifier-managed mutation run passes the existing threshold. Preserve the current production architecture and behavior; do not alter production logic, mutation configuration, thresholds, exclusions, or verifier scope merely to improve the score.
+
+Verification: run the focused unit tests while developing, then `pnpm verify --only mutation` through the normal verifier-managed path. The exact-head GitHub verification must subsequently pass without threshold/configuration weakening.
 
 ## Major issues
 
-### M1 — Inline-edit session lifecycle is owned by the widget instead of a feature
-
-Owner: FSD boundary between `src/widgets/DocumentView/Database` and a dedicated inline-value-edit feature.
-
-Problem: `useDatabaseInlineEditSession.ts` owns a complete user-action flow: one active draft, request/claim, update, cancel, commit/resolve, persistence, serialization of an in-flight write, and recoverable failure. `DatabaseViewWidget.vue` also constructs that flow by reading `useDatabaseValueWrite` directly and injecting `postValue` into the widget-local composable.
-
-This is beyond widget composition. Repository rules assign inline actions, submit flows, cancel/recovery behavior, and action orchestration to `features`; widgets should compose features/entities and own only cross-feature screen coordination.
-
-Required final state:
-
-- move the session composable and its focused tests to a dedicated feature, `src/features/databaseInlineValueEdit/`;
-- the feature owns the single active session and obtains the narrow entity writer from `@entity/databaseValue` using `path` and `documentId` inputs;
-- `DatabaseViewWidget` consumes the feature API and no longer imports `useDatabaseValueWrite` or constructs persistence dependencies;
-- `DatabaseViewWidget` continues to own cross-feature orchestration: resolve the active edit before changing explicit view or opening a source/shape configuration surface;
-- keep the existing session state shape and behavior unless a mechanical type/export adjustment is required by the move;
-- do not introduce a manager, provider, registry, global store, or second draft.
-
-The feature must not know about views, toolbar surfaces, virtualization roots, or Database screen layout. Those remain widget composition concerns.
-
-### M2 — Virtualization scenarios broaden an unrelated E2E spec's mobile applicability
-
-Owner: `tests/e2e` and application-E2E applicability/risk metadata.
-
-The detailed finding remains in `tests/e2e/REVIEW.md`. The accepted correction is a dedicated `tests/e2e/databaseVirtualizationFlows.spec.ts` with persistent applicability `both`, while `databaseViewsAndQueryFlows.spec.ts` returns to `desktop`. The virtualization risk mapping must target the dedicated spec and follow the moved inline-edit feature path.
+None.
 
 ## Minor issues
 
-### m1 — New controlled configuration prop is accessed through `props.` in the template
+### m1 — `EditableInlineValue` still describes the lifted session as widget-owned
 
-Owner: `DatabaseToolbar.vue`.
+Owner: `src/widgets/DocumentView/Database`
 
-The PR added `activeConfigurationSurface`, but the template checks `props.activeConfigurationSurface` while the component already exposes its other props through named refs such as `documentId`, `path`, and `autoHideTarget`. This creates an unnecessary mixed template style.
+Problem: the `onBeforeUnmount` comment still says the session is `widget-owned`, although the session is now owned by `features/databaseInlineValueEdit`.
 
-Required final state: expose `activeConfigurationSurface` as a named ref/value in `<script setup>` and use that name directly in the template. Do not introduce a broad props destructuring/refactor solely for this cleanup.
+Evidence:
+
+- [`EditableInlineValue.vue`](./EditableInlineValue.vue) — the virtual-unmount comment still says `widget-owned session`.
+- [`../../../../docs/database-virtualization.md`](../../../../docs/database-virtualization.md) — canonical ownership assigns the active inline-edit session to `features/databaseInlineValueEdit`.
+
+Basis:
+
+- [`AGENTS.md`](./AGENTS.md) — this directory is Database UI composition, not the user-action/domain owner.
+
+Risk: the stale ownership comment contradicts the current architecture and can mislead later maintenance back toward widget-owned session state.
+
+Required final state: make the comment ownership-neutral or identify the session as feature-owned; no behavior change.
+
+Verification: source review/type-check is sufficient.
 
 ## Accepted risks
 
 None.
 
-## Items not required for PR #217
+## Items not required
 
-- The pre-existing `RelationValueFieldData.onSelect` function prop remains outside this correction scope.
-- `DatabaseViewWidget` directly using `useDatabaseData().removeItem` instead of the existing `@feature/databaseItemRemove` is pre-existing FSD debt. It should be corrected separately unless current work materially touches that action.
-- Duplicate `useDatabaseProperties` / `useDatabaseViewSelection` reads across existing Database widget composition are pre-existing ownership debt. Do not expand #217 into a broad read-model refactor.
-- Existing `props.class` / `props.inputSize` template usage in `DatabasePropertyValueField.vue` predates #217. It may be normalized separately; only the newly introduced `activeConfigurationSurface` usage is part of this correction.
+- The pre-existing `RelationValueFieldData.onSelect` function prop remains outside PR #217.
+- The pre-existing direct item-removal entity mutation in `DatabaseViewWidget` remains separate FSD debt.
+- The pre-existing duplicate Database read subscriptions remain separate cleanup.
+- Historical `props.class` / `props.inputSize` usage in `DatabasePropertyValueField.vue` is unrelated to this correction.
 
 ## Unresolved questions
 
