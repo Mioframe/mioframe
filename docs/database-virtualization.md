@@ -1,49 +1,52 @@
 # Database virtualization
 
-Status: **architecture accepted; implementation semantics and product proof accepted; performance acceptance blocked pending verifier-owned current-head reproduction of the reported slowdown**.
+Status: **shared virtualization architecture accepted; Database table integration architecture reopened for geometry-refresh performance and visual-boundary compatibility; merge blocked**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
 Related current contracts:
 
 - shared virtualization API: `src/shared/ui/virtualization/README.md`;
-- final semantic correction: `docs/database-virtualization-final-correction-handoff.md`, `docs/database-virtualization-final-correction-preflight.md`;
-- final proof correction: `docs/database-virtualization-final-proof-handoff.md`, `docs/database-virtualization-final-proof-preflight.md`;
-- current performance diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
-- implemented full-review correction contract: `docs/database-virtualization-quality-correction-handoff.md`, `docs/database-virtualization-quality-correction-preflight.md`;
-- superseded mutation-proof correction record: `docs/database-virtualization-mutation-proof-correction-handoff.md`, `docs/database-virtualization-mutation-proof-correction-preflight.md`;
-- active review finding: `src/entities/databaseData/REVIEW.md`;
-- raw product measurements: `docs/database-virtualization-production-results.md`.
+- active review findings: `src/entities/databaseData/REVIEW.md`;
+- raw product measurements: `docs/database-virtualization-production-results.md`;
+- superseded switch-only diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
+- accepted semantic/proof correction history remains in the existing `docs/database-virtualization-*-handoff.md` / `*-preflight.md` records.
 
 ## Goal
 
-Scale Database rendering to at least 30,000 rows and hundreds of properties, including 30,000 × 300 = 9,000,000 logical row/property intersections, while preserving exact filter/sort/view behavior, editing, relations, native table semantics, accessibility, and desktop/Mobile Chrome usability.
+Scale Database rendering to at least 30,000 rows and hundreds of properties, including 30,000 × 300 = 9,000,000 logical row/property intersections, while preserving exact filter/sort/view behavior, editing, relations, native table semantics, accessibility, stable visual appearance, and desktop/Mobile Chrome usability.
 
-Primary invariant:
+Primary structural invariant:
 
 > For fixed viewport and overscan, mounted expensive rows, properties, and cells are bounded independently of total logical dataset size.
 
+Responsiveness and presentation are also required product behavior. Bounded DOM alone is not acceptance when the view still freezes during switching/scrolling or the table loses its established border/radius appearance.
+
 ## Accepted virtualization architecture
 
-- `@tanstack/vue-virtual` is the only virtual-item geometry/range/cache engine.
-- `useVirtualCollection` is the only Mioframe virtualization boundary and its public API remains unchanged.
-- Production Database uses one row collection and one property collection over the existing complete canonical sources.
-- Native `<table>` flow remains the renderer; only mounted row × mounted property intersections instantiate expensive cells.
+The following decisions remain accepted and are not reopened by the new findings:
+
+- `@tanstack/vue-virtual` is the only virtual-item range/measurement/cache engine.
+- `useVirtualCollection` is the only Mioframe shared virtualization boundary and its public API remains unchanged unless new evidence proves it insufficient.
+- Database uses independent row and property virtual collections over the existing complete canonical sources.
+- Native `<table>` flow remains the renderer.
+- Only mounted row × mounted property intersections instantiate expensive cells.
 - Service/worker remains canonical for row membership/filter/sort/order.
-- No UI-side paging/source reconstruction, worker redesign, generic virtual grid/table, second geometry system, pinning, independent size maps, or virtual-item registry exists.
+- No UI-side paging/source reconstruction, worker redesign, generic virtual grid/table, second virtual-item geometry system, pinning, independent size maps, or virtual-item registry is justified.
 
-## Ownership
+## Accepted ownership outside the reopened integration boundary
 
-| Owner                              | Responsibility                                                                                                                                                                                     |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shared/ui/virtualization`         | Generic one-axis collection virtualization and `vItem` measurement binding.                                                                                                                        |
-| `entities/databaseData`            | Native table DOM, row/property virtual collections, spacers, column sizing, logical accessibility, sticky action cells, and geometry from an explicit physical root to its own table surface.      |
-| `entities/databaseValue`           | Narrow value read/write contracts used by inline editing.                                                                                                                                          |
-| `features/databaseInlineValueEdit` | One active inline-edit session: draft, request/update/cancel, serialized resolve/commit, entity-backed persistence, recoverable failure, and explicit feature-owned persistence-failure semantics. |
-| Database widget/composition        | Physical-root choice, table/toolbar/relation composition, screen branches, explicit view/configuration state, and cross-feature resolve-before-transition orchestration.                           |
-| relation entity UI                 | Domain/display behavior only; no Database virtualization DOM-root API.                                                                                                                             |
-| service/worker                     | Canonical data/filter/sort/order.                                                                                                                                                                  |
-| `shared/ui/Table`                  | Presentation only.                                                                                                                                                                                 |
+| Owner | Responsibility |
+| --- | --- |
+| `shared/ui/virtualization` | Generic one-axis collection virtualization and `vItem` measurement binding. |
+| `entities/databaseData` | Native Database table rendering, row/property virtual collections, spacer representation, logical accessibility, sticky action cells, and Database-local visual adaptation required by virtualization. |
+| `entities/databaseValue` | Narrow value read/write contracts used by inline editing. |
+| `features/databaseInlineValueEdit` | One active inline-edit session, serialized resolve/commit, recovery, and persistence-failure semantics. |
+| Database widget/composition | Physical-root choice, table/toolbar/relation composition, screen branches, view/configuration state, and cross-feature orchestration. |
+| service/worker | Canonical data/filter/sort/order. |
+| `shared/ui/Table` | Generic table presentation. It must not become Database-virtualization-aware merely to repair this consumer. |
+
+Inline-edit ownership, persistence error semantics, product behavior decomposition, accessibility semantics, and existing service/entity sources of truth remain accepted from the earlier architecture and correction rounds.
 
 ## Source of truth
 
@@ -53,13 +56,13 @@ Primary invariant:
 - values: existing Database value entity/service contracts;
 - top-level physical root: `.database-view`;
 - relation editor root: `.relation-value-field__data`;
-- inline/recursive relation preview root: Database-widget-owned local overflow element that physically contains the nested layout, including after teleport;
-- edit draft and persistence-failure state/result: one active flow owned by `features/databaseInlineValueEdit`;
-- active source/shape configuration surface: one widget-owned controlled union state.
+- inline/recursive relation preview root: Database-widget-owned local overflow element that physically contains the nested layout;
+- edit draft/persistence failure: `features/databaseInlineValueEdit`;
+- active source/shape configuration surface: widget-owned controlled state.
 
-## Table rendering
+## Native table virtualization
 
-`DatabaseDataTable` owns two independent `useVirtualCollection` consumers and renders:
+`DatabaseDataTable` still renders the logical structure through physical spacer DOM:
 
 ```text
 <table>
@@ -69,130 +72,73 @@ Primary invariant:
 </table>
 ```
 
-The action column is outside horizontal property virtualization. Spacer/fill DOM is presentation-only and excluded from logical accessibility semantics.
+The action column remains outside horizontal property virtualization. Spacer DOM is presentation-only and excluded from logical accessibility semantics.
 
-## Root and surface geometry
+The spacer representation itself is not rejected, but it must not redefine the visible outer border/corner contract of the table. The current implementation does so because `MDTable` derives visible corners/borders from physical first/last children while Database virtualization inserts spacers at those structural boundaries.
 
-A Database table consumer supplies only its real physical `scrollRoot`.
+### Required visual boundary
 
-`DatabaseDataTable` owns the collection surface because it owns the rendered table. It derives vertical and horizontal `surfaceOffset` internally from the explicit root plus its own table element.
+The corrected Database table must preserve the pre-PR visible table appearance:
 
-Requirements:
+- outer border remains visually continuous;
+- top-left/top-right/bottom-left/bottom-right radii belong to the logical visible table boundary, not to hidden spacer cells/rows;
+- scrolling horizontally or vertically must not reveal broken/missing duplicate outer edges;
+- sticky action/header surfaces remain visually integrated;
+- spacer elements remain presentation-only.
 
-- truthful non-zero top-level offset when content precedes the table;
-- truthful horizontal offset from root padding/table placement;
-- independent nested roots;
-- layout changes that move the table update the derived offset;
-- direct DOM reads and narrow VueUse geometry/mutation primitives are allowed only for root-to-own-surface position;
-- no virtual-item observer/cache/range/anchor logic outside TanStack;
-- no automatic scroll-parent discovery.
+This adaptation belongs to `entities/databaseData` unless evidence shows a generic `MDTable` defect affecting ordinary non-virtualized consumers. Do not change shared `MDTable` merely to teach it about Database spacer conventions.
 
-`DatabaseViewLayout` and `RelationValueFieldData` do not compute or pass numeric surface offsets.
+## Root and surface geometry — architecture reopened
 
-Passing the physical `HTMLElement` root explicitly is intentional browser-resource dependency injection. Do not replace it with DOM discovery, `provide/inject`, a root manager, or a generic context solely to hide the prop.
+A Database virtualizer needs the truthful distance from its physical scroll root origin to the table collection surface.
 
-The current implementation uses root/table bounding measurements plus mutation/update-driven refresh. That ownership remains architecture-compatible. A later temporary current-geometry measurement confirmed the bounded mounted-work invariant but reported materially slower usable-state completion and repeated 291–429 ms Long Tasks compared with retained historical evidence. Because that later run was not produced through the canonical focused verifier workflow, it is not sufficient by itself to select a production correction. First reproduce or reject the slowdown on the current PR head through the verifier-managed E2E diagnostic. Change geometry only after a separate evidence-backed attribution pass identifies it as the actual owner.
+The previous accepted revision moved root/table bounding ownership into `DatabaseDataTable` and refreshed it from that component's `onUpdated()` lifecycle. New evidence invalidates acceptance of that lifecycle boundary:
 
-## Composition
+- the current table component is also the component whose mounted virtual ranges change during scrolling;
+- every such component update can therefore trigger root/table bounding refresh/layout reads;
+- manual Chrome testing now reports perceptible scrolling freezes;
+- the retained faster `68a71e89...` implementation kept equivalent surface refresh in the parent layout lifecycle rather than the virtual-range-rendering table component.
 
-Top level:
+Therefore the requirement is now:
 
-```text
-.database-view (physical root)
-  optional preceding content
-  DatabaseViewLayout
-    DatabaseDataTable(scrollRoot=.database-view)
-    after / toolbar composition
-```
+> Root-to-surface position measurement must not be driven by ordinary virtual-range updates.
 
-Relation editor:
+The replacement architecture must keep geometry truthful when the table actually moves relative to its physical root while avoiding surface-position measurement on steady-state row/property range rendering.
 
-```text
-.relation-value-field__data (physical root)
-  RelationValueFieldData
-    DatabaseDataTable(scrollRoot=.relation-value-field__data)
-```
+### Simplest viable direction
 
-Inline/recursive relation preview:
+The preferred architecture for the next correction is to restore geometry ownership to the component that owns the concrete table surface placement relative to the physical root, rather than the virtual-range-rendering `DatabaseDataTable` lifecycle:
 
-```text
-RelationValueInline (entity display only)
-  slot content
-    DatabaseRelationValueInline local overflow root
-      DatabaseViewLayout(scrollRoot=local root)
-```
+- `DatabaseViewLayout` owns its table-surface placement for top-level and recursive Database composition;
+- `RelationValueFieldData` owns its table-surface placement inside the relation editor root;
+- those concrete composition owners provide the resulting narrow vertical/horizontal surface offsets to `DatabaseDataTable`;
+- `DatabaseDataTable` consumes those offsets but does not run root/table bounding refresh from its own virtual-range `onUpdated()` path.
 
-The local widget root moves with slot content when tooltip composition teleports the recursive preview. `RelationValueInline` does not expose an HTMLElement root.
+This intentionally re-allows narrow numeric surface-offset inputs because measured/current user evidence shows that hiding the geometry completely inside `DatabaseDataTable` couples layout measurement to its hot virtual-render lifecycle. The earlier prohibition is superseded.
 
-## Dynamic sizing / sticky UI
+Do not introduce a shared root manager, provider/inject context, automatic scroll-parent discovery, generic geometry service, or second virtual-item measurement/cache system. Two explicit local composition owners are preferable to a new abstraction.
 
-Rows and mounted property headers are measured through the shared per-instance `vItem`. TanStack owns measured size and scroll correction.
+The final correction may refine the exact event/observer triggers inside those composition owners, but they must correspond to real surface movement/resize/composition changes rather than every virtual range update.
+
+## Dynamic sizing and sticky UI
+
+Rows and mounted property headers continue to be measured through the shared per-instance `vItem`. TanStack owns measured size and scroll correction.
 
 Production wrapping remains intact. A mounted property may use public virtual item `size` as remount `min-width`; no parallel width map exists.
 
-Native sticky header behavior remains presentation-owned. The trailing action column stays mounted for each mounted logical row and remains outside property virtualization.
+The trailing action column stays mounted for each mounted logical row and remains outside property virtualization. Sticky header/action behavior remains part of the required product and visual contract.
 
-## Inline editing
+## Inline editing and source/configuration behavior
 
-Virtual eviction requires one lifted active session:
+The previously accepted inline-edit architecture remains unchanged:
 
-```text
-{ itemId, propertyId, initialValue, draft, resolving }
-```
+- one lifted session in `features/databaseInlineValueEdit`;
+- exact draft recovery on failed persistence;
+- serialized resolve/commit;
+- resolve before switching explicit view or opening source/shape configuration;
+- no second/local draft, registry, provider, generic manager, or widget-owned value persistence.
 
-`features/databaseInlineValueEdit` owns that session and obtains the existing entity-level `useDatabaseValueWrite(path, documentId)` contract internally.
-
-The feature owns request/claim, draft update, cancel, serialized resolve/commit, recoverable persistence failure, and the explicit error outcome for a rejected persistence attempt. It must not know about views, configuration surfaces, scroll roots, relation DOM, or screen layout.
-
-A rejected persistence operation must not be reduced to an anonymous boolean failure. The exact draft remains recoverable, and the original failure must remain available through project-standard feature error semantics (directly or as the raw cause of a project-standard error) so the owning flow can handle the error truthfully. Do not add feature-local error classifiers or synthetic safe-cause wrappers.
-
-`DatabaseViewWidget` consumes the feature and owns only cross-feature screen decisions. In particular, it resolves the current edit before changing explicit view or opening a source/shape configuration surface.
-
-Invariants:
-
-- Escape cancels without persistence while interactive;
-- normal resolve clears only after successful persistence;
-- while `resolving`, UI exposes no editable/cancel interaction or Material activation feedback;
-- the resolving host is not the active state-layer/ripple target and does not keep a clickable cursor;
-- failed persistence restores the same exact draft and normal interaction surface and exposes an explicit feature-owned failure outcome without discarding the cause;
-- a defined successful retry/reset clears the previous failure state/result;
-- eviction cannot silently lose a draft;
-- remount restores an unresolved draft;
-- starting another editor resolves the previous one first;
-- direct explicit view change resolves before setting selection;
-- opening views/sort/filter/properties resolves before setting the controlled configuration surface;
-- no second/local draft, pinning, global registry, provider, generic manager, or public persistence callback injection.
-
-## Source/shape-changing user configuration
-
-Database widget composition owns one controlled configuration state:
-
-```ts
-DatabaseConfigurationSurface | undefined;
-```
-
-with `views`, `sort`, `filter`, or `properties`.
-
-`DatabaseToolbar` is controlled by that state. Toolbar actions emit typed request/close intents upward; parent-owned resolve/permission/async-gate functions are not passed down as callback props.
-
-Opening behavior:
-
-1. toolbar emits configuration request;
-2. `DatabaseViewWidget` resolves the feature-owned active inline edit;
-3. only after success the widget sets the controlled configuration surface;
-4. failed resolution leaves the surface closed and draft recoverable, with the failure represented by the feature rather than silently discarded;
-5. toolbar close emits upward and the widget clears the state.
-
-Direct explicit-view resolve-before-set remains defense in depth. Do not add parallel view/filter/sort/property source state.
-
-## Vue composition conventions for the touched flow
-
-- Widget components use explicit props, emits, slots, and named handlers.
-- New controlled props should be exposed as named local bindings instead of mixing `props.*` access into a template that already uses named refs.
-- `EditableInlineValue` remains widget-level screen composition; the feature owns the lifted action/session lifecycle rather than importing widget UI.
-- Do not move feature-owned action state back into the widget to reduce file count.
-
-Pre-existing Database widget debts such as direct item-remove entity mutation, duplicate read-model subscriptions, and unrelated callback props are outside PR #217 unless current work materially touches them.
+The Database widget continues to own cross-feature screen/configuration decisions, while entities/services remain the source of truth for domain data.
 
 ## Accessibility
 
@@ -207,91 +153,76 @@ Preserve native table semantics:
 - no `role=list/listitem` override;
 - no ARIA-grid keyboard model.
 
+## Required user scenarios after the reopen
+
+The next correction must preserve all previously accepted product behavior and additionally prove the newly reported scenarios:
+
+1. Short filtered view -> Full view does not exhibit the current remaining perceptible freeze.
+2. Representative sustained vertical scrolling through a large Database does not exhibit the current repeated freezes/jank.
+3. Representative horizontal scrolling across a wide Database does not exhibit equivalent jank.
+4. Mounted rows/properties/cells stay bounded during switching and scrolling.
+5. Deep logical row/property/value sentinels remain correct after scrolling.
+6. Table outer borders and corner radii match the established pre-virtualization appearance at the initial/top-left state and after representative deep scrolling.
+7. Existing nested relation roots, dynamic row sizing, sticky surfaces, inline editing, and desktop/Mobile Chrome behavior remain correct.
+
 ## Proof ownership
 
-Application E2E owns complete cross-owner product behavior.
+Application E2E remains the owner of complete cross-owner product behavior in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
 
-The Database virtualization product scenarios have one dedicated root application owner:
+Browser proof must cover real scrolling/geometry behavior through verifier-managed execution. Screenshots must not be embedded in behavior specs.
 
-`tests/e2e/databaseVirtualizationFlows.spec.ts`
+The visual border/radius contract needs bounded visual regression proof at the executable owner/location allowed by the current `docs/testing/migration-plan.md`. The correction preflight must inspect that plan before selecting the durable visual spec location. Visual proof owns stable appearance only; scrolling responsiveness remains browser/performance evidence.
 
-with persistent project applicability `both`.
+Task-specific performance evidence must include:
 
-The historical `tests/e2e/databaseViewsAndQueryFlows.spec.ts` retains `desktop` applicability. Virtualization source impact selects the dedicated spec explicitly through `scripts/lib/e2eRisk.ts`, including the `features/databaseInlineValueEdit` owner.
+- current corrected Short -> Full behavior;
+- representative vertical and horizontal scrolling behavior;
+- mounted work counts;
+- relevant Long Task / responsiveness observations using the existing profiling contract.
 
-The required product contracts remain:
+Do not use direct Playwright/Vite/browser commands or coding-agent historical checkout/worktree/bisect orchestration. Use repository verifier surfaces.
 
-- bounded mounted rows/properties/cells and deep 2D sentinels;
-- real non-zero top-level surface displacement and range behavior after surface movement;
-- relation editor physical root;
-- normal and recursive teleported relation preview roots;
-- edit commit, Escape, vertical/horizontal eviction, and direct view switching;
-- resolve-before-configuration and current-view-removal behavior;
-- resolving interval and rejected-write recovery through focused deterministic/component proof;
-- native accessibility, sticky surfaces, toolbar behavior, and desktop/Mobile Chrome virtualization applicability.
+## Performance status
 
-The dedicated spec keeps these contracts behavior-focused under one product owner. Do not recombine independent edit/eviction/view/configuration behaviors into a single oversized scenario, duplicate them elsewhere, or raise timeouts to hide instability.
+Structural scalability is accepted: current measurements keep 12 mounted rows / 8 property headers / 96 expensive cells for S0/G1 and do not materialize the 9,000,000 logical intersections.
 
-Product tests use public DOM/user behavior and must not read private virtualizer markers.
+Responsiveness is not accepted:
 
-Mutation proof for the touched feature/widget owners is local to their colocated unit/component tests. It protects their public lifecycle and component branches and must not duplicate complete product E2E scenarios or expose private production state.
+- the later current-geometry measurement reported S0 usable 1582.5–1950.8 ms and G1 1950.7–2516.8 ms with repeated 291–429 ms Long Tasks;
+- operator Chrome testing confirms the Full-view freeze is shorter than the original defect but remains perceptible;
+- operator Chrome testing additionally confirms perceptible freezes during scrolling.
 
-## Performance
+The former switch-only verifier diagnostic is superseded. The next pass is an implementation correction after the geometry/presentation architecture above is reflected in a dedicated handoff/preflight, not another switch-only measurement pass.
 
-The complete S0/R1/R2/R3/R4/C1/C2/C3/G1 baseline remains useful historical evidence. The retained S0/G1 revalidation at `68a71e89d03713452946819cb52ba80a64157424` showed bounded DOM and zero Long Tasks.
-
-A later S0/G1 revalidation on the current table-owned geometry implementation also kept mounted work fixed at 12 rows / 8 property headers / 96 expensive cells and passed deep correctness, including G1's 30,000 × 300 logical shape. Structural scalability is therefore confirmed.
-
-Responsiveness acceptance remains **blocked** because that later temporary run reported:
-
-- S0 usable 1582.5–1950.8 ms, worst Long Task 313 ms;
-- G1 usable 1950.7–2516.8 ms, worst Long Task 429 ms.
-
-The next required proof is deliberately narrower than the superseded historical A/B plan: collect exactly three current-head S0 and three current-head G1 samples through a temporary nested application-E2E diagnostic executed only by `pnpm verify --only e2e`. Historical refs are comparison context only; the coding agent must not checkout/worktree/bisect them.
-
-Classify only whether the slowdown is reproduced, not reproduced, or ambiguous in the canonical verifier-owned environment. If reproduced, stop and route a separate current-head attribution pass before any production correction. If not reproduced, the architect decides whether the earlier temporary measurement was an environment/protocol mismatch and whether performance acceptance can close. If ambiguous, do not add retries or broaden the diagnostic.
-
-The full matrix is not required unless later evidence shows S0/G1 is insufficient.
+After correction, collect fresh verifier-managed evidence for S0 and G1 plus representative scrolling. The full R1/R2/R3/R4/C1/C2/C3 matrix is not required unless the corrected evidence exposes a new scale-specific uncertainty.
 
 ## Forbidden
 
-- changing `useVirtualCollection`, `MDTable`, overlay/tooltip, shared State/Ripple public APIs, entity value-write API, or service/worker APIs for convenience;
-- consumer-provided numeric surface-offset props;
-- automatic root discovery or generic root context/manager;
-- relation entity DOM-root API;
-- generic virtualization/edit/configuration/interaction manager;
-- second edit draft or geometry/range/cache/anchor system;
-- independent row/column size maps;
-- callback props for parent-owned commands/permission/async gates;
-- widget-owned value persistence for the inline-edit session;
-- feature knowledge of views/configuration/scroll roots;
-- feature-local failure classifiers or synthetic safe-cause wrappers;
-- parallel canonical source state;
+- replacing TanStack or adding a second range/size/cache/anchor engine without new evidence;
+- worker/query/storage redesign, paging, caches, or indexes before the table-integration correction is measured;
+- root/table surface bounding refresh from ordinary `DatabaseDataTable` virtual-range updates;
+- generic root/geometry manager, provider/inject context, or automatic scroll-parent discovery;
+- changing shared `MDTable` to understand Database virtualization unless a separate shared-UI review proves a generic defect;
+- spacer DOM becoming the visible border/radius boundary;
 - private virtualizer markers in product proof;
-- broad historical views/query mobile reclassification merely to host virtualization proof;
-- broad cleanup of pre-existing Database widget debt;
-- weakening mutation thresholds/configuration, excluding touched production behavior, adding test-only production seams, or changing production behavior merely to make mutation verification pass;
-- timeout inflation, sleeps, force, or retry-as-success to hide E2E failures;
-- treating historical performance evidence as current-head proof;
-- manual historical Git/worktree/bisect orchestration for coding-agent performance proof;
-- direct Playwright/Vite/browser execution when the diagnostic is owned by `pnpm verify --only e2e`;
-- changing geometry or another production owner before verifier-owned reproduction and a separate evidence-backed attribution pass;
-- worker/query/storage optimization without measured attribution.
+- test-only production seams;
+- timeout inflation, sleeps, force, retry-as-success, or weakened performance criteria;
+- direct Playwright/Vite/browser execution for required proof;
+- coding-agent historical checkout/worktree/bisect orchestration;
+- unrelated widget/service cleanup.
 
 ## Readiness
 
-Shared/native capability: **accepted**.
+Shared/native virtualization capability: **accepted**.
 
-Production virtualization architecture: **accepted**.
+Bounded mounted-DOM invariant: **accepted**.
 
-Bounded mounted-DOM invariant: **accepted on the current geometry implementation**.
+Database table integration geometry lifecycle: **reopened; current table-owned `onUpdated` surface refresh is not accepted**.
 
-Current geometry performance acceptance: **blocked; canonical current-head S0/G1 reproduction through the verifier-managed E2E lane is required before attribution or correction**.
+Database table visual compatibility: **blocked; borders/corner radii regressed under spacer DOM**.
 
-Inline-edit ownership, persistence-error semantics, and owner-local proof: **accepted**.
+Inline-edit ownership/error semantics: **accepted**.
 
-Owner-local mutation threshold: **passing with unchanged configuration**.
+Application-E2E behavior decomposition: **accepted but incomplete for the newly reported scrolling responsiveness scenario**.
 
-Application-E2E ownership and behavior decomposition: **accepted**; the historical relation-property timeout was corrected as a test-state leak without production change.
-
-Merge readiness: **blocked; obtain canonical current-head performance evidence, then either close performance acceptance or route a separate attribution/correction, and finally require green exact-head GitHub CI**.
+Merge readiness: **blocked; prepare and implement one architecture-resolved Database table integration correction, then obtain fresh switch/scroll/visual proof and green exact-head GitHub CI**.
