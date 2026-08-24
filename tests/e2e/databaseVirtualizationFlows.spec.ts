@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
   addDatabaseItem,
   addDatabaseItemValues,
@@ -210,6 +210,27 @@ const importDatabaseJsonDocument = async (page: Page, documentName: string) => {
   await openDocumentFromExplorer(page, documentName);
 };
 
+const readDatabaseSpacerBoundary = (table: Locator) =>
+  table.evaluate((tableElement) => {
+    const header = tableElement.querySelector('thead > tr');
+    const columnSpacers = Array.from(
+      header?.querySelectorAll('th.db-data-table__column-spacer') ?? [],
+    );
+    const hasLeadingColumnSpacer = columnSpacers[0] === header?.firstElementChild;
+    const bodyRows = Array.from(tableElement.querySelectorAll('tbody > tr'));
+    const isRowSpacer = (row: Element | undefined) =>
+      row?.classList.contains('db-data-table__row-spacer') ?? false;
+
+    return {
+      columnSpacerCount: columnSpacers.length,
+      hasLeadingColumnSpacer,
+      hasLeadingRowSpacer: isRowSpacer(bodyRows[0]),
+      hasTrailingColumnSpacer: columnSpacers.length > Number(hasLeadingColumnSpacer),
+      hasTrailingRowSpacer: isRowSpacer(bodyRows.at(-1)),
+      rowSpacerCount: bodyRows.filter(isRowSpacer).length,
+    };
+  });
+
 test('uses the explicit nested relation overflow root for independent two-axis ranges', async ({
   page,
 }) => {
@@ -373,6 +394,30 @@ test('keeps normal and teleported recursive relation tables inside their widget-
   expect(normalScroll.scrollWidth).toBeGreaterThan(normalScroll.clientWidth);
   await expectBoundedTable(normalTable);
 
+  expect(await readDatabaseSpacerBoundary(normalTable)).toEqual({
+    columnSpacerCount: 1,
+    hasLeadingColumnSpacer: false,
+    hasLeadingRowSpacer: false,
+    hasTrailingColumnSpacer: true,
+    hasTrailingRowSpacer: true,
+    rowSpacerCount: 1,
+  });
+
+  await normalRoot.evaluate((rootElement) => {
+    rootElement.scrollTop = rootElement.scrollHeight / 2;
+    rootElement.scrollLeft = rootElement.scrollWidth / 2;
+  });
+  await expect
+    .poll(() => readDatabaseSpacerBoundary(normalTable))
+    .toEqual({
+      columnSpacerCount: 2,
+      hasLeadingColumnSpacer: true,
+      hasLeadingRowSpacer: true,
+      hasTrailingColumnSpacer: true,
+      hasTrailingRowSpacer: true,
+      rowSpacerCount: 2,
+    });
+
   await normalRoot.evaluate((rootElement) => {
     rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
     rootElement.scrollLeft = Number.MAX_SAFE_INTEGER;
@@ -382,6 +427,16 @@ test('keeps normal and teleported recursive relation tables inside their widget-
     normalTable.getByRole('columnheader', { name: nestedFixture.lastPropertyName, exact: true }),
   ).toBeVisible();
   await expectBoundedTable(normalTable);
+  await expect
+    .poll(() => readDatabaseSpacerBoundary(normalTable))
+    .toEqual({
+      columnSpacerCount: 1,
+      hasLeadingColumnSpacer: true,
+      hasLeadingRowSpacer: true,
+      hasTrailingColumnSpacer: false,
+      hasTrailingRowSpacer: false,
+      rowSpacerCount: 1,
+    });
 
   await normalRoot.evaluate((rootElement) => {
     rootElement.scrollTop = 0;
@@ -657,6 +712,14 @@ test('virtualizes the real Database root across deep native-table row and proper
   expect(initialIntersection.rows).toBeLessThan(160);
   expect(initialIntersection.headers).toBeLessThan(24);
   expect(initialIntersection.cells).toBeLessThan(160 * 24);
+  expect(await readDatabaseSpacerBoundary(table)).toEqual({
+    columnSpacerCount: 1,
+    hasLeadingColumnSpacer: false,
+    hasLeadingRowSpacer: false,
+    hasTrailingColumnSpacer: true,
+    hasTrailingRowSpacer: true,
+    rowSpacerCount: 1,
+  });
   await expect(
     table.locator('tbody > tr:not([aria-hidden="true"]) .database-view-layout__action').first(),
   ).toHaveClass(/_elevation/);
@@ -696,6 +759,21 @@ test('virtualizes the real Database root across deep native-table row and proper
   await expect(page.getByText(fixture.lastLabel, { exact: true })).toBeVisible();
 
   await root.evaluate((rootElement) => {
+    rootElement.scrollTop = rootElement.scrollHeight / 2;
+    rootElement.scrollLeft = rootElement.scrollWidth / 2;
+  });
+  await expect
+    .poll(() => readDatabaseSpacerBoundary(table))
+    .toEqual({
+      columnSpacerCount: 2,
+      hasLeadingColumnSpacer: true,
+      hasLeadingRowSpacer: true,
+      hasTrailingColumnSpacer: true,
+      hasTrailingRowSpacer: true,
+      rowSpacerCount: 2,
+    });
+
+  await root.evaluate((rootElement) => {
     rootElement.scrollLeft = Number.MAX_SAFE_INTEGER;
   });
   await expect(
@@ -727,6 +805,20 @@ test('virtualizes the real Database root across deep native-table row and proper
 
   expect(deepIndices.cellIndices).toEqual(deepIndices.headerIndices);
   expect(Math.max(...deepIndices.headerIndices)).toBe(24);
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = Number.MAX_SAFE_INTEGER;
+  });
+  await expect(table.locator('tbody > tr[aria-rowindex="161"]')).toBeVisible();
+  await expect
+    .poll(() => readDatabaseSpacerBoundary(table))
+    .toEqual({
+      columnSpacerCount: 1,
+      hasLeadingColumnSpacer: true,
+      hasLeadingRowSpacer: true,
+      hasTrailingColumnSpacer: false,
+      hasTrailingRowSpacer: false,
+      rowSpacerCount: 1,
+    });
   await expect(table.locator('thead th.db-data-table__actions')).toHaveAttribute(
     'aria-colindex',
     '25',

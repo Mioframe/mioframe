@@ -99,8 +99,16 @@ const vVirtualColumn = columns.vItem;
 
 const hasActionColumn = computed(() => !!slots.action || !!slots.actionHead);
 const logicalColumnCount = computed(() => properties.value.length + Number(hasActionColumn.value));
+const hasLeadingColumnSpacer = computed(() => columns.leadingSize.value > 0);
+const hasTrailingColumnSpacer = computed(() => columns.trailingSize.value > 0);
+const hasLeadingRowSpacer = computed(() => rows.leadingSize.value > 0);
+const hasTrailingRowSpacer = computed(() => rows.trailingSize.value > 0);
 const physicalColumnCount = computed(
-  () => columns.items.value.length + 2 + Number(hasActionColumn.value),
+  () =>
+    columns.items.value.length +
+    Number(hasLeadingColumnSpacer.value) +
+    Number(hasTrailingColumnSpacer.value) +
+    Number(hasActionColumn.value),
 );
 
 const actionColumnIndex = computed(() => properties.value.length + 1);
@@ -123,15 +131,24 @@ function getColumnMinWidthStyle(
     :aria-colcount="logicalColumnCount"
   >
     <colgroup>
-      <col aria-hidden="true" :style="{ width: `${columns.leadingSize.value}px` }" />
+      <col
+        v-if="hasLeadingColumnSpacer"
+        aria-hidden="true"
+        :style="{ width: `${columns.leadingSize.value}px` }"
+      />
       <col v-for="column in columns.items.value" :key="column.key" />
-      <col aria-hidden="true" :style="{ width: `${columns.trailingSize.value}px` }" />
+      <col
+        v-if="hasTrailingColumnSpacer"
+        aria-hidden="true"
+        :style="{ width: `${columns.trailingSize.value}px` }"
+      />
       <col v-if="hasActionColumn" />
     </colgroup>
 
     <thead>
       <tr>
         <th
+          v-if="hasLeadingColumnSpacer"
           aria-hidden="true"
           class="db-data-table__column-spacer"
           :style="{ width: `${columns.leadingSize.value}px` }"
@@ -155,6 +172,7 @@ function getColumnMinWidthStyle(
         </th>
 
         <th
+          v-if="hasTrailingColumnSpacer"
           aria-hidden="true"
           class="db-data-table__column-spacer"
           :style="{ width: `${columns.trailingSize.value}px` }"
@@ -176,7 +194,7 @@ function getColumnMinWidthStyle(
     </thead>
 
     <tbody>
-      <tr aria-hidden="true" class="db-data-table__row-spacer">
+      <tr v-if="hasLeadingRowSpacer" aria-hidden="true" class="db-data-table__row-spacer">
         <td :colspan="physicalColumnCount" :style="{ height: `${rows.leadingSize.value}px` }" />
       </tr>
 
@@ -187,6 +205,7 @@ function getColumnMinWidthStyle(
         :aria-rowindex="row.index + 2"
       >
         <td
+          v-if="hasLeadingColumnSpacer"
           aria-hidden="true"
           class="db-data-table__column-spacer"
           :style="{ width: `${columns.leadingSize.value}px` }"
@@ -203,6 +222,7 @@ function getColumnMinWidthStyle(
         </td>
 
         <td
+          v-if="hasTrailingColumnSpacer"
           aria-hidden="true"
           class="db-data-table__column-spacer"
           :style="{ width: `${columns.trailingSize.value}px` }"
@@ -217,7 +237,7 @@ function getColumnMinWidthStyle(
         </td>
       </tr>
 
-      <tr aria-hidden="true" class="db-data-table__row-spacer">
+      <tr v-if="hasTrailingRowSpacer" aria-hidden="true" class="db-data-table__row-spacer">
         <td :colspan="physicalColumnCount" :style="{ height: `${rows.trailingSize.value}px` }" />
       </tr>
     </tbody>
