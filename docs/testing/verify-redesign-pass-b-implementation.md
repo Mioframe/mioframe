@@ -1,6 +1,6 @@
 # Verify redesign — Pass B implementation contract
 
-- **Status:** Ready for implementation
+- **Status:** Completed and architect-accepted
 - **Scope:** Pass B only — public verification-type CLI
 - **Upstream:** `verify-redesign-architecture.md`, `verify-redesign-implementation-preflight.md`, `migration-plan.md`
 - **Prerequisite:** Pass A architect-accepted
