@@ -112,18 +112,18 @@ For Material-specific worker roles, source authority, resume/correction routing,
 
 ## Verification ownership
 
-- Coding agents own code and the proof they need to implement or diagnose that code. They may run focused verifier-managed checks such as `pnpm verify --only <label> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
-- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, or a manually reconstructed full checklist solely because code is ready to hand back.
-- GitHub CI on the exact PR head is the authoritative automatic repository verification gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
-- A coding agent must not be asked to rerun checks that CI will perform automatically unless a concrete failing contract needs local diagnosis or a task-specific risk cannot be represented by the normal CI gate.
-- Required contract proof must still exist in code before handoff. CI does not replace missing tests, architecture review, browser/visual evidence, or a narrow implementation-specific proof explicitly required by the task.
+- Coding agents own implementation feedback and the pre-handoff verification of the complete cumulative PR diff. Use focused `pnpm verify --only ...` checks while iterating when useful.
+- Before final handoff of ordinary PR code work, run one branch-diff gate against the PR base using the GitHub Actions verifier profile. For normal `develop` PRs: `pnpm verify --base origin/develop --profile github-actions`.
+- This branch gate is diff-aware and intentionally broader than the latest coding task. Fix every PR-caused code/test/verifier failure that remains within the accepted architecture and ownership, then rerun the complete branch gate until it passes cleanly. If a failure is unrelated to the PR or requires material ownership/architecture expansion, stop and report it instead of patching around it.
+- Do not use `pnpm verify --full` as the ordinary PR handoff gate. `--full` is full-project/release scope, ignores changed-file selection, and cannot be combined with `--base`.
+- The branch gate may be skipped only for explicitly diagnostic/read-only work with no tracked implementation result, or when the architect explicitly marks a non-code handoff as not requiring it.
+- GitHub CI on the exact PR head remains the authoritative automatic merge gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
+- Required contract proof must still exist in code before handoff. A passing branch verifier or CI does not replace missing tests, architecture review, browser/visual evidence, or task-specific measurements.
 - Known flaky behavior is failed proof. Do not accept retry-pass/flaky classification, weaken assertions, inflate timeouts, or add sleeps/recovery loops to make a coding task appear green.
-- When a focused verifier command is useful, invoke the canonical `pnpm verify...` command directly without shell-level environment prefixes. Keep sandbox/permission handling inside the verifier/runtime boundary; never ask the operator to run commands or grant unrestricted shell access.
-- Use `pnpm verify --fix-only` only when the coding change itself needs safe automatic formatting/lint fixes. Architect-authored documentation or workflow files are not a reason to send a coding agent back merely to satisfy an automatic repository gate.
-- If CI exposes a PR-caused failure after handoff, the architect routes that concrete failure to the truthful coding owner. The coding agent fixes the code and may use the smallest useful focused verifier check for feedback; the architect then republishes the head and CI remains the final gate.
-- Stage-specific skills must not introduce a mandatory final automatic local verification run for coding-agent completion. Any older wording that requires such a handoff gate is superseded by this ownership rule and should be removed when that workflow is next edited.
+- Invoke canonical `pnpm verify...` commands directly without shell-level environment prefixes. Keep sandbox/permission handling inside the verifier/runtime boundary; never ask the operator to run commands or grant unrestricted shell access.
+- Use `pnpm verify --fix-only` only when coding changes need supported formatting/lint fixes. Architect-authored review/architecture documents remain architect-owned.
 
-After coding-agent edits, report only implementation state and any focused verification actually used:
+After coding-agent edits, report focused feedback plus branch verification:
 
 ```text
 TASK RESULT
@@ -134,6 +134,11 @@ LOCAL FEEDBACK
 commands: none | <focused verifier-managed commands actually useful during implementation/diagnosis>
 status: not run | passed | failed | partial
 reason if failed/partial: <exact reason>
+
+BRANCH VERIFICATION
+command: pnpm verify --base origin/<base> --profile github-actions | skipped
+status: passed | failed | skipped
+reason if failed/skipped: none | <exact reason>
 
 CI GATE
 status: architect-owned
