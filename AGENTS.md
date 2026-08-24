@@ -113,8 +113,10 @@ For Material-specific worker roles, source authority, resume/correction routing,
 ## Verification ownership
 
 - Coding agents own implementation feedback and the pre-handoff verification of the complete cumulative PR diff. Use focused `pnpm verify --only ...` checks while iterating when useful.
-- Before final handoff of ordinary PR code work, run one branch-diff gate against the PR base using the GitHub Actions verifier profile. For normal `develop` PRs: `pnpm verify --base origin/develop --profile github-actions`.
-- This branch gate is diff-aware and intentionally broader than the latest coding task. Fix every PR-caused code/test/verifier failure that remains within the accepted architecture and ownership, then rerun the complete branch gate until it passes cleanly. If a failure is unrelated to the PR or requires material ownership/architecture expansion, stop and report it instead of patching around it.
+- Before final handoff of ordinary PR code work, run one branch-diff gate against the PR base using the agent's normal local verifier profile. For normal `develop` PRs: `pnpm verify --base origin/develop`.
+- This branch gate is diff-aware and intentionally broader than the latest coding task. If it reports a PR-caused failure that remains within the accepted architecture and ownership, fix that failure and use the smallest relevant focused verifier command for fast feedback. Then rerun the complete branch gate. Repeat this cycle until the branch gate passes cleanly.
+- If a branch-gate failure is unrelated to the PR or requires material ownership/architecture expansion, stop and report it instead of patching around it.
+- Do not force the GitHub Actions verifier profile for local agent work. CI owns its controlled `github-actions` profile; the local branch gate should use the agent environment's normal verifier profile unless a task explicitly requires another profile for diagnosis.
 - Do not use `pnpm verify --full` as the ordinary PR handoff gate. `--full` is full-project/release scope, ignores changed-file selection, and cannot be combined with `--base`.
 - The branch gate may be skipped only for explicitly diagnostic/read-only work with no tracked implementation result, or when the architect explicitly marks a non-code handoff as not requiring it.
 - GitHub CI on the exact PR head remains the authoritative automatic merge gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
@@ -136,7 +138,7 @@ status: not run | passed | failed | partial
 reason if failed/partial: <exact reason>
 
 BRANCH VERIFICATION
-command: pnpm verify --base origin/<base> --profile github-actions | skipped
+command: pnpm verify --base origin/<base> | skipped
 status: passed | failed | skipped
 reason if failed/skipped: none | <exact reason>
 
