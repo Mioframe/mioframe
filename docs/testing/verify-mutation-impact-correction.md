@@ -1,23 +1,14 @@
 # Verify mutation-impact correction
 
-Status: **agent-ready; independent test-author pass required before implementation**.
+Status: **implementation landed; architect re-review blocked on one remaining source-of-truth defect**.
 
-This document is the implementation contract for the mutation correction in PR #216.
+This document owns the mutation correction discovered during PR #216 review.
 
-## Problem
-
-Two ownership defects remain:
-
-1. `buildCommands()` passes `existingChangedFiles` to `resolveMutationPlan()`, so deleted paths and the old side of renames disappear after `changedPaths.ts` already preserved them;
-2. `validateMutationRegistry()` uses a local `*.test.ts` heuristic instead of the real Vitest test-discovery contract.
-
-A third consequence belongs to the same defect: `stryker.config.mjs` executes Vitest through `vitest.config.ts`, so changes to Vitest discovery configuration are mutation-execution semantic changes and must never silently skip mutation.
-
-## Required final state
+## Accepted final architecture
 
 ### Canonical changed identity
 
-Keep `resolveMutationPlan()` identity-based. Do not add another Git/status model.
+Mutation planning stays identity-based:
 
 ```text
 getChangedFileProjection(...)
@@ -25,29 +16,17 @@ getChangedFileProjection(...)
 → resolveMutationPlan(changedFiles)
 ```
 
-`existingChangedFiles` remains only for checks that require current filesystem files, such as format/lint.
+`existingChangedFiles` is only for checks that require current-tree files, such as format/lint. Deleted paths and rename old-side identities must reach mutation planning.
 
-Required behavior:
+### Shared Vitest test-path owner
 
-```text
-deleted stryker.config.mjs
-→ all registered mutation targets or invalid
-
-rename oldPath = stryker.config.mjs
-→ all registered mutation targets or invalid
-```
-
-A deleted registered source/test that still exists in the resulting registry must remain `invalid` because registry validation checks the current tree.
-
-### One Vitest test-path owner
-
-Create:
+One narrow module owns Vitest test-file discovery shape:
 
 ```text
 scripts/lib/vitestTestPaths.ts
 ```
 
-It owns only Vitest test-file discovery shape. It must expose the minimum shared contract used by current consumers:
+Public contract:
 
 ```ts
 VITEST_TEST_INCLUDE;
@@ -55,9 +34,7 @@ VITEST_TEST_EXCLUDE;
 isVitestOwnedTestPath(filePath);
 ```
 
-The include/exclude constants and predicate must come from one local rule definition, not three copied heuristics.
-
-Current Vitest-owned test shapes are:
+Current include shapes:
 
 ```text
 src/**/*.test.ts
@@ -69,7 +46,7 @@ playwright.*.test.ts
 eslint.config.test.ts
 ```
 
-Current exclusions remain:
+Current exclusions:
 
 ```text
 tests/e2e/**/*.spec.ts
@@ -81,22 +58,22 @@ Consumers:
 
 ```text
 vitest.config.ts
-→ use VITEST_TEST_INCLUDE / VITEST_TEST_EXCLUDE
+→ VITEST_TEST_INCLUDE / VITEST_TEST_EXCLUDE
 
 scripts/lib/unitRisk.ts
-→ use isVitestOwnedTestPath
-
 scripts/lib/mutationTargets.ts
-→ use isVitestOwnedTestPath
+→ isVitestOwnedTestPath
 ```
 
-Do not import `vitest.config.ts` into planners.
+The include/exclude exports and predicate must be mechanically derived from **one local rule population**. Merely placing independent glob arrays and an independently hard-coded predicate in the same file is not sufficient: the representations can still drift when Vitest discovery changes.
+
+Do not import `vitest.config.ts` into planners and do not introduce a generic test-discovery framework.
 
 ### Ownership of the shared contract
 
 `scripts/lib/vitestTestPaths.ts` is full-unit infrastructure.
 
-Mutation semantic-change paths are exactly:
+Mutation execution-semantic paths are:
 
 ```text
 stryker.config.mjs
@@ -107,146 +84,77 @@ scripts/lib/vitestTestPaths.ts
 
 A change to any of them selects all registered mutation targets after registry validation.
 
-Keep the seven existing `MUTATION_TARGETS` entries and Stryker `mutate` derivation unchanged.
+The seven existing `MUTATION_TARGETS` entries and Stryker `mutate` derivation remain unchanged.
 
-## TEST IMPACT
+## Architect re-review
 
-### 1. Changed identity at orchestration boundary
+Accepted on the current implementation:
 
-Primary proof: `scripts/verify.test.ts`.
+- `buildCommands()` passes canonical `changedFiles` directly to `resolveMutationPlan()`;
+- deletion and rename-old-side `stryker.config.mjs` are covered at the orchestration boundary;
+- mutation registry validation accepts real Vitest-owned `.test.mjs` and rejects `.test.ts` outside configured roots;
+- `vitest.config.ts` consumes shared include/exclude exports;
+- `unitRisk.ts` and `mutationTargets.ts` consume the shared predicate;
+- `vitest.config.ts` and `scripts/lib/vitestTestPaths.ts` are mutation semantic-change owners;
+- `scripts/lib/vitestTestPaths.ts` is full-unit infrastructure;
+- seven mutation targets and Stryker mutate surface are unchanged;
+- `tsconfig.node.json` includes the new module because `vitest.config.ts` imports it through the Node TypeScript project.
 
-Oracle: canonical changed-path contract in `changedPaths.ts` and mutation acceptance in `verify-target-architecture.md`.
+### Remaining blocker
 
-Must reject: deleted/renamed-away `stryker.config.mjs` becomes mutation `skip` because current-tree existence filtering erased its identity.
+Current `scripts/lib/vitestTestPaths.ts` still defines the same discovery contract twice:
 
-RED required. Construct deletion and rename through `resolveVerifyChangedPathContext()` test seams, then pass the resulting `changedFiles` into `buildCommands()`. Direct `resolveMutationPlan(['stryker.config.mjs'])` is insufficient.
+1. `VITEST_TEST_INCLUDE` / `VITEST_TEST_EXCLUDE` glob arrays;
+2. separate imperative prefix/suffix/regex branches in `isVitestOwnedTestPath()`.
 
-### 2. Real Vitest ownership
+The tests assert the arrays and representative predicate outcomes independently, so green tests do not establish that a future discovery-rule edit cannot update one representation without the other.
 
-Primary proof: `scripts/lib/vitestTestPaths.test.ts` and `scripts/lib/mutationTargets.test.ts`.
+Required final state: one explicit local rule population must drive both exported glob lists and `isVitestOwnedTestPath()`. Keep this local and narrow. Do not add a general glob engine, generic registry, or cross-lane abstraction solely for this correction.
 
-Oracle: current `vitest.config.ts` discovery contract.
+The simplest acceptable shape is a small declarative local rule population from which the existing public exports and predicate are derived. Exact implementation spelling is not prescribed.
 
-Must reject:
+## Proof and correction scope
 
-```text
-scripts/agentEnvironment.test.mjs
-→ rejected as non-Vitest-owned
+This remaining correction is behavior-preserving. Existing tests already own the current observable include/exclude and path-classification contract, so a new RED phase is not required.
 
-some/path/outside/configured/roots/example.test.ts
-→ accepted only because it ends with .test.ts
-```
-
-RED required. Missing `vitestTestPaths.ts` is an acceptable new-API red for its focused test file; the mutation-registry proof must independently demonstrate the existing heuristic defect.
-
-### 3. New shared owner is itself owned
-
-Primary proof: `scripts/lib/unitRisk.test.ts` and `scripts/lib/mutationTargets.test.ts`.
-
-Must reject:
+Expected production scope:
 
 ```text
-scripts/lib/vitestTestPaths.ts change
-→ focused/skip unit instead of full unit
-
-vitest.config.ts or scripts/lib/vitestTestPaths.ts change
-→ mutation skip/focused instead of all registered targets
+scripts/lib/vitestTestPaths.ts
 ```
 
-RED required where current behavior is observable before production edits.
-
-## Pass order
-
-### Pass 1 — fresh test-author context
-
-May change only:
-
-```text
-scripts/lib/vitestTestPaths.test.ts   # new
-scripts/lib/mutationTargets.test.ts
-scripts/lib/unitRisk.test.ts
-scripts/verify.test.ts
-```
-
-Requirements:
-
-- author the proofs above from the accepted contract;
-- demonstrate meaningful RED for both ownership defects;
-- do not edit production code;
-- do not weaken existing mutation/unit assertions.
-
-### Pass 2 — separate implementation context
-
-Treat accepted test expectations/assertions as read-only.
-
-May change only:
-
-```text
-scripts/lib/vitestTestPaths.ts        # new
-vitest.config.ts
-scripts/lib/unitRisk.ts
-scripts/lib/mutationTargets.ts
-scripts/verify.ts
-```
-
-Minimum implementation:
-
-1. add the narrow shared Vitest path owner;
-2. switch `vitest.config.ts`, `unitRisk.ts`, and `mutationTargets.ts` to it;
-3. pass canonical `changedFiles` to `resolveMutationPlan()`;
-4. add `vitest.config.ts` and `scripts/lib/vitestTestPaths.ts` to mutation semantic-change ownership;
-5. remove replaced private Vitest test-shape logic.
-
-If an accepted test appears wrong, stop and return the conflict; do not edit it from the implementation pass.
+`scripts/lib/vitestTestPaths.test.ts` should remain behaviorally unchanged unless an independent test-author review finds a real proof defect. Do not modify `unitRisk.ts`, `mutationTargets.ts`, `verify.ts`, `vitest.config.ts`, Stryker configuration, release code, or CI topology unless new repository evidence proves the narrow refactor cannot satisfy the accepted architecture.
 
 ## Acceptance criteria
 
-- deleted `stryker.config.mjs` cannot silently skip mutation;
-- rename old-side `stryker.config.mjs` cannot silently skip mutation;
-- real Vitest-owned `.test.mjs` is accepted;
-- `.test.ts` outside configured Vitest roots is rejected;
-- `vitest.config.ts` and `scripts/lib/vitestTestPaths.ts` select all registered mutation targets;
-- `scripts/lib/vitestTestPaths.ts` selects full unit;
-- one shared Vitest discovery owner replaces private duplicate heuristics;
+- one local rule population mechanically owns both Vitest glob exports and path classification;
+- all current include/exclude values remain unchanged;
+- all current positive/negative path behavior remains unchanged;
+- canonical mutation changed-identity handling remains unchanged;
+- mutation semantic-change ownership remains unchanged;
+- full-unit ownership remains unchanged;
 - seven mutation targets and Stryker mutate surface remain unchanged;
-- existing unit related/file-as-data/scan/status semantics remain unchanged;
-- no mutation timeout, thresholds, CI topology, release planning, or release execution changes.
+- no generic test-discovery framework or new speculative infrastructure is introduced.
 
 ## Focused verification
 
-Test-author RED/implementation GREEN should use the smallest relevant verifier-managed unit scope, for example:
+Use only the smallest useful feedback for this local refactor, for example:
 
 ```bash
-pnpm verify --only unit-tests --files \
-  scripts/lib/vitestTestPaths.test.ts \
-  scripts/lib/mutationTargets.test.ts \
-  scripts/lib/unitRisk.test.ts \
-  scripts/verify.test.ts
-```
-
-After implementation, also run when useful:
-
-```bash
+pnpm verify --only unit-tests --files scripts/lib/vitestTestPaths.ts scripts/lib/vitestTestPaths.test.ts
 pnpm verify --only type-check
-pnpm verify --only oxlint --files \
-  scripts/lib/vitestTestPaths.ts \
-  scripts/lib/mutationTargets.ts \
-  scripts/lib/unitRisk.ts \
-  scripts/verify.ts \
-  vitest.config.ts
+pnpm verify --only oxlint --files scripts/lib/vitestTestPaths.ts
 ```
 
 Exact-head CI and PR-wide review remain architect-owned.
 
 ## Forbidden
 
-- editing release-impact/release execution code in this pass;
-- adding a second Git/status parser or status-bearing mutation planner API;
-- retaining/copying another private Vitest test-shape heuristic;
-- importing full `vitest.config.ts` into planners;
+- independent duplicated glob and predicate ownership inside `vitestTestPaths.ts`;
+- changing the current Vitest discovery contract;
+- changing mutation target population or Stryker semantics;
+- changing unit impact semantics;
+- another Git/status model;
 - generic test registry/discovery framework;
-- adjacency-based mutation ownership;
-- changing the seven audited mutation targets without new independent repository evidence;
-- changing Stryker thresholds, timeout, `vitest.related`, CI topology, verifier timeout/lock/output behavior;
-- implementation-agent edits to accepted test expectations/assertions;
-- Git/GitHub lifecycle operations from coding/test-author contexts.
+- release-impact/release-execution changes in this correction;
+- CI topology, timeout, threshold, lock, or verifier-output changes.
