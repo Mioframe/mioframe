@@ -1,8 +1,30 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; PR #217 remains blocked by the top-level widget surface-offset diagnosis and one relation-value loading offset invariant**.
+Status: **shared virtualization architecture accepted; PR #217 remains blocked by top-level surface-offset correctness, one relation-value loading offset invariant, and a sticky action/header presentation defect**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
+
+## PR #217 scope
+
+This PR finishes Database virtualization itself.
+
+In scope until merge:
+
+- bounded row/property rendering;
+- deep-range correctness and physical-root/surface geometry;
+- top-level and nested relation roots;
+- native-table spacer/bootstrap integration;
+- sticky header/action behavior;
+- accessibility and logical ARIA contracts;
+- presentation regressions introduced or exposed by the virtualization/native-table migration.
+
+Out of scope after those contracts are correct:
+
+- remaining heterogeneous-content Chromium freezes/jank;
+- value-type-specific rendering cost investigation;
+- other causes of Short -> Full or scrolling stalls that are not caused by virtualization correctness/integration.
+
+Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and will be handled in later PRs. Do not keep PR #217 open to optimize unrelated residual jank after virtualization is complete.
 
 Current contracts:
 
@@ -11,7 +33,7 @@ Current contracts:
 - completed branch-E2E proof correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
 - completed shared frame correction: `docs/md-table-frame-correction-handoff.md`;
 - completed deep-state shared discriminator: `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`;
-- **active top-level diagnosis**: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`;
+- active top-level diagnosis: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`;
 - active diagnosis preflight: `docs/database-virtualization-widget-surface-offset-diagnosis-preflight.md`;
 - active Database review: `src/entities/databaseData/REVIEW.md`;
 - shared virtualization review: `src/shared/ui/virtualization/REVIEW.md`;
@@ -39,13 +61,13 @@ A non-empty logical collection with no mounted virtual items may render only tra
 
 ## Shared deep-state surfaceOffset contract — accepted
 
-The reusable browser capability now proves the exact lifecycle that the product failure exercises:
+The reusable browser capability proves:
 
 `deep -> change physical pre-surface extent + reactive surfaceOffset while still deep -> top -> deep`.
 
 On the same root/list it changes approximately 240px -> 96px, reaches logical tail `9999` before and after, recovers item `0` at top, keeps mounted work bounded, and proves self-consistent leading/trailing/total geometry and physical scroll extent.
 
-`useVirtualCollection.ts` remains unchanged. Therefore no shared/TanStack production correction, `virtualizer.measure()`, cache-reset protocol, or virtualizer exposure is justified by the current evidence.
+`useVirtualCollection.ts` remains unchanged. No shared/TanStack production correction, `virtualizer.measure()`, cache-reset protocol, or virtualizer exposure is justified by current evidence.
 
 ## Current top-level ownership direction
 
@@ -57,11 +79,11 @@ Current implementation flow:
 
 The removed entity root/table `useElementBounding`, root `MutationObserver`, and ancestor/sibling discovery path must not return as fallback.
 
-## Active blocker — top-level widget numeric offset lifecycle
+## Active correctness blocker — top-level widget numeric offset lifecycle
 
-Exact-head CI on `dcb72917f2fcd49c58a1caa9f8f6cc7ade58bd4a` still failed the moving-surface product scenario 3/3 on desktop Chromium while Mobile Chrome passed.
+Exact-head CI previously reproduced the moving-surface product scenario failure 3/3 on desktop Chromium while Mobile Chrome passed. A later architect-head CI run passed, but production code did not correct this defect between those runs, so the known instability remains unresolved.
 
-Because shared behavior is now proved, the next required evidence is consumer-side: compare the numeric vertical/horizontal offset supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-`DatabaseViewLayout` offset at the same product checkpoints:
+The required evidence is consumer-side: compare the numeric offset supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-`DatabaseViewLayout` offset at:
 
 1. initial top;
 2. settled first deep;
@@ -69,24 +91,44 @@ Because shared behavior is now proved, the next required evidence is consumer-si
 4. returned top;
 5. second deep attempt.
 
-Current widget production derives offsets from two `useElementBounding` states plus current root scroll position and refreshes the bounds from `onMounted` / `onUpdated`. This is the current diagnosis target, not yet a confirmed root cause.
+Current widget production derives offsets from two `useElementBounding` states plus current root scroll position and refreshes the bounds from `onMounted` / `onUpdated`. This is a diagnosis target, not yet a confirmed root cause.
 
 Decision rule:
 
-- if supplied offsets diverge from physical offsets, widget offset production/lifecycle owns the correction;
-- if supplied offsets remain truthful throughout a reproduced failure, stop and reconsider architecture before production edits.
+- supplied offsets diverge from physical offsets -> widget offset production/lifecycle owns the correction;
+- supplied offsets remain truthful throughout a reproduced failure -> stop and reconsider architecture before production edits.
 
 Do not speculate with `next-frame`, `nextTick`, rAF, extra observers, or cache reset before numeric evidence.
 
-## Separate blocker — relationValueEdit loading topology
+## Presentation blocker — sticky body action cells cover the sticky header
+
+Operator inspection confirms that a body action cell can render above the fixed header during scrolling.
+
+The current stacking model explains the defect:
+
+- shared `MDTable thead` is sticky at `z-index: 1`;
+- every `DatabaseDataTable` action cell is sticky at `z-index: 2`;
+- the action header cell uses a higher local z-index, but it remains inside the `thead` stacking context and cannot make ordinary header cells outrank body action cells.
+
+Owner: `DatabaseDataTable` integration, not shared `MDTable` by default.
+
+Required final behavior:
+
+- sticky body action cells overlay ordinary body cells horizontally;
+- the entire sticky header remains above body action cells vertically;
+- the sticky header action intersection remains above sibling header cells when horizontally scrolled.
+
+Use the minimum local stacking correction unless browser proof shows shared Table ownership must change.
+
+## Separate correctness blocker — relationValueEdit loading topology
 
 `RelationValueFieldData` passes vertical/horizontal zero to `DatabaseDataTable`. Horizontal zero matches the current local root. Vertical zero is not unconditional while a loading progress indicator is rendered before the table in the same `.relation-value-field__data` root.
 
-This remains feature-owned and must be corrected without restoring entity geometry discovery. It is deferred until the primary top-level diagnosis resolves.
+This remains feature-owned and must be corrected without restoring entity geometry discovery. It remains part of completing virtualization correctness in PR #217.
 
 ## Verification workflow
 
-For the active diagnosis use the focused verifier first. Because the defect is repeatedly specific to GitHub Actions Chromium conditions, a targeted focused `--profile github-actions` run is allowed for diagnosis only when the normal profile does not reproduce it.
+For the active top-level diagnosis use focused verifier feedback first. Because the historical defect is specific to GitHub Actions Chromium conditions, a targeted focused `--profile github-actions` run is allowed for diagnosis only when the normal profile does not reproduce it.
 
 The ordinary pre-handoff branch gate remains:
 
@@ -96,24 +138,28 @@ Do not force `--profile github-actions` on that normal final branch gate.
 
 ## Residual Chromium jank
 
-Residual heterogeneous-content Chrome jank is intentionally deferred to a separate PR and is not a #217 merge blocker.
+Residual heterogeneous-content Chrome jank is intentionally deferred to later PRs and is not a #217 merge blocker once virtualization correctness and integration are complete.
 
-Retained evidence and the next String-vs-Number/data-density discriminator are recorded in `docs/database-chrome-jank-follow-up.md`.
+Retained evidence and future discriminators are recorded in `docs/database-chrome-jank-follow-up.md`.
 
 ## Merge criteria
 
 PR #217 may merge only when:
 
-1. top-level numeric offset diagnosis leads to a verified correction or architecture decision;
-2. repeated moving-surface product E2E passes cleanly without retry;
+1. top-level numeric offset investigation resolves the known moving-surface correctness risk;
+2. the moving-surface product scenario is stable without retry acceptance;
 3. relation-value loading/zero-offset invariant is truthful;
-4. operator inspection confirms Database border/corner/sticky presentation;
-5. coding-agent `pnpm verify --base origin/develop` passes cleanly on final code;
-6. exact-head GitHub CI is green;
-7. final resulting PR review finds no blocker.
+4. body action cells never cover the sticky header and sticky intersection behavior is correct;
+5. operator inspection confirms Database border/corner/sticky presentation;
+6. coding-agent `pnpm verify --base origin/develop` passes cleanly on final code;
+7. exact-head GitHub CI is green;
+8. final resulting PR review finds no blocker.
+
+Residual non-virtualization jank is explicitly not a merge criterion for #217.
 
 ## Forbidden before merge
 
+- expanding #217 into unrelated residual performance optimization;
 - speculative top-level production correction before numeric diagnosis;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
@@ -122,4 +168,4 @@ PR #217 may merge only when:
 - second geometry/range/measurement state;
 - retry/remount/sleep/timeout/force recovery;
 - Number/value/query or worker/query/storage performance optimization;
-- broad shared-UI redesign unrelated to confirmed blockers.
+- broad shared-UI redesign unrelated to confirmed virtualization blockers.
