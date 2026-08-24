@@ -377,6 +377,33 @@ test('keeps normal and teleported recursive relation tables inside their widget-
         .length,
       rows: tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])').length,
     }));
+  const readMountedLogicalRange = () =>
+    normalTable.evaluate((tableElement) => {
+      const rows = Array.from(tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])'))
+        .map((row) => Number(row.getAttribute('aria-rowindex')))
+        .filter((index) => Number.isFinite(index));
+      const propertyColumns = Array.from(
+        tableElement.querySelectorAll('thead th[aria-colindex]:not(.db-data-table__actions)'),
+      )
+        .map((column) => Number(column.getAttribute('aria-colindex')))
+        .filter((index) => Number.isFinite(index));
+      const rowCount = Number(tableElement.getAttribute('aria-rowcount'));
+      const columnCount =
+        Number(tableElement.getAttribute('aria-colcount')) -
+        tableElement.querySelectorAll('thead th.db-data-table__actions').length;
+      const verticalInterior =
+        rows.length > 0 && Math.min(...rows) > 2 && Math.max(...rows) < rowCount;
+      const horizontalInterior =
+        propertyColumns.length > 0 &&
+        Math.min(...propertyColumns) > 1 &&
+        Math.max(...propertyColumns) < columnCount;
+
+      return {
+        verticalInterior,
+        horizontalInterior,
+        logicalInterior: verticalInterior && horizontalInterior,
+      };
+    });
   const expectBoundedTable = async (table: typeof normalTable) => {
     const mountedWork = await readMountedWork(table);
 
@@ -404,9 +431,30 @@ test('keeps normal and teleported recursive relation tables inside their widget-
   });
 
   await normalRoot.evaluate((rootElement) => {
-    rootElement.scrollTop = rootElement.scrollHeight / 2;
-    rootElement.scrollLeft = rootElement.scrollWidth / 2;
+    rootElement.scrollTop = 0;
+    rootElement.scrollLeft = 0;
   });
+  await expect(normalTable.locator('tbody > tr[aria-rowindex="2"]')).toBeVisible();
+  await normalRoot.evaluate((rootElement) => {
+    rootElement.scrollTop = Math.min(
+      rootElement.scrollTop + rootElement.clientHeight,
+      rootElement.scrollHeight - rootElement.clientHeight,
+    );
+  });
+  await expect.poll(() => readMountedLogicalRange()).toMatchObject({ verticalInterior: true });
+  await normalRoot.evaluate((rootElement) => {
+    rootElement.scrollLeft = Math.min(
+      rootElement.scrollLeft + rootElement.clientWidth * 2,
+      rootElement.scrollWidth - rootElement.clientWidth,
+    );
+  });
+  await expect
+    .poll(() => readMountedLogicalRange())
+    .toMatchObject({
+      verticalInterior: true,
+      horizontalInterior: true,
+      logicalInterior: true,
+    });
   await expect
     .poll(() => readDatabaseSpacerBoundary(normalTable))
     .toEqual({
@@ -690,6 +738,43 @@ test('virtualizes the real Database root across deep native-table row and proper
       };
     });
 
+  const readMountedLogicalRange = () =>
+    table.evaluate((tableElement) => {
+      const rows = Array.from(tableElement.querySelectorAll('tbody > tr:not([aria-hidden="true"])'))
+        .map((row) => Number(row.getAttribute('aria-rowindex')))
+        .filter((index) => Number.isFinite(index));
+      const propertyColumns = Array.from(
+        tableElement.querySelectorAll('thead th[aria-colindex]:not(.db-data-table__actions)'),
+      )
+        .map((column) => Number(column.getAttribute('aria-colindex')))
+        .filter((index) => Number.isFinite(index));
+      const rowCount = Number(tableElement.getAttribute('aria-rowcount'));
+      const columnCount =
+        Number(tableElement.getAttribute('aria-colcount')) -
+        tableElement.querySelectorAll('thead th.db-data-table__actions').length;
+      const verticalInterior =
+        rows.length > 0 && Math.min(...rows) > 2 && Math.max(...rows) < rowCount;
+      const horizontalInterior =
+        propertyColumns.length > 0 &&
+        Math.min(...propertyColumns) > 1 &&
+        Math.max(...propertyColumns) < columnCount;
+      const logicalInterior = verticalInterior && horizontalInterior;
+
+      return {
+        firstRowIndex: Math.min(...rows),
+        lastRowIndex: Math.max(...rows),
+        firstPropertyIndex: Math.min(...propertyColumns),
+        lastPropertyIndex: Math.max(...propertyColumns),
+        rowCount,
+        columnCount,
+        rows: rows.length,
+        headers: propertyColumns.length,
+        verticalInterior,
+        horizontalInterior,
+        logicalInterior,
+      };
+    });
+
   let initialIntersection: Awaited<ReturnType<typeof readMountedIntersection>> | undefined;
   await expect
     .poll(async () => {
@@ -758,10 +843,45 @@ test('virtualizes the real Database root across deep native-table row and proper
   ).toBeVisible();
   await expect(page.getByText(fixture.lastLabel, { exact: true })).toBeVisible();
 
+  // A physical midpoint is not a logical midpoint for measured, independently virtualized axes.
+  // Move one viewport from the settled top/left boundaries, then establish the actual mounted
+  // logical range from product ARIA indices before asserting its spacer structure.
   await root.evaluate((rootElement) => {
-    rootElement.scrollTop = rootElement.scrollHeight / 2;
-    rootElement.scrollLeft = rootElement.scrollWidth / 2;
+    rootElement.scrollTop = 0;
+    rootElement.scrollLeft = 0;
   });
+  await expect(table.locator('tbody > tr[aria-rowindex="2"]')).toBeVisible();
+  await root.evaluate((rootElement) => {
+    rootElement.scrollTop = Math.min(
+      rootElement.scrollTop + rootElement.clientHeight,
+      rootElement.scrollHeight - rootElement.clientHeight,
+    );
+  });
+  await expect
+    .poll(async () => {
+      return readMountedLogicalRange();
+    })
+    .toMatchObject({ verticalInterior: true });
+  await root.evaluate((rootElement) => {
+    rootElement.scrollLeft = Math.min(
+      rootElement.scrollLeft + rootElement.clientWidth * 2,
+      rootElement.scrollWidth - rootElement.clientWidth,
+    );
+  });
+  await expect
+    .poll(async () => {
+      return readMountedLogicalRange();
+    })
+    .toMatchObject({
+      verticalInterior: true,
+      horizontalInterior: true,
+      logicalInterior: true,
+    });
+  const interiorRange = await readMountedLogicalRange();
+  expect(interiorRange.firstRowIndex).toBeGreaterThan(2);
+  expect(interiorRange.lastRowIndex).toBeLessThan(interiorRange.rowCount);
+  expect(interiorRange.firstPropertyIndex).toBeGreaterThan(1);
+  expect(interiorRange.lastPropertyIndex).toBeLessThan(interiorRange.columnCount);
   await expect
     .poll(() => readDatabaseSpacerBoundary(table))
     .toEqual({
