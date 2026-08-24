@@ -1730,7 +1730,7 @@ export function buildCommands(
   }
 
   // Narrow repeated-execution stability contract (`--repeat`): only ever
-  // resolved for `--only storybook-behavior --files ...` (see
+  // resolved for `--only behavior --files ...` (see
   // resolveVerifyInvocation's assertModeCombination), so it applies only to
   // this runnable entry and never to another label's command.
   if (repeat !== null && storybookBehaviorEntry.kind === 'run') {
@@ -1863,7 +1863,7 @@ export function selectOnlyCommands(
 /**
  * Build a supported read-only verify command from the resolved invocation.
  * @param invocation Resolved verify invocation.
- * @param [overrides] Optional profile and label overrides.
+ * @param [overrides] Optional profile and type overrides.
  * @returns Canonical shell-safe pnpm verify command.
  */
 export function getVerifyRerunCommand(
