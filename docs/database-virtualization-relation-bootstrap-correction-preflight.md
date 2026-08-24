@@ -39,9 +39,11 @@ If focused evidence shows that temporary entity-local table structure is not the
 ## Expected files/modules
 
 Production:
+
 - `src/entities/databaseData/DatabaseDataTable.vue`.
 
 Proof, only as needed:
+
 - `tests/e2e/databaseViewsAndQueryFlows.spec.ts` should normally need no semantic weakening; its existing failing assertion is required proof.
 - `tests/e2e/databaseVirtualizationFlows.spec.ts` only if a direct bootstrap invariant must be added/adjusted without duplicating the product scenario.
 
@@ -60,6 +62,7 @@ If pass 1 disproves the handoff hypothesis or requires ownership expansion, stop
 ## Required removal of replaced logic
 
 Do not leave two competing spacer-presence paths. The final code should clearly separate only:
+
 - transient unresolved non-empty bootstrap presentation; and
 - settled positive-distance virtual spacers.
 
