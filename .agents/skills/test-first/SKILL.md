@@ -28,7 +28,7 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, durable own
 2. Select the highest-risk applicable acceptance case.
 3. Add or update one focused test before production edits.
 4. Maintain required durable ownership facts for any new/moved Playwright spec: use local ownership only when current discovery supports it; otherwise preserve the current truthful transitional/explicit relation.
-5. Run the owning verify-managed lane and confirm the expected failure.
+5. Run the owning verify-managed verification type and confirm the expected failure.
 6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
 7. Implement the minimum production change.
 8. Rerun the same target and confirm it passes.
@@ -46,8 +46,8 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, durable own
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <paths...>
-pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only unit --files <paths...>
+pnpm verify --only behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 

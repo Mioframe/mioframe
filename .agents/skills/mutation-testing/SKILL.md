@@ -37,7 +37,7 @@ Until the persistent registry is implemented and validated, repository verificat
 
 ## Workflow
 
-1. Run focused `unit-tests` and confirm they pass.
+1. Run focused `unit` verification and confirm it passes.
 2. Confirm the source/test pair is an existing registered target or a deliberate focused audit required by the task.
 3. Select the narrowest exact source/test paths.
 4. Run the mutation audit.
@@ -50,7 +50,7 @@ Until the persistent registry is implemented and validated, repository verificat
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <exact-owning-test-paths...>
+pnpm verify --only unit --files <exact-owning-test-paths...>
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
