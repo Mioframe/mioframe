@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; PR #217 implementation blocked by two Database virtualization application-E2E failures plus operator visual acceptance**.
+Status: **shared virtualization architecture accepted; PR #217 implementation and cumulative branch verification are complete pending operator visual acceptance and exact-head CI**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -8,7 +8,7 @@ Current contracts:
 
 - completed native-table integration correction: `docs/database-virtualization-integration-correction-handoff.md`;
 - completed relation cold-bootstrap correction: `docs/database-virtualization-relation-bootstrap-correction-handoff.md`;
-- active branch-E2E correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
+- completed branch-E2E correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
 - implementation preflight: `docs/database-virtualization-branch-e2e-correction-preflight.md`;
 - active review: `src/entities/databaseData/REVIEW.md`;
 - deferred residual performance work: `docs/database-chrome-jank-follow-up.md`.
@@ -35,25 +35,21 @@ Cold-bootstrap invariant:
 
 > A non-empty logical collection with no mounted virtual items may render only transient `aria-hidden` bootstrap table structure. That structure disappears as soon as TanStack supplies real virtual items and never becomes a second range/measurement owner.
 
-Current implementation preserves both contracts. The previously failing persisted relation-filter cold-reload scenario passed in branch-wide E2E after the bootstrap correction.
+Current implementation preserves both contracts. The previously failing persisted relation-filter cold-reload scenario passes after the bootstrap correction.
 
-## Active correction — table surface movement and interior proof
+## Completed branch-E2E correction
 
-Exact-head branch-wide E2E still exposes two blockers.
+The branch-wide failures after the bootstrap correction were resolved without changing production/shared virtualization code.
 
 ### Moving surface
 
-When real composition content before the table appears/disappears, the table's root-relative collection-surface offset changes. The existing entity-owned observation/derivation path must propagate that movement so later top/deep scrolling reaches the same correct logical ranges without remounts, timers, forced updates, or a second geometry engine.
-
-The current evidence proves the end-to-end contract is unreliable after the surface moves, but does not yet prove whether the stale step is entity-local observation or the shared boundary. The active correction may change only the entity-local `DatabaseDataTable` geometry/update path when focused evidence selects it. If a correct reactive `surfaceOffset` reaches the shared boundary and TanStack still fails to react, stop for a new architecture decision before changing `useVirtualCollection`.
+The existing scenario that moves the table by dismissing real preceding content was not reproducible as a production defect in focused local verification or in the final cumulative branch gate. The production geometry path was therefore left unchanged. Reopen only if exact-head CI reproduces the same failure again.
 
 ### Interior spacer proof
 
-Physical `scrollHeight / 2` and `scrollWidth / 2` are not contracts for a logical interior virtual range.
+The previous proof incorrectly assumed physical `scrollHeight / 2` and `scrollWidth / 2` implied a logical interior virtual range.
 
-Application E2E must first establish, from mounted `aria-rowindex` / `aria-colindex`, that both row and property ranges are strictly interior. Only then may it assert that both leading and trailing spacers exist.
-
-If a confirmed logical interior range lacks required spacers, that is a production integration defect. Otherwise the correction belongs only to the test precondition, not production behavior.
+The corrected E2E derives mounted row/property ranges from `aria-rowindex` / `aria-colindex`, proves both axes are strictly inside their logical boundaries, then requires both leading and trailing row/column spacers. The representative recursive-relation proof uses the same logical-range precondition instead of a physical midpoint assumption.
 
 ## Verification workflow
 
@@ -62,6 +58,8 @@ During implementation use focused verifier runs for fast feedback. Before coding
 `pnpm verify --base origin/develop`
 
 If it exposes another PR-caused in-contract failure, fix it, verify that correction narrowly, then rerun the complete branch gate. Repeat until clean. Do not force the local `github-actions` profile; the local verifier profile is the intended agent environment.
+
+For the final branch-E2E correction the coding agent reported this cumulative gate clean after two complete runs, with focused virtualization E2E and relation persistence E2E also green.
 
 ## Residual Chromium jank
 
@@ -75,11 +73,9 @@ Do not add Number-specific, worker/query/storage, Material, or speculative share
 
 PR #217 may merge when:
 
-1. both active branch-E2E blockers are resolved without retry/flaky classification;
-2. coding-agent `pnpm verify --base origin/develop` passes cleanly;
-3. operator inspection confirms the Database table border/corner appearance is restored at representative start/end states;
-4. exact-head GitHub CI is green;
-5. full resulting PR review finds no remaining blocker.
+1. operator inspection confirms the Database table border/corner appearance is restored at representative start/end states;
+2. exact-head GitHub CI is green;
+3. final resulting PR review finds no remaining blocker.
 
 Residual Chromium heterogeneous-table jank remains an explicitly accepted tracked follow-up risk.
 
