@@ -1,90 +1,83 @@
 # Review
 
-Verdict: blocked by the top-level moving-surface correctness investigation, one relation-value offset invariant, and a confirmed sticky action/header stacking defect.
+Verdict: implementation/proof corrections accepted; remaining gates are operator visual reinspection, exact-head CI, and final resulting-PR review.
 
-Active completion contract:
+## Scope reviewed
 
-- `docs/database-virtualization-completion-pass-handoff.md`
-- `docs/database-virtualization-completion-pass-preflight.md`
+- PR #217 Database virtualization/native-table integration.
+- Shared deep-state `surfaceOffset` capability.
+- Top-level `DatabaseViewWidget` numeric offset diagnosis.
+- Relation-value local-root loading correction.
+- Sticky action/header stacking correction and real-browser hit-testing proof.
+- Cumulative branch verification reported by the coding agent.
 
-Supporting top-level diagnosis:
+## Resolved — shared deep-state contract
 
-- `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`
-- `docs/database-virtualization-widget-surface-offset-diagnosis-preflight.md`
+The shared browser capability proves `deep -> change surfaceOffset while deep -> top -> deep` on the same root/list, reaching the logical tail before and after with bounded mounted work and consistent geometry. Shared production remains unchanged.
 
-## PR scope decision
+No shared/TanStack production correction is justified.
 
-PR #217 must finish Database virtualization itself: bounded rendering, deep-range correctness, root/surface geometry, nested roots, native-table integration, sticky surfaces, accessibility, and presentation regressions introduced or exposed by the virtualization migration.
+## Resolved — top-level moving-surface production ownership not confirmed
 
-Do not expand this PR into remaining causes of freezes/jank once virtualization correctness is complete. Heterogeneous-content / Chromium-specific residual performance investigation remains owned by `docs/database-chrome-jank-follow-up.md` and later PRs.
+The coding-agent diagnosis did not reproduce the historical product failure and reported truthful supplied-vs-physical offsets at every required checkpoint:
 
-## Resolved — shared deep-state discriminator
+- initial top: vertical `178`, horizontal `16`;
+- first deep: vertical `178`, horizontal `16`;
+- dismiss while deep: vertical `0`, horizontal `16`;
+- returned top: vertical `0`, horizontal `16`;
+- second deep: vertical `0`, horizontal `16`.
 
-Shared browser proof reproduces `deep -> change surfaceOffset while deep -> top -> deep` on the same root/list. Both deep phases reach the logical tail, top recovers item `0`, mounted work remains bounded, and geometry remains consistent. Shared production is unchanged.
+Both first and second deep phases reached logical row `46`. Temporary diagnostics were removed.
 
-No shared/TanStack production correction is justified by current evidence.
+Together with the accepted shared deep-state capability, there is no current evidence supporting another production geometry/cache/lifecycle correction. Do not add timers, observers, cache reset, remount, or shared virtualization changes for the historical CI episode.
 
-## Blocker — top-level supplied offset lifecycle is not yet understood
+The historical failure remains a stability watch only: any new exact-head reproduction reopens this finding and must be reviewed from that concrete evidence.
 
-Owning product proof remains `tests/e2e/databaseVirtualizationFlows.spec.ts` → `keeps real preceding Database content connected to the table-owned surface range`.
+## Resolved — relation-value local-root invariant
 
-A previous exact-head CI run failed this scenario 3/3 on desktop Chromium, while a later run passed without a production correction. The known instability therefore remains unresolved.
+`RelationValueFieldData` now renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit relation `0/0` offsets are truthful whenever the table is mounted. Owner-local proof and relevant E2E are reported green.
 
-The completion pass must compare the numeric value supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-layout offset at initial top, first deep, success-card dismiss while still deep, returned top, and second deep attempt.
+Owner review: `src/features/relationValueEdit/REVIEW.md`.
 
-Do not select a production correction before that evidence exists. If supplied and physical values diverge, widget geometry production/lifecycle owns the next architecture correction. If they remain truthful through a reproduced failure, architecture must be reconsidered before changing production.
+## Resolved — sticky body action cells covering the header
 
-## Blocker — body action cells can cover the sticky header
+`DatabaseDataTable` now keeps body action cells sticky/right at local `z-index: 0`, below the shared sticky `thead` plane (`z-index: 1`). The header action cell remains locally elevated inside the header plane.
 
-Operator inspection confirms that a sticky body action cell can render over the fixed header while scrolling.
+The product E2E extends the existing sticky native-table scenario with actual `document.elementFromPoint()` hit-testing after combined vertical + horizontal scrolling and proves:
 
-Current stacking model:
+- the body right-edge surface is the sticky action cell, not an ordinary value cell;
+- the top-right header/action intersection belongs to the header action cell and not a body action cell;
+- an ordinary header band remains above body action cells.
 
-- shared `MDTable` owns sticky `thead` with `z-index: 1`;
-- `DatabaseDataTable .db-data-table__actions` gives every action cell `position: sticky; right: 0; z-index: 2`;
-- the action header cell gets `z-index: 3`, but remains inside the `thead` stacking context and cannot make the rest of the header outrank body action cells.
+No shared `MDTable` change was required.
 
-Owner: `DatabaseDataTable` integration.
-
-Required final state:
-
-- body action cells remain above ordinary body cells horizontally;
-- body action cells remain below the shared sticky-header plane;
-- the top-right action header remains above sibling header cells inside the header plane.
-
-Use the minimum local z-index correction. Do not change `MDTable` unless real-browser proof shows the local consumer stacking model cannot satisfy these requirements.
-
-Required product proof must cover simultaneous vertical + horizontal scrolling and actual browser hit-testing/stacking, not only computed z-index values.
-
-## Additional blocker — relationValueEdit zero invariant
-
-Owner: [`src/features/relationValueEdit`](../../features/relationValueEdit/REVIEW.md).
-
-The feature correction is now ready: loading-without-properties renders only the progress indicator; the table mounts only in the complementary state, making explicit `0/0` offsets truthful whenever it exists.
-
-## Current ownership direction
+## Preserved ownership
 
 - `DatabaseViewWidget` owns top-level composition/layout facts;
 - `DatabaseViewLayout` forwards offsets;
-- `DatabaseDataTable` owns virtualization presentation and local sticky action integration;
+- `DatabaseDataTable` owns table virtualization presentation and local sticky action integration;
 - `useVirtualCollection` forwards `surfaceOffset`;
 - TanStack owns range/measurement/cache/scroll correction;
 - shared `MDTable` owns generic native table frame/header behavior.
 
-Do not restore entity root/table `MutationObserver` or ancestor/sibling discovery as fallback.
+The removed entity ancestor/sibling geometry-discovery path must not return.
 
-## Preserved contracts
+## Verification evidence
 
-Do not regress positive-distance spacers, transient cold bootstrap, relation persistence, logical-interior proof, native table frame, nested roots, bounded mounted work, inline editing, ARIA contracts, sticky positions, or deferred heterogeneous-content Chromium performance scope.
+Coding agent reports focused unit/E2E/relation E2E/format/ESLint/Oxlint/type-check green and cumulative:
 
-## Merge condition
+`pnpm verify --base origin/develop`
 
-Do not merge until:
+passed in one iteration with no remaining failure.
 
-1. top-level numeric offset investigation resolves the known moving-surface correctness risk;
-2. relation-value offset invariant is truthful;
-3. body action cells never cover the sticky header and the top-right sticky intersection remains correct;
-4. virtualization browser/product proof and cumulative branch verification are clean;
-5. exact-head CI is green;
-6. operator presentation reinspection is clean;
-7. final resulting-PR review has no blockers.
+## Remaining gates
+
+1. operator reinspection of the real Database table, especially borders/corners and combined sticky header/action behavior;
+2. exact-head GitHub CI green with no retry/flaky classification;
+3. final full resulting-PR review.
+
+Residual heterogeneous-content Chromium jank and other non-virtualization performance causes are explicitly deferred to later PRs.
+
+## Blockers
+
+No current semantic implementation blocker. A new exact-head moving-surface reproduction would reopen that finding.
