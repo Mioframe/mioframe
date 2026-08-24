@@ -45,6 +45,8 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
     :view-id="viewId"
     :properties="displayPropertiesIdList"
     :scroll-root="scrollRoot"
+    :vertical-surface-offset="0"
+    :horizontal-surface-offset="0"
   >
     <template #property="{ propertyId }">
       <DatabasePropertyBlock

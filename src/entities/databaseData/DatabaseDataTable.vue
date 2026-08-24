@@ -8,9 +8,8 @@ import type {
 import type { ItemIdQuery } from '@shared/service';
 import { MDTable } from '@shared/ui/Table';
 import { type VirtualCollectionItem, useVirtualCollection } from '@shared/ui/virtualization';
-import { unrefElement, useElementBounding, useMutationObserver } from '@vueuse/core';
 import type { EmptyObject } from 'type-fest';
-import { computed, onUpdated, toRefs, useTemplateRef, type CSSProperties } from 'vue';
+import { computed, toRefs, type CSSProperties } from 'vue';
 import { useDatabaseData } from './useDatabaseData';
 
 const props = defineProps<{
@@ -18,6 +17,8 @@ const props = defineProps<{
   documentId: AMDocumentId;
   properties: Readonly<DatabasePropertyId[]>;
   scrollRoot: HTMLElement | null | undefined;
+  verticalSurfaceOffset: number;
+  horizontalSurfaceOffset: number;
   viewId?: DatabaseViewId | undefined;
   idQuery?: ItemIdQuery | undefined;
 }>();
@@ -33,49 +34,20 @@ const ROW_ESTIMATE_PX = 48;
 const COLUMN_ESTIMATE_PX = 160;
 const VIRTUAL_OVERSCAN = 4;
 
-const { directoryPath, documentId, idQuery, properties, scrollRoot, viewId } = toRefs(props);
+const {
+  directoryPath,
+  documentId,
+  horizontalSurfaceOffset,
+  idQuery,
+  properties,
+  scrollRoot,
+  verticalSurfaceOffset,
+  viewId,
+} = toRefs(props);
 
 const { itemIdList } = useDatabaseData(directoryPath, documentId, viewId, idQuery);
 
 const logicalItemIdList = computed<readonly DatabaseItemId[]>(() => itemIdList.value ?? []);
-
-// The native table is this component's collection surface. VueUse resolves the MDTable component
-// ref to that root table element, keeping root-to-surface geometry inside the native-table owner.
-const tableSurface = useTemplateRef<HTMLElement>('tableSurface');
-const tableElement = computed(() => unrefElement(tableSurface.value));
-const rootBounding = useElementBounding(scrollRoot);
-const tableBounding = useElementBounding(tableElement);
-
-const updateSurfaceBounds = () => {
-  rootBounding.update();
-  tableBounding.update();
-};
-
-// Direct composition children of the explicit root can move this table without changing its props.
-// This observes only that root topology; TanStack remains the sole virtual-item measurement owner.
-useMutationObserver(scrollRoot, updateSurfaceBounds, { childList: true });
-
-onUpdated(updateSurfaceBounds);
-
-const verticalSurfaceOffset = computed(() => {
-  const root = scrollRoot.value;
-
-  if (!root || !tableElement.value) {
-    return 0;
-  }
-
-  return tableBounding.top.value - rootBounding.top.value - root.clientTop + root.scrollTop;
-});
-
-const horizontalSurfaceOffset = computed(() => {
-  const root = scrollRoot.value;
-
-  if (!root || !tableElement.value) {
-    return 0;
-  }
-
-  return tableBounding.left.value - rootBounding.left.value - root.clientLeft + root.scrollLeft;
-});
 
 const rows = useVirtualCollection(logicalItemIdList, {
   root: scrollRoot,
@@ -132,7 +104,6 @@ function getColumnMinWidthStyle(
 
 <template>
   <MDTable
-    ref="tableSurface"
     class="db-data-table"
     :aria-rowcount="logicalItemIdList.length + 1"
     :aria-colcount="logicalColumnCount"

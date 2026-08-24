@@ -60,6 +60,8 @@ const scrollRoot = useTemplateRef<HTMLElement>('scrollRoot');
           :view-id="viewId"
           :item-id-query="{ $in: relationValue }"
           :scroll-root="scrollRoot"
+          :vertical-surface-offset="0"
+          :horizontal-surface-offset="0"
         >
           <template #value="{ propertyId: relationPropertyId, itemId: relationItemId }">
             <ValueInline

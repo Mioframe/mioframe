@@ -35,6 +35,35 @@ export const SurfaceOffset: Story = {
   args: { axis: 'vertical', itemCount: 10000, surfaceOffset: 240 },
 };
 
+export const DynamicSurfaceOffset: StoryObj = {
+  render: () => ({
+    components: { VirtualCollectionCapabilityFixture },
+    setup() {
+      const surfaceOffset = ref(240);
+      const reduceSurfaceOffset = () => {
+        surfaceOffset.value = 96;
+      };
+      return { reduceSurfaceOffset, surfaceOffset };
+    },
+    template: `
+      <div>
+        <button
+          type="button"
+          data-testid="vcc-change-surface-offset"
+          @click="reduceSurfaceOffset"
+        >
+          Move surface upward
+        </button>
+        <VirtualCollectionCapabilityFixture
+          axis="vertical"
+          :item-count="10000"
+          :surface-offset="surfaceOffset"
+        />
+      </div>
+    `,
+  }),
+};
+
 export const UndefinedSourceValue: Story = {
   args: { axis: 'vertical', itemCount: 20, undefinedValueAt: 5 },
 };

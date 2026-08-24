@@ -19,6 +19,8 @@ const props = defineProps<{
   scrollRoot: HTMLElement | null | undefined;
   viewId?: DatabaseViewId | undefined;
   itemIdQuery?: ItemIdQuery | undefined;
+  verticalSurfaceOffset: number;
+  horizontalSurfaceOffset: number;
 }>();
 
 const slots = defineSlots<{
@@ -28,7 +30,8 @@ const slots = defineSlots<{
   after: () => unknown;
 }>();
 
-const { documentId, path, scrollRoot } = toRefs(props);
+const { documentId, horizontalSurfaceOffset, path, scrollRoot, verticalSurfaceOffset } =
+  toRefs(props);
 
 const { arrivedState } = useScroll(scrollRoot, {
   throttle: 1e3 / 20,
@@ -51,6 +54,8 @@ const { propertiesIdList } = useDatabaseProperties(path, documentId);
       :id-query="itemIdQuery"
       :properties="propertiesIdList"
       :scroll-root="scrollRoot"
+      :vertical-surface-offset="verticalSurfaceOffset"
+      :horizontal-surface-offset="horizontalSurfaceOffset"
     >
       <template #property="{ propertyId }">
         <DatabasePropertyBlock :path="path" :document-id="documentId" :property-id="propertyId" />

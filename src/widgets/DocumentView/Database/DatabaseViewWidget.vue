@@ -5,7 +5,8 @@ import type {
   DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
+import { useElementBounding } from '@vueuse/core';
+import { computed, onMounted, onUpdated, shallowRef, toRefs, useTemplateRef } from 'vue';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
@@ -162,6 +163,47 @@ const hasProperties = computed(() =>
 );
 
 const databaseViewRef = useTemplateRef<HTMLElement>('databaseViewRef');
+const databaseViewLayoutRef = useTemplateRef<HTMLElement>('databaseViewLayoutRef');
+const databaseViewBounds = useElementBounding(databaseViewRef);
+const databaseViewLayoutBounds = useElementBounding(databaseViewLayoutRef);
+
+const updateDatabaseSurfaceBounds = () => {
+  databaseViewBounds.update();
+  databaseViewLayoutBounds.update();
+};
+
+onMounted(updateDatabaseSurfaceBounds);
+onUpdated(updateDatabaseSurfaceBounds);
+
+const verticalSurfaceOffset = computed(() => {
+  const root = databaseViewRef.value;
+
+  if (!root || !databaseViewLayoutRef.value) {
+    return 0;
+  }
+
+  return (
+    databaseViewLayoutBounds.top.value -
+    databaseViewBounds.top.value -
+    root.clientTop +
+    root.scrollTop
+  );
+});
+
+const horizontalSurfaceOffset = computed(() => {
+  const root = databaseViewRef.value;
+
+  if (!root || !databaseViewLayoutRef.value) {
+    return 0;
+  }
+
+  return (
+    databaseViewLayoutBounds.left.value -
+    databaseViewBounds.left.value -
+    root.clientLeft +
+    root.scrollLeft
+  );
+});
 
 const onCancelEditItemDialog = () => {
   isShowEditItemDialog.value = false;
@@ -205,10 +247,13 @@ const onUpdatedEditItemDialog = () => {
 
     <DatabaseViewLayout
       v-else
+      ref="databaseViewLayoutRef"
       :document-id="documentId"
       :view-id="effectiveViewId"
       :path="path"
       :scroll-root="databaseViewRef"
+      :vertical-surface-offset="verticalSurfaceOffset"
+      :horizontal-surface-offset="horizontalSurfaceOffset"
       class="database-view__layout"
     >
       <template #value="{ itemId, propertyId }">
