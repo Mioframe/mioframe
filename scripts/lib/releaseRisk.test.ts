@@ -957,3 +957,199 @@ describe('resolveReleasePlan composition and non-erasure', () => {
     expect(plan.checks).toEqual(ALL_CHECKS_SORTED);
   });
 });
+
+// Contract D -- production-build input mechanisms (Pass E production-build
+// ownership correction, docs/testing/verify-release-impact-correction.md).
+// This is a fresh independent RED phase: the oracle is the real repository
+// build mechanisms confirmed by that document (direct reads of
+// `vite.config.ts`, `pwa-assets.config.ts`, and Vite's own documented
+// `publicDir`/`loadEnv` behavior as the document names them), NOT the
+// current `releaseRisk.ts` constants -- which do not yet implement this
+// boundary at all, so every case below is expected to currently fail against
+// the real unmodified `resolveReleasePlan`.
+//
+// - "### 2. Tool-discovered production configuration" (Browserslist,
+//   PostCSS, PWA assets, production Vite env files): each confirmed current
+//   repository-owned config selects "focused production-build consumers",
+//   i.e. the same four-check set the existing Contract A production-Vite-config
+//   tests already assert (`artifact + build + managed-updates + release-smoke`,
+//   `PRODUCTION_VITE_CONFIG_CHECKS`-equivalent). Each confirmed sibling
+//   family member that is not the current exact input "fail[s] closed to
+//   full six until audited" -- explicitly including `browserslist`,
+//   `postcss.config.ts` / `.postcssrc.mjs` (the doc's own "Examples"), and
+//   `pwa-assets.config.mts`.
+// - "### 3. TypeScript transform/config ownership": the four current
+//   production/config tsconfig files "select the focused production-build
+//   consumer set"; `tsconfig.storybook.json` and `tsconfig.scripts.json`
+//   "remain release-impact negative solely from this family"; "[a]ny other
+//   repository-root `tsconfig*.json`... must fail closed to full six until
+//   audited" (`tsconfig.future.json`).
+// - "### 4. Production artifact/file inputs": "every file in that tree
+//   [`public`] is copied into the production output as-is... `public/**` ->
+//   focused production-build consumers", and explicitly "[d]o not apply
+//   proof/test filename exclusions inside `public/**`; a file there is an
+//   artifact input regardless of filename" -- proving `public/**` ownership
+//   must be checked before `isProofOrDeclarationOnlyPath`'s
+//   `.test.mjs`/`.test.ts`/`.testUtils.ts`/`.d.mts` exclusion, which today
+//   runs unconditionally for any path with that shape.
+// - "### 5. Dependency-install control": "`pnpm-workspace.yaml` -> full six
+//   release checks" because "[t]he release build runs on the dependency
+//   installation produced by pnpm" and that file "controls allowed
+//   dependency build scripts and can therefore alter installed build-tool
+//   behavior".
+// - "## Acceptance criteria" item 2: "`.browserslistrc`, `postcss.config.js`,
+//   `pwa-assets.config.ts` and `public/favicon.svg` cannot resolve `skip`" --
+//   today's `resolveReleasePlan` resolves exactly `skip` for all four, which
+//   is the concrete contract violation this RED phase proves.
+describe('resolveReleasePlan Contract D -- current real production-build inputs select the focused four consumers (Pass E RED A)', () => {
+  // Oracle: docs/testing/verify-release-impact-correction.md "### 2. Tool-discovered
+  // production configuration" (Browserslist/.browserslistrc, PostCSS/postcss.config.js,
+  // PWA assets/pwa-assets.config.ts, production Vite env files/.env.production),
+  // "### 3. TypeScript transform/config ownership" (tsconfig.json/tsconfig.app.json/
+  // tsconfig.src.json/tsconfig.node.json), and "### 4. Production artifact/file inputs"
+  // (public/favicon.svg, public/robots.txt as public/** members). Every one of these
+  // is a positively-known current production-build input per the doc, so each must
+  // select exactly the same focused four-check consumer set the existing
+  // PRODUCTION_VITE_CONFIG_CHECKS contract already uses for config/alias.ts etc.
+  // Currently none of these paths is recognized by any resolver rule, so
+  // resolveReleasePlan resolves `skip` for every one of them today -- a genuine
+  // contract-relevant RED, not a tooling failure.
+  it.each([
+    '.browserslistrc',
+    'postcss.config.js',
+    'pwa-assets.config.ts',
+    'public/favicon.svg',
+    'public/robots.txt',
+    'tsconfig.json',
+    'tsconfig.app.json',
+    'tsconfig.src.json',
+    'tsconfig.node.json',
+    '.env.production',
+  ])(
+    'selects exactly artifact, build, managed-updates, and release-smoke for the confirmed current production-build input %s',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('focused');
+      expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
+    },
+  );
+});
+
+describe('resolveReleasePlan Contract D -- fail-closed config families without loader mirroring (Pass E RED B)', () => {
+  // Oracle: docs/testing/verify-release-impact-correction.md "### 2. Tool-discovered
+  // production configuration" -- each family's "fail-closed root family is
+  // structural, not an exhaustive supported-extension table"; a path matching a
+  // confirmed family but not the current exact repository-owned input "selects
+  // full six until audited". `browserslist` is named as "inside the confirmed
+  // Browserslist config family but is not the current repository source".
+  // `postcss.config.ts` and `.postcssrc.mjs` are the doc's own worked "Examples"
+  // for the PostCSS family. `pwa-assets.config.mts` matches the doc's
+  // `pwa-assets.config.*` fail-closed root family. `tsconfig.future.json` matches
+  // "### 3. TypeScript transform/config ownership": "[a]ny other repository-root
+  // `tsconfig*.json` is inside a confirmed significant build/config family but has
+  // unresolved ownership. It must fail closed to full six until audited."
+  // Currently none of these paths is recognized by any resolver rule, so
+  // resolveReleasePlan resolves `skip` for every one of them today, not `full` --
+  // a genuine contract-relevant RED proving unknown significant family members do
+  // not silently skip.
+  it.each([
+    'browserslist',
+    'postcss.config.ts',
+    '.postcssrc.mjs',
+    'pwa-assets.config.mts',
+    'tsconfig.future.json',
+  ])(
+    'fails closed to all six source-impact checks for the unaudited config-family member %s',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('full');
+      expect(plan.checks).toEqual(ALL_CHECKS_SORTED);
+    },
+  );
+});
+
+describe('resolveReleasePlan Contract D -- public/** artifact population (Pass E RED C)', () => {
+  // Oracle: docs/testing/verify-release-impact-correction.md "### 4. Production
+  // artifact/file inputs": "Vite's default `publicDir` is `public`; every file in
+  // that tree is copied into the production output as-is. Therefore this is a
+  // complete tool-owned artifact population rather than adjacency inference:
+  // `public/** -> focused production-build consumers`." The doc is explicit that
+  // "[d]o not apply proof/test filename exclusions inside `public/**`; a file there
+  // is an artifact input regardless of filename."
+  it('selects exactly artifact, build, managed-updates, and release-smoke for a nested public/** path', () => {
+    // Currently unrecognized by any resolver rule -> resolves skip today.
+    const plan = resolveReleasePlan(['public/icons/example.svg']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
+  });
+
+  it('selects exactly artifact, build, managed-updates, and release-smoke for a public/** path with a proof-looking filename, proving public/** ownership applies before the proof/declaration-only exclusion', () => {
+    // isProofOrDeclarationOnlyPath's `.test.mjs` shape (used elsewhere in this
+    // suite for scripts/release/*.test.mjs etc.) currently matches this path and
+    // makes resolveReleasePlan resolve skip via that exclusion BEFORE any
+    // public/** rule could apply. The architecture doc requires the opposite
+    // order for public/** specifically: "a file there is an artifact input
+    // regardless of filename".
+    const plan = resolveReleasePlan(['public/icons/example.test.mjs']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.checks).toEqual(['artifact', 'build', 'managed-updates', 'release-smoke']);
+  });
+});
+
+describe('resolveReleasePlan Contract D -- known negative config-family members and unrelated paths (Pass E RED D)', () => {
+  // Oracle: docs/testing/verify-release-impact-correction.md "### 3. TypeScript
+  // transform/config ownership": "Current known non-production TypeScript projects
+  // remain release-impact negative solely from this family:
+  // tsconfig.storybook.json, tsconfig.scripts.json." These are guard-rail cases:
+  // neither path is recognized by any current resolver rule either, so both
+  // already resolve `skip` today, and the Pass E correction must keep them
+  // negative even after the family-wide tsconfig handling is added.
+  it.each(['tsconfig.storybook.json', 'tsconfig.scripts.json'])(
+    'keeps the known non-production tsconfig family member %s release-impact negative',
+    (filePath) => {
+      const plan = resolveReleasePlan([filePath]);
+
+      expect(plan.mode).toBe('skip');
+      expect(plan.checks).toEqual([]);
+    },
+  );
+
+  // Oracle: docs/testing/verify-release-impact-correction.md "## What is not part
+  // of this release-impact boundary" / "Representative negatives" list. These are
+  // the entries not already covered by this file's existing negative assertions
+  // (config/unrelatedRuntimeConfig.ts is already asserted negative in the
+  // "production Vite configuration ownership" describe above; README.md is
+  // already asserted negative in the "composition and non-erasure" describe
+  // above).
+  it.each([
+    '.env.example',
+    '.nvmrc',
+    'eslint.config.mjs',
+    'vitest.config.ts',
+    'postcss.config.test.ts',
+  ])('keeps the representative negative path %s outside release impact', (filePath) => {
+    const plan = resolveReleasePlan([filePath]);
+
+    expect(plan.mode).toBe('skip');
+    expect(plan.checks).toEqual([]);
+  });
+});
+
+describe('resolveReleasePlan Contract D -- dependency-install control (Pass E RED E)', () => {
+  // Oracle: docs/testing/verify-release-impact-correction.md "### 5. Dependency-install
+  // control": "The release build runs on the dependency installation produced by
+  // pnpm. The root workspace file controls allowed dependency build scripts and can
+  // therefore alter installed build-tool behavior... pnpm-workspace.yaml -> full six
+  // release checks." Currently unrecognized by any resolver rule -> resolves skip
+  // today, not full -- a genuine contract-relevant RED.
+  it('fails closed to all six source-impact checks for pnpm-workspace.yaml', () => {
+    const plan = resolveReleasePlan(['pnpm-workspace.yaml']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.checks).toEqual(ALL_CHECKS_SORTED);
+  });
+});

@@ -186,6 +186,11 @@ const NARROW_EXACT_MAPPINGS: readonly NarrowReleaseMapping[] = [
 // playwright.release.config.ts and scripts/release/artifactServer.mjs are
 // deliberately NOT here: they now have their own confirmed exact narrow
 // mapping (artifact + managed-updates + release-smoke) above, never all six.
+// pnpm-workspace.yaml controls allowed dependency build scripts and can
+// therefore alter installed build-tool behavior consumed by the release
+// build; per docs/testing/verify-release-impact-correction.md "### 5.
+// Dependency-install control", the simplest conservative contract is full
+// six rather than narrower per-consumer reasoning.
 const FULL_LANE_EXACT_FILES = new Set([
   'config/tooling.json',
   'vite.config.ts',
@@ -193,6 +198,7 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/verify.ts',
   'scripts/lib/releaseRisk.ts',
   'scripts/release/releaseSpecInventory.ts',
+  'pnpm-workspace.yaml',
 ]);
 
 // Publisher/retained-release/data-compatibility code under the managed
@@ -206,17 +212,58 @@ const FULL_LANE_PREFIXES = ['scripts/pages/lib/'];
 const PACKAGE_JSON_PATH = 'package.json';
 const PNPM_LOCK_PATH = 'pnpm-lock.yaml';
 const RELEASE_SPEC_DIR = 'tests/e2e/release';
-const PRODUCTION_VITE_CONFIG_EXACT_FILES = new Set([
+
+// Confirmed current production-build inputs consumed by the real production
+// `vite build`, per docs/testing/verify-release-impact-correction.md: the
+// existing static Vite-plugin support surface (config/alias.ts,
+// config/vueCustomElements.ts, config/plugins/**), tool-discovered
+// configuration Vite finds by root-relative convention rather than static
+// import (Browserslist's .browserslistrc via browserslistToEsbuild, root
+// PostCSS discovery via postcss.config.js, PWA assets via
+// pwa-assets.config.ts), TypeScript build/config metadata
+// (tsconfig.json/tsconfig.app.json/tsconfig.src.json/tsconfig.node.json),
+// and the production Vite env file contract
+// (loadEnv(mode, process.cwd(), '') in production mode). Every member here
+// selects the same focused production-build consumer set.
+const PRODUCTION_BUILD_INPUT_EXACT_FILES = new Set([
   'config/alias.ts',
   'config/vueCustomElements.ts',
+  '.browserslistrc',
+  'postcss.config.js',
+  'pwa-assets.config.ts',
+  'tsconfig.json',
+  'tsconfig.app.json',
+  'tsconfig.src.json',
+  'tsconfig.node.json',
+  '.env',
+  '.env.local',
+  '.env.production',
+  '.env.production.local',
 ]);
-const PRODUCTION_VITE_CONFIG_PREFIX = 'config/plugins/';
-const PRODUCTION_VITE_CONFIG_CHECKS: readonly ReleaseImpactCheck[] = [
+const PRODUCTION_BUILD_INPUT_PREFIX = 'config/plugins/';
+const PRODUCTION_BUILD_INPUT_CHECKS: readonly ReleaseImpactCheck[] = [
   'artifact',
   'build',
   'managed-updates',
   'release-smoke',
 ];
+
+// Vite's default `publicDir` is `public`; every file in that tree is copied
+// into the production output as-is, so it is a complete tool-owned artifact
+// population rather than adjacency inference. Must be checked before
+// isProofOrDeclarationOnlyPath's filename exclusion: a file under public/**
+// is a production artifact input regardless of filename.
+const PUBLIC_DIR_PREFIX = 'public/';
+
+// Current known non-production TypeScript projects, release-impact negative
+// solely from the tsconfig family (docs/testing/verify-release-impact-correction.md
+// "### 3. TypeScript transform/config ownership").
+const KNOWN_NEGATIVE_TSCONFIG_FILES = new Set(['tsconfig.storybook.json', 'tsconfig.scripts.json']);
+
+// Root-only tsconfig*.json filename shape, used solely to fail an unaudited
+// sibling closed to full six; deliberately excludes any path with a
+// directory prefix.
+const ROOT_TSCONFIG_PATTERN = /^tsconfig[\w.-]*\.json$/;
 
 function isExistingFile(filePath: string): boolean {
   try {
@@ -296,10 +343,37 @@ function getReleaseSpecExecutionAssignments(
   ];
 }
 
-function isProductionViteConfigPath(filePath: string): boolean {
+function isProductionBuildInputPath(filePath: string): boolean {
   return (
-    PRODUCTION_VITE_CONFIG_EXACT_FILES.has(filePath) ||
-    filePath.startsWith(PRODUCTION_VITE_CONFIG_PREFIX)
+    PRODUCTION_BUILD_INPUT_EXACT_FILES.has(filePath) ||
+    filePath.startsWith(PRODUCTION_BUILD_INPUT_PREFIX)
+  );
+}
+
+// Non-current member of a confirmed Browserslist/PostCSS/PWA-assets/tsconfig
+// build-config family: structural family matching only, never a copy of a
+// third-party loader's exhaustive extension matrix (docs/testing/verify-
+// release-impact-correction.md "### 2. Tool-discovered production
+// configuration" / "### 3. TypeScript transform/config ownership"). Excludes
+// the already-current exact inputs and the known-negative tsconfig files so
+// this predicate stays correct in isolation, even though both are also
+// resolved earlier in the loop.
+function isNonCurrentBuildConfigFamilyMember(filePath: string): boolean {
+  if (
+    filePath.includes('/') ||
+    PRODUCTION_BUILD_INPUT_EXACT_FILES.has(filePath) ||
+    KNOWN_NEGATIVE_TSCONFIG_FILES.has(filePath)
+  ) {
+    return false;
+  }
+
+  return (
+    filePath === 'browserslist' ||
+    filePath === '.postcssrc' ||
+    filePath.startsWith('.postcssrc.') ||
+    filePath.startsWith('postcss.config.') ||
+    filePath.startsWith('pwa-assets.config.') ||
+    ROOT_TSCONFIG_PATTERN.test(filePath)
   );
 }
 
@@ -388,13 +462,19 @@ export interface ResolveReleasePlanOptions {
  * Resolve the source-impact release plan for the given changed files, in
  * priority order: invalid (exact mapping or release-spec execution
  * inventory validation failed), then per changed file: exact narrow mapping
- * or inventory-owned release specification (focused), release-sensitive
- * infrastructure / `pnpm-lock.yaml` / runtime-relevant `package.json`
- * (full), proof/declaration-only shape (no impact from that path), the broad
- * publication prefix (full), an unmapped release fixture (full), or the
- * managed-update runtime boundary (focused). A changeset with any
- * `full`-triggering path resolves `full` overall; absent that, any `focused`
- * match resolves `focused`; absent that, `skip`.
+ * (focused), release-sensitive infrastructure / `pnpm-workspace.yaml`
+ * (full), the `public/**` production artifact population (focused, checked
+ * before proof/declaration-only shape so no filename there is excluded),
+ * proof/declaration-only shape (no impact from that path), inventory-owned
+ * release specification (focused), a confirmed production-build input --
+ * static Vite-plugin support surface, tool-discovered Browserslist/PostCSS/
+ * PWA-assets configuration, TypeScript build/config metadata, or a
+ * production Vite env file (focused) -- an unaudited non-current member of
+ * one of those config families (full), the broad publication prefix (full),
+ * `pnpm-lock.yaml` / runtime-relevant `package.json` (full), an unmapped
+ * release fixture (full), or the managed-update runtime boundary (focused).
+ * A changeset with any `full`-triggering path resolves `full` overall;
+ * absent that, any `focused` match resolves `focused`; absent that, `skip`.
  * `release-version` is independent PR/release policy and is never selected
  * here. Release planning uses the flat changed-file projection;
  * deletion-dependent correctness is not required for these checks.
@@ -542,6 +622,17 @@ export function resolveReleasePlan(
       continue;
     }
 
+    if (filePath.startsWith(PUBLIC_DIR_PREFIX)) {
+      for (const check of PRODUCTION_BUILD_INPUT_CHECKS) {
+        focusedChecks.add(check);
+      }
+
+      focusedReasons.push(
+        `production artifact path ${filePath} -> ${PRODUCTION_BUILD_INPUT_CHECKS.join(', ')}`,
+      );
+      continue;
+    }
+
     if (isProofOrDeclarationOnlyPath(filePath)) {
       continue;
     }
@@ -554,13 +645,20 @@ export function resolveReleasePlan(
       continue;
     }
 
-    if (isProductionViteConfigPath(filePath)) {
-      for (const check of PRODUCTION_VITE_CONFIG_CHECKS) {
+    if (isProductionBuildInputPath(filePath)) {
+      for (const check of PRODUCTION_BUILD_INPUT_CHECKS) {
         focusedChecks.add(check);
       }
 
       focusedReasons.push(
-        `production Vite configuration path ${filePath} -> ${PRODUCTION_VITE_CONFIG_CHECKS.join(', ')}`,
+        `production build input ${filePath} -> ${PRODUCTION_BUILD_INPUT_CHECKS.join(', ')}`,
+      );
+      continue;
+    }
+
+    if (isNonCurrentBuildConfigFamilyMember(filePath)) {
+      fullReasons.push(
+        `unaudited build-config family member ${filePath} -> full source-impact release proof`,
       );
       continue;
     }
