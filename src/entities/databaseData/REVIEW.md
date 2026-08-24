@@ -1,46 +1,65 @@
 # Review
 
-Verdict: Database ownership correction accepted; merge remains blocked by one feature-owned relation-value surface-offset case plus final CI/operator gates.
+Verdict: blocked by the repeated moving-surface failure; the latest widget-owned correction is not yet accepted.
 
 ## Scope reviewed
 
-- PR #217 complete Database virtualization/native-table integration through code head `5c1feb51102c8923fb23370de099e62e482b65d5`.
-- Dynamic surface-offset correction replacing entity-owned ancestor/sibling discovery.
-- Shared same-root dynamic `surfaceOffset` capability proof.
-- Existing Database virtualization and relation persistence proof reported green locally by the coding agent.
+- PR #217 complete Database virtualization/native-table integration through production code head `5c1feb51102c8923fb23370de099e62e482b65d5`.
+- Widget-owned explicit surface-offset correction.
+- Current shared dynamic same-root capability proof.
+- Exact-head GitHub CI on architect head `dcb72917f2fcd49c58a1caa9f8f6cc7ade58bd4a`.
 
-## Resolved — Database dynamic surface ownership
+## Blocker — moving table surface still fails exact-head CI
 
-The top-level physical `.database-view` root and preceding composition are owned by `DatabaseViewWidget`. The correction now measures root-to-`DatabaseViewLayout` geometry there and forwards explicit vertical/horizontal offsets through `DatabaseViewLayout` to `DatabaseDataTable`.
+Owning product proof:
 
-`DatabaseDataTable` no longer owns root/table `useElementBounding`, root `MutationObserver`, `onUpdated` geometry refresh, or table-ref ancestor/sibling discovery. It consumes explicit offsets and forwards them to the existing row/property `useVirtualCollection` instances.
+`tests/e2e/databaseVirtualizationFlows.spec.ts` — `keeps real preceding Database content connected to the table-owned surface range`.
 
-This restores the intended boundary: widget owns composition/layout facts; entity owns Database table rendering; shared virtualization forwards geometry; TanStack owns range/measurement/cache/scroll correction.
+Exact-head CI on `dcb72917...` again failed this scenario on desktop Chromium on the initial attempt and both retries. The first deep range succeeds. The real success card is dismissed while the root is still in the deep range, the table surface physically moves upward, the test returns to top, and the second deep transition does not reach the final logical row. Mobile Chrome passes.
 
-## Resolved — shared dynamic surfaceOffset capability
+Therefore the widget-owned correction cannot yet be accepted as resolving the defect.
 
-The shared browser proof now changes `surfaceOffset` from 240px to 96px on the same mounted root/list and proves deep logical/geometry correctness again. `useVirtualCollection.ts` remains unchanged. No `virtualizer.measure()` or cache-reset protocol is required.
+## Architecture discriminator required before another production patch
 
-## Blocker — relationValueEdit passes an untruthful fixed zero during loading
+The current shared capability is weaker than the failing product lifecycle. It reaches deep, returns to top, and only then changes `surfaceOffset`.
+
+The product failure changes preceding content / surface offset while the collection is still deep.
+
+Before another Database/widget production change, shared virtualization capability must reproduce this exact ordering on the same root/list:
+
+1. non-zero preceding extent;
+2. deep/end range;
+3. change preceding extent and reactive `surfaceOffset` while still deep;
+4. prove physical movement;
+5. return to top and prove first logical row;
+6. scroll deep again and prove logical end plus self-consistent geometry.
+
+If the strengthened shared capability fails, stop and reconsider the shared boundary/engine interaction. Do not patch Database/widget code.
+
+If it passes, diagnose the actual numeric offsets supplied by `DatabaseViewWidget` across the same product sequence and correct the consumer owner only from that evidence.
+
+## Current ownership state
+
+The direction remains preferable to the old entity discovery model:
+
+- `DatabaseViewWidget` owns top-level composition/layout facts;
+- `DatabaseViewLayout` forwards explicit offsets;
+- `DatabaseDataTable` consumes them;
+- `useVirtualCollection` forwards `surfaceOffset`;
+- TanStack owns range/measurement/cache/scroll correction.
+
+Do not restore the removed entity root/table `MutationObserver` or ancestor/sibling discovery as a fallback.
+
+## Additional blocker — relationValueEdit zero invariant
 
 Owner: [`src/features/relationValueEdit`](../../features/relationValueEdit/REVIEW.md).
 
-`RelationValueFieldData` passes `verticalSurfaceOffset=0`, but while `isLoading && !propertiesIdList` it renders `MDCircularProgressIndicator` before `DatabaseDataTable` in the same `.relation-value-field__data` scroll root. The table therefore has preceding content and vertical zero is false during that state.
-
-Do not fix this by restoring entity discovery. The narrow feature owner must make its explicit zero invariant truthful, preferably by not mounting the table concurrently with the loading-only progress state unless product behavior requires that composition.
+`RelationValueFieldData` still passes vertical zero while a loading progress indicator may precede the table in the same local root. This remains a separate feature-owned correctness issue but is not the cause of the current top-level CI failure.
 
 ## Preserved contracts
 
-The correction does not change shared virtualization production code, query/storage/value ownership, settled spacer rules, transient cold bootstrap, native table structure, or deferred Chromium heterogeneous-content performance scope.
-
-## Verification required after the feature correction
-
-- focused relation-value / Database virtualization proof;
-- persisted relation-filter scenario remains green;
-- `pnpm verify --base origin/develop` clean;
-- exact-head GitHub CI green;
-- operator Database border/corner/sticky reinspection clean.
+Do not regress settled positive-distance spacers, transient cold bootstrap, relation persistence, logical-interior proof, native table frame, nested roots, bounded mounted work, inline editing, ARIA contracts, or deferred Chromium heterogeneous-content performance scope.
 
 ## Merge condition
 
-Do not merge until the feature-owned zero-offset blocker is fixed, branch verification and exact-head CI are green, operator presentation reinspection is clean, and final resulting-PR review has no blockers.
+Do not merge until the strengthened shared discriminator resolves ownership, the repeated top-level moving-surface product scenario is clean, the relation-value zero invariant is truthful, branch verification and exact-head CI are green, operator presentation reinspection is clean, and final resulting-PR review has no blockers.
