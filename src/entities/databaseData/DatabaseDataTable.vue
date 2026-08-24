@@ -99,6 +99,12 @@ const vVirtualColumn = columns.vItem;
 
 const hasActionColumn = computed(() => !!slots.action || !!slots.actionHead);
 const logicalColumnCount = computed(() => properties.value.length + Number(hasActionColumn.value));
+const hasColumnBootstrap = computed(
+  () => properties.value.length > 0 && columns.items.value.length === 0,
+);
+const hasRowBootstrap = computed(
+  () => logicalItemIdList.value.length > 0 && rows.items.value.length === 0,
+);
 const hasLeadingColumnSpacer = computed(() => columns.leadingSize.value > 0);
 const hasTrailingColumnSpacer = computed(() => columns.trailingSize.value > 0);
 const hasLeadingRowSpacer = computed(() => rows.leadingSize.value > 0);
@@ -106,6 +112,7 @@ const hasTrailingRowSpacer = computed(() => rows.trailingSize.value > 0);
 const physicalColumnCount = computed(
   () =>
     columns.items.value.length +
+    Number(hasColumnBootstrap.value) +
     Number(hasLeadingColumnSpacer.value) +
     Number(hasTrailingColumnSpacer.value) +
     Number(hasActionColumn.value),
@@ -131,6 +138,7 @@ function getColumnMinWidthStyle(
     :aria-colcount="logicalColumnCount"
   >
     <colgroup>
+      <col v-if="hasColumnBootstrap" aria-hidden="true" />
       <col
         v-if="hasLeadingColumnSpacer"
         aria-hidden="true"
@@ -147,6 +155,9 @@ function getColumnMinWidthStyle(
 
     <thead>
       <tr>
+        <th v-if="hasColumnBootstrap" aria-hidden="true" class="db-data-table__column-bootstrap">
+          <div class="db-data-table__spacer-phantom" />
+        </th>
         <th
           v-if="hasLeadingColumnSpacer"
           aria-hidden="true"
@@ -194,6 +205,10 @@ function getColumnMinWidthStyle(
     </thead>
 
     <tbody>
+      <tr v-if="hasRowBootstrap" aria-hidden="true" class="db-data-table__row-bootstrap">
+        <td :colspan="physicalColumnCount" />
+      </tr>
+
       <tr v-if="hasLeadingRowSpacer" aria-hidden="true" class="db-data-table__row-spacer">
         <td :colspan="physicalColumnCount" :style="{ height: `${rows.leadingSize.value}px` }" />
       </tr>
@@ -204,6 +219,7 @@ function getColumnMinWidthStyle(
         v-virtual-row="row"
         :aria-rowindex="row.index + 2"
       >
+        <td v-if="hasColumnBootstrap" aria-hidden="true" class="db-data-table__column-bootstrap" />
         <td
           v-if="hasLeadingColumnSpacer"
           aria-hidden="true"
@@ -248,6 +264,11 @@ function getColumnMinWidthStyle(
 .db-data-table {
   &__column-spacer,
   &__row-spacer > td {
+    padding: 0;
+    border: none;
+  }
+
+  &__row-bootstrap > td {
     padding: 0;
     border: none;
   }
