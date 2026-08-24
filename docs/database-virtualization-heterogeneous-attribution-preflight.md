@@ -1,6 +1,6 @@
 # Database virtualization heterogeneous attribution preflight
 
-Status: **completed**.
+Status: **completed; no further PR #217 action**.
 
 ## Outcome
 
@@ -15,16 +15,12 @@ Vertical scrolling also produced a 210 ms Long Task in one Number-isolation samp
 
 Bounded mounted work and deep correctness passed. Temporary diagnostic tooling was removed.
 
-## Architectural consequence
+## Scope decision
 
-This preflight does **not** authorize a production correction.
+This preflight does **not** authorize a production correction in PR #217.
 
-The isolated label `Number` is not yet the narrow production owner because:
+The isolated label `Number` is not the established production owner because Number/String renderers are trivial and value/property query infrastructure is shared.
 
-- Number and String inline renderers are structurally equivalent simple text/span UI;
-- property/effective-value query infrastructure is shared;
-- the diagnostic report does not establish that String and Number probes used identical stored-value density/shape.
+Further equal-density String-vs-Number attribution and the eventual performance correction move to the separate follow-up recorded in `docs/database-chrome-jank-follow-up.md`.
 
-Before selecting a correction owner, distinguish Number type from fixture/value-density effects with one controlled equal-density comparison or equivalent narrow attribution evidence.
-
-No production, geometry, virtualization, worker/query/storage, Material, or shared-table change is authorized by this completed preflight.
+The active PR #217 implementation contract is now `docs/database-virtualization-integration-correction-handoff.md` plus its preflight.
