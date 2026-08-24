@@ -33,8 +33,9 @@ Current contracts:
 - completed branch-E2E proof correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
 - completed shared frame correction: `docs/md-table-frame-correction-handoff.md`;
 - completed deep-state shared discriminator: `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`;
-- active top-level diagnosis: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`;
-- active diagnosis preflight: `docs/database-virtualization-widget-surface-offset-diagnosis-preflight.md`;
+- **active consolidated completion pass**: `docs/database-virtualization-completion-pass-handoff.md`;
+- active completion preflight: `docs/database-virtualization-completion-pass-preflight.md`;
+- supporting top-level diagnosis: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`;
 - active Database review: `src/entities/databaseData/REVIEW.md`;
 - shared virtualization review: `src/shared/ui/virtualization/REVIEW.md`;
 - active relation-value review: `src/features/relationValueEdit/REVIEW.md`;
@@ -83,7 +84,7 @@ The removed entity root/table `useElementBounding`, root `MutationObserver`, and
 
 Exact-head CI previously reproduced the moving-surface product scenario failure 3/3 on desktop Chromium while Mobile Chrome passed. A later architect-head CI run passed, but production code did not correct this defect between those runs, so the known instability remains unresolved.
 
-The required evidence is consumer-side: compare the numeric offset supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-`DatabaseViewLayout` offset at:
+Pass A of the active completion contract must compare the numeric offset supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-`DatabaseViewLayout` offset at:
 
 1. initial top;
 2. settled first deep;
@@ -95,10 +96,10 @@ Current widget production derives offsets from two `useElementBounding` states p
 
 Decision rule:
 
-- supplied offsets diverge from physical offsets -> widget offset production/lifecycle owns the correction;
+- supplied offsets diverge from physical offsets -> widget offset production/lifecycle owns the next architecture correction;
 - supplied offsets remain truthful throughout a reproduced failure -> stop and reconsider architecture before production edits.
 
-Do not speculate with `next-frame`, `nextTick`, rAF, extra observers, or cache reset before numeric evidence.
+Do not speculate with `next-frame`, `nextTick`, rAF, extra observers, or cache reset before numeric evidence. The active completion pass does not authorize a moving-surface production correction.
 
 ## Presentation blocker — sticky body action cells cover the sticky header
 
@@ -118,17 +119,17 @@ Required final behavior:
 - the entire sticky header remains above body action cells vertically;
 - the sticky header action intersection remains above sibling header cells when horizontally scrolled.
 
-Use the minimum local stacking correction unless browser proof shows shared Table ownership must change.
+Pass C of the completion contract uses the minimum local stacking correction and real-browser hit-testing proof under simultaneous vertical + horizontal scroll. Shared `MDTable` must remain unchanged unless that local model is browser-proven insufficient.
 
-## Separate correctness blocker — relationValueEdit loading topology
+## Correctness blocker — relationValueEdit loading topology
 
 `RelationValueFieldData` passes vertical/horizontal zero to `DatabaseDataTable`. Horizontal zero matches the current local root. Vertical zero is not unconditional while a loading progress indicator is rendered before the table in the same `.relation-value-field__data` root.
 
-This remains feature-owned and must be corrected without restoring entity geometry discovery. It remains part of completing virtualization correctness in PR #217.
+Pass B of the completion contract is implementation-ready: while `isLoading && !propertiesIdList`, render only the existing progress indicator; mount the table only in the complementary state. This makes explicit `0/0` truthful whenever the table exists without adding geometry observation.
 
 ## Verification workflow
 
-For the active top-level diagnosis use focused verifier feedback first. Because the historical defect is specific to GitHub Actions Chromium conditions, a targeted focused `--profile github-actions` run is allowed for diagnosis only when the normal profile does not reproduce it.
+Use focused verifier feedback after each completion pass. For Pass A only, because the historical defect is specific to GitHub Actions Chromium conditions, a targeted focused `--profile github-actions` run is allowed when the normal profile does not reproduce it.
 
 The ordinary pre-handoff branch gate remains:
 
@@ -160,7 +161,7 @@ Residual non-virtualization jank is explicitly not a merge criterion for #217.
 ## Forbidden before merge
 
 - expanding #217 into unrelated residual performance optimization;
-- speculative top-level production correction before numeric diagnosis;
+- moving-surface production correction before numeric diagnosis and a new architecture decision;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
