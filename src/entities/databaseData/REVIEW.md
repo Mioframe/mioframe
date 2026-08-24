@@ -5,57 +5,50 @@ Verdict: blocked
 ## Scope reviewed
 
 - PR #217 current Database virtualization/native-table integration.
-- Accepted sparse all-string verifier control.
+- Accepted bounded-DOM/deep-correctness evidence.
 - Completed heterogeneous Chromium attribution.
-- Current value/property render/query path.
-- Virtual spacer DOM against `MDTable` border/radius styling.
+- Current spacer DOM against shared `MDTable` structural styling.
 
 ## Blockers
 
-### B1 — Number fixture reproduces blocking, but the production owner is not isolated yet
-
-Owner: unresolved inside the Database value/render/query path.
-
-Problem: the heterogeneous diagnostic reproduces the Chromium performance class. Scalar mix is materially slower than the accepted all-string control, and Number isolation reproduces repeated >200 ms switch Long Tasks in both samples. Vertical wheel scrolling also produces intermittent >100 ms Long Tasks. However, the evidence does not establish `databaseNumber` UI as root cause: Number and String inline renderers are both trivial text/span output, while property/effective-value query infrastructure is shared. The report also does not establish an equal stored-value density/shape comparison between String and Number fixtures.
-
-Evidence:
-
-- [`../../../docs/database-virtualization-heterogeneous-attribution-handoff.md`](../../../docs/database-virtualization-heterogeneous-attribution-handoff.md) — Number isolation: switch 631.3/635.5 ms, three Long Tasks per sample with 241/244 ms maxima; vertical scroll has a 210 ms Long Task in one of two samples; horizontal scrolling is clean; boundedness/correctness pass.
-- [`../databaseNumber/NumberValueInline.vue`](../databaseNumber/NumberValueInline.vue) and [`../databaseString/StringValueInline.vue`](../databaseString/StringValueInline.vue) — both specialized renderers are simple span/text-or-empty-icon components.
-- [`../databaseValue/useDatabaseEffectiveValue.ts`](../databaseValue/useDatabaseEffectiveValue.ts) and [`../../shared/service/databaseDocument/databaseDataService.ts`](../../shared/service/databaseDocument/databaseDataService.ts) — effective-value subscription/query path is shared across property types.
-
-Basis:
-
-- [`../../../docs/database-virtualization-profiling.md`](../../../docs/database-virtualization-profiling.md) — remaining material main-thread work must be attributed before selecting an optimization owner.
-- [`../../../AGENTS.md`](../../../AGENTS.md) — choose the narrowest truthful owner and avoid speculative architecture/optimization.
-
-Risk: treating `Number` as implementation owner merely because it is the reproducing fixture can produce a local workaround while leaving the actual value-density/query/layout cost intact.
-
-Required final state: distinguish Number type from stored-value density/shape and shared query/layout effects with one controlled equal-density String-vs-Number comparison or equivalent narrow evidence. Then select the narrowest production owner and architecture before coding. Preserve the accepted bounded virtualization architecture meanwhile.
-
-Verification: focused verifier-managed Chromium attribution using identical logical shape, persisted-value density/positions, Short/Full views, viewport, and scroll protocol for String and Number variants. Record switch and vertical-scroll Long Tasks plus boundedness/correctness. Stop once the responsible layer can be selected; do not broaden to a full matrix.
-
-### B2 — Virtual spacer DOM breaks the existing table border and corner-radius contract
+### B1 — Zero-distance virtual spacers break the Database table's logical visual boundary
 
 Owner: `src/entities/databaseData`
 
-Problem: leading/trailing spacer cells and top/bottom spacer rows become physical first/last table children, while `MDTable` derives visible borders/radii from structural first/last selectors. Manual testing confirms broken borders and corner radii.
+Problem: `DatabaseDataTable` always renders leading/trailing row and column spacer elements, including when their virtual size is `0`. `MDTable` derives outer corners and bottom-edge behavior from physical first/last table structure, so zero-size presentation spacers become the structural boundary instead of the real logical row/cell. Operator testing confirms broken borders and corner radii.
 
 Evidence:
 
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — virtualization inserts spacer rows/cells at physical table boundaries.
-- [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — visible outer borders/radii depend on physical first/last structure.
+- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — leading/trailing `<col>`, `<th>`, `<td>`, and row-spacer `<tr>` elements are rendered unconditionally from virtual sizes.
+- [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — outer corner/bottom styling uses physical `first-child` / `last-child` structure.
+- [`../../../docs/database-virtualization-integration-correction-handoff.md`](../../../docs/database-virtualization-integration-correction-handoff.md) — ready minimum correction contract.
+- Operator manual testing reports visibly broken table border/radius appearance.
 
 Basis:
 
-- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing user-visible behavior and control shared-UI blast radius.
-- [`../../../.agents/skills/visual-regression-testing/SKILL.md`](../../../.agents/skills/visual-regression-testing/SKILL.md) — stable appearance requires bounded visual proof at the truthful owner.
+- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing visible behavior, prefer the minimum complete local solution, and control shared-UI blast radius.
+- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — spacer DOM belongs to `databaseData`; shared `MDTable` remains generic.
 
-Risk: PR #217 visibly regresses ordinary Database presentation.
+Risk: merging #217 leaves an ordinary Database table visibly regressed and makes presentation-only spacer DOM part of the visible boundary contract.
 
-Required final state: preserve the pre-PR visible outer border and corner radii at logical table boundaries in initial and representative scrolled states. Keep the adaptation Database-local unless separate evidence establishes a generic shared `MDTable` defect.
+Required final state: render each leading/trailing spacer only when its corresponding virtual distance is greater than zero. Real logical rows/cells regain the physical table boundary at logical start/end. Keep non-zero spacer geometry, bounded virtualization, sticky/action/no-action paths, ARIA semantics, dynamic sizing, relations, and editing unchanged. Do not change shared `MDTable`.
 
-Verification: bounded visual proof for initial/top-left and representative scrolled/end states, with browser behavior proof kept separate.
+Verification: update `tests/e2e/databaseVirtualizationFlows.spec.ts` to prove zero-distance spacers are absent at logical boundaries and non-zero spacers remain in interior virtual ranges for representative top-level and relation/no-action paths. Operator verifies the real application's border/radius appearance before merge.
+
+## Known follow-up risk — not required for PR #217
+
+Residual heterogeneous-content Chromium jank remains real but is intentionally deferred to a separate PR.
+
+Evidence retained in [`../../../docs/database-chrome-jank-follow-up.md`](../../../docs/database-chrome-jank-follow-up.md):
+
+- all-string verifier control is fast and bounded;
+- Number isolation reproduces ~631–636 ms switches with repeated 241–244 ms Long Tasks;
+- vertical scrolling has intermittent >100 ms Long Tasks;
+- horizontal scrolling was clean in the diagnostic;
+- Firefox was better in operator testing;
+- production root-cause owner remains unresolved.
+
+Do not continue String-vs-Number attribution or add speculative performance changes in #217.
 
 ## Major issues
 
@@ -67,17 +60,19 @@ None.
 
 ## Accepted risks
 
-None.
+- Residual Chromium heterogeneous-table jank is accepted only as a tracked follow-up risk for #217, not as resolved behavior. It must remain documented for the next performance PR.
 
 ## Items not required
 
-- Replacing TanStack or rewriting `useVirtualCollection` without new evidence.
-- Worker/query/storage redesign, paging, indexes, or caches before B1 attribution identifies that owner.
-- Adding Firefox to the application-E2E verifier for this diagnostic.
+- Equal-density String-vs-Number attribution in #217.
+- Number-specific UI optimization.
+- Geometry ownership changes.
+- Replacing TanStack or rewriting `useVirtualCollection`.
+- Worker/query/storage redesign, paging, indexes, or caches.
+- Shared `MDTable` changes.
+- New Storybook/product bootstrap solely for visual screenshots.
 - Historical checkout/worktree/bisect orchestration.
-- Full performance matrix before the narrow reproducer is understood.
 
-## Unresolved questions
+## Merge condition
 
-- Whether the Number reproducer is caused by numeric type itself, stored-value density/shape, shared value-query/subscription work, or layout/measurement triggered by those values.
-- Whether table surface-bound refresh materially amplifies the identified path.
+After B1 is resolved, the real table appearance is operator-accepted, existing structural/product proof remains intact, and exact-head GitHub CI is green, this review has no remaining semantic blocker for PR #217. Residual Chrome jank proceeds separately.
