@@ -1,6 +1,6 @@
 # Review
 
-Verdict: blocked by branch-wide Database virtualization E2E failures, operator visual acceptance, and exact-head CI.
+Verdict: blocked by two branch-wide Database virtualization E2E failures, operator visual acceptance, and exact-head CI.
 
 ## Scope reviewed
 
@@ -8,6 +8,7 @@ Verdict: blocked by branch-wide Database virtualization E2E failures, operator v
 - Settled zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
 - Relation cold-bootstrap correction at `ca6c7b0ea640c43fb43c9fb3a474358d2dc236ba`.
 - Full GitHub application E2E for that code head in workflow run `32701471162`.
+- Active correction contract: `../../../docs/database-virtualization-branch-e2e-correction-handoff.md`.
 - Deferred residual Chromium performance risk.
 
 ## Resolved — relation-value cold bootstrap
@@ -18,41 +19,44 @@ The accepted correction remains entity-local: a non-empty source with no virtual
 
 ## Blocker 1 — table surface does not reliably reach the deep range after preceding content moves
 
-Owner: `src/entities/databaseData` table/root geometry integration unless reproduction proves the test contract invalid.
+Owner: `src/entities/databaseData` table/root geometry integration unless focused evidence proves a correct reactive `surfaceOffset` already reaches the shared boundary.
 
-Evidence: `tests/e2e/databaseVirtualizationFlows.spec.ts` scenario `keeps real preceding Database content connected to the table-owned surface range` passes the first deep scroll while the preceding success card is mounted, then dismisses that card and proves the table surface offset moved. After returning to the top and scrolling deep again, desktop Chromium fails to reach the logical final row. The initial attempt and both retries failed in exact-head CI.
-
-Required final state:
-
-- when real content before the table appears/disappears and changes the table's root-relative surface offset, the existing table-owned geometry path must update without remount/recovery loops;
-- a subsequent top -> deep scroll must again reach the logical final row;
-- TanStack remains the only virtual-item range/measurement/cache engine;
-- do not mask the failure with retries, longer timeouts, forced updates, or test-only production seams.
-
-Verification owner: the existing application E2E scenario plus the required branch-diff verifier gate.
-
-## Blocker 2 — interior spacer proof is not stable under the current scroll setup
-
-Owner: `src/entities/databaseData` implementation/proof boundary; classify whether this is a product geometry defect or an invalid test precondition before changing production code.
-
-Evidence: `tests/e2e/databaseVirtualizationFlows.spec.ts` scenario `virtualizes the real Database root across deep native-table row and property ranges` sets both root scroll offsets to half of the physical scroll range and expects an interior virtual range with both leading and trailing spacers. In exact-head CI the assertion repeatedly receives a boundary-like range instead: desktop and Mobile Chrome do not satisfy the expected two-sided row/column spacer state.
+Problem: the existing E2E scenario `keeps real preceding Database content connected to the table-owned surface range` succeeds on the first deep scroll while the success card precedes the table. After the card is dismissed, the product DOM proves the table's root-relative surface offset changed. After returning to top and scrolling deep again, desktop Chromium fails to reach the logical final row. Initial attempt and both retries failed.
 
 Required final state:
 
-- the proof must establish a real logical interior row/property range before asserting two-sided spacer structure;
-- if the mounted logical indices are interior but required spacers are absent, fix the production geometry/range integration;
-- if `scrollHeight / 2` or `scrollWidth / 2` does not actually guarantee a logical interior range for the native-table geometry, correct the test precondition without weakening the structural contract;
-- do not convert this into timing sleeps, retries, timeout inflation, or exact-pixel assumptions.
+- real composition movement before the table updates the existing table-owned surface geometry path;
+- subsequent top -> deep scrolling again reaches the logical final row;
+- no remount/recovery loop, timer, second geometry state, or manual range calculation;
+- TanStack remains sole virtual-item range/measurement/cache owner;
+- if evidence proves `useVirtualCollection` fails despite receiving a correct reactive surface offset, stop for architecture instead of modifying shared virtualization in this correction.
 
-Verification owner: the existing application E2E scenario plus the required branch-diff verifier gate.
+Verification owner: existing application E2E plus cumulative branch verifier.
 
-## Workflow correction
+## Blocker 2 — interior spacer proof assumes physical midpoint means logical midpoint
 
-The repository verification workflow now requires coding agents to run one cumulative branch-diff gate before final PR handoff. For normal `develop` PRs:
+Owner: primary proof `tests/e2e/databaseVirtualizationFlows.spec.ts`; production owner becomes `src/entities/databaseData` only if a confirmed logical interior range lacks required spacers.
 
-`pnpm verify --base origin/develop --profile github-actions`
+Problem: scenario `virtualizes the real Database root across deep native-table row and property ranges` sets both physical scroll offsets to one-half of their ranges and assumes that means a logical interior range. Exact-head CI repeatedly observed a boundary-like mounted range instead on desktop and Mobile Chrome.
 
-Focused checks remain implementation feedback. They do not replace this branch-wide pre-handoff gate. `pnpm verify --full` is not the ordinary PR gate because it is full-project/release scope and cannot be combined with `--base`.
+Required final state:
+
+- use mounted `aria-rowindex` / `aria-colindex` to establish a genuine logical interior row/property range before asserting two-sided spacer structure;
+- when the logical range is interior, leading and trailing row/column spacers must all exist;
+- if those logical preconditions are satisfied but spacers are absent, fix the production table integration;
+- no exact-pixel assumptions, sleeps, retry acceptance, or timeout inflation.
+
+Verification owner: existing application E2E plus cumulative branch verifier.
+
+## Required coding-agent branch gate
+
+Focused verifier runs are for fast correction feedback. Before final handoff of code, run:
+
+`pnpm verify --base origin/develop`
+
+If it finds another PR-caused in-contract failure, fix it, verify that correction narrowly, then rerun the complete branch gate. Repeat until clean.
+
+Do not force `--profile github-actions` for this local branch gate. Do not substitute `pnpm verify --full`.
 
 ## Remaining blocker — operator visual acceptance
 
@@ -66,4 +70,6 @@ Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/d
 
 ## Merge condition
 
-After both branch-wide virtualization E2E blockers are resolved, the required coding-agent branch gate passes cleanly, operator visual acceptance is complete, and exact-head GitHub CI is green, review the full resulting PR again. Do not delete this `REVIEW.md` before those conditions are satisfied.
+After both branch-wide virtualization E2E blockers are resolved, `pnpm verify --base origin/develop` passes cleanly, operator visual acceptance is complete, exact-head GitHub CI is green, and the full resulting PR is reviewed again, merge readiness may be reconsidered.
+
+Do not delete this `REVIEW.md` before those conditions are satisfied.
