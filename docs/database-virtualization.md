@@ -1,203 +1,121 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; Database table integration remains blocked by unresolved Chromium value-path responsiveness and visual-boundary regressions**.
+Status: **shared virtualization architecture accepted; PR #217 completion is blocked only by Database table integration/visual compatibility**.
 
-This is the architecture source of truth for large Database rendering in PR #217.
+This is the architecture source of truth for PR #217. Workflow or merge instructions in older profiling/result documents are historical where they conflict with this file.
 
-Related current contracts:
+Current contracts:
 
-- shared virtualization API: `src/shared/ui/virtualization/README.md`;
-- active review findings: `src/entities/databaseData/REVIEW.md`;
-- raw product measurements: `docs/database-virtualization-production-results.md`;
-- completed sparse all-string diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
-- completed heterogeneous attribution: `docs/database-virtualization-heterogeneous-attribution-handoff.md`, `docs/database-virtualization-heterogeneous-attribution-preflight.md`.
+- integration correction: `docs/database-virtualization-integration-correction-handoff.md`;
+- implementation preflight: `docs/database-virtualization-integration-correction-preflight.md`;
+- active review: `src/entities/databaseData/REVIEW.md`;
+- raw measurements: `docs/database-virtualization-production-results.md`;
+- deferred residual performance work: `docs/database-chrome-jank-follow-up.md`.
 
-## Goal
+## PR #217 goal
 
-Scale Database rendering to at least 30,000 rows and hundreds of properties, including 30,000 × 300 = 9,000,000 logical row/property intersections, while preserving exact filter/sort/view behavior, editing, relations, native table semantics, accessibility, stable appearance, and responsive desktop/mobile use.
+Ship a structurally scalable Database table that preserves existing product behavior and normal table presentation.
 
-Primary structural invariant:
-
-> For fixed viewport and overscan, mounted expensive rows, properties, and cells are bounded independently of total logical dataset size.
-
-Bounded DOM is necessary but not sufficient. Real heterogeneous databases must also remain responsive while switching views and scrolling.
+Required structural target remains at least 30,000 rows × 300 properties without materializing the 9,000,000 logical row/property intersections.
 
 ## Accepted architecture
 
-- `@tanstack/vue-virtual` is the only virtual-item range/measurement/cache engine.
-- `useVirtualCollection` remains the Mioframe shared virtualization boundary.
+- `@tanstack/vue-virtual` remains the sole virtual-item range/measurement/cache engine.
+- `useVirtualCollection` remains the shared one-axis virtualization boundary.
 - Database uses independent row and property virtual collections over canonical complete sources.
-- Native `<table>` flow remains the renderer.
+- Native `<table>` rendering remains.
 - Only mounted row × mounted property intersections instantiate expensive outer cells.
 - Service/worker remains canonical for row membership/filter/sort/order.
-- No UI-side paging/source reconstruction, worker redesign, generic virtual grid/table, second geometry engine, independent size maps, or virtual-item registry is justified by current evidence.
+- Existing inline-edit, relation-root, accessibility, dynamic-sizing, sticky-surface, and value ownership remains unchanged.
+- No paging/index/cache/worker redesign, second geometry engine, generic virtual grid/table, or new virtualization manager is justified in #217.
 
-Accepted ownership outside the unresolved performance discriminator remains unchanged: `entities/databaseData` owns Database table rendering/integration; Database value/property owners render their domain content; widgets compose nested relation/value behavior; `shared/ui/Table` remains generic presentation.
+Structural boundedness and deep correctness are accepted from existing product proof.
 
-## Native table virtualization
+## Database table integration
 
-`DatabaseDataTable` renders physical spacer DOM around the mounted logical range:
+`entities/databaseData` owns how virtual ranges are represented inside the native table. `shared/ui/Table` remains generic and must not become Database-virtualization-aware.
 
-```text
-<table>
-  <colgroup> leading spacer | mounted properties | trailing spacer | action </colgroup>
-  <thead>     leading spacer | mounted headers    | trailing spacer | action </thead>
-  <tbody>     top spacer | mounted logical rows × mounted properties | bottom spacer </tbody>
-</table>
-```
+`DatabaseDataTable` uses presentation spacer DOM around mounted ranges. A spacer is truthful only while it represents a non-zero virtual distance.
 
-The action column remains outside horizontal property virtualization. Spacer DOM is presentation-only and excluded from logical accessibility semantics.
+### Boundary invariant
 
-### Visual boundary
+> Leading/trailing row and column spacer DOM exists only when the corresponding virtual distance is greater than zero.
 
-The current spacer structure conflicts with `MDTable` structural first/last-child border and radius rules. The corrected Database table must preserve the pre-PR visible outer border/corner appearance at logical boundaries in initial and scrolled states.
+When the virtual distance is zero, the logical real row/cell must be the physical table boundary.
 
-This adaptation belongs to `entities/databaseData` unless a separate shared-UI review proves a generic `MDTable` defect. Do not make shared `MDTable` Database-virtualization-aware merely to repair this consumer.
+This matters because `MDTable` intentionally derives its outer corners and bottom-edge behavior from physical first/last table structure. Always-rendered zero-size spacers currently steal that structure and cause the operator-confirmed border/radius regression.
 
-## Performance evidence — current interpretation
+### Selected correction
 
-### Structural scalability
+Use the existing `rows.leadingSize`, `rows.trailingSize`, `columns.leadingSize`, and `columns.trailingSize` as the only facts.
 
-Accepted:
+- render each spacer `<col>`, `<th>`, `<td>`, or `<tr>` only when its matching size is greater than zero;
+- count only rendered spacer columns in physical colspan calculations;
+- retain non-zero spacers unchanged as presentation-only geometry;
+- do not duplicate `MDTable` corner/border rules in Database CSS;
+- do not change shared `MDTable`.
 
-- all measured S0/G1 runs retain bounded mounted rows / property headers / expensive outer cells;
-- G1 does not materialize the 9,000,000 logical row/property intersections;
-- deep logical row/property/value correctness passes.
+If this minimum correction is insufficient, architecture must be revisited before adding another styling system.
 
-### Canonical all-string control
+## Required #217 scenarios
 
-The verifier-managed all-string diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` is fast:
+Before merge:
 
-- S0 usable: 269.8 / 281.1 / 283.8 ms; median 281.1 ms;
-- G1 usable: 323.5 / 321.5 / 305.9 ms; median 321.5 ms;
-- zero Long Tasks in all six samples;
-- mounted work remains 12 / 8 / 96;
-- deep correctness passes.
+1. initial logical top/left uses real cells/rows as physical boundaries;
+2. interior virtual ranges keep non-zero spacer geometry;
+3. logical bottom/right restores real cells/rows as physical boundaries;
+4. top-level action-column and relation/no-action tables remain correct;
+5. vertical/horizontal deep scrolling still reaches correct sentinels;
+6. mounted rows/properties/cells remain bounded;
+7. ARIA counts/indices, dynamic row sizing, measured property width, sticky surfaces, nested relations, and editing remain correct;
+8. the real application table visually matches the pre-virtualization border/corner behavior at representative start and end states.
 
-This is canonical verifier-owned evidence for the sparse all-string rectangular fixture.
+Application E2E remains the product/browser proof owner in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
 
-A previous non-verifier current-geometry run reported 1.6–2.5 s usable times and 291–429 ms Long Tasks. Because the canonical verifier run on the same production implementation does not reproduce that behavior, the earlier result remains environment/protocol warning evidence rather than proof of a general runtime regression.
+The current visual runner is Storybook-only and `databaseData` has no isolated Storybook product-service fixture. Do not introduce product bootstrap/mocking infrastructure solely for a screenshot. The structural boundary is protected in E2E; operator inspection of the real application table is the final appearance check for this correction.
 
-### Heterogeneous Chromium attribution
+## Residual Chromium jank
 
-The completed verifier-managed heterogeneous diagnostic reproduces the real performance class.
+Residual heterogeneous-content Chrome jank is **not a merge blocker for PR #217** after the scope decision recorded here.
 
-Scalar-mix switch samples:
+Retained evidence:
 
-- 719.5 ms, no Long Tasks;
-- 385.6 ms, no Long Tasks;
-- 928.9 ms, no Long Tasks.
+- sparse all-string verifier control remains fast and bounded;
+- heterogeneous/Number fixtures reproduce slower switches and intermittent vertical Long Tasks;
+- horizontal scrolling stayed clean in the diagnostic;
+- Firefox was noticeably better in operator testing on the same laptop;
+- the actual production owner is unresolved.
 
-Number-isolation switch samples:
+That work moves to `docs/database-chrome-jank-follow-up.md` and a separate PR.
 
-- 631.3 ms with 3 Long Tasks, maximum 241 ms, total 520 ms;
-- 635.5 ms with 3 Long Tasks, maximum 244 ms, total 523 ms.
+Do not add Number-specific, geometry, worker/query/storage, Material, or shared virtualization changes to #217 based on the current reproducer label.
 
-Vertical wheel scrolling:
+PR #217 is acceptable with this known follow-up risk provided:
 
-- scalar mix produced 168 ms and 183 ms Long Tasks in two of three samples;
-- Number isolation produced a 210 ms Long Task in one of two samples.
+- the integration/visual regression is fixed;
+- structural boundedness/correctness remains intact;
+- the accepted all-string control has no evidence of regression from the integration correction;
+- no new obvious user-facing performance regression is introduced by the correction;
+- exact-head GitHub CI is green.
 
-Horizontal wheel scrolling produced no Long Tasks in the reported samples. Mounted outer work remained bounded and deep correctness passed.
+## Forbidden in the current correction
 
-This establishes **Number isolation as a reproducible fixture path**, but not `databaseNumber` as the production root-cause owner.
-
-`NumberValueInline` and `StringValueInline` are both simple span/text renderers. Effective-value/property query infrastructure is also shared. The current diagnostic report does not establish that the String and Number probes used identical stored-value density and positions. Therefore property type, data density/shape, shared query/subscription work, and layout/measurement interaction remain unresolved discriminators.
-
-Operator Firefox testing on the same laptop remains useful comparison evidence, but the current app-E2E verifier has no Firefox project; adding one opportunistically is not part of this attribution.
-
-## Root/surface geometry — candidate only
-
-The current `DatabaseDataTable` derives root-to-table surface offsets and refreshes root/table bounds from its own update lifecycle. This remains a plausible hot-path amplifier because the component also updates as virtual ranges change.
-
-However, the canonical fast all-string verifier run uses the same implementation. Current evidence therefore does **not** justify declaring the geometry lifecycle the root cause or restoring historical numeric-offset ownership.
-
-Required rule:
-
-> Do not change root/surface ownership until narrow attribution shows that geometry refresh contributes materially to the failing path.
-
-If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. No generic geometry manager/provider or second virtual-item measurement system is justified now.
-
-## Next performance discriminator
-
-Before any production performance correction, distinguish the Number reproducer from fixture/value-density effects.
-
-The next evidence must compare String and Number under an identical controlled shape:
-
-- same logical rows/columns;
-- same persisted-value density and exact populated cell positions;
-- same Short/Full views and filter shape;
-- same viewport and verifier-managed desktop Chromium environment;
-- same switch and vertical-wheel protocol;
-- same mounted-work and deep-correctness assertions.
-
-If equal-density Number remains materially worse while String stays clean, attribute the next layer below the fixture type. If both behave similarly, treat data density/shared query/layout work rather than Number-specific rendering as the leading owner direction.
-
-Stop once the narrowest production owner can be selected. Do not broaden to the full matrix or implement speculative worker/query/storage, geometry, virtualization, or Material changes.
-
-## Dynamic sizing and nested content
-
-Rows and mounted property headers continue to be measured through the shared `vItem`; TanStack owns measured size and scroll correction.
-
-Production wrapping, progressive widths, sticky header/action surfaces, nested relation roots, recursive relation previews, and inline editing remain required behavior.
-
-A bounded outer cell count does not prove nested relation content is cheap; relation cells may compose additional nested Database UI. Relation-specific profiling is required only if the current narrower scalar/value-path attribution fails to explain the defect.
-
-## Accessibility
-
-Preserve native table semantics and logical row/property indices; spacer DOM remains hidden from logical semantics; do not introduce an ARIA-grid keyboard model.
-
-## Proof ownership
-
-Application E2E remains the owner of complete product scenarios in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
-
-Task-specific performance attribution may use temporary nested E2E diagnostics, but execution must go through `pnpm verify` surfaces. No direct Playwright/Vite/browser orchestration and no coding-agent historical checkout/worktree/bisect workflow.
-
-The visual border/radius contract requires separate bounded visual-regression proof at the executable owner/location allowed by the current testing migration plan. Screenshots prove stable appearance only; they do not prove scrolling performance.
-
-## Required scenarios before acceptance
-
-1. Sparse all-string S0/G1 remains fast and bounded.
-2. The Number reproducer is attributed to the actual production layer and corrected without regressing the control.
-3. Short -> Full has no material perceptible freeze in the failing Chrome case.
-4. Sustained vertical scrolling has no material repeated jank in that case.
-5. Horizontal scrolling remains responsive.
-6. Mounted outer work remains bounded and deep correctness passes.
-7. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
-8. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
-
-## Forbidden
-
-- treating `databaseNumber` as root cause solely because Number isolation reproduces;
-- selecting geometry, TanStack, worker/query/storage, or Material as root cause before the narrow discriminator identifies that owner;
-- replacing TanStack or adding a second range/size/cache engine without evidence;
-- paging/index/cache redesign before the actual failing layer is identified;
-- generic geometry manager/provider or automatic root discovery;
-- changing shared `MDTable` merely to understand Database spacer conventions;
-- spacer DOM owning visible borders/radii;
-- adding a Firefox app-E2E project as an incidental diagnostic workaround;
-- test-only production seams;
-- timeout inflation, sleeps, force, retry-as-success, or weakened performance criteria;
-- direct Playwright/Vite/browser execution for required proof;
-- coding-agent historical checkout/worktree/bisect orchestration;
+- shared `MDTable` changes;
+- new Database-specific border/radius framework;
+- geometry ownership changes;
+- TanStack or `useVirtualCollection` changes;
+- Number/value/query performance optimization;
+- worker/query/storage/paging/index/cache work;
+- verifier/benchmark infrastructure;
+- screenshots inside application E2E;
+- timeout inflation, sleeps, force, or retry-as-success;
 - unrelated cleanup.
 
 ## Readiness
 
-Shared virtualization: **accepted**.
-
-Bounded mounted-DOM invariant: **accepted**.
-
-Sparse all-string responsiveness: **accepted in verifier-owned Chrome evidence**.
-
-Heterogeneous Chromium defect: **reproduced**.
-
-Number isolation: **accepted as reproducing fixture path; production owner unresolved**.
-
-Root/surface geometry ownership: **candidate only; not selected for correction**.
-
-Database table visual compatibility: **blocked; borders/corner radii regressed under spacer DOM**.
-
-Inline-edit/error/accessibility ownership: **accepted**.
-
-Merge readiness: **blocked; attribute the Number reproducer to the actual production owner, correct it, restore table visual boundaries, then obtain focused switch/scroll/visual proof and green exact-head GitHub CI**.
+Shared virtualization: **accepted**.  
+Bounded mounted work: **accepted**.  
+Product correctness architecture: **accepted**.  
+Residual Chromium jank: **deferred to a separate PR with retained evidence**.  
+Database table visual/integration compatibility: **blocked pending the ready correction**.  
+Merge readiness: **should not merge until the integration blocker is fixed, operator appearance is accepted, and exact-head CI is green**.
