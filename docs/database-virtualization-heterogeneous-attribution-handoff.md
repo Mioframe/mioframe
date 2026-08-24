@@ -1,6 +1,6 @@
 # Database virtualization heterogeneous attribution handoff
 
-Status: **completed; Number isolation reproduces Chromium blocking, production owner still unresolved**.
+Status: **completed; residual attribution deferred to a separate PR after #217**.
 
 ## Result
 
@@ -30,10 +30,12 @@ Mounted outer work remained bounded and deep correctness passed. The temporary d
 
 `Number` is a confirmed reproducing fixture path, but `src/entities/databaseNumber` is **not** established as the root-cause owner.
 
-`NumberValueInline` and `StringValueInline` are both trivial span/text renderers, and effective-value/property query infrastructure is shared across types. The current evidence therefore does not distinguish property type from fixture/value density, stored-value shape, query/subscription cost, or interaction with row measurement/layout.
+`NumberValueInline` and `StringValueInline` are both trivial span/text renderers, and effective-value/property query infrastructure is shared across types. The evidence does not distinguish property type from fixture/value density, stored-value shape, query/subscription cost, or interaction with row measurement/layout.
 
-The next architecture decision must be based on a controlled equal-density String-vs-Number comparison and/or equivalent evidence that isolates the cost below the fixture label.
+## Scope decision
 
-Do not implement a Number-specific UI optimization, geometry change, TanStack/shared-virtualization change, worker/query/storage redesign, or Material change from this result alone.
+Do not continue attribution or implement a performance correction in PR #217.
 
-The separate Database border/corner-radius blocker remains active.
+PR #217 now finishes the virtualized table integration/visual correction only. The residual Chrome investigation is retained in `docs/database-chrome-jank-follow-up.md` for a separate PR.
+
+Do not implement a Number-specific UI optimization, geometry change, TanStack/shared-virtualization change, worker/query/storage redesign, or Material change in #217 from this result.
