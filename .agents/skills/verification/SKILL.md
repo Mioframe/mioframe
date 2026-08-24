@@ -151,6 +151,10 @@ Do not infer mutation applicability merely from file adjacency and do not add mu
 
 Use them locally only when a coding task specifically needs release-output feedback that cannot wait for CI. The authoritative final release/merge gate is the required GitHub workflow on the exact PR head.
 
+Release-impact ownership must follow the **complete current execution mechanism**, not only top-level release scripts or newly noticed helper examples. When a release execution root adds, removes, or replaces a repository-relative runtime import, re-audit the bounded transitive shared release-execution support closure and update release-impact ownership in the same work. The audit must have an explicit root population and completion criterion, keep unrelated `scripts/lib/**` negative, and use the smallest truthful consumer set or fail closed when that set is not safely bounded.
+
+Do not solve this workflow requirement by adding a generic runtime dependency graph to the verifier. The closure audit belongs to architecture/preflight/test authorship; production planning remains explicit and local unless a separately measured requirement justifies new infrastructure.
+
 ## Fix mode
 
 Use:
