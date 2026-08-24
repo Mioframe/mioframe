@@ -49,7 +49,7 @@ export function classifyCommandWeight({
     // Two real `vite build` invocations (see
     // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs);
     // must route through the same expensive-command lock boundary the
-    // historical `managed-updates` aggregate used (see scripts/REVIEW.md M1).
+    // historical `managed-updates` aggregate used.
     case 'managed-updates-static':
       return 'expensive';
     case 'release-version':

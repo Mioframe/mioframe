@@ -408,8 +408,7 @@ describe('buildCommands full mode', () => {
     // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs)
     // must use the same expensive-command coordination the historical
     // `managed-updates` aggregate used, not a weaker `medium` weight that
-    // bypasses withExpensiveCommandLock in scripts/verify.ts (see
-    // scripts/REVIEW.md M1).
+    // bypasses withExpensiveCommandLock in scripts/verify.ts.
     const commands = buildCommands([], { fullMode: true });
 
     expect(requireRunEntry(commands, 'managed-updates-static').weight).toBe('expensive');
@@ -463,10 +462,10 @@ describe('buildCommands verification type composition', () => {
   });
 
   it('owns Storybook buildability as static proof, distinct from behavior/visual artifact reuse', () => {
-    // storybook-build is a `static` proof leaf in its own right (see
-    // scripts/REVIEW.md B1): behavior/visual reusing the identical build
-    // artifact is only an execution optimization and must not merge
-    // Storybook buildability's proof ownership into either lane's type.
+    // storybook-build is a `static` proof leaf in its own right: behavior/
+    // visual reusing the identical build artifact is only an execution
+    // optimization and must not merge Storybook buildability's proof
+    // ownership into either lane's type.
     const commands = buildCommands([], { fullMode: true });
     const storybookBuild = commands.find((entry) => entry.label === 'storybook-build');
     const storybookBehavior = commands.find((entry) => entry.label === 'storybook-behavior');

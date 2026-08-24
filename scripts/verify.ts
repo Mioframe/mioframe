@@ -261,7 +261,7 @@ const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationTy
 // buildability itself is a `static` proof leaf (see
 // VERIFICATION_TYPE_BY_LABEL); reuse of its build artifact by
 // storybook-behavior/visual is a separate execution optimization and does
-// not remove that static proof ownership (see scripts/REVIEW.md B1).
+// not remove that static proof ownership.
 const PREREQUISITE_LABELS: ReadonlySet<string> = new Set(['e2e-install']);
 
 /**
@@ -1692,13 +1692,16 @@ export function buildCommands(
     });
   }
 
-  // Locally, the shared Storybook static build is a prerequisite for both
-  // storybook-behavior and visual, not an independent proof owner. Schedule
-  // it before either lane so a successful build result is already available
-  // in `results` (see `getExtraEnvForEntry`) when they run, and derive the
-  // requirement from the three existing plans only: no separate impact
-  // registry. `invalid` behavior/visual plans fail closed on their own lane
-  // below and must not, by themselves, force an otherwise-unneeded build.
+  // storybook-build is its own `static` proof leaf (see
+  // VERIFICATION_TYPE_BY_LABEL). Locally, storybook-behavior and visual may
+  // reuse its successful build artifact as an execution optimization instead
+  // of rebuilding, so schedule it before either lane so a successful build
+  // result is already available in `results` (see `getExtraEnvForEntry`)
+  // when they run; this reuse does not change or merge proof ownership.
+  // Derive the requirement from the three existing plans only: no separate
+  // impact registry. `invalid` behavior/visual plans fail closed on their
+  // own lane below and must not, by themselves, force an otherwise-unneeded
+  // build.
   // In GitHub Actions, storybook-behavior and visual are separate
   // self-contained jobs that never reuse this lane's output (see
   // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
