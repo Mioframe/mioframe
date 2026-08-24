@@ -1,76 +1,39 @@
 # Database virtualization heterogeneous attribution handoff
 
-Status: **ready**.
+Status: **completed; Number isolation reproduces Chromium blocking, production owner still unresolved**.
 
-## Goal
+## Result
 
-Identify the smallest heterogeneous Database render path that reproduces the current Chrome switch/scroll jank before any production correction.
+Verifier-managed desktop Chromium reproduced the heterogeneous performance defect.
 
-## Confirmed evidence
+Scalar mix switch samples:
 
-- Sparse all-string current-head control is fast in verifier-managed Chromium: S0 median 281.1 ms, G1 median 321.5 ms, zero Long Tasks, bounded 12 / 8 / 96 mounted work, deep correctness pass.
-- Operator testing on the same laptop reports perceptible Short -> Full delay and scrolling jank for a real heterogeneous Database in Chrome; Firefox does not show the same issue.
-- Current application E2E verifier has `chromium` and `Mobile Chrome` projects only. Firefox is therefore operator evidence for this pass, not an automated project to add opportunistically.
+- 719.5 ms, no Long Tasks;
+- 385.6 ms, no Long Tasks;
+- 928.9 ms, no Long Tasks.
 
-## Scope
+Number-isolation switch samples:
 
-Attribution only. No production changes.
+- 631.3 ms, 3 Long Tasks, max 241 ms, total 520 ms;
+- 635.5 ms, 3 Long Tasks, max 244 ms, total 523 ms.
 
-Use one temporary nested application-E2E diagnostic:
+Vertical wheel scrolling:
 
-`tests/e2e/diagnostics/databaseVirtualizationHeterogeneousPerformance.spec.ts`
+- scalar mix: one 168 ms Long Task in sample 1, none in sample 2, one 183 ms Long Task in sample 3;
+- Number isolation: one 210 ms Long Task in sample 1, none in sample 2.
 
-Run it only through:
+Horizontal wheel scrolling produced no Long Tasks in any reported sample.
 
-```bash
-pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationHeterogeneousPerformance.spec.ts
-```
+Mounted outer work remained bounded and deep correctness passed. The temporary diagnostic was removed and no tracked diagnostic files remain.
 
-Skip non-desktop project execution inside the temporary diagnostic.
+## Interpretation
 
-## Attribution order
+`Number` is a confirmed reproducing fixture path, but `src/entities/databaseNumber` is **not** established as the root-cause owner.
 
-1. Build a deterministic sparse **scalar-mixed** fixture using valid current-schema String, Number, Date, and Boolean properties while preserving the established Short -> Full flow and large logical shape.
-2. Measure Short -> Full plus bounded real vertical and horizontal wheel scrolling in desktop Chromium.
-3. If scalar-mixed reproduces repeated material main-thread blocking, narrow by replacing the mixed non-control properties with one scalar type at a time until the first reproducing render path is identified.
-4. If scalar-mixed does not reproduce, test a separate **relation** fixture with one representative non-empty relation property and bounded nested content. Do not repeat relation properties across hundreds of columns.
-5. Stop when either a smallest reproducing render path is established or the verifier fixture still cannot reproduce the operator-observed Chrome defect.
+`NumberValueInline` and `StringValueInline` are both trivial span/text renderers, and effective-value/property query infrastructure is shared across types. The current evidence therefore does not distinguish property type from fixture/value density, stored-value shape, query/subscription cost, or interaction with row measurement/layout.
 
-The accepted all-string result is the control; do not rerun the complete historical matrix.
+The next architecture decision must be based on a controlled equal-density String-vs-Number comparison and/or equivalent evidence that isolates the cost below the fixture label.
 
-## Measurements
+Do not implement a Number-specific UI optimization, geometry change, TanStack/shared-virtualization change, worker/query/storage redesign, or Material change from this result alone.
 
-For each measured variant record:
-
-- fixture property mix and logical shape;
-- Short -> Full event-loop yield, first rAF, switch-to-usable, Long Task count/max/total;
-- a fixed vertical wheel sequence: Long Task count/max/total plus mounted-work result;
-- a fixed horizontal wheel sequence: Long Task count/max/total plus mounted-work result;
-- mounted outer rows / property headers / expensive cells;
-- deep row/property/value correctness.
-
-Use the existing 100 ms Long Task research target. Do not invent a new wall-clock acceptance threshold for scrolling.
-
-## Decision
-
-Return one result:
-
-- `scalar path identified` + the smallest reproducing scalar type;
-- `relation path identified`;
-- `heterogeneous mix reproduced but not isolated`;
-- `not reproduced in verifier`;
-- `ambiguous`.
-
-Do not select or implement a production fix in this pass.
-
-## Constraints
-
-- no Git checkout/worktree/bisect/reset/rebase/cherry-pick;
-- no direct Playwright/Vite/browser commands;
-- no verifier/config/project changes to add Firefox;
-- no production instrumentation or test-only production seams;
-- no geometry/TanStack/worker/query/storage/Material changes;
-- no retries, sleeps, timeout inflation, force, or repeat-until-pass;
-- remove the temporary diagnostic before handoff.
-
-The separate border/corner-radius blocker is outside this attribution pass.
+The separate Database border/corner-radius blocker remains active.
