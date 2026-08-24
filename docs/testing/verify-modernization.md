@@ -1,6 +1,6 @@
 # Verify modernization
 
-Status: **implementation substantially complete; Pass E production-build input architecture is simplified and ready but not yet implemented; two output minors and the mandatory benchmark remain**.
+Status: **implementation substantially complete; Pass E is closed; two output minors and the mandatory benchmark remain**.
 
 Branch: `refactor/verify-modernization-finish`  
 PR: `#216`
@@ -15,7 +15,7 @@ This document records current implementation/review/benchmark status. Canonical 
 - `docs/testing/verify-change-classification.md` — repository classification;
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact architecture;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — current ready Pass E architecture;
+- `docs/testing/verify-release-impact-correction.md` — closed Pass E architecture and review record;
 - `docs/testing/verify-finish-plan.md` — remaining integration order;
 - active `REVIEW.md` artifacts — unresolved findings.
 
@@ -60,9 +60,9 @@ Implemented and accepted through one explicit high-risk target registry shared b
 
 ### Pass E — release impact
 
-**Open: simplified production-build input architecture ready; implementation pending.**
+**Closed: production-build mechanism correction implemented and architect-reviewed.**
 
-Closed and retained:
+Retained execution ownership remains:
 
 - one `scripts/release/releaseSpecInventory.ts` source of truth shared by real release runners and planner;
 - exhaustive bounded validation of `tests/e2e/release/**/*.spec.ts`;
@@ -71,16 +71,7 @@ Closed and retained:
 - runtime unknown release-check validation;
 - artifact 17-minute Playwright outer timeout and existing 120-minute release-job envelope.
 
-Latest full review found that the production-build side was still not closed. The real release `vite build` consumes repository files through mechanisms beyond static imports. Current missed examples include:
-
-```text
-.browserslistrc
-postcss.config.js
-pwa-assets.config.ts
-public/favicon.svg
-```
-
-The repeated ownership failure triggered the repository stop rule. The final architecture remains mechanism-based, but is intentionally smaller than the first redo proposal:
+The production-build side is now closed over the confirmed current mechanisms:
 
 ```text
 current positively-known build input
@@ -99,9 +90,13 @@ pnpm-workspace.yaml
 → full six
 ```
 
-The verifier does **not** mirror exhaustive PostCSS/PWA loader extension lists and does not introduce a generic registry/module. The complete decision and proof matrix are in `verify-release-impact-correction.md`.
+Current modeled inputs include Browserslist, PostCSS, PWA-assets configuration, production Vite env files and the production/config TypeScript chain. The planner keeps the implementation local to `scripts/lib/releaseRisk.ts`, does not mirror third-party loader extension matrices, and does not introduce a generic graph/registry or broad root/config fallback.
 
-Ordinary `src/**` is not promoted to release-impact merely because Vite bundles it; existing scenario/lane ownership remains unchanged.
+Independent test-author proof in `scripts/lib/releaseRisk.test.ts` covers current inputs, fail-closed family members, `public/**` including proof-looking filenames, known negatives and `pnpm-workspace.yaml`. The implementation then changed only `scripts/lib/releaseRisk.ts`.
+
+Architect re-review confirmed the real source-side build mechanisms and the retained release inventory/runners. No blocker or major issue remains in Pass E. Current CI static format/lint/type-check/unit evidence on the implementation head was green at review time; browser/release execution was still in progress and is not final merge evidence.
+
+Ordinary `src/**` remains outside release-impact merely because Vite bundles it; existing scenario/lane ownership remains unchanged.
 
 ### Pass F — CI
 
@@ -117,21 +112,18 @@ autofix
    └─ release-version
 ```
 
-Pass E correctness is a planner/ownership issue, not a reason to serialize or redesign CI.
-
 ## Current review state
 
 ```text
-blockers: 2
+blockers: 1
 major issues: 0
 minor issues: 2
 accepted risks: 0
 ```
 
-Blockers:
+Blocker:
 
-1. ready simplified Pass E production-build ownership is not yet implemented/reviewed;
-2. the mandatory representative benchmark is not yet recorded.
+1. the mandatory representative benchmark is not yet recorded.
 
 Minor findings:
 
@@ -140,7 +132,7 @@ Minor findings:
 
 ## Mandatory benchmark — pending
 
-After semantic corrections and full review are clean, record from bounded real execution evidence:
+After the two output corrections and full semantic review are clean, record from bounded real execution evidence:
 
 ```text
 critical-path / merge latency
@@ -153,10 +145,9 @@ The record must include source run/change class, both measurements, interpretati
 
 Modernization is complete only after:
 
-1. Pass E simplified production-build ownership is implemented and architect-reviewed;
-2. both output findings are closed;
-3. one complete PR semantic review is clean;
-4. stable exact-head CI is healthy;
-5. both mandatory benchmark metrics are recorded;
-6. architect records the stop decision;
-7. CI is healthy on the resulting final documentation head.
+1. both output findings are closed and architect-reviewed;
+2. one complete PR semantic review is clean;
+3. stable exact-head CI is healthy;
+4. both mandatory benchmark metrics are recorded;
+5. architect records the stop decision;
+6. CI is healthy on the resulting final documentation head.
