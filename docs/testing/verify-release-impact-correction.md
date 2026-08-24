@@ -1,12 +1,12 @@
 # Verify release-impact correction
 
-Status: **implemented and architect-reviewed; Pass E closed**.
+Status: **Pass E reopened by the full PR semantic review; architecture resolved; implementation pending**.
 
-This document is the durable Pass E architecture for PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
+This document owns the current release-impact architecture for PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
 
 ## Goal
 
-Make source-impact release planning closed over the real current release execution and production-build input mechanisms without introducing a generic dependency graph, a build-tool configuration registry, or a broad repository taxonomy.
+Make source-impact release planning closed over the real current release execution and production-build mechanisms without introducing a generic dependency graph, a generic build/config registry, or a broad repository taxonomy.
 
 The six source-impact checks remain:
 
@@ -21,9 +21,20 @@ managed-updates
 
 `release-version` remains independent PR/release policy.
 
-## Architecture status
+## Current architecture state
 
-The release-spec execution sub-boundary is implemented and remains accepted:
+The following Pass E sub-boundaries remain accepted and must not be redesigned by this correction:
+
+1. release-spec execution inventory and exhaustive release-spec ownership validation;
+2. existing exact release-runner/spec/fixture/publisher/managed-update mappings;
+3. production-build ownership through static inputs, tool-discovered config, TypeScript config, Vite env, `public/**`, and dependency-install control;
+4. artifact reuse, timeout model, CI topology, and independent `release-version` policy.
+
+The full PR semantic review found one additional ownership mechanism that those earlier corrections did not cover: the shared command/runtime support imported by the real release execution roots. Because this is another release-ownership completeness failure, the repository stop rule applies: do not patch only the newly noticed helper paths. Close the mechanism as an explicit bounded ownership population.
+
+## Retained release-spec execution boundary
+
+The accepted execution source of truth remains:
 
 ```text
 scripts/release/releaseSpecInventory.ts
@@ -33,295 +44,23 @@ scripts/release/releaseSpecInventory.ts
         └─ scripts/lib/releaseRisk.ts
 ```
 
-It provides:
+It must continue to provide:
 
-- one real execution inventory for artifact, release-smoke and the four managed-update groups;
+- one real execution inventory for artifact, release-smoke, and the four managed-update groups;
 - exhaustive bounded validation of `tests/e2e/release/**/*.spec.ts`;
-- `invalid` for unowned, missing or conflicting release-spec ownership;
-- no filename-based `managedUpdates*.spec.ts` ownership;
+- `invalid` for unowned, missing, or conflicting release-spec ownership;
+- no filename-derived `managedUpdates*.spec.ts` ownership;
 - runtime validation of release-check identity.
 
-Do not redesign or duplicate that sub-boundary.
+Executable release fixtures keep their accepted exact mappings. A new executable path under `tests/e2e/release/fixtures/**` whose consumer set is unknown fails closed to all six. Ordinary unit proof and ambient declarations remain release-negative unless they are themselves a production artifact input.
 
-Pass E was reopened because the production-build input population had been defined too narrowly from static imports. The real release build also consumes repository files through tool discovery, TypeScript/build metadata, dependency-install control and file-as-data/artifact roots.
+## Retained exact release ownership
 
-## Design rule
-
-Use the minimum complete mechanism-based model:
-
-```text
-positively-known current production-build input
-→ focused truthful consumers
-
-whole tool-owned artifact population
-→ focused truthful consumers
-
-path inside a confirmed build-tool/config family,
-but not positively classified as a current input or known negative
-→ full six release checks
-
-positively-known non-production member
-→ no release ownership from that family
-```
-
-The verifier must not copy exhaustive extension lists from PostCSS, Vite PWA asset loaders, or similar dependencies. Those lists are dependency implementation detail and would create a new maintenance source of truth.
-
-The normal focused production-build consumer set is:
-
-```text
-artifact
-build
-managed-updates
-release-smoke
-```
-
-`full` means all six source-impact checks and remains the conservative answer for significant release-sensitive paths whose exact consumer set is not positively established.
-
-## Confirmed real build mechanisms
-
-`scripts/release/buildArtifact.mjs` executes the real production `vite build`.
-
-### 1. Static production-build control
-
-Already represented by the current planner:
-
-```text
-vite.config.ts
-config/tooling.json
-config/alias.ts
-config/vueCustomElements.ts
-config/plugins/**
-```
-
-`vite.config.ts` and `config/tooling.json` keep their existing stronger fail-closed handling.
-
-The bounded support surface:
-
-```text
-config/alias.ts
-config/vueCustomElements.ts
-config/plugins/**
-```
-
-selects the focused production-build consumer set.
-
-Proof/test/declaration-only files under `config/plugins/**` remain excluded before the runtime prefix rule.
-
-Do not broaden this into `config/**`.
-
-### 2. Tool-discovered production configuration
-
-Static imports are not the only ownership mechanism. The planner represents the current repository-owned inputs and a small fail-closed family boundary for plausible replacements, without reproducing loader extension matrices.
-
-#### Browserslist
-
-`vite.config.ts` calls `browserslistToEsbuild(undefined, { path: process.cwd() })`; the current repository-owned config is:
-
-```text
-.browserslistrc
-```
-
-Current input:
-
-```text
-.browserslistrc
-→ focused production-build consumers
-```
-
-`package.json` remains handled by the existing package-impact contract.
-
-The alternative root name:
-
-```text
-browserslist
-```
-
-is inside the confirmed Browserslist config family but is not the current repository source. If it appears in a changed-path set, fail closed to **full six** until the repository adopts/audits it.
-
-Do not create a generic Browserslist registry.
-
-#### PostCSS
-
-Vite searches root PostCSS configuration when no inline `css.postcss` is supplied. The current repository-owned source is:
-
-```text
-postcss.config.js
-```
-
-Current input:
-
-```text
-postcss.config.js
-→ focused production-build consumers
-```
-
-The fail-closed root family is structural, not an exhaustive supported-extension table:
-
-```text
-.postcssrc
-.postcssrc.*
-postcss.config.*
-```
-
-After ordinary proof/declaration exclusions, another path matching that family but not the current exact input selects **full six** until audited. This intentionally avoids copying PostCSS loader extension support into Mioframe.
-
-Examples:
-
-```text
-postcss.config.ts
-.postcssrc.mjs
-→ full six
-
-postcss.config.test.ts
-→ proof-only negative; not release-owned solely by the family
-```
-
-`package.json` PostCSS configuration remains covered by the existing package-impact contract.
-
-#### PWA assets
-
-Production PWA configuration enables PWA assets with `config: true`. The current repository-owned config is:
-
-```text
-pwa-assets.config.ts
-```
-
-Current input:
-
-```text
-pwa-assets.config.ts
-→ focused production-build consumers
-```
-
-The fail-closed root family is:
-
-```text
-pwa-assets.config.*
-```
-
-After ordinary proof/declaration exclusions, another matching root path selects **full six** until audited. Do not duplicate the asset generator's supported extension list or infer ownership from arbitrary `*pwa*` names.
-
-#### Production Vite env files
-
-`vite.config.ts` explicitly calls `loadEnv(mode, process.cwd(), '')`, and the release build uses production mode. The small production env contract is stable and explicit:
-
-```text
-.env
-.env.local
-.env.production
-.env.production.local
-```
-
-If one of these paths is tracked/changed, select the focused production-build consumers.
-
-The repository currently ignores `.env` and `*.local`, so ordinary changed-path planning normally sees only deliberately tracked members. `.env.example` remains a negative example/documentation path.
-
-### 3. TypeScript transform/config ownership
-
-Treat the current production/config chain conservatively as production-build control:
-
-```text
-tsconfig.json
-tsconfig.app.json
-tsconfig.src.json
-tsconfig.node.json
-```
-
-These select the focused production-build consumer set.
-
-Current known non-production TypeScript projects remain release-impact negative solely from this family:
-
-```text
-tsconfig.storybook.json
-tsconfig.scripts.json
-```
-
-Any other repository-root `tsconfig*.json` is inside a confirmed significant build/config family but has unresolved ownership. It must fail closed to **full six** until audited.
-
-Do not classify arbitrary JSON files this way.
-
-### 4. Production artifact/file inputs
-
-Vite's default `publicDir` is `public`; every file in that tree is copied into the production output as-is. Therefore this is a complete tool-owned artifact population rather than adjacency inference:
-
-```text
-public/**
-→ focused production-build consumers
-```
-
-Do not apply proof/test filename exclusions inside `public/**`; a file there is an artifact input regardless of filename.
-
-`pwa-assets.config.ts` currently names `public/favicon.svg` as an additional file-as-data source, but no favicon-specific mapping is needed because `public/**` already owns the complete population.
-
-### 5. Dependency-install control
-
-The release build runs on the dependency installation produced by pnpm. The root workspace file controls allowed dependency build scripts and can therefore alter installed build-tool behavior.
-
-Use the simplest conservative contract:
-
-```text
-pnpm-workspace.yaml
-→ full six release checks
-```
-
-Keep existing `package.json` and `pnpm-lock.yaml` semantics unchanged. Do not introduce narrower per-consumer reasoning for `allowBuilds`; this path changes rarely and conservative full execution is simpler and safer.
-
-Do not broaden this into arbitrary package-manager dotfiles without repository evidence.
-
-## What is not part of this release-impact boundary
-
-Do not turn ordinary application source into release-impact ownership merely because Vite bundles it:
-
-```text
-src/**
-```
-
-Ordinary product source remains owned by existing unit/application-E2E/Storybook/visual rules, except already confirmed release-specific runtime boundaries such as managed-update code and `src/sw.ts`.
-
-Also do not classify arbitrary root files, arbitrary `config/**`, editor/lint configuration, review metadata, or documentation as production-build inputs.
-
-Representative negatives:
-
-```text
-.env.example
-.nvmrc
-eslint.config.mjs
-vitest.config.ts
-README.md
-config/unrelatedRuntimeConfig.ts
-postcss.config.test.ts
-```
-
-## Planner ownership model
-
-Implementation stays local to `scripts/lib/releaseRisk.ts`. No new registry/module is justified.
-
-The local model is limited to:
-
-```text
-current exact production-build inputs
-small structural fail-closed config families
-production Vite env exact paths
-known production/non-production tsconfig sets + unknown-family fallback
-public/** artifact root
-pnpm-workspace.yaml full fallback
-```
-
-Do not encode exhaustive third-party loader extension lists.
-
-This remains simpler than the rejected alternatives:
-
-1. **example patch** — adding only the currently missed paths repeats the ownership-completeness failure;
-2. **loader mirror / generic registry** — copying every supported config extension creates another source of truth and future drift;
-3. **generic root/config fallback** — `config/**`, all `*.config.*`, or all root files creates broad false positives.
-
-## Existing Pass E ownership preserved
-
-Keep all accepted relations not superseded by this production-build boundary, including:
+Keep the accepted current relations:
 
 ```text
 scripts/release/buildArtifact.mjs
-→ build + artifact + managed-updates + release-smoke
+→ artifact + build + managed-updates + release-smoke
 
 scripts/release/artifactServer.mjs
 playwright.release.config.ts
@@ -333,6 +72,10 @@ tests/e2e/helpers.ts
 scripts/release/publisherWireContractImportProof.mjs
 → publisher-node-import
 
+scripts/release/managedUpdatesProof.mjs
+scripts/release/runManagedReleaseDataCompatibilityProof.mjs
+→ managed-updates
+
 scripts/pages/lib/releasePublish.mjs
 scripts/pages/lib/releaseDescriptor.mjs
 src/shared/service/appUpdate/releaseWireContract.ts
@@ -342,81 +85,72 @@ src/sw.ts
 → artifact + managed-updates
 ```
 
-Also preserve:
+Unknown runtime implementation under `scripts/pages/lib/**` keeps the conservative full-six fallback, after ordinary test/declaration exclusions and accepted exact mappings.
 
-- release-spec execution inventory and exhaustive spec validation;
-- executable release fixture exact mappings;
-- unknown executable release fixture → full;
-- proof/declaration-only exclusions where the path is not itself a copied `public/**` artifact;
-- conservative `scripts/pages/lib/**` full fallback;
-- package version-only refinement;
-- artifact 17-minute outer timeout;
-- current 120-minute `verification-release` job envelope;
-- CI topology and independent `release-version` gate.
+The production managed-update runtime under `src/shared/service/appUpdate/**` keeps the existing managed-updates ownership, with its established proof/test/declaration exclusions and exact stronger mappings where applicable.
 
-## Independent proof
+## Retained production-build ownership
 
-A fresh test-author context added the primary proof in `scripts/lib/releaseRisk.test.ts` before production edits. The oracle is the real build mechanisms above, not production planner constants.
+`scripts/release/buildArtifact.mjs` executes the real production `vite build`. Release impact remains closed over the confirmed current production-build mechanisms below.
 
-### Current real production-build inputs
+### Current focused production-build inputs
 
-Proof covers representative current inputs including:
+The focused consumer set is:
 
 ```text
+artifact
+build
+managed-updates
+release-smoke
+```
+
+Current exact/static inputs:
+
+```text
+config/alias.ts
+config/vueCustomElements.ts
+config/plugins/**
 .browserslistrc
 postcss.config.js
 pwa-assets.config.ts
-public/favicon.svg
-public/robots.txt
 tsconfig.json
 tsconfig.app.json
 tsconfig.src.json
 tsconfig.node.json
+.env
+.env.local
 .env.production
+.env.production.local
+public/**
 ```
 
-Expected:
+`public/**` is checked before proof/declaration filename exclusions because every file in Vite's public root is a production artifact input.
 
-```text
-mode: focused
-checks: artifact + build + managed-updates + release-smoke
-```
+`config/plugins/**` remains narrow; ordinary proof/declaration-only files there do not inherit production release ownership merely by prefix.
 
-### Fail-closed config families without loader mirroring
+### Fail-closed build/config families
 
-Synthetic/non-current family members include:
+A non-current root path inside one of these confirmed significant families fails closed to all six until audited:
 
 ```text
 browserslist
-postcss.config.ts
-.postcssrc.mjs
-pwa-assets.config.mts
-tsconfig.future.json
+.postcssrc
+.postcssrc.*
+postcss.config.*
+pwa-assets.config.*
+tsconfig*.json
 ```
 
-Expected:
+This is structural family ownership only. Do not copy exhaustive third-party loader extension matrices.
 
-```text
-mode: full
-checks: all six source-impact release checks
-```
-
-### Public artifact population
-
-A representative nested path and a proof-looking filename under `public/**` both select the focused production-build consumers because Vite copies the whole population.
-
-### Known negative members
-
-Known non-production TypeScript configs:
+Current known non-production TypeScript projects remain release-negative solely from this family:
 
 ```text
 tsconfig.storybook.json
 tsconfig.scripts.json
 ```
 
-remain release-negative solely from the tsconfig family.
-
-Nearby unrelated paths remain negative:
+Representative nearby negatives remain outside production-build release ownership:
 
 ```text
 .env.example
@@ -428,71 +162,219 @@ config/unrelatedRuntimeConfig.ts
 postcss.config.test.ts
 ```
 
-### Dependency install control
+### Stronger/full production-build controls
+
+Keep the existing stronger fail-closed handling for:
 
 ```text
+vite.config.ts
+config/tooling.json
+index.html
+scripts/lib/releaseRisk.ts
+scripts/verify.ts
+scripts/release/releaseSpecInventory.ts
 pnpm-workspace.yaml
-→ full six
+pnpm-lock.yaml
+runtime-relevant/unclassifiable package.json
 ```
 
-Existing tests were not weakened to obtain these results.
+A positively proven version-only `package.json` change remains outside source-impact release expansion; `release-version` policy remains separate.
 
-## Verification boundary
+Ordinary application `src/**` does not become release-impact merely because Vite bundles it. Only already-confirmed release-specific runtime boundaries such as managed updates and `src/sw.ts` receive release ownership.
 
-The implementation remained narrow:
+## Reopened boundary — shared release-execution runtime
+
+### Defect found by full PR review
+
+The real release checks execute through repository-owned low-level command/runtime helpers that are outside the existing release prefixes and exact mappings.
+
+Confirmed current execution chains include:
 
 ```text
-scripts/lib/releaseRisk.ts
+scripts/release/buildArtifact.mjs
+  ├─ scripts/lib/localCommandGuard.ts
+  │    ├─ scripts/lib/commandLock.ts
+  │    └─ scripts/lib/runLocalCommand.ts
+  │         └─ scripts/lib/signalForward.ts
+  ├─ scripts/lib/processResult.ts
+  └─ scripts/lib/runLocalCommand.ts
+
+scripts/release/managedUpdatesProof.mjs
+  ├─ scripts/lib/processResult.ts
+  └─ scripts/lib/runLocalCommand.ts
+       └─ scripts/lib/signalForward.ts
+
+scripts/release/runManagedReleaseDataCompatibilityProof.mjs
+  └─ scripts/lib/runLocalCommand.ts
+       └─ scripts/lib/signalForward.ts
+
+scripts/e2eReleaseContainer.mjs
+  └─ scripts/playwrightContainer.ts
+       ├─ scripts/lib/localCommandGuard.ts
+       ├─ scripts/lib/processResult.ts
+       └─ scripts/lib/runLocalCommand.ts
+```
+
+The current bounded transitive shared release-execution population is therefore:
+
+```text
+scripts/lib/commandLock.ts
+scripts/lib/localCommandGuard.ts
+scripts/lib/processResult.ts
+scripts/lib/runLocalCommand.ts
+scripts/lib/signalForward.ts
+```
+
+The current planner does not classify these files as release-sensitive, so a change to them can fall through to `skip` even though it changes real release execution.
+
+### Architecture decision
+
+Treat the five files above as one explicit **current shared release-execution support mechanism** local to `scripts/lib/releaseRisk.ts`.
+
+Truthful focused consumers:
+
+```text
+scripts/lib/commandLock.ts
+scripts/lib/localCommandGuard.ts
+scripts/lib/processResult.ts
+scripts/lib/runLocalCommand.ts
+scripts/lib/signalForward.ts
+
+→ artifact + build + managed-updates + release-smoke
+```
+
+Why this consumer set:
+
+- `build` executes `buildArtifact.mjs`, which uses the command/runtime support;
+- `artifact` and `release-smoke` execute the release Playwright/build path using the same support;
+- `managed-updates` executes both the managed-update orchestration and release Playwright path using the same support;
+- `release-config` executes `validateReleaseConfig.mjs`, which does not use this command/runtime mechanism;
+- `publisher-node-import` imports the publication/wire-contract chain and does not use this command/runtime mechanism.
+
+This is the smallest complete current solution. It is narrower than `scripts/lib/**` and simpler than a runtime dependency graph.
+
+### Ownership completeness rule
+
+The five paths are the current audited population, not a permanent example list.
+
+When a repository-relative **runtime import** is added, removed, or replaced anywhere in the accepted release execution roots below, the same change must re-audit and classify the resulting shared support closure:
+
+```text
+scripts/release/buildArtifact.mjs
+scripts/release/managedUpdatesProof.mjs
+scripts/release/runManagedReleaseDataCompatibilityProof.mjs
+scripts/e2eReleaseContainer.mjs
+scripts/playwrightContainer.ts
+```
+
+Audit recursively only through repository-relative runtime imports needed by those roots. Type-only imports and Node/bare-package imports do not create repository-path ownership. Existing separately-owned release boundaries such as `config/tooling.json`, release-spec inventory, build inputs, and pages publication code keep their current rules rather than being duplicated into this support population.
+
+Completion criterion: every repository-relative runtime dependency reachable from those roots that participates in shared command/execution support is either:
+
+1. already classified by an accepted stronger/existing release rule; or
+2. included in the shared support population with its truthful consumer set.
+
+No reachable current shared support path may remain unclassified and fall through to `skip`.
+
+This audit belongs to architecture/preflight/test authorship. Production verification must **not** add a generic import-graph scanner.
+
+## Independent proof for the reopened boundary
+
+Use a fresh dedicated test-author context before changing `releaseRisk.ts`.
+
+Primary proof owner:
+
+```text
 scripts/lib/releaseRisk.test.ts
 ```
 
-No production build semantics, release execution, release inventory, verifier output behavior, timeout, or CI topology was changed by this correction.
+Oracle:
 
-Agent-reported focused feedback was green for:
+- the current repository runtime-import closure from the release execution roots above;
+- `docs/testing/verify-target-architecture.md` requirement that shared release helpers select all real consumers or fail closed;
+- this document's resolved current consumer set.
 
-```bash
-pnpm verify --only unit-tests --files \
-  scripts/lib/releaseRisk.ts \
-  scripts/lib/releaseRisk.test.ts
+The test-author pass must first perform the bounded audit and record enough source-derived rationale that the five current support paths are a completed mechanism population rather than examples copied from the task.
 
-pnpm verify --only type-check
+Meaningful RED must include at least:
 
-pnpm verify --fix-only --files \
-  scripts/lib/releaseRisk.ts \
-  scripts/lib/releaseRisk.test.ts
+```text
+scripts/lib/runLocalCommand.ts
+→ focused artifact + build + managed-updates + release-smoke
+
+scripts/lib/signalForward.ts OR scripts/lib/commandLock.ts
+→ same focused four
 ```
 
-Architect review independently re-read the complete planner boundary, the retained release-spec inventory/runners, and the real current build-input sources. No blocker or major issue remains in Pass E. GitHub CI on the reviewed implementation head had already passed format, lint, type-check and unit-test steps when this review closed; release/browser jobs were still running and are not treated as final merge evidence.
+Both currently resolve `skip`; the RED must fail for that observable planner result, not for setup/tooling reasons.
+
+After the audit, prove the complete current population:
+
+```text
+scripts/lib/commandLock.ts
+scripts/lib/localCommandGuard.ts
+scripts/lib/processResult.ts
+scripts/lib/runLocalCommand.ts
+scripts/lib/signalForward.ts
+→ focused four
+```
+
+Also prove a nearby unrelated `scripts/lib/**` path remains release-negative, for example a verifier planner that is not part of release execution support. This guards against replacing the omission with a broad directory fallback.
+
+Do not weaken or rewrite existing release-spec, production-build, fixture, publisher, managed-update, package, timeout, or CI-topology proof.
+
+## Minimum implementation
+
+Keep implementation local to:
+
+```text
+scripts/lib/releaseRisk.ts
+```
+
+Use the existing explicit predicate/set style. One named exact current support population mapping to the focused four consumers is sufficient.
+
+Do not introduce:
+
+- a new module/registry solely for these five files;
+- a generic dependency graph or import parser at verifier runtime;
+- a broad `scripts/lib/**` release fallback;
+- release-config or publisher-node-import ownership for these files without new repository evidence;
+- changes to release execution, release-spec inventory, timeouts, artifact reuse, command ordering, or CI topology.
+
+## Workflow guard
+
+The verifier workflow must retain one concise rule: release-impact work that changes a release execution root or its repository-relative runtime imports must re-audit the complete shared release-execution support closure. Adding only the newly noticed helper is not a complete ownership correction.
+
+This is intentionally a workflow/preflight guard, not permanent benchmark or dependency-graph infrastructure.
 
 ## Acceptance criteria
 
-Pass E production-build ownership is accepted because:
+Pass E can close again only when:
 
-1. release-spec inventory/execution behavior remains unchanged;
-2. `.browserslistrc`, `postcss.config.js`, `pwa-assets.config.ts` and `public/favicon.svg` cannot resolve `skip`;
-3. current positively-known production-build inputs select the focused four consumers;
-4. non-current paths inside the confirmed Browserslist/PostCSS/PWA-assets/tsconfig families fail closed to full rather than being treated as known focused consumers;
-5. no exhaustive third-party loader extension table was introduced;
-6. all `public/**` paths are production artifact inputs;
-7. production env filenames are covered while `.env.example` stays negative;
-8. current production/config TypeScript configs are release-owned;
-9. known non-production TypeScript configs remain negative solely from this family;
-10. unknown root `tsconfig*.json` fails closed to full six;
-11. `pnpm-workspace.yaml` fails closed to full six;
-12. existing package/release-fixture/publisher/managed-update ownership remains unchanged;
-13. no broad `config/**`, all-root-files, generic `*.config.*`, generic registry, graph or new module was introduced;
-14. focused independent proof is green per agent feedback and current CI unit/static evidence;
-15. architect re-reviewed the complete Pass E boundary, including retained release-spec inventory.
+1. the bounded shared release-execution runtime audit is complete against the current tree;
+2. every current shared support path selects exactly `artifact + build + managed-updates + release-smoke`;
+3. at least one direct and one transitive support dependency produced meaningful RED before production edits;
+4. unrelated nearby `scripts/lib/**` remains release-negative;
+5. no broad directory fallback, generic graph, new registry/module, or duplicated release source of truth is introduced;
+6. all previously accepted release-spec and production-build ownership remains unchanged and green;
+7. release-config and publisher-node-import remain excluded from this support mechanism unless repository evidence changes;
+8. release execution/grouping, timeouts, artifact reuse, CI topology, and `release-version` policy remain unchanged;
+9. architect re-reviews the complete Pass E boundary after implementation, including the shared support closure rather than only the latest patch.
 
-## PR completion order after Pass E
+## PR completion order
 
-Pass E is closed. PR #216 still requires:
+Because the full PR semantic review found this blocker, benchmark and final exact-head merge gating remain deferred.
 
-1. correction and architect review of the two verifier-output minors;
-2. one complete PR-level semantic review;
-3. removal of resolved review artifacts;
-4. stable exact-head CI on the corrected implementation;
-5. the mandatory representative benchmark with both critical-path/merge latency and aggregate expensive compute;
-6. an explicit architect stop/reopen decision;
-7. CI on the resulting final documentation head;
-8. final ancestry/thread/check revalidation and merge-readiness verdict.
+Current order:
+
+1. fresh independent test-author proof for shared release-execution support;
+2. separate `releaseRisk.ts` implementation pass against accepted proof;
+3. architect complete Pass E re-review;
+4. rerun one complete PR-level semantic review from scratch, because the previous full review ended blocked;
+5. obtain stable exact-head CI for the semantically accepted implementation;
+6. perform and record the mandatory benchmark:
+   - critical-path / merge latency;
+   - aggregate expensive compute;
+7. record stop/reopen decision and update final documentation/PR metadata;
+8. require CI on the resulting final documentation head;
+9. re-check current `develop` ancestry, unresolved review threads, exact PR head, and required CI lanes before merge readiness.
