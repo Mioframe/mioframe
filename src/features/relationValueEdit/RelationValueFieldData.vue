@@ -39,6 +39,7 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
   <MDCircularProgressIndicator v-if="isLoading && !propertiesIdList" :size="24" />
 
   <DatabaseDataTable
+    v-else
     class="relation-value-field-data__table"
     :directory-path="directoryPath"
     :document-id="documentId"

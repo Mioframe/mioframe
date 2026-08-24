@@ -260,7 +260,7 @@ function getColumnMinWidthStyle(
   &__actions {
     position: sticky;
     right: 0;
-    z-index: 2;
+    z-index: 0;
     background-color: var(--md-container-color);
 
     :deep(> *) {

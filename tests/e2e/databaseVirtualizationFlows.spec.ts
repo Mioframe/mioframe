@@ -1038,6 +1038,68 @@ test('retains dynamic row sizing, sticky native-table surfaces, and measured pro
   ).toBeVisible();
   expect(await readStickySurface()).toEqual(initialStickySurface);
 
+  const stackingHits = await root.evaluate((rootElement) => {
+    const tableElement = rootElement.querySelector('.db-data-table');
+    const header = tableElement?.querySelector('thead');
+    const headerBottom = header?.getBoundingClientRect().bottom ?? 0;
+    const bodyRow = Array.from(
+      tableElement?.querySelectorAll('tbody > tr:not([aria-hidden="true"])') ?? [],
+    ).find((row) => {
+      const rect = row.getBoundingClientRect();
+      return rect.top >= headerBottom && rect.bottom <= window.innerHeight;
+    });
+    const bodyAction = bodyRow?.querySelector('td.db-data-table__actions');
+    const bodyValue = bodyRow?.querySelector('td.db-data-table__value');
+    const headerAction = tableElement?.querySelector('thead th.db-data-table__actions');
+    const headerProperty = Array.from(
+      tableElement?.querySelectorAll('thead th[aria-colindex]:not(.db-data-table__actions)') ?? [],
+    ).find((cell) => {
+      const rect = cell.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= window.innerWidth;
+    });
+
+    if (!bodyAction || !bodyValue || !headerAction || !headerProperty) {
+      throw new Error('Expected mounted body and header surfaces for stacking hit testing');
+    }
+
+    const centerOf = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+
+    const describeHit = (point: { x: number; y: number }) => {
+      const hit = document.elementFromPoint(point.x, point.y);
+
+      return {
+        bodyAction: Boolean(hit?.closest('tbody td.db-data-table__actions')),
+        bodyValue: Boolean(hit?.closest('tbody td.db-data-table__value')),
+        header: Boolean(hit?.closest('thead')),
+        headerAction: Boolean(hit?.closest('thead th.db-data-table__actions')),
+        headerProperty: Boolean(
+          hit?.closest('thead th[aria-colindex]:not(.db-data-table__actions)'),
+        ),
+      };
+    };
+
+    return {
+      bodyRight: describeHit(centerOf(bodyAction)),
+      headerRight: describeHit(centerOf(headerAction)),
+      headerProperty: describeHit(centerOf(headerProperty)),
+    };
+  });
+
+  expect(stackingHits.bodyRight).toMatchObject({ bodyAction: true, bodyValue: false });
+  expect(stackingHits.headerRight).toMatchObject({
+    bodyAction: false,
+    header: true,
+    headerAction: true,
+  });
+  expect(stackingHits.headerProperty).toMatchObject({
+    bodyAction: false,
+    header: true,
+    headerProperty: true,
+  });
+
   await root.evaluate((rootElement) => {
     rootElement.scrollLeft = 0;
     rootElement.scrollTop = 0;
