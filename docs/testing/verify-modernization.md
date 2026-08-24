@@ -1,6 +1,6 @@
 # Verify modernization
 
-Status: **full PR semantic review completed but blocked; Pass E shared release-execution support correction and the mandatory benchmark remain**.
+Status: **full PR semantic review is blocked by release-impact and mutation-ownership corrections; mandatory benchmark remains deferred**.
 
 Branch: `refactor/verify-modernization-finish`  
 PR: `#216`
@@ -17,8 +17,9 @@ This document records current implementation/review/benchmark status. Canonical 
 - `docs/testing/verify-unit-impact-correction.md` — closed unit-impact architecture;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
 - `docs/testing/verify-release-impact-correction.md` — current Pass E architecture; reopened shared release-execution support boundary;
+- `docs/testing/verify-mutation-impact-correction.md` — current mutation correction architecture;
 - `docs/testing/verify-finish-plan.md` — remaining integration order;
-- `scripts/lib/REVIEW.md` — active semantic blocker from the full PR review;
+- `scripts/lib/REVIEW.md` — active semantic blockers;
 - `docs/testing/REVIEW.md` — mandatory benchmark blocker.
 
 ## Goal
@@ -51,15 +52,13 @@ Closed. Repository metadata uses a narrow positive classifier; runtime/source-ad
 
 ### Pass C — unit impact
 
-Closed and architect-reviewed: exact direct Vitest discovery, real `vitest related` for ordinary dependency inputs, explicit file-as-data ownership, bounded repository-scan owners, status-aware deletion/rename handling, and fail-closed fallback.
+Core unit-impact architecture remains accepted: exact direct Vitest discovery, real `vitest related` for ordinary dependency inputs, explicit file-as-data ownership, bounded repository-scan owners, status-aware deletion/rename handling, and fail-closed fallback.
+
+The mutation correction will remove unitRisk's private duplicate Vitest test-path classifier in favor of one shared Vitest discovery-path owner. That is a source-of-truth correction, not a redesign of unit impact.
 
 ### Application-E2E discovery
 
 Closed and architect-reviewed. `scripts/lib/appE2EPaths.ts` owns root application-spec path identity; real Playwright collector proof remains independent.
-
-### Pass D — mutation
-
-Closed through one explicit high-risk mutation target registry shared by verifier planning and Stryker.
 
 ### Pass F — CI topology
 
@@ -77,7 +76,7 @@ autofix
 
 `release-version` remains independent from source-impact planning.
 
-## Pass E — reopened by full PR review
+## Reopened Pass E — shared release-execution support
 
 Earlier Pass E sub-boundaries remain accepted:
 
@@ -87,9 +86,9 @@ Earlier Pass E sub-boundaries remain accepted:
 - production-build ownership for static/tool-discovered config, production env, TypeScript config, `public/**`, `pnpm-workspace.yaml`, package/lockfile fallback;
 - artifact reuse, timeout model, and CI placement.
 
-The full PR semantic review found one omitted **mechanism**, not an isolated path: real release execution uses shared command/runtime support under `scripts/lib/**`, but `releaseRisk.ts` currently does not classify that support and can return `skip` for changes to it.
+The full PR semantic review found one omitted mechanism: real release execution uses shared command/runtime support under `scripts/lib/**`, but `releaseRisk.ts` does not classify that support and can return `skip` for changes to it.
 
-Current bounded shared release-execution support population:
+Current bounded support population:
 
 ```text
 scripts/lib/commandLock.ts
@@ -99,43 +98,82 @@ scripts/lib/runLocalCommand.ts
 scripts/lib/signalForward.ts
 ```
 
-Confirmed truthful consumers:
+Truthful consumers:
 
 ```text
 artifact + build + managed-updates + release-smoke
 ```
 
-`release-config` and `publisher-node-import` do not consume this mechanism.
+The architecture is resolved in `verify-release-impact-correction.md`; implementation remains pending.
 
-The architecture is resolved in `verify-release-impact-correction.md`: keep the explicit current mechanism local to `releaseRisk.ts`; require a bounded transitive runtime-import audit from the accepted release execution roots; keep unrelated `scripts/lib/**` negative; do not add a generic graph or broad directory fallback.
+## Reopened Pass D — mutation ownership/status contract
 
-Because this is another release-ownership completeness failure, the repository stop rule applies: implementation must close the audited mechanism, not add only the five noticed examples without proving the population is complete.
+An independent reviewer found, and architect re-verification confirmed, two linked defects in the current mutation lane.
+
+### Canonical changed identity is lost before planning
+
+`changedPaths.ts` preserves deleted paths and both old/new rename identities, but `buildCommands()` filters the projection through current filesystem existence before calling `resolveMutationPlan()`. A deleted or renamed-away `stryker.config.mjs` can therefore silently skip mutation even though mutation execution config changed.
+
+Resolved correction:
+
+```text
+canonical flat changedFiles projection
+→ resolveMutationPlan(changedFiles)
+```
+
+Mutation remains identity-based; no second Git/status parser or status-bearing planner API is required.
+
+### Mutation registry uses a false Vitest ownership heuristic
+
+`validateMutationRegistry()` currently treats only `*.test.ts` as Vitest-owned, while the real `vitest.config.ts` includes additional `.test.mjs` populations and root test shapes. `unitRisk.ts` already carries a separate, more accurate copy of that contract.
+
+Resolved correction:
+
+```text
+scripts/lib/vitestTestPaths.ts
+→ one narrow Vitest test-path/discovery owner
+   ├─ vitest.config.ts
+   ├─ unitRisk.ts
+   └─ mutationTargets.ts
+```
+
+The shared path owner is full-unit infrastructure. Mutation execution-semantic paths become:
+
+```text
+stryker.config.mjs
+scripts/lib/mutationTargets.ts
+vitest.config.ts
+scripts/lib/vitestTestPaths.ts
+→ all registered mutation targets after validation
+```
+
+The seven current audited mutation targets, Stryker mutate surface, thresholds, timeout, and CI topology remain unchanged.
+
+Detailed architecture: `verify-mutation-impact-correction.md`.
 
 ## Full PR semantic review result
 
-The complete PR-level review was performed from scratch against the current resulting PR rather than relying on accumulated focused reviews.
-
-Result:
+The first complete review from scratch ended blocked. After consolidating the independent mutation review, current semantic state is:
 
 ```text
-verdict: blocked
-blockers: 1 semantic implementation blocker
+semantic blockers: 2
 major issues: 0
 minor issues: 0
 accepted risks: 0
 ```
 
-The active implementation finding is `scripts/lib/REVIEW.md` B1.
+Active semantic findings are `scripts/lib/REVIEW.md` B1 and B2:
 
-No additional findings were found in repository metadata, unit impact, application-E2E discovery, Storybook behavior/visual ownership, mutation ownership, verifier invocation/output, release-spec execution inventory, production-build ownership, or CI topology.
+1. shared release-execution support can silently skip release proof;
+2. mutation ownership loses deleted/rename-old identity and does not use the real Vitest-owned test contract.
 
-The full semantic review must be repeated after B1 is corrected because the current review ended blocked.
+A new complete PR semantic review must be performed only after both corrections are implemented and their owner-level reviews are clean.
 
 ## Mandatory benchmark — pending
 
-`docs/testing/REVIEW.md` remains a separate completion blocker. Do **not** benchmark yet: the accepted sequence requires a clean full semantic review first.
+`docs/testing/REVIEW.md` remains a separate completion blocker. Do **not** benchmark yet: the accepted sequence requires semantic closure first.
 
-After semantic closure, record bounded real execution evidence for both:
+After a clean full semantic review, record bounded real execution evidence for both:
 
 ```text
 critical-path / merge latency
@@ -147,7 +185,7 @@ Record source run/change class, both measurements, interpretation, and an explic
 ## Current review state
 
 ```text
-blockers: 2
+blockers: 3
 major issues: 0
 minor issues: 0
 accepted risks: 0
@@ -155,14 +193,17 @@ accepted risks: 0
 
 Blockers:
 
-1. `scripts/lib/REVIEW.md` — shared release-execution support can silently skip release proof;
-2. `docs/testing/REVIEW.md` — mandatory representative benchmark, deferred until semantic closure.
+1. `scripts/lib/REVIEW.md` B1 — shared release-execution support ownership;
+2. `scripts/lib/REVIEW.md` B2 — mutation changed-identity / Vitest ownership contract;
+3. `docs/testing/REVIEW.md` B1 — mandatory representative benchmark, deferred until semantic closure.
+
+CI from production head `32e33108ea91eb17c4d6960e97ede1c32e84dae7` is intermediate evidence only. Architect-owned review/documentation updates have moved the PR head, and semantic blockers remain open regardless of CI color.
 
 ## Completion
 
 Modernization is complete only after:
 
-1. shared release-execution support ownership is implemented and architect-reviewed;
+1. both semantic blockers are implemented and owner-reviewed;
 2. a new complete PR semantic review is clean;
 3. stable exact-head CI for the semantically accepted implementation is healthy;
 4. both mandatory benchmark metrics are recorded;
