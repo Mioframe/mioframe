@@ -1,18 +1,14 @@
 # Database virtualization completion pass handoff
 
-Status: **completed**.
+Status: **implementation pass completed; follow-up proof correction required**.
 
-This document records the final consolidated PR #217 virtualization completion pass.
+This document records the consolidated PR #217 virtualization completion pass.
 
-## Goal
-
-Finish the remaining virtualization correctness and presentation blockers without expanding into residual non-virtualization performance work.
-
-## Final result
+## Completed implementation
 
 ### Pass A — top-level moving-surface diagnosis
 
-The historical failure was not reproduced in the authorized diagnosis. Supplied widget offsets matched current physical root-to-layout offsets at every required checkpoint:
+The authorized numeric diagnosis did not reproduce a supplied-vs-physical offset mismatch. Reported values matched at every checkpoint:
 
 - initial top: vertical `178`, horizontal `16`;
 - first deep: vertical `178`, horizontal `16`;
@@ -22,21 +18,37 @@ The historical failure was not reproduced in the authorized diagnosis. Supplied 
 
 Both deep phases reached logical row `46`. Temporary diagnostics were removed.
 
-The shared deep-state `surfaceOffset` capability already proves the generic `deep -> change while deep -> top -> deep` lifecycle on the same root/list. Therefore current evidence does not justify another production geometry/cache/lifecycle correction. Any new exact-head reproduction must reopen the finding from concrete evidence rather than speculative recovery logic.
+The shared deep-state `surfaceOffset` capability also proves the generic `deep -> change while deep -> top -> deep` lifecycle on the same root/list. No production geometry/cache/lifecycle correction was selected.
 
 ### Pass B — relation local-root invariant
 
-`RelationValueFieldData` now renders the loading indicator and `DatabaseDataTable` mutually exclusively. Explicit local `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` are truthful whenever the table is mounted.
+`RelationValueFieldData` renders the loading indicator and `DatabaseDataTable` mutually exclusively. Explicit local `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` are truthful whenever the table is mounted.
 
 An owner-local component test proves loading/table mutual exclusion and transition to the table. Relevant relation/database E2E remained green.
 
 ### Pass C — sticky action/header stacking
 
-`DatabaseDataTable` body action cells remain sticky/right but use local `z-index: 0`, below the shared sticky `thead` plane. The header action cell remains locally elevated inside the header.
+`DatabaseDataTable` body action cells remain sticky/right at local `z-index: 0`, below the shared sticky `thead` plane. The header action cell remains locally elevated inside the header.
 
-The existing sticky native-table product E2E now uses real browser hit-testing after combined vertical + horizontal scrolling to prove body-right action ownership, top-right header/action ownership, and an ordinary header band above body action cells.
+The existing sticky native-table product E2E uses real browser hit-testing after combined vertical + horizontal scrolling to prove body-right action ownership, top-right header/action ownership, and an ordinary header band above body action cells.
 
 No shared `MDTable` change was required.
+
+## Follow-up exact-head finding
+
+GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only the moving-surface application E2E on desktop Chromium. All three attempts exhausted the normal 30-second per-test timeout, but at different phases; Mobile Chrome passed.
+
+The scenario creates the real five-row Weekly Plan starter example and then performs forty sequential full add-item dialog flows before its geometry assertions. The failure is therefore classified as an over-budget proof design until a proportional setup disproves that classification.
+
+Required next correction is test-only and is defined in `docs/database-virtualization.md` and `src/entities/databaseData/REVIEW.md`:
+
+- keep the real success-card lifecycle;
+- use a compact deterministic desktop viewport;
+- create only enough extra rows to guarantee a virtualized deep range before and after dismiss;
+- preserve bounded-range, physical-movement, top, and logical-tail assertions;
+- do not increase timeout or change production geometry.
+
+If that proportional proof still fails with meaningful budget remaining, production architecture must be reopened from the new evidence.
 
 ## Preserved architecture
 
@@ -46,21 +58,5 @@ No shared `MDTable` change was required.
 - `DatabaseDataTable` does not rediscover upper-layer ancestor/sibling geometry.
 - Relation loading does not introduce geometry observation.
 - Sticky correction remains local to Database table integration.
-
-## Verification
-
-Coding agent reports focused unit/E2E/relation E2E/format/ESLint/Oxlint/type-check green and final:
-
-`pnpm verify --base origin/develop`
-
-passed in one iteration.
-
-Exact-head GitHub CI remains architect-owned.
-
-## Remaining PR gates
-
-- operator visual reinspection of borders/corners and combined sticky surfaces;
-- exact-head GitHub CI without retry/flaky classification;
-- final resulting-PR review.
 
 Residual heterogeneous-content Chromium jank and other non-virtualization freeze causes remain deferred to later PRs.
