@@ -38,6 +38,7 @@ import {
   resolveVerifyInvocation,
   VERIFY_LABELS,
   type FixMode,
+  type VerificationType,
   type VerifyInvocation,
 } from './lib/verifyInvocation.ts';
 import {
@@ -58,6 +59,13 @@ export interface RunCommandEntry {
   weight?: CommandWeight;
   note?: string | null;
   triggerReason?: string | null;
+  /**
+   * The single verification type this proof leaf belongs to, or `null` for
+   * a pure execution prerequisite. Stamped by {@link withVerificationType} as
+   * a final planning pass; individual command-building call sites do not
+   * set this themselves.
+   */
+  verificationType?: VerificationType | null;
 }
 
 /** Command entry the planner emits when a check is skipped. */
@@ -67,6 +75,8 @@ export interface SkippedCommandEntry {
   command: string;
   reason: string;
   triggerReason?: string | null;
+  /** See {@link RunCommandEntry.verificationType}. */
+  verificationType?: VerificationType | null;
 }
 
 /** Command entry the planner emits when a check fails closed before execution. */
@@ -76,6 +86,8 @@ export interface FailedCommandEntry {
   command: string;
   reason: string;
   triggerReason?: string | null;
+  /** See {@link RunCommandEntry.verificationType}. */
+  verificationType?: VerificationType | null;
 }
 
 /** One planned verify command, discriminated by `kind`. */
@@ -189,15 +201,137 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
+  // Two real `vite build` invocations; no Playwright container involved
+  // (see scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs
+  // and productionArtifactStaticProof.mjs).
+  'artifact-static': 10 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  // Four sequential fresh-container sessions (see
-  // scripts/release/managedUpdatesProof.mjs), each bounded by the same
-  // derived Playwright container timeout as every other Playwright-backed
-  // lane.
-  'managed-updates': 4 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates-static': 8 * 60 * 1000,
+  // Split from the historical single `managed-updates` aggregate (see
+  // docs/testing/verify-redesign-implementation-preflight.md's
+  // "Managed-updates grouping"): three sequential fresh-container sessions
+  // (lifecycle, migration-isolation, cross-engine) for the
+  // browser-integration proof leaf, and two (activation-UI,
+  // data-compatibility) for the E2E proof leaf; each session is bounded by
+  // the same derived Playwright container timeout as every other
+  // Playwright-backed lane.
+  'managed-updates-browser-integration': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates-e2e': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
+
+// Internal verification-type ownership for every planner leaf label (Pass A
+// of the verify redesign: see
+// docs/testing/verify-redesign-implementation-preflight.md). The public CLI
+// still selects legacy `onlyLabel` values (see VERIFY_LABELS); this mapping
+// only makes proof ownership explicit on planned command entries so a later
+// pass can switch `--only` to these types without re-deriving ownership.
+// Every proof leaf label must appear here with exactly one type; a label
+// that is a pure execution prerequisite (never itself a proof leaf) is
+// listed in PREREQUISITE_LABELS instead of being invented as a ninth type.
+const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationType>>> = {
+  'agent-environment': 'static',
+  format: 'static',
+  oxlint: 'static',
+  eslint: 'static',
+  'type-check': 'static',
+  'unit-tests': 'unit',
+  e2e: 'e2e',
+  'storybook-behavior': 'behavior',
+  visual: 'visual',
+  mutation: 'mutation',
+  'release-version': 'static',
+  'release-config': 'static',
+  build: 'static',
+  'publisher-node-import': 'static',
+  'artifact-static': 'static',
+  artifact: 'browser-integration',
+  'release-smoke': 'e2e',
+  'managed-updates-static': 'static',
+  'managed-updates-browser-integration': 'browser-integration',
+  'managed-updates-e2e': 'e2e',
+};
+
+// Pure execution prerequisites: never a proof leaf on their own, so they
+// carry no verification type instead of inventing a ninth type for them
+// (see the implementation preflight's "pure execution prerequisites such as
+// e2e-install are not invented as a ninth verification type").
+const PREREQUISITE_LABELS: ReadonlySet<string> = new Set(['e2e-install', 'storybook-build']);
+
+/**
+ * Resolve the single verification type a planner leaf label belongs to.
+ * @param label Verify command label.
+ * @returns The owning verification type, or `null` for a pure execution
+ * prerequisite label.
+ */
+function resolveVerificationType(label: string): VerificationType | null {
+  const type = VERIFICATION_TYPE_BY_LABEL[label];
+
+  if (type !== undefined) {
+    return type;
+  }
+
+  if (PREREQUISITE_LABELS.has(label)) {
+    return null;
+  }
+
+  throw new Error(`No verification type registered for verify command label: ${label}`);
+}
+
+/**
+ * Stamp one planned command entry with its single owning verification type
+ * (or `null` for a pure execution prerequisite). Applied as a final planning
+ * pass over the full command list so individual command-building call sites
+ * do not each need to repeat label -> type ownership.
+ * @param entry Planned command entry.
+ * @returns The same entry with `verificationType` resolved.
+ */
+export function withVerificationType<T extends CommandEntry>(entry: T): T {
+  return { ...entry, verificationType: resolveVerificationType(entry.label) };
+}
+
+// Pass A legacy `--only` compatibility: a currently public low-level label
+// that used to select one mixed-type proof leaf now expands to every
+// type-homogeneous internal leaf split from it, so the legacy selection
+// still runs everything it covered before the split (see
+// docs/testing/verify-redesign-implementation-preflight.md's "Legacy label
+// compatibility"). A label absent here still selects by exact match, as
+// before this pass.
+export const LEGACY_LABEL_LEAF_LABELS: Readonly<Partial<Record<string, readonly string[]>>> = {
+  artifact: ['artifact-static', 'artifact'],
+  'managed-updates': [
+    'managed-updates-static',
+    'managed-updates-browser-integration',
+    'managed-updates-e2e',
+  ],
+};
+
+/**
+ * Resolve the public `--only` label a rerun suggestion must use for a given
+ * command label. A public label (in {@link VERIFY_LABELS}) resolves to
+ * itself. An internal split leaf (a value in {@link LEGACY_LABEL_LEAF_LABELS})
+ * resolves to its owning legacy public label, since the leaf itself is not a
+ * valid `--only` value — rerunning the legacy label still selects every
+ * split leaf, including the one that failed or warned (see
+ * {@link selectOnlyCommands}).
+ * @param label Command label from a collected result.
+ * @returns A public `--only` label safe to pass to
+ * {@link formatVerifyInvocationCommand}.
+ */
+export function resolvePublicOnlyLabel(label: string): string {
+  if (VERIFY_LABELS.includes(label)) {
+    return label;
+  }
+
+  for (const [legacyLabel, leafLabels] of Object.entries(LEGACY_LABEL_LEAF_LABELS)) {
+    if (leafLabels?.includes(label)) {
+      return legacyLabel;
+    }
+  }
+
+  return label;
+}
 
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
@@ -666,6 +800,28 @@ function formatHelpTimeout(milliseconds: number): string {
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
 
+/**
+ * Resolve the worst-case internal timeout for a public `--only` label, for
+ * help display only. A legacy label split into several internal leaves (see
+ * {@link LEGACY_LABEL_LEAF_LABELS}) sums every leaf's own timeout, since a
+ * legacy selection runs every leaf it historically covered.
+ * @param label Public verify label.
+ * @returns Worst-case timeout in milliseconds, or `null` when no leaf under
+ * this label has a fixed internal timeout.
+ */
+function getLegacyLabelTimeoutMs(label: string): number | null {
+  const leafLabels = LEGACY_LABEL_LEAF_LABELS[label] ?? [label];
+  const timeouts = leafLabels
+    .map((leafLabel) => COMMAND_TIMEOUT_MS_BY_LABEL[leafLabel])
+    .filter((value): value is number => value !== undefined);
+
+  if (timeouts.length === 0) {
+    return null;
+  }
+
+  return timeouts.reduce((sum, value) => sum + value, 0);
+}
+
 function getLastMeaningfulLine(text: string): string | null {
   const lines = text
     .split('\n')
@@ -759,9 +915,9 @@ function printHelp(): void {
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
 
   for (const label of VERIFY_LABELS) {
-    const timeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label];
+    const timeoutMs = getLegacyLabelTimeoutMs(label);
 
-    if (timeoutMs === undefined) {
+    if (timeoutMs === null) {
       continue;
     }
 
@@ -1221,6 +1377,14 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 
   commands.push({
     kind: 'run',
+    label: 'artifact-static',
+    command: 'node',
+    args: ['scripts/release/productionArtifactStaticProof.mjs'],
+    weight: classifyCommandWeight({ label: 'artifact-static' }),
+  });
+
+  commands.push({
+    kind: 'run',
     label: 'artifact',
     command: 'pnpm',
     args: [
@@ -1247,10 +1411,26 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 
   commands.push({
     kind: 'run',
-    label: 'managed-updates',
+    label: 'managed-updates-static',
     command: 'node',
-    args: ['scripts/release/managedUpdatesProof.mjs'],
-    weight: classifyCommandWeight({ label: 'managed-updates' }),
+    args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs'],
+    weight: classifyCommandWeight({ label: 'managed-updates-static' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates-browser-integration',
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'browser-integration'],
+    weight: classifyCommandWeight({ label: 'managed-updates-browser-integration' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates-e2e',
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'e2e'],
+    weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
   });
 }
 
@@ -1433,7 +1613,7 @@ export function buildCommands(
   }
 
   if (fixOnlyMode) {
-    return commands;
+    return commands.map(withVerificationType);
   }
 
   if (fullMode || changedFiles.some(isTypeCheckTarget)) {
@@ -1711,10 +1891,19 @@ export function buildCommands(
     addReleaseOnlyCommands(commands);
   }
 
-  return commands;
+  return commands.map(withVerificationType);
 }
 
-function selectOnlyCommands(
+/**
+ * Select the planned command entries for a resolved `--only` label. A
+ * legacy label listed in {@link LEGACY_LABEL_LEAF_LABELS} expands to every
+ * type-homogeneous internal leaf split from it, so the legacy selection
+ * still runs everything it historically covered.
+ * @param commands Full planned command list.
+ * @param [onlyLabel] Resolved `--only` label, or `null` for no narrowing.
+ * @returns The selected command entries, in their original planned order.
+ */
+export function selectOnlyCommands(
   commands: readonly CommandEntry[],
   onlyLabel: string | null = cliOnlyLabel,
 ): CommandEntry[] {
@@ -1722,14 +1911,15 @@ function selectOnlyCommands(
     return [...commands];
   }
 
-  const selectedCommands = commands.filter((entry) => entry.label === onlyLabel);
+  const leafLabels = LEGACY_LABEL_LEAF_LABELS[onlyLabel] ?? [onlyLabel];
+  const selectedCommands = commands.filter((entry) => leafLabels.includes(entry.label));
 
   if (selectedCommands.length > 0) {
     return selectedCommands;
   }
 
   if (onlyLabel === 'e2e-install') {
-    return [createE2EInstallCommand('empty e2e scope')];
+    return [withVerificationType(createE2EInstallCommand('empty e2e scope'))];
   }
 
   throw new Error(`Verify command list is missing required label: ${onlyLabel}`);
@@ -1785,7 +1975,7 @@ export function getActionRequired(
 
   for (const result of failedResults) {
     actions.push(
-      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: resolvePublicOnlyLabel(result.label) })}`,
     );
 
     if (result.blockingLogIssue) {
@@ -1806,7 +1996,7 @@ export function getActionRequired(
 
   for (const result of warningResults) {
     actions.push(
-      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: resolvePublicOnlyLabel(result.label) })}`,
     );
     actions.push(`Reason: ${result.warningSummary}`);
   }
@@ -1974,9 +2164,16 @@ export function printSummary(
 }
 
 // Release Playwright checks whose webServer builds the production artifact
-// itself (see playwright.release.config.ts). Reused only when the `build`
-// check already produced a fresh artifact earlier in this same run.
-const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
+// itself (see playwright.release.config.ts). Reused only when a fresh
+// artifact was already produced earlier in this same run, by any label in
+// ARTIFACT_BUILD_SOURCE_LABELS.
+const ARTIFACT_REUSE_LABELS = new Set(['artifact-static', 'artifact', 'release-smoke']);
+
+// Labels whose successful completion proves a fresh production artifact
+// already exists on disk: the dedicated `build` check, and `artifact-static`
+// (see scripts/release/productionArtifactStaticProof.mjs), which also builds
+// the artifact itself before validating it.
+const ARTIFACT_BUILD_SOURCE_LABELS = new Set(['build', 'artifact-static']);
 
 // Storybook browser lanes whose webServer builds the Storybook static
 // artifact itself (see playwright.storybook.config.ts / playwright.visual.config.ts).
@@ -1986,10 +2183,11 @@ const STORYBOOK_STATIC_REUSE_LABELS = new Set(['storybook-behavior', 'visual']);
 
 /**
  * Resolve extra env for a command entry, based on prior results in this run.
- * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
- * release-only checks once the `build` check has already produced a fresh
- * production artifact in this same `pnpm verify` invocation, so a single
- * release gate does not rebuild the artifact once per check that needs it.
+ * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact-static`/`artifact`/
+ * `release-smoke` release-only checks once an earlier check in
+ * ARTIFACT_BUILD_SOURCE_LABELS has already produced a fresh production
+ * artifact in this same `pnpm verify` invocation, so a single release gate
+ * does not rebuild the artifact once per check that needs it.
  * Sets `STORYBOOK_STATIC_SKIP_BUILD=1` for the `storybook-behavior`/`visual`
  * checks once the `storybook-build` check has already produced a fresh
  * Storybook static build in this same invocation, for the same reason.
@@ -2004,9 +2202,11 @@ export function getExtraEnvForEntry(
   const extraEnv: NodeJS.ProcessEnv = {};
 
   if (ARTIFACT_REUSE_LABELS.has(entry.label)) {
-    const buildResult = priorResults.find((result) => result.label === 'build');
+    const hasFreshArtifact = priorResults.some(
+      (result) => ARTIFACT_BUILD_SOURCE_LABELS.has(result.label) && result.status === 'passed',
+    );
 
-    if (buildResult?.status === 'passed') {
+    if (hasFreshArtifact) {
       extraEnv.RELEASE_ARTIFACT_SKIP_BUILD = '1';
     }
   }

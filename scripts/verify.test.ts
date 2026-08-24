@@ -27,8 +27,11 @@ import {
   printSummary,
   resolveCommandStatus,
   resolvePlaywrightCommandTimeoutMs,
+  resolvePublicOnlyLabel,
   resolveVerifyChangedPathContext,
   runVerifyCli,
+  selectOnlyCommands,
+  withVerificationType,
   type CommandEntry,
   type ExecutedCommandResult,
   type RunCommandEntry,
@@ -172,6 +175,8 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     mutation: 20 * 60 * 1000,
     build: 10 * 60 * 1000,
     artifact: 8 * 60 * 1000,
+    'artifact-static': 10 * 60 * 1000,
+    'managed-updates-static': 8 * 60 * 1000,
     'storybook-build': 10 * 60 * 1000,
   };
 
@@ -198,10 +203,13 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     }
   });
 
-  it('sizes the managed-updates aggregate timeout for exactly four sequential container sessions', () => {
+  it('sizes the split managed-updates browser-integration and E2E leaf timeouts for their own fresh-container sessions', () => {
     const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
 
-    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates-browser-integration']).toBe(
+      3 * singleSessionTimeoutMs,
+    );
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates-e2e']).toBe(2 * singleSessionTimeoutMs);
   });
 });
 
@@ -334,6 +342,9 @@ describe('buildCommands full mode', () => {
       'scripts/release/validateReleaseConfig.mjs',
     ]);
     expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.mjs',
+    ]);
     expect(requireRunEntry(commands, 'artifact').args).toEqual([
       'e2e:release',
       '--label',
@@ -346,19 +357,50 @@ describe('buildCommands full mode', () => {
       'release-smoke',
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ]);
-    expect(requireRunEntry(commands, 'managed-updates').command).toBe('node');
-    expect(requireRunEntry(commands, 'managed-updates').args).toEqual([
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').command).toBe('node');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
       'scripts/release/managedUpdatesProof.mjs',
+      '--kind',
+      'browser-integration',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-e2e').command).toBe('node');
+    expect(requireRunEntry(commands, 'managed-updates-e2e').args).toEqual([
+      'scripts/release/managedUpdatesProof.mjs',
+      '--kind',
+      'e2e',
     ]);
   });
 
-  it('runs the managed-updates label through the aggregate proof runner, not a direct eight-file Playwright command', () => {
+  it('runs both split managed-updates leaves through the proof runner, not a direct Playwright command', () => {
     const commands = buildCommands([], { fullMode: true });
-    const managedUpdates = requireRunEntry(commands, 'managed-updates');
+    const browserIntegration = requireRunEntry(commands, 'managed-updates-browser-integration');
+    const e2e = requireRunEntry(commands, 'managed-updates-e2e');
 
-    expect(managedUpdates.command).not.toBe('pnpm');
-    expect(managedUpdates.args).not.toContain('e2e:release');
-    expect(managedUpdates.args).not.toContain('tests/e2e/release/managedUpdatesLifecycle.spec.ts');
+    for (const entry of [browserIntegration, e2e]) {
+      expect(entry.command).not.toBe('pnpm');
+      expect(entry.args).not.toContain('e2e:release');
+      expect(entry.args).not.toContain('tests/e2e/release/managedUpdatesLifecycle.spec.ts');
+    }
+  });
+
+  it('assigns exactly one verification type to every runnable release-only leaf, and null to the setup-only build prerequisite', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'release-version').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'release-config').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'publisher-node-import').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact').verificationType).toBe('browser-integration');
+    expect(requireRunEntry(commands, 'release-smoke').verificationType).toBe('e2e');
+    expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').verificationType).toBe(
+      'browser-integration',
+    );
+    expect(requireRunEntry(commands, 'managed-updates-e2e').verificationType).toBe('e2e');
   });
 
   it('does not add release-only checks outside full mode', () => {
@@ -368,9 +410,110 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('release-version');
     expect(labels).not.toContain('release-config');
     expect(labels).not.toContain('build');
+    expect(labels).not.toContain('artifact-static');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
-    expect(labels).not.toContain('managed-updates');
+    expect(labels).not.toContain('managed-updates-static');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+    expect(labels).not.toContain('managed-updates-e2e');
+  });
+});
+
+describe('buildCommands verification type composition', () => {
+  it('assigns exactly one verification type to every non-release runnable/skipped leaf', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const typeByLabel = {
+      'agent-environment': 'static',
+      format: 'static',
+      oxlint: 'static',
+      eslint: 'static',
+      'type-check': 'static',
+      'unit-tests': 'unit',
+      e2e: 'e2e',
+      'storybook-behavior': 'behavior',
+      visual: 'visual',
+    };
+
+    for (const [label, expectedType] of Object.entries(typeByLabel)) {
+      const entry = commands.find((candidate) => candidate.label === label);
+
+      expect(entry).toBeDefined();
+      expect(entry?.verificationType).toBe(expectedType);
+    }
+  });
+
+  it('leaves pure execution prerequisites without a verification type', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const e2eInstall = commands.find((entry) => entry.label === 'e2e-install');
+    const storybookBuild = commands.find((entry) => entry.label === 'storybook-build');
+
+    expect(e2eInstall?.verificationType).toBeNull();
+    expect(storybookBuild?.verificationType).toBeNull();
+  });
+
+  it('throws for an unregistered command label', () => {
+    expect(() =>
+      withVerificationType({ kind: 'run', label: 'not-a-real-label', command: 'node', args: [] }),
+    ).toThrow('No verification type registered for verify command label: not-a-real-label');
+  });
+});
+
+describe('selectOnlyCommands legacy label expansion', () => {
+  it('expands legacy --only artifact to both its static and browser-integration split leaves', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'artifact');
+
+    expect(selected.map((entry) => entry.label)).toEqual(['artifact-static', 'artifact']);
+  });
+
+  it('expands legacy --only managed-updates to its static, browser-integration, and E2E split leaves in order', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'managed-updates');
+
+    expect(selected.map((entry) => entry.label)).toEqual([
+      'managed-updates-static',
+      'managed-updates-browser-integration',
+      'managed-updates-e2e',
+    ]);
+  });
+
+  it('still selects a single leaf by exact match for a label with no legacy split', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'release-smoke');
+
+    expect(selected.map((entry) => entry.label)).toEqual(['release-smoke']);
+  });
+
+  it('returns every command unchanged when onlyLabel is null', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(selectOnlyCommands(commands, null)).toEqual(commands);
+  });
+});
+
+describe('resolvePublicOnlyLabel', () => {
+  it('resolves every public label to itself', () => {
+    expect(resolvePublicOnlyLabel('unit-tests')).toBe('unit-tests');
+    expect(resolvePublicOnlyLabel('artifact')).toBe('artifact');
+    expect(resolvePublicOnlyLabel('managed-updates')).toBe('managed-updates');
+  });
+
+  it('resolves an internal artifact split leaf to its owning legacy public label', () => {
+    expect(resolvePublicOnlyLabel('artifact-static')).toBe('artifact');
+  });
+
+  it('resolves every internal managed-updates split leaf to its owning legacy public label', () => {
+    expect(resolvePublicOnlyLabel('managed-updates-static')).toBe('managed-updates');
+    expect(resolvePublicOnlyLabel('managed-updates-browser-integration')).toBe('managed-updates');
+    expect(resolvePublicOnlyLabel('managed-updates-e2e')).toBe('managed-updates');
+  });
+
+  it('resolves the public e2e-install prerequisite label to itself', () => {
+    expect(resolvePublicOnlyLabel('e2e-install')).toBe('e2e-install');
+  });
+
+  it('falls back to the label itself for a label that is neither public nor a registered split leaf', () => {
+    expect(resolvePublicOnlyLabel('not-a-real-label')).toBe('not-a-real-label');
   });
 });
 
@@ -390,6 +533,7 @@ describe('buildCommands visual compatibility', () => {
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'invalid visual impact plan: broken visual impact metadata',
+      verificationType: 'visual',
     });
   });
 });
@@ -410,6 +554,7 @@ describe('buildCommands e2e project applicability', () => {
       command: 'pnpm e2e:container',
       reason:
         'invalid app e2e scenario registry state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
+      verificationType: 'e2e',
     });
   });
 
@@ -429,6 +574,7 @@ describe('buildCommands e2e project applicability', () => {
       command: 'pnpm e2e:container',
       reason:
         'invalid app e2e scenario registry state: broken scenario registry; broken applicability registry',
+      verificationType: 'e2e',
     });
   });
 
@@ -1080,8 +1226,22 @@ describe('getExtraEnvForEntry', () => {
     ).toEqual({});
   });
 
-  it('sets RELEASE_ARTIFACT_SKIP_BUILD once build has passed, for artifact and release-smoke', () => {
+  it('sets RELEASE_ARTIFACT_SKIP_BUILD once build has passed, for artifact-static, artifact, and release-smoke', () => {
     const priorResults = [{ label: 'build', status: 'passed' }];
+
+    expect(getExtraEnvForEntry({ label: 'artifact-static' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'artifact' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+  });
+
+  it('also treats a passed artifact-static leaf as a fresh-artifact source for artifact and release-smoke', () => {
+    const priorResults = [{ label: 'artifact-static', status: 'passed' }];
 
     expect(getExtraEnvForEntry({ label: 'artifact' }, priorResults)).toEqual({
       RELEASE_ARTIFACT_SKIP_BUILD: '1',
@@ -1250,6 +1410,52 @@ describe('getActionRequired', () => {
       expect.stringContaining('Vue runtime warnings were emitted during unit tests'),
     );
     expect(actions).toContainEqual(expect.stringContaining('[Vue warn]: Invalid watch source: 0'));
+  });
+
+  it('suggests a rerun through the owning legacy public label when an internal split leaf fails in full mode, instead of crashing on an invalid --only value', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    const actions = getActionRequired(
+      [
+        makeExecutedResult({
+          label: 'artifact-static',
+          command: 'node scripts/release/productionArtifactStaticProof.mjs',
+          status: 'failed',
+          exitCode: 1,
+        }),
+      ],
+      { invocation: fullInvocation },
+    );
+
+    expect(actions).toContainEqual(expect.stringContaining('Fix failed artifact-static errors'));
+    expect(actions).toContainEqual(expect.stringContaining('--only artifact'));
+    expect(actions).not.toContainEqual(expect.stringContaining('--only artifact-static'));
+  });
+
+  it('suggests a rerun through the owning legacy public label for each split managed-updates leaf', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    for (const label of [
+      'managed-updates-static',
+      'managed-updates-browser-integration',
+      'managed-updates-e2e',
+    ]) {
+      const actions = getActionRequired(
+        [
+          makeExecutedResult({
+            label,
+            command: 'node scripts/release/managedUpdatesProof.mjs',
+            status: 'failed',
+            exitCode: 1,
+          }),
+        ],
+        { invocation: fullInvocation },
+      );
+
+      expect(actions).toContainEqual(expect.stringContaining(`Fix failed ${label} errors`));
+      expect(actions).toContainEqual(expect.stringContaining('--only managed-updates'));
+      expect(actions).not.toContainEqual(expect.stringContaining(`--only ${label}`));
+    }
   });
 
   it('still reports None. when nothing failed or warned', () => {

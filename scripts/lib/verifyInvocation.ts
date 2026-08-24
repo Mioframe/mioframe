@@ -49,6 +49,40 @@ export const FIX_ONLY_LABELS: ReadonlySet<string> = new Set([
 
 const FULL_FORBIDDEN_LABELS: ReadonlySet<string> = new Set(['mutation']);
 
+/**
+ * The eight canonical verification types from the accepted unified `pnpm
+ * verify` architecture (see docs/testing/verify-redesign-architecture.md).
+ * Pass A of the verify redesign (see
+ * docs/testing/verify-redesign-implementation-preflight.md) tags every
+ * verifier proof leaf command with exactly one of these internally; the
+ * public `--only` CLI still selects legacy low-level labels (`onlyLabel`),
+ * not these types, until a later pass switches it over.
+ */
+export const VERIFICATION_TYPES = [
+  'static',
+  'unit',
+  'behavior',
+  'visual',
+  'browser-integration',
+  'performance',
+  'mutation',
+  'e2e',
+] as const;
+
+/** One of the eight canonical verification types. See {@link VERIFICATION_TYPES}. */
+export type VerificationType = (typeof VERIFICATION_TYPES)[number];
+
+const VERIFICATION_TYPE_SET: ReadonlySet<string> = new Set(VERIFICATION_TYPES);
+
+/**
+ * Type guard for a canonical verification type.
+ * @param value Candidate value.
+ * @returns Whether `value` is one of {@link VERIFICATION_TYPES}.
+ */
+export function isVerificationType(value: unknown): value is VerificationType {
+  return typeof value === 'string' && VERIFICATION_TYPE_SET.has(value);
+}
+
 /** Runtime profile a verify invocation executes under. */
 export type VerifyProfile = 'local' | 'github-actions';
 

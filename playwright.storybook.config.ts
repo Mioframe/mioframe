@@ -9,7 +9,15 @@ const viteBin = './node_modules/.bin/vite';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['tests/e2e/storybook/**/*.spec.ts', 'src/**/*.browser.spec.ts'],
+  // Target behavior discovery (see
+  // docs/testing/verify-redesign-implementation-preflight.md's "Target
+  // suffix migration"): `*.behavior.spec.ts` is discoverable alongside the
+  // legacy `*.browser.spec.ts` suffix before existing files are renamed.
+  testMatch: [
+    'tests/e2e/storybook/**/*.spec.ts',
+    'src/**/*.browser.spec.ts',
+    'src/**/*.behavior.spec.ts',
+  ],
   respectGitIgnore: true,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

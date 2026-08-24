@@ -1,31 +1,37 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  MANAGED_UPDATES_ACTIVATION_UI_LABEL,
+  MANAGED_UPDATES_ACTIVATION_UI_SPECS,
+  MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS,
   MANAGED_UPDATES_CROSS_ENGINE_LABEL,
   MANAGED_UPDATES_CROSS_ENGINE_SPECS,
   MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
-  MANAGED_UPDATES_GROUPS,
+  MANAGED_UPDATES_E2E_GROUPS,
   MANAGED_UPDATES_LIFECYCLE_LABEL,
   MANAGED_UPDATES_LIFECYCLE_SPECS,
   MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
   MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
-  runManagedUpdatesProof,
+  runManagedUpdatesBrowserIntegrationProof,
+  runManagedUpdatesE2EProof,
 } from './managedUpdatesProof.mjs';
 import { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL } from './runManagedReleaseDataCompatibilityProof.mjs';
 
-const EXPECTED_CORPUS = [
+const EXPECTED_BROWSER_INTEGRATION_CORPUS = [
   'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
   'tests/e2e/release/managedUpdatesDevelop.spec.ts',
   'tests/e2e/release/managedUpdatesMigration.spec.ts',
   'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
   'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-  'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
   'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
   'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
-  'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedUpdatesRecovery.spec.ts',
   'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
   'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
+];
+
+const EXPECTED_E2E_CORPUS = [
+  'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
 ];
 
@@ -33,26 +39,33 @@ function passingResult() {
   return { status: 0, signal: null };
 }
 
-describe('MANAGED_UPDATES_GROUPS composition', () => {
-  it('group 1 contains exactly its seven expected specs', () => {
+describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
+  it('group 1 contains exactly its six expected specs, with controller artifact identity and activation-UI removed', () => {
     expect(MANAGED_UPDATES_LIFECYCLE_SPECS).toEqual([
       'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
       'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
       'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
-      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
       'tests/e2e/release/managedUpdatesRecovery.spec.ts',
       'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
       'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
     ]);
+    expect(MANAGED_UPDATES_LIFECYCLE_SPECS).not.toContain(
+      'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
+    );
+    expect(MANAGED_UPDATES_LIFECYCLE_SPECS).not.toContain(
+      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+    );
   });
 
-  it('group 2 contains exactly its four expected specs, controller-upgrade first', () => {
+  it('group 2 contains exactly its three expected specs, controller-upgrade first, with controller artifact identity removed', () => {
     expect(MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS).toEqual([
       'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-      'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
       'tests/e2e/release/managedUpdatesDevelop.spec.ts',
       'tests/e2e/release/managedUpdatesMigration.spec.ts',
     ]);
+    expect(MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS).not.toContain(
+      'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
+    );
   });
 
   it('group 3 contains exactly the cross-engine spec', () => {
@@ -61,18 +74,11 @@ describe('MANAGED_UPDATES_GROUPS composition', () => {
     ]);
   });
 
-  it('group 4 contains exactly the data-compatibility spec', () => {
-    expect(MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS).toEqual([
-      'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
-    ]);
-  });
-
-  it('has no spec duplicated across the four groups', () => {
+  it('has no spec duplicated across the three groups', () => {
     const allGroupSpecs = [
       MANAGED_UPDATES_LIFECYCLE_SPECS,
       MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
       MANAGED_UPDATES_CROSS_ENGINE_SPECS,
-      MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
     ];
 
     for (let i = 0; i < allGroupSpecs.length; i += 1) {
@@ -83,35 +89,77 @@ describe('MANAGED_UPDATES_GROUPS composition', () => {
     }
   });
 
-  it('the union is exactly the current thirteen-spec managed-update corpus', () => {
+  it('the union is exactly the ten-spec browser-integration corpus', () => {
     const union = [
       ...MANAGED_UPDATES_LIFECYCLE_SPECS,
       ...MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
       ...MANAGED_UPDATES_CROSS_ENGINE_SPECS,
-      ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
     ];
 
-    expect(new Set(union)).toEqual(new Set(EXPECTED_CORPUS));
-    expect(union).toHaveLength(EXPECTED_CORPUS.length);
+    expect(new Set(union)).toEqual(new Set(EXPECTED_BROWSER_INTEGRATION_CORPUS));
+    expect(union).toHaveLength(EXPECTED_BROWSER_INTEGRATION_CORPUS.length);
   });
 
-  it('exposes the groups in fixed run order: lifecycle, then migration/isolation, then cross-engine, then data-compatibility', () => {
-    expect(MANAGED_UPDATES_GROUPS.map((group) => group.label)).toEqual([
+  it('exposes the groups in fixed run order: lifecycle, then migration/isolation, then cross-engine', () => {
+    expect(MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS.map((group) => group.label)).toEqual([
       MANAGED_UPDATES_LIFECYCLE_LABEL,
       MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
       MANAGED_UPDATES_CROSS_ENGINE_LABEL,
-      MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
     ]);
   });
 });
 
-describe('runManagedUpdatesProof ordering and propagation', () => {
-  it('runs group 1, group 2, group 3, then group 4, each through scripts/e2eReleaseContainer.mjs with its own diagnostic label', async () => {
+describe('MANAGED_UPDATES_E2E_GROUPS composition', () => {
+  it('exposes exactly the activation-UI and data-compatibility E2E specs, in fixed run order', () => {
+    expect(MANAGED_UPDATES_ACTIVATION_UI_SPECS).toEqual([
+      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+    ]);
+    expect(MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS).toEqual([
+      'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
+    ]);
+    expect(MANAGED_UPDATES_E2E_GROUPS.map((group) => group.label)).toEqual([
+      MANAGED_UPDATES_ACTIVATION_UI_LABEL,
+      MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+    ]);
+  });
+
+  it('the union is exactly the two-spec E2E corpus', () => {
+    const union = [
+      ...MANAGED_UPDATES_ACTIVATION_UI_SPECS,
+      ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
+    ];
+
+    expect(new Set(union)).toEqual(new Set(EXPECTED_E2E_CORPUS));
+    expect(union).toHaveLength(EXPECTED_E2E_CORPUS.length);
+  });
+});
+
+describe('the browser-integration and E2E corpora do not overlap and together equal the historical managed-updates corpus', () => {
+  it('has no spec shared between the two proof leaves', () => {
+    const overlap = EXPECTED_BROWSER_INTEGRATION_CORPUS.filter((spec) =>
+      EXPECTED_E2E_CORPUS.includes(spec),
+    );
+
+    expect(overlap).toEqual([]);
+  });
+
+  it('is exactly the historical thirteen-spec managed-update corpus, plus the now-static controller-identity spec removed from Playwright entirely', () => {
+    const union = new Set([...EXPECTED_BROWSER_INTEGRATION_CORPUS, ...EXPECTED_E2E_CORPUS]);
+
+    expect(union.size).toBe(12);
+    expect(union.has('tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts')).toBe(
+      false,
+    );
+  });
+});
+
+describe('runManagedUpdatesBrowserIntegrationProof ordering and propagation', () => {
+  it('runs group 1, group 2, then group 3, each through scripts/e2eReleaseContainer.mjs with its own diagnostic label', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
 
-    await runManagedUpdatesProof({ env: { EXAMPLE: '1' } }, { runLocalCommand });
+    await runManagedUpdatesBrowserIntegrationProof({ env: { EXAMPLE: '1' } }, { runLocalCommand });
 
-    expect(runLocalCommand).toHaveBeenCalledTimes(4);
+    expect(runLocalCommand).toHaveBeenCalledTimes(3);
     expect(runLocalCommand.mock.calls[0][0]).toMatchObject({
       command: 'node',
       args: [
@@ -139,50 +187,39 @@ describe('runManagedUpdatesProof ordering and propagation', () => {
         ...MANAGED_UPDATES_CROSS_ENGINE_SPECS,
       ],
     });
-    expect(runLocalCommand.mock.calls[3][0]).toMatchObject({
-      command: 'node',
-      args: [
-        'scripts/e2eReleaseContainer.mjs',
-        '--label',
-        MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
-        ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
-      ],
-    });
   });
 
   it('preserves the current environment values across every child invocation', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
     const env = { EXAMPLE: '1', RELEASE_ARTIFACT_SKIP_BUILD: '1' };
 
-    await runManagedUpdatesProof({ env }, { runLocalCommand });
+    await runManagedUpdatesBrowserIntegrationProof({ env }, { runLocalCommand });
 
     expect(runLocalCommand.mock.calls[0][0].env).toBe(env);
     expect(runLocalCommand.mock.calls[1][0].env).toBe(env);
     expect(runLocalCommand.mock.calls[2][0].env).toBe(env);
-    expect(runLocalCommand.mock.calls[3][0].env).toBe(env);
   });
 
-  it('runs group 2 only after group 1 succeeds, group 3 only after group 2 succeeds, and group 4 only after group 3 succeeds', async () => {
+  it('runs group 2 only after group 1 succeeds, and group 3 only after group 2 succeeds', async () => {
     const callOrder = [];
     const runLocalCommand = vi.fn(async ({ args }) => {
       callOrder.push(args[2]);
       return passingResult();
     });
 
-    await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(callOrder).toEqual([
       MANAGED_UPDATES_LIFECYCLE_LABEL,
       MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
       MANAGED_UPDATES_CROSS_ENGINE_LABEL,
-      MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
     ]);
   });
 
   it('stops execution and returns the failing result when group 1 fails', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue({ status: 1, signal: null });
 
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    const result = await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(runLocalCommand).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ status: 1, signal: null });
@@ -191,7 +228,7 @@ describe('runManagedUpdatesProof ordering and propagation', () => {
   it('stops execution and preserves the signal when group 1 is terminated', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue({ status: null, signal: 'SIGTERM' });
 
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    const result = await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(runLocalCommand).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ status: null, signal: 'SIGTERM' });
@@ -203,51 +240,82 @@ describe('runManagedUpdatesProof ordering and propagation', () => {
       .mockResolvedValueOnce(passingResult())
       .mockResolvedValueOnce({ status: 1, signal: null });
 
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    const result = await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(runLocalCommand).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ status: 1, signal: null });
   });
 
-  it('stops before group 4 and returns the failing result when group 3 fails after groups 1 and 2 pass', async () => {
+  it('becomes an aggregate failure when group 3 fails after groups 1 and 2 pass', async () => {
     const runLocalCommand = vi
       .fn()
       .mockResolvedValueOnce(passingResult())
       .mockResolvedValueOnce(passingResult())
       .mockResolvedValueOnce({ status: 1, signal: null });
 
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    const result = await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(runLocalCommand).toHaveBeenCalledTimes(3);
-    expect(result).toEqual({ status: 1, signal: null });
-  });
-
-  it('becomes an aggregate failure when group 4 fails after groups 1, 2, and 3 pass', async () => {
-    const runLocalCommand = vi
-      .fn()
-      .mockResolvedValueOnce(passingResult())
-      .mockResolvedValueOnce(passingResult())
-      .mockResolvedValueOnce(passingResult())
-      .mockResolvedValueOnce({ status: 1, signal: null });
-
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
-
-    expect(runLocalCommand).toHaveBeenCalledTimes(4);
     expect(result).toEqual({ status: 1, signal: null });
   });
 
   it('does not retry a failed group', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue({ status: 1, signal: null });
 
-    await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
 
     expect(runLocalCommand).toHaveBeenCalledTimes(1);
   });
 
-  it('returns the passing result when all four groups succeed', async () => {
+  it('returns the passing result when all three groups succeed', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
 
-    const result = await runManagedUpdatesProof({ env: {} }, { runLocalCommand });
+    const result = await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
+
+    expect(result).toEqual(passingResult());
+  });
+});
+
+describe('runManagedUpdatesE2EProof ordering and propagation', () => {
+  it('runs activation-UI then data-compatibility, each through scripts/e2eReleaseContainer.mjs with its own diagnostic label', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
+
+    await runManagedUpdatesE2EProof({ env: { EXAMPLE: '1' } }, { runLocalCommand });
+
+    expect(runLocalCommand).toHaveBeenCalledTimes(2);
+    expect(runLocalCommand.mock.calls[0][0]).toMatchObject({
+      command: 'node',
+      args: [
+        'scripts/e2eReleaseContainer.mjs',
+        '--label',
+        MANAGED_UPDATES_ACTIVATION_UI_LABEL,
+        ...MANAGED_UPDATES_ACTIVATION_UI_SPECS,
+      ],
+    });
+    expect(runLocalCommand.mock.calls[1][0]).toMatchObject({
+      command: 'node',
+      args: [
+        'scripts/e2eReleaseContainer.mjs',
+        '--label',
+        MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+        ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
+      ],
+    });
+  });
+
+  it('stops before data-compatibility and returns the failing result when activation-UI fails', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue({ status: 1, signal: null });
+
+    const result = await runManagedUpdatesE2EProof({ env: {} }, { runLocalCommand });
+
+    expect(runLocalCommand).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ status: 1, signal: null });
+  });
+
+  it('returns the passing result when both groups succeed', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
+
+    const result = await runManagedUpdatesE2EProof({ env: {} }, { runLocalCommand });
 
     expect(result).toEqual(passingResult());
   });

@@ -44,7 +44,8 @@ export function classifyCommandWeight({
     case 'playwright-container':
     case 'artifact':
     case 'release-smoke':
-    case 'managed-updates':
+    case 'managed-updates-browser-integration':
+    case 'managed-updates-e2e':
       return 'expensive';
     case 'release-version':
     case 'release-config':
@@ -52,6 +53,8 @@ export function classifyCommandWeight({
       return 'light';
     case 'build':
     case 'storybook-build':
+    case 'artifact-static':
+    case 'managed-updates-static':
       return 'medium';
     default:
       return 'medium';

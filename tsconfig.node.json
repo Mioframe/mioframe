@@ -13,6 +13,9 @@
     "**/*.d.mts",
     "src/**/*.browser.spec.ts",
     "src/**/*.visual.spec.ts",
+    "src/**/*.behavior.spec.ts",
+    "src/**/*.browser-integration.spec.ts",
+    "src/**/*.performance.spec.ts",
     // The canonical channel/cache/path pure contract (see its own doc
     // comment): deliberately owned by `src/` alongside its other
     // `appUpdate` runtime consumers, but has zero imports of its own, so

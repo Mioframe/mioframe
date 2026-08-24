@@ -3,8 +3,54 @@ import { describe, expect, it } from 'vitest';
 import {
   formatVerifyInvocationCommand,
   isResolvedVerifyInvocation,
+  isVerificationType,
   resolveVerifyInvocation,
+  VERIFICATION_TYPES,
 } from './verifyInvocation.ts';
+
+describe('VERIFICATION_TYPES', () => {
+  it('contains exactly the eight canonical verification types', () => {
+    expect(VERIFICATION_TYPES).toEqual([
+      'static',
+      'unit',
+      'behavior',
+      'visual',
+      'browser-integration',
+      'performance',
+      'mutation',
+      'e2e',
+    ]);
+  });
+
+  it('has no duplicate entries', () => {
+    expect(new Set(VERIFICATION_TYPES).size).toBe(VERIFICATION_TYPES.length);
+  });
+});
+
+describe('isVerificationType', () => {
+  it('accepts every canonical verification type', () => {
+    for (const type of VERIFICATION_TYPES) {
+      expect(isVerificationType(type)).toBe(true);
+    }
+  });
+
+  it('rejects a legacy low-level label', () => {
+    expect(isVerificationType('artifact')).toBe(false);
+    expect(isVerificationType('managed-updates')).toBe(false);
+  });
+
+  it('rejects a would-be ninth type such as release or setup', () => {
+    expect(isVerificationType('release')).toBe(false);
+    expect(isVerificationType('setup')).toBe(false);
+    expect(isVerificationType('prerequisite')).toBe(false);
+  });
+
+  it('rejects non-string values', () => {
+    expect(isVerificationType(null)).toBe(false);
+    expect(isVerificationType(undefined)).toBe(false);
+    expect(isVerificationType(42)).toBe(false);
+  });
+});
 
 describe('resolveVerifyInvocation', () => {
   it('makes GitHub base and profile explicit in one structured invocation', () => {

@@ -1,6 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { extname, join } from 'node:path';
 import { launchApp, openOpfs } from '../helpers';
 import { buildAndServeOrdinaryBranchArtifact } from './fixtures/ordinaryBranchArtifactFixture.mjs';
 
@@ -11,17 +9,16 @@ declare global {
   }
 }
 
-function collectJsFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) return collectJsFiles(full);
-    return entry.isFile() && ['.js', '.mjs'].includes(extname(entry.name)) ? [full] : [];
-  });
-}
-
 // Validates the published production artifact itself (base path, SPA
 // fallback, critical assets, PWA manifest sanity), not internal build or
 // Workbox implementation details. See docs/release.md#production-artifact-validation.
+//
+// The deterministic emitted-file/manifest/generated-artifact assertions that
+// used to live in this file (forbidden-pattern chunk scan, managed
+// controller worker skipWaiting()/clients.claim() check) are static tooling
+// proof now: see scripts/release/productionArtifactStaticProof.mjs (see
+// docs/testing/verify-redesign-implementation-preflight.md's "Production
+// artifact split"). Everything remaining below is browser-integration proof.
 
 test('opens under the configured GitHub Pages base path with no broken critical assets', async ({
   page,
@@ -86,52 +83,6 @@ test('reloading after a deep client route falls back to the app instead of a bro
 
   await expect(page.getByRole('button', { name: /^add$/i })).toBeVisible();
   await expect(page.getByRole('heading', { name: /not found|404/i })).toHaveCount(0);
-});
-
-// Managed pinned application updates feature: prove the normal production
-// artifact never embeds the release-test-only legacy migration fixture, and
-// that the compiled controller worker never embeds application release
-// identity. Scans every emitted JS chunk, not only the main entry — the
-// legacy fixture must only ever be reachable via the release-test-only
-// `RELEASE_TEST_LEGACY_PWA_FIXTURE` env var, never present in the artifact
-// this spec's own `dist/` was built from.
-test('no chunk embeds the release-test-only legacy migration fixture or application release identity', () => {
-  const forbiddenPatterns = [
-    'RELEASE_TEST_LEGACY_PWA_FIXTURE',
-    'legacyGeneratedWorkboxPwaConfig',
-    '__RELEASE_ID__',
-    '__RELEASE_SEQUENCE__',
-  ];
-
-  const jsFiles = collectJsFiles('dist');
-  expect(jsFiles.length).toBeGreaterThan(0);
-
-  const offenders: string[] = [];
-  for (const file of jsFiles) {
-    const content = readFileSync(file, 'utf8');
-    for (const pattern of forbiddenPatterns) {
-      if (content.includes(pattern)) {
-        offenders.push(`${file}: ${pattern}`);
-      }
-    }
-  }
-
-  expect(offenders).toEqual([]);
-});
-
-// Managed pinned application updates feature: the managed controller worker
-// (dist/sw.js for this spec's stable-channel build, compiled directly from
-// src/sw.ts via the injectManifest strategy — see config/plugins/pwa.ts)
-// must never manage its own code's lifecycle: no skipWaiting(), no
-// clients.claim(). Scoped to this one managed-worker artifact only — an
-// ordinary branch build's Workbox-generated `generateSW` worker legitimately
-// calls both, and a tombstone page has no service worker at all, so neither
-// is in scope for this rule.
-test('the built managed controller worker never calls skipWaiting() or clients.claim()', () => {
-  const swSource = readFileSync(join('dist', 'sw.js'), 'utf8');
-
-  expect(swSource).not.toMatch(/\bskipWaiting\s*\(/);
-  expect(swSource).not.toMatch(/\bclients\s*\.\s*claim\s*\(/);
 });
 
 // Managed pinned application updates feature, Correction 3 (managed-controller

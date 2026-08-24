@@ -100,18 +100,18 @@ Target difference: durable automated performance/stress proof uses `*.performanc
 
 Until implementation completes, distinguish **target contract** from **currently executable compatibility**:
 
-| Concern | Current executable state | Target |
-| --- | --- | --- |
-| `--only` | low-level labels | `static | unit | behavior | visual | browser-integration | performance | mutation | e2e` |
-| behavior suffix | `*.browser.spec.ts` | `*.behavior.spec.ts` |
-| visual suffix | `*.visual.spec.ts` | `*.visual.spec.ts` |
-| browser integration | no distinct public type/suffix | `*.browser-integration.spec.ts` |
-| E2E suffix/location | root/legacy `tests/e2e/*.spec.ts` | `tests/e2e/{pages,widgets}/<Owner>/*.e2e.spec.ts` |
-| E2E impact | manual `E2E_SCENARIO_SCOPES` | reverse dependency graph -> product owner |
-| unit impact | current planner behavior | Vitest native related/affected + safe fallback |
-| release | separate internal/release labels and alias | no public release type; classify checks by proof type |
-| mutation in full | currently excluded/legacy | all registered mutation targets |
-| `--full` | current legacy semantics | literal all types/all registered tests and targets |
+| Concern             | Current executable state                   | Target                                                |
+| ------------------- | ------------------------------------------ | ----------------------------------------------------- | ---- | -------- | ------ | ------------------- | ----------- | -------- | ---- |
+| `--only`            | low-level labels                           | `static                                               | unit | behavior | visual | browser-integration | performance | mutation | e2e` |
+| behavior suffix     | `*.browser.spec.ts`                        | `*.behavior.spec.ts`                                  |
+| visual suffix       | `*.visual.spec.ts`                         | `*.visual.spec.ts`                                    |
+| browser integration | no distinct public type/suffix             | `*.browser-integration.spec.ts`                       |
+| E2E suffix/location | root/legacy `tests/e2e/*.spec.ts`          | `tests/e2e/{pages,widgets}/<Owner>/*.e2e.spec.ts`     |
+| E2E impact          | manual `E2E_SCENARIO_SCOPES`               | reverse dependency graph -> product owner             |
+| unit impact         | current planner behavior                   | Vitest native related/affected + safe fallback        |
+| release             | separate internal/release labels and alias | no public release type; classify checks by proof type |
+| mutation in full    | currently excluded/legacy                  | all registered mutation targets                       |
+| `--full`            | current legacy semantics                   | literal all types/all registered tests and targets    |
 
 Agents implementing the redesign must not treat the current column as durable architecture or the target column as already executable before the corresponding migration pass lands.
 
@@ -121,7 +121,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **complete**. Runtime implementation has not started; the next implementation boundary is preflight **Pass A**.
+Status on `architecture/verify-redesign`: **complete**. Preflight **Pass A** (classification foundations and mixed-release split) has landed; the next implementation boundary is preflight **Pass B** (public type CLI).
 
 Required:
 
