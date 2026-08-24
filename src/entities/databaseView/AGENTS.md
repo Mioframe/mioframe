@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - View contract changes affect selection, layout, and persistence behavior.
-- Minimum verification: run `pnpm verify --only type-check`, then switch between the touched views, confirm the active chip and layout update correctly, and refresh or reopen the document to confirm selection persistence. Use focused verify-managed browser coverage where available.
+- Minimum verification: run `pnpm verify --only static`, then switch between the touched views, confirm the active chip and layout update correctly, and refresh or reopen the document to confirm selection persistence. Use focused verify-managed browser coverage where available.

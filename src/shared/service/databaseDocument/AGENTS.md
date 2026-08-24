@@ -23,4 +23,4 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 ## Constraints
 
 - This directory defines contracts used by many entities and features.
-- Minimum verification: run `pnpm verify --only type-check`, run focused verify-managed database-document tests for the touched branch, then verify create, edit, remove, sort, or filter flows still produce correct invalidation and persisted results.
+- Minimum verification: run `pnpm verify --only static`, run focused verify-managed database-document tests for the touched branch, then verify create, edit, remove, sort, or filter flows still produce correct invalidation and persisted results.

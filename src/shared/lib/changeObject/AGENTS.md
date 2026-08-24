@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/c
 ## Constraints
 
 - Algorithm changes here affect many callers at once.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed checks for nested objects, arrays, and deletion markers in the touched deep-update path.
+- Minimum verification: run `pnpm verify --only static`, then run focused verify-managed checks for nested objects, arrays, and deletion markers in the touched deep-update path.

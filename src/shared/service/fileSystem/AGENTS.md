@@ -32,4 +32,4 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 ## Constraints
 
 - Changes here affect mounted directories, persisted handles, browser filesystem flows, and repository access at once.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed filesystem service tests for refresh behavior, provider updates, handle hydration, and provider recovery lifecycle when those paths change.
+- Minimum verification: run `pnpm verify --only static`, then run focused verify-managed filesystem service tests for refresh behavior, provider updates, handle hydration, and provider recovery lifecycle when those paths change.

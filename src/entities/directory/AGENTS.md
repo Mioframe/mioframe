@@ -19,4 +19,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/direc
 ## Constraints
 
 - Changes here affect how a single directory entry renders wherever it is composed.
-- Minimum verification: run `pnpm verify --only type-check`, then exercise the touched entry UI through an existing consuming feature or widget and confirm rendered state and emitted intents still match the contract.
+- Minimum verification: run `pnpm verify --only static`, then exercise the touched entry UI through an existing consuming feature or widget and confirm rendered state and emitted intents still match the contract.
