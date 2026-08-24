@@ -1,89 +1,30 @@
 # Database virtualization heterogeneous attribution preflight
 
-Status: **ready**.
+Status: **completed**.
 
-Source: `docs/database-virtualization-heterogeneous-attribution-handoff.md`.
+## Outcome
 
-## Expected tracked changes
+The verifier-managed Chromium diagnostic reproduced the heterogeneous performance problem and isolated `Number` as a reproducing fixture variant.
 
-None at handoff.
+Observed Number-isolation switch samples:
 
-Temporary file during diagnosis only:
+- 631.3 ms with 3 Long Tasks, max 241 ms, total 520 ms;
+- 635.5 ms with 3 Long Tasks, max 244 ms, total 523 ms.
 
-`tests/e2e/diagnostics/databaseVirtualizationHeterogeneousPerformance.spec.ts`
+Vertical scrolling also produced a 210 ms Long Task in one Number-isolation sample; the second sample was clean. Horizontal scrolling was clean in both samples.
 
-Delete it before completion.
+Bounded mounted work and deep correctness passed. Temporary diagnostic tooling was removed.
 
-## Pass 1 — scalar mix
+## Architectural consequence
 
-Create a sparse large Database fixture with:
+This preflight does **not** authorize a production correction.
 
-- the existing Short (~20 rows) and Full views;
-- deterministic IDs/data;
-- valid current-schema String, Number, Date, and Boolean properties;
-- representative persisted values for visible rows and deep correctness sentinels without materializing the logical cross product.
+The isolated label `Number` is not yet the narrow production owner because:
 
-Measure three controlled samples in desktop Chromium for:
+- Number and String inline renderers are structurally equivalent simple text/span UI;
+- property/effective-value query infrastructure is shared;
+- the diagnostic report does not establish that String and Number probes used identical stored-value density/shape.
 
-- real Short -> Full selection;
-- fixed vertical wheel scrolling after Full settles;
-- fixed horizontal wheel scrolling after Full settles.
+Before selecting a correction owner, distinguish Number type from fixture/value-density effects with one controlled equal-density comparison or equivalent narrow attribution evidence.
 
-Record switch timing/Long Tasks, scroll Long Tasks, bounded mounted work, and deep correctness.
-
-## Pass 2 — isolate only when needed
-
-If the scalar mix clearly reproduces repeated >100 ms Long Tasks or equivalent material blocking, test focused scalar variants and stop when the smallest reproducing property type is identified.
-
-Use at most two samples per isolation probe; use a third only when the probe is ambiguous.
-
-If scalar mix is fast, do not run scalar isolation.
-
-## Pass 3 — relation only when needed
-
-If scalar mix is fast, create one separate relation case:
-
-- one representative relation property;
-- non-empty relation values on a bounded set of rows;
-- bounded target/nested Database content;
-- otherwise preserve the same outer Short -> Full and scrolling scenario.
-
-Collect three samples.
-
-Do not create hundreds of relation properties or intentionally recursive stress merely to force a failure.
-
-## Execution
-
-Only:
-
-```bash
-pnpm verify --only e2e --files tests/e2e/diagnostics/databaseVirtualizationHeterogeneousPerformance.spec.ts
-```
-
-The temporary spec must skip `Mobile Chrome`; desktop project name is `chromium`.
-
-The current app-E2E verifier has no Firefox project. Do not modify `playwright.config.ts`, verifier code, or project-applicability metadata to add one. Firefox remains operator comparison evidence unless a later architecture task explicitly adds verifier-owned cross-engine product proof.
-
-## Stop conditions
-
-Stop and report when:
-
-- one smallest property/render path is identified;
-- heterogeneous mix reproduces but focused probes cannot isolate it safely;
-- neither scalar mix nor representative relation case reproduces;
-- results are ambiguous;
-- the verifier cannot faithfully run the diagnostic without durable tooling changes.
-
-Do not change production code in any outcome.
-
-## Report
-
-Return:
-
-- exact classification;
-- variants executed and exact property mixes;
-- raw switch metrics;
-- vertical/horizontal scroll Long Task metrics;
-- mounted-work/correctness result;
-- narrowest render-path owner supported by evidence, or `unresolved`;
-- confirmation that the temporary spec was removed.
+No production, geometry, virtualization, worker/query/storage, Material, or shared-table change is authorized by this completed preflight.
