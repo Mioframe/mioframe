@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 
+import { isVitestOwnedTestPath } from './vitestTestPaths.ts';
+
 /**
  * One explicit high-risk mutation target: mutation testing is opt-in per
  * `docs/testing/verify-target-architecture.md` "# Mutation architecture",
@@ -80,6 +82,8 @@ export const MUTATION_TARGETS: readonly MutationTarget[] = [
 const REGISTRY_SEMANTIC_CHANGE_PATHS = new Set([
   'stryker.config.mjs',
   'scripts/lib/mutationTargets.ts',
+  'vitest.config.ts',
+  'scripts/lib/vitestTestPaths.ts',
 ]);
 
 function isExistingFile(filePath: string): boolean {
@@ -88,10 +92,6 @@ function isExistingFile(filePath: string): boolean {
   } catch {
     return false;
   }
-}
-
-function isTestShapedPath(filePath: string): boolean {
-  return filePath.endsWith('.test.ts');
 }
 
 function uniqSorted(values: readonly string[]): string[] {
@@ -152,7 +152,7 @@ export function validateMutationRegistry(
     }
 
     for (const test of target.tests) {
-      if (!isTestShapedPath(test)) {
+      if (!isVitestOwnedTestPath(test)) {
         errors.push(`mutation target ${target.name} references non-Vitest-owned test path ${test}`);
         continue;
       }

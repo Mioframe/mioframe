@@ -387,3 +387,82 @@ describe('resolveMutationPlan against the real MUTATION_TARGETS registry', () =>
     );
   });
 });
+
+// Oracle: docs/testing/verify-mutation-impact-correction.md "One Vitest
+// test-path owner" plus scripts/lib/REVIEW.md section B2 "Problem B -- false
+// Vitest ownership heuristic". validateMutationRegistry()'s current
+// isTestShapedPath is a bare `.endsWith('.test.ts')` heuristic that disagrees
+// with vitest.config.ts's real include/exclude test-discovery contract
+// (mirrored more accurately today by scripts/lib/unitRisk.ts's own
+// isTestShapedPath -- see that file for oracle evidence). This describe
+// block proves both directions of the disagreement.
+describe('validateMutationRegistry real Vitest ownership', () => {
+  it('accepts a real Vitest-owned scripts/**/*.test.mjs owning test (scripts/agentEnvironment.test.mjs) instead of rejecting it as non-Vitest-owned', () => {
+    // Must reject: a real Vitest-discovered test (vitest.config.ts includes
+    // scripts/**/*.test.mjs) rejected merely because it does not end in
+    // .test.ts. fileExists is overridden to EVERYTHING_EXISTS so only the
+    // test-shape/ownership check is exercised, isolated from real-disk
+    // existence.
+    const result = validateMutationRegistry(
+      [makeTarget({ tests: ['scripts/agentEnvironment.test.mjs'] })],
+      { fileExists: EVERYTHING_EXISTS },
+    );
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects a .test.ts owning test path outside every real configured Vitest include root as non-Vitest-owned', () => {
+    // Must reject: an arbitrary `.test.ts` path wrongly accepted only
+    // because it ends with .test.ts, even though vitest.config.ts's real
+    // include globs never discover it (outside src/, config/, and
+    // scripts/). fileExists reports the fictional path as existing so only
+    // the shape/ownership check, not existence, is what must fail.
+    const result = validateMutationRegistry(
+      [makeTarget({ tests: ['some/path/outside/configured/roots/example.test.ts'] })],
+      { fileExists: EVERYTHING_EXISTS },
+    );
+
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(
+        result.errors.some((error) =>
+          error.includes(
+            'non-Vitest-owned test path some/path/outside/configured/roots/example.test.ts',
+          ),
+        ),
+      ).toBe(true);
+    }
+  });
+});
+
+// Oracle: docs/testing/verify-mutation-impact-correction.md "Ownership of the
+// shared contract" -- "Mutation semantic-change paths are exactly:
+// stryker.config.mjs, scripts/lib/mutationTargets.ts, vitest.config.ts,
+// scripts/lib/vitestTestPaths.ts". stryker.config.mjs explicitly runs Vitest
+// via vitest.config.ts (`vitest.configFile`), so a change to either Vitest
+// test-discovery owner is a mutation-execution-semantic change and must
+// select all registered mutation targets, exactly like the two paths already
+// in REGISTRY_SEMANTIC_CHANGE_PATHS today.
+describe('resolveMutationPlan mutation-execution-semantic ownership of the shared Vitest test-path owner', () => {
+  it('selects full mode with all 7 real registered sources when vitest.config.ts changes', () => {
+    const plan = resolveMutationPlan(['vitest.config.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.sources).toEqual(
+      MUTATION_TARGETS.map((entry) => entry.source)
+        .slice()
+        .sort((left, right) => left.localeCompare(right)),
+    );
+  });
+
+  it('selects full mode with all 7 real registered sources when the new shared Vitest test-path owner (scripts/lib/vitestTestPaths.ts) changes -- resolveMutationPlan matches semantic-change paths via a plain string-set membership check against changed file paths, not a filesystem existence check, so this path need not exist on disk yet', () => {
+    const plan = resolveMutationPlan(['scripts/lib/vitestTestPaths.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.sources).toEqual(
+      MUTATION_TARGETS.map((entry) => entry.source)
+        .slice()
+        .sort((left, right) => left.localeCompare(right)),
+    );
+  });
+});

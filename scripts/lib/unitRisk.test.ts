@@ -388,6 +388,26 @@ describe('resolveUnitPlan full-unit infrastructure triggers', () => {
   });
 });
 
+// Oracle: docs/testing/verify-mutation-impact-correction.md "Ownership of the
+// shared contract" -- "scripts/lib/vitestTestPaths.ts is full-unit
+// infrastructure", listed alongside the FULL_UNIT_EXACT_FILES entries above
+// (vitest.config.ts, src/setupVitest.ts, config/alias.ts,
+// config/plugins/base.ts, pnpm-lock.yaml). The new shared Vitest test-path
+// owner is consumed by vitest.config.ts itself, scripts/lib/unitRisk.ts, and
+// scripts/lib/mutationTargets.ts, so a change to it changes unit-test
+// discovery/execution semantics exactly like the existing infrastructure
+// triggers. Must reject: an ordinary `focused` (isOrdinaryUnitSourcePath /
+// Vitest-related pass-through) result instead of `full`, which is what the
+// current FULL_UNIT_EXACT_FILES set (not yet containing this path) resolves
+// to today.
+describe('resolveUnitPlan full-unit infrastructure trigger for the new shared Vitest test-path owner', () => {
+  it('runs full unit for a modified scripts/lib/vitestTestPaths.ts', () => {
+    const plan = resolveUnitPlan([modified('scripts/lib/vitestTestPaths.ts')]);
+
+    expect(plan.mode).toBe('full');
+  });
+});
+
 describe('resolveUnitPlan package.json impact', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();

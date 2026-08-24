@@ -24,7 +24,11 @@
     // per-project testIgnore from these verifier-owned modules; explicit
     // entries are needed for the same reason as channelContract.ts above.
     "scripts/lib/appE2EPaths.ts",
-    "scripts/lib/e2eProjectApplicability.ts"
+    "scripts/lib/e2eProjectApplicability.ts",
+    // vitest.config.ts imports the shared Vitest test-path owner
+    // (VITEST_TEST_INCLUDE/VITEST_TEST_EXCLUDE); explicit entry needed for
+    // the same reason as the two scripts/lib/* entries above.
+    "scripts/lib/vitestTestPaths.ts"
   ],
   "compilerOptions": {
     "composite": true,

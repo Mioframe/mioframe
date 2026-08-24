@@ -1339,7 +1339,7 @@ export function buildCommands(
   const visualPlan: BuildCommandsVisualPlan | null =
     visualPlanOverride ??
     (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
-  const mutationPlan = resolveMutationPlan(existingChangedFiles);
+  const mutationPlan = resolveMutationPlan(changedFiles);
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 

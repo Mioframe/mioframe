@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 import { isRootAppE2ESpecPath } from './appE2EPaths.ts';
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isVitestOwnedTestPath } from './vitestTestPaths.ts';
 import type { ChangedPath } from './changedPaths.ts';
 
 /**
@@ -206,11 +207,11 @@ const FULL_UNIT_EXACT_FILES = new Set([
   'config/alias.ts',
   'config/plugins/base.ts',
   'pnpm-lock.yaml',
+  'scripts/lib/vitestTestPaths.ts',
 ]);
 
 const ORDINARY_SOURCE_EXTENSIONS = ['.ts', '.vue', '.mjs', '.js', '.json', '.css'];
 const PACKAGE_JSON_PATH = 'package.json';
-const ROOT_PLAYWRIGHT_TEST_PATTERN = /^playwright\.[^/]+\.test\.ts$/;
 
 function isExistingFile(filePath: string): boolean {
   try {
@@ -240,38 +241,11 @@ function isPlaywrightOnlyProofPath(filePath: string): boolean {
 }
 
 /**
- * A path shaped like a Vitest-owned test file, matching `vitest.config.ts`'s
- * real `include` globs (`src/**`, `config/**`, `scripts/**`, root
- * `eslint.config.test.ts`/`playwright.<name>.test.ts`, and
- * `tests/e2e/**\/*.test.mjs`; never `tests/e2e/**\/*.spec.ts`, which is
- * Playwright-owned).
- * @param filePath Repository-relative path.
- * @returns True when the path is Vitest-test-shaped.
- */
-function isTestShapedPath(filePath: string): boolean {
-  if (filePath.startsWith('tests/e2e/')) {
-    return filePath.endsWith('.test.mjs');
-  }
-
-  if (filePath === 'eslint.config.test.ts' || ROOT_PLAYWRIGHT_TEST_PATTERN.test(filePath)) {
-    return true;
-  }
-
-  if (filePath.startsWith('scripts/')) {
-    return filePath.endsWith('.test.ts') || filePath.endsWith('.test.mjs');
-  }
-
-  return (
-    (filePath.startsWith('src/') || filePath.startsWith('config/')) && filePath.endsWith('.test.ts')
-  );
-}
-
-/**
  * An ordinary (non-test) source/support path Vitest's own related-test
  * resolution can trace, deliberately excluding Playwright-only proof files.
  * Repository-wide by design: dependency-input eligibility for `vitest
  * related` is not the same concept as Vitest's test-discovery roots (see
- * `isTestShapedPath` and `docs/testing/verify-unit-impact-correction.md`), so
+ * `isVitestOwnedTestPath` and `docs/testing/verify-unit-impact-correction.md`), so
  * a plausible ordinary module/style/support path is eligible regardless of
  * whether it lives under `src/`, `config/`, `scripts/`, `tests/e2e/`, or the
  * repository root.
@@ -284,7 +258,7 @@ function isOrdinaryUnitSourcePath(filePath: string): boolean {
   // ordinary pass-through source, so a version-only change stays skippable
   // instead of manufacturing an unwanted `vitest related package.json` input.
   if (
-    isTestShapedPath(filePath) ||
+    isVitestOwnedTestPath(filePath) ||
     isPlaywrightOnlyProofPath(filePath) ||
     filePath === PACKAGE_JSON_PATH
   ) {
@@ -295,7 +269,7 @@ function isOrdinaryUnitSourcePath(filePath: string): boolean {
 }
 
 function isUnitRelevantByShape(filePath: string): boolean {
-  return isTestShapedPath(filePath) || isOrdinaryUnitSourcePath(filePath);
+  return isVitestOwnedTestPath(filePath) || isOrdinaryUnitSourcePath(filePath);
 }
 
 const MATERIAL_ROOT_PREFIX = 'src/shared/ui/material/';
@@ -454,7 +428,7 @@ function validateFileAsDataMappings(
     }
 
     for (const test of mapping.tests) {
-      if (!isTestShapedPath(test)) {
+      if (!isVitestOwnedTestPath(test)) {
         errors.push(
           `unit file-as-data mapping ${mapping.source} references non-Vitest-owned test path ${test}`,
         );
@@ -484,7 +458,7 @@ function validateScanOwners(
 
     seenTests.add(owner.test);
 
-    if (!isTestShapedPath(owner.test)) {
+    if (!isVitestOwnedTestPath(owner.test)) {
       errors.push(`unit scan owner ${owner.test} is not a Vitest-owned test path`);
       continue;
     }
@@ -617,7 +591,7 @@ export function resolveUnitPlan(
     }
 
     // added | modified
-    if (isTestShapedPath(change.path) && fileExists(change.path)) {
+    if (isVitestOwnedTestPath(change.path) && fileExists(change.path)) {
       relatedInputs.add(change.path);
       focusedReasons.push(`changed unit test ${change.path} -> ${change.path}`);
       continue;

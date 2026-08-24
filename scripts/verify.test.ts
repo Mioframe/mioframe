@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.ts', () => ({
   isVisualRelevantPackageJsonChange: vi.fn(),
@@ -16,6 +16,7 @@ import {
 } from './lib/packageJsonImpact.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
 import { RELEASE_IMPACT_CHECKS } from './lib/releaseRisk.ts';
+import { MUTATION_TARGETS } from './lib/mutationTargets.ts';
 import type { ChangedPath, ResolvedChangedPathsScope } from './lib/changedPaths.ts';
 import {
   buildCommandEnv,
@@ -609,6 +610,126 @@ describe('buildCommands mutation scope', () => {
         expect(JSON.stringify(args)).not.toContain(deletedProductionPath);
       }
     });
+  });
+});
+
+// Oracle: docs/testing/verify-mutation-impact-correction.md "Required
+// behavior" (deleted stryker.config.mjs / rename old-side stryker.config.mjs
+// -> all registered mutation targets or invalid, never silent skip) and
+// scripts/lib/REVIEW.md section B2 "Problem A -- changed-path identity loss".
+// `changedPaths.ts`'s getChangedFileProjection() (the real, unmocked default
+// `projectChangedFiles`) already faithfully preserves a deleted path and both
+// sides of a rename in the flat changedFiles projection; the defect under
+// test is downstream, inside buildCommands() itself, which re-filters that
+// faithful projection through fs.existsSync-backed `existingChangedFiles`
+// before ever calling resolveMutationPlan() (scripts/verify.ts ~line 1342),
+// silently erasing a deleted/renamed-away stryker.config.mjs before mutation
+// planning ever observes it. Constructing this only through
+// resolveMutationPlan(['stryker.config.mjs']) directly would be insufficient
+// -- that call already passes today and does not exercise buildCommands()'s
+// separate existingChangedFiles filtering defect at all.
+//
+// Must reject: the mutation command entry resolves as a "skipped" entry
+// instead of a full-mode "run" entry mutating every registered
+// MUTATION_TARGETS source.
+describe('buildCommands mutation scope through the orchestration boundary (resolveVerifyChangedPathContext -> buildCommands, real stryker.config.mjs identity loss)', () => {
+  const ALL_REGISTERED_SOURCES = MUTATION_TARGETS.map((target) => target.source)
+    .slice()
+    .sort((left, right) => left.localeCompare(right));
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('deleted stryker.config.mjs must not silently skip mutation once resolved through resolveVerifyChangedPathContext -> buildCommands', () => {
+    // The real stryker.config.mjs genuinely exists in this repository working
+    // tree, so simply marking it "deleted" in the fake ChangedPath does
+    // nothing to buildCommands()'s internal fileExists('stryker.config.mjs'),
+    // which would still truthfully return true. Faking only fs.existsSync for
+    // this exact path (pass-through for every other path) simulates the
+    // real-world scenario of a PR that actually deleted stryker.config.mjs.
+    // fileExists() short-circuits on `fs.existsSync(filePath) && ...`, so
+    // fs.statSync is never reached for this path and needs no separate fake.
+    const realExistsSync = fs.existsSync.bind(fs);
+    vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) =>
+      targetPath === 'stryker.config.mjs' ? false : realExistsSync(targetPath),
+    );
+
+    const resolveScope = vi.fn(
+      (): ResolvedChangedPathsScope => ({
+        input: {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'deleted', path: 'stryker.config.mjs' }],
+        },
+        scope: 'local',
+        baseRef: null,
+        packageJsonOldRef: null,
+      }),
+    );
+    const invocation = resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' });
+
+    // The real (unmocked) getChangedFileProjection default is exercised here
+    // -- only resolveScope is faked -- so the flat changedFiles projection
+    // faithfully still contains the deleted stryker.config.mjs path.
+    const context = resolveVerifyChangedPathContext(invocation, { resolveScope });
+
+    expect(context.changedFiles).toContain('stryker.config.mjs');
+
+    const commands = buildCommands(context.changedFiles, { fullMode: false });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      ALL_REGISTERED_SOURCES.join(','),
+    ]);
+  });
+
+  it('rename with oldPath = stryker.config.mjs must not silently skip mutation once resolved through resolveVerifyChangedPathContext -> buildCommands', () => {
+    // Only the old path (the genuinely existing stryker.config.mjs) needs
+    // faking; the fictional new path already naturally resolves to
+    // nonexistent through the real fs.existsSync pass-through.
+    const realExistsSync = fs.existsSync.bind(fs);
+    vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) =>
+      targetPath === 'stryker.config.mjs' ? false : realExistsSync(targetPath),
+    );
+
+    const resolveScope = vi.fn(
+      (): ResolvedChangedPathsScope => ({
+        input: {
+          kind: 'git-diff',
+          changedPaths: [
+            {
+              status: 'renamed',
+              oldPath: 'stryker.config.mjs',
+              newPath: 'stryker.config.renamed.mjs',
+            },
+          ],
+        },
+        scope: 'local',
+        baseRef: null,
+        packageJsonOldRef: null,
+      }),
+    );
+    const invocation = resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' });
+
+    const context = resolveVerifyChangedPathContext(invocation, { resolveScope });
+
+    expect(context.changedFiles).toContain('stryker.config.mjs');
+    expect(context.changedFiles).toContain('stryker.config.renamed.mjs');
+
+    const commands = buildCommands(context.changedFiles, { fullMode: false });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      ALL_REGISTERED_SOURCES.join(','),
+    ]);
   });
 });
 
