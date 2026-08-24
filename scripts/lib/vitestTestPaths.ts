@@ -83,9 +83,10 @@ function ruleMatches(rule: DiscoveryRule, filePath: string): boolean {
         return false;
       }
       const middle = filePath.slice(rule.prefix.length, filePath.length - rule.suffix.length);
-      // A glob `*` segment does not cross `/`, so the middle portion must be
-      // non-empty and slash-free to stay root-level (e.g. `playwright.lanes.test.ts`).
-      return middle.length > 0 && !middle.includes('/');
+      // A glob `*` segment matches zero or more characters and never crosses
+      // `/`, so the middle portion may be empty but must stay slash-free to
+      // remain root-level (e.g. `playwright.lanes.test.ts`, `playwright..test.ts`).
+      return !middle.includes('/');
     }
     case 'exactRootFile':
       return filePath === rule.path;

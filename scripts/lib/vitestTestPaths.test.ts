@@ -82,6 +82,13 @@ describe('isVitestOwnedTestPath positive cases (real Vitest-discovered paths)', 
   it('accepts the real root eslint.config.test.ts', () => {
     expect(isVitestOwnedTestPath('eslint.config.test.ts')).toBe(true);
   });
+
+  // Oracle: the exported include glob `playwright.*.test.ts` -- a glob `*`
+  // matches zero or more non-separator characters, so a zero-length middle
+  // is admitted by the glob and must be classified consistently.
+  it('accepts the zero-length wildcard boundary admitted by the exported playwright.*.test.ts glob (playwright..test.ts)', () => {
+    expect(isVitestOwnedTestPath('playwright..test.ts')).toBe(true);
+  });
 });
 
 describe('isVitestOwnedTestPath negative cases (explicitly excluded or outside every include root)', () => {
