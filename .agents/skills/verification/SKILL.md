@@ -20,10 +20,12 @@ Keep these purposes distinct, but do not omit the branch handoff gate for ordina
 For a PR targeting `develop`, the canonical branch handoff command is:
 
 ```bash
-pnpm verify --base origin/develop --profile github-actions
+pnpm verify --base origin/develop
 ```
 
 For a PR with another target base, use `origin/<base>` instead.
+
+Do not force `--profile github-actions` for ordinary local agent verification. The verifier should use the agent environment's normal local profile. GitHub CI owns its controlled `github-actions` profile. Use an explicit alternate profile locally only when a task specifically requires profile comparison or diagnosis.
 
 This is deliberately **not** `pnpm verify --full`. `--base` asks the verifier to inspect the complete cumulative branch diff and select every applicable check. `--full` ignores changed-file scope, cannot be combined with `--base`, and additionally owns full-project/release checks that are not the ordinary PR handoff contract.
 
@@ -31,11 +33,12 @@ The branch handoff gate is required after implementation is complete for coding 
 
 When branch verification fails:
 
-- diagnose every failure selected by the cumulative PR diff, not only files touched in the latest correction;
-- fix PR-caused code, test, or verifier-owned failures while ownership and architecture remain within the accepted task/PR contract;
-- rerun focused checks as useful while iterating;
-- rerun the complete branch handoff command after fixes until it passes cleanly;
-- if a failure is an unrelated base-branch failure, requires a different architecture/owner, or would expand the accepted PR contract materially, stop and report the concrete evidence instead of patching around it.
+1. identify the concrete failed contract selected by the cumulative PR diff;
+2. if it is PR-caused and remains inside the accepted architecture/ownership, fix it;
+3. use the smallest relevant focused verifier command for fast feedback on that correction;
+4. when the focused correction is clean, rerun the complete branch gate;
+5. repeat until the complete branch gate passes cleanly;
+6. if a failure is unrelated to the PR, requires a different architecture/owner, or would materially expand the accepted PR contract, stop and report the concrete evidence instead of patching around it.
 
 A retry-pass/flaky result is not a clean branch handoff.
 
@@ -47,7 +50,7 @@ Mioframe verifier entry points are:
 
 ```bash
 pnpm verify
-pnpm verify --base origin/develop --profile github-actions
+pnpm verify --base origin/develop
 pnpm verify --only <label> --files <paths...>
 pnpm verify --full
 pnpm verify:release
@@ -83,7 +86,13 @@ pnpm verify --only mutation --files <paths...>
 
 Focused checks are implementation/diagnostic tools and do not replace the final branch-diff handoff gate for PR code changes.
 
-Do not mechanically execute every label one-by-one. After focused implementation feedback is clean, use one branch-diff verifier invocation and let the verifier select the complete applicable plan from the cumulative diff.
+Do not mechanically execute every label one-by-one. The expected iteration is:
+
+- use focused checks while implementing;
+- run `pnpm verify --base origin/<base>` when the task appears complete;
+- if that broad pass exposes another PR-caused failure, fix it and verify that fix narrowly;
+- rerun the broad branch gate;
+- continue until the broad branch gate is clean.
 
 If a coding task changes verifier tooling itself, run the smallest checks necessary to prove the changed verifier contract during implementation, then run the ordinary branch handoff gate if the work is being handed back as PR code.
 
@@ -106,7 +115,7 @@ Likewise, exact-head CI does not replace the coding-agent branch gate: the purpo
 
 Known flaky behavior is failed proof, not an accepted warning.
 
-A retry-pass/flaky classification never counts as green evidence. Correct the root cause and rerun the smallest faithful owning proof needed to establish the fix, then rerun the branch handoff gate. Do not weaken assertions, inflate timeouts, add sleeps, repeat an already-delivered user action, use `force`, or rely on a stronger runner to hide the problem.
+A retry-pass/flaky classification never counts as green evidence. Correct the root cause and rerun the smallest faithful owning proof needed to establish the fix, then rerun the branch handoff gate. Do not weaken assertions, inflate timeouts, add sleeps, repeat an already-delivered user action, use `force`, or rely on a stronger CI runner to hide the problem.
 
 `--repeat` is a bounded Storybook-behavior stability diagnostic only. It requires `--only storybook-behavior` plus explicit `--files`, accepts counts from 2 through 20, and must be used only when a concrete stability risk warrants it. It is not a substitute for the branch handoff gate or CI.
 
@@ -154,7 +163,7 @@ Do not infer focused mutation applicability merely from file adjacency and do no
 The ordinary branch handoff command is diff-aware:
 
 ```bash
-pnpm verify --base origin/<base> --profile github-actions
+pnpm verify --base origin/<base>
 ```
 
 Use `--full` or `verify:release` locally only when the task specifically requires full-project or release-output proof. The authoritative final release/merge gate remains the required GitHub workflow on the exact PR head.
@@ -180,18 +189,20 @@ The architect must not recommend merge while required exact-head CI is missing o
 The expected sequence for code PRs is:
 
 1. coding agent implements and uses focused verifier feedback as needed;
-2. coding agent runs `pnpm verify --base origin/<base> --profile github-actions` and resolves all in-contract PR-caused failures;
-3. coding agent hands back only after that branch gate is clean, or reports a concrete blocker;
-4. the architect publishes/reviews the resulting exact head;
-5. GitHub CI confirms the controlled-environment merge gate.
+2. coding agent runs `pnpm verify --base origin/<base>` using its normal local verifier profile;
+3. if it fails for an in-contract PR-caused issue, the agent fixes that issue and uses focused verification for the correction;
+4. the agent reruns the complete branch gate and repeats until it is clean;
+5. the agent hands back only after that branch gate is clean, or reports a concrete blocker;
+6. the architect publishes/reviews the resulting exact head;
+7. GitHub CI confirms the controlled-environment merge gate with its own CI profile.
 
 If CI still fails after a clean branch handoff:
 
 1. identify the failed CI contract and exact output;
-2. compare it with the locally exercised branch plan/profile;
+2. compare it with the locally exercised branch plan and environment;
 3. route the concrete discrepancy to the truthful owner;
 4. fix the root cause rather than accepting retry/flaky behavior;
-5. require another clean branch-diff handoff before republishing code.
+5. require another clean local branch-diff handoff before republishing code.
 
 Do not treat CI as the first normal execution of cumulative PR verification.
 
@@ -216,7 +227,7 @@ status: not run | passed | failed | partial
 reason if failed/partial: <exact reason>
 
 BRANCH VERIFICATION
-command: pnpm verify --base origin/<base> --profile github-actions | skipped
+command: pnpm verify --base origin/<base> | skipped
 status: passed | failed | skipped
 reason if failed/skipped: none | <exact reason>
 
@@ -224,4 +235,4 @@ CI GATE
 status: architect-owned
 ```
 
-`complete` means the assigned coding scope and required proof are implemented and the required branch handoff gate is clean. It does not replace exact-head GitHub CI or architecture/visual approval.
+`complete` means the assigned coding scope and required proof are implemented and the required local branch handoff gate is clean. It does not replace exact-head GitHub CI or architecture/visual approval.
