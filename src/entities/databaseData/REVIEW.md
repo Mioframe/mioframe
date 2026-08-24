@@ -1,34 +1,58 @@
 # Review
 
-Verdict: blocked by a reproducible relation-value cold-render regression, operator visual acceptance, and exact-head CI.
+Verdict: blocked by branch-wide Database virtualization E2E failures, operator visual acceptance, and exact-head CI.
 
 ## Scope reviewed
 
 - PR #217 current Database virtualization/native-table integration.
-- Zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
-- Exact-head GitHub E2E at `63a984a85c8f3a4c3b75eea9be122ea64691c963`.
+- Settled zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
+- Relation cold-bootstrap correction at `ca6c7b0ea640c43fb43c9fb3a474358d2dc236ba`.
+- Full GitHub application E2E for that code head in workflow run `32701471162`.
 - Deferred residual Chromium performance risk.
 
-## Blocker — non-empty nested relation table may fail to bootstrap after cold reload
+## Resolved — relation-value cold bootstrap
 
-Owner: `src/entities/databaseData` unless focused reproduction disproves this ownership.
+The previously failing `tests/e2e/databaseViewsAndQueryFlows.spec.ts` relation-filter persistence scenario passed in the full E2E run at `ca6c7b0e...`.
 
-Problem: exact-head GitHub CI fails `tests/e2e/databaseViewsAndQueryFlows.spec.ts` in `applies string, boolean, and relation filters and persists them after reload`. The same assertion fails on the initial attempt and both retries: after reload the relation filter still filters rows correctly, but the saved related value text is not rendered in the Filters Sheet. The same scenario passed on earlier PR head `1c1a3789ef66cc950eba543566502aec8567f3ec` before the zero-distance spacer correction.
+The accepted correction remains entity-local: a non-empty source with no virtual items renders transient `aria-hidden` bootstrap table structure, which disappears when TanStack provides real virtual items. Settled leading/trailing spacers remain positive-distance-only. No second range state or shared/public API was added.
 
-Current evidence points to a lifecycle-state collapse in `DatabaseDataTable`: spacer presence is derived only from `leadingSize/trailingSize > 0`, while `useVirtualCollection` also reports zero leading/trailing sizes when a non-empty source has not yet produced its first mounted range. In a nested auto-sized relation root this may leave the native table without enough initial structure to establish the first range. This is the leading hypothesis, not a proven root cause.
+## Blocker 1 — table surface does not reliably reach the deep range after preceding content moves
+
+Owner: `src/entities/databaseData` table/root geometry integration unless reproduction proves the test contract invalid.
+
+Evidence: `tests/e2e/databaseVirtualizationFlows.spec.ts` scenario `keeps real preceding Database content connected to the table-owned surface range` passes the first deep scroll while the preceding success card is mounted, then dismisses that card and proves the table surface offset moved. After returning to the top and scrolling deep again, desktop Chromium fails to reach the logical final row. The initial attempt and both retries failed in exact-head CI.
 
 Required final state:
 
-- a non-empty Database table must bootstrap its first virtual range in top-level and nested auto-sized roots, including cold reload of saved relation-filter values;
-- after the range resolves, zero-distance leading/trailing spacer DOM must remain absent at logical boundaries so the restored native-table border/radius contract is preserved;
-- no persistent second range state, timeout/retry recovery, shared `MDTable` change, or second virtualization engine;
-- if focused reproduction disproves the DatabaseDataTable bootstrap hypothesis and requires a different owner or public/shared contract, stop and return to architecture instead of broadening the correction.
+- when real content before the table appears/disappears and changes the table's root-relative surface offset, the existing table-owned geometry path must update without remount/recovery loops;
+- a subsequent top -> deep scroll must again reach the logical final row;
+- TanStack remains the only virtual-item range/measurement/cache engine;
+- do not mask the failure with retries, longer timeouts, forced updates, or test-only production seams.
 
-Verification:
+Verification owner: the existing application E2E scenario plus the required branch-diff verifier gate.
 
-- the existing relation-filter persistence E2E passes without retry/flaky classification;
-- existing Database virtualization start/interior/end spacer-boundary and nested-root proofs remain green;
-- focused type-check remains green.
+## Blocker 2 — interior spacer proof is not stable under the current scroll setup
+
+Owner: `src/entities/databaseData` implementation/proof boundary; classify whether this is a product geometry defect or an invalid test precondition before changing production code.
+
+Evidence: `tests/e2e/databaseVirtualizationFlows.spec.ts` scenario `virtualizes the real Database root across deep native-table row and property ranges` sets both root scroll offsets to half of the physical scroll range and expects an interior virtual range with both leading and trailing spacers. In exact-head CI the assertion repeatedly receives a boundary-like range instead: desktop and Mobile Chrome do not satisfy the expected two-sided row/column spacer state.
+
+Required final state:
+
+- the proof must establish a real logical interior row/property range before asserting two-sided spacer structure;
+- if the mounted logical indices are interior but required spacers are absent, fix the production geometry/range integration;
+- if `scrollHeight / 2` or `scrollWidth / 2` does not actually guarantee a logical interior range for the native-table geometry, correct the test precondition without weakening the structural contract;
+- do not convert this into timing sleeps, retries, timeout inflation, or exact-pixel assumptions.
+
+Verification owner: the existing application E2E scenario plus the required branch-diff verifier gate.
+
+## Workflow correction
+
+The repository verification workflow now requires coding agents to run one cumulative branch-diff gate before final PR handoff. For normal `develop` PRs:
+
+`pnpm verify --base origin/develop --profile github-actions`
+
+Focused checks remain implementation feedback. They do not replace this branch-wide pre-handoff gate. `pnpm verify --full` is not the ordinary PR gate because it is full-project/release scope and cannot be combined with `--base`.
 
 ## Remaining blocker — operator visual acceptance
 
@@ -42,4 +66,4 @@ Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/d
 
 ## Merge condition
 
-After the cold-render regression is fixed, operator visual acceptance is complete, and exact-head GitHub CI is green, review the full resulting PR again. Do not delete this `REVIEW.md` before those conditions are satisfied.
+After both branch-wide virtualization E2E blockers are resolved, the required coding-agent branch gate passes cleanly, operator visual acceptance is complete, and exact-head GitHub CI is green, review the full resulting PR again. Do not delete this `REVIEW.md` before those conditions are satisfied.
