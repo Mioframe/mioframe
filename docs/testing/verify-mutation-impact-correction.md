@@ -50,9 +50,9 @@ scripts/lib/vitestTestPaths.ts
 It owns only Vitest test-file discovery shape. It must expose the minimum shared contract used by current consumers:
 
 ```ts
-VITEST_TEST_INCLUDE
-VITEST_TEST_EXCLUDE
-isVitestOwnedTestPath(filePath)
+VITEST_TEST_INCLUDE;
+VITEST_TEST_EXCLUDE;
+isVitestOwnedTestPath(filePath);
 ```
 
 The include/exclude constants and predicate must come from one local rule definition, not three copied heuristics.
