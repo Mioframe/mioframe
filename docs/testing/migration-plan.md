@@ -122,7 +122,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **complete for Pass A; Pass B implementation landed and is in architect correction/re-review**. Pass A is architect-accepted. The current implementation boundary remains **Pass B correction**; Pass C must not start until the active `REVIEW.md` finding is resolved and Pass B is architect-accepted.
+Status on `architecture/verify-redesign`: **Pass A and Pass B are architect-accepted. The current implementation boundary is Pass C.**
 
 Required:
 
@@ -135,7 +135,7 @@ No additional verifier runtime architecture change is required in this phase.
 
 ### Phase 1 — type-level CLI and classification shell
 
-Status: **implementation landed; architect acceptance pending the active Pass B correction/re-review**.
+Status: **complete and architect-accepted.**
 
 Introduce the public type contract without rewriting existing runners.
 
