@@ -1,6 +1,6 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the durable target. This document records the current executable verifier/test state and the safe migration order to that target.
+`docs/testing/architecture.md` defines the durable target. This document records the current executable verifier/test state, migration constraints, and capability transitions to that target. The concrete implementation pass order for this redesign is defined by `docs/testing/verify-redesign-implementation-preflight.md`.
 
 It is intentionally operational rather than historical. Older detailed migration records remain available in Git history. `docs/testing/verify-modernization.md` and `docs/testing/verify-e2e-planner-precision.md` describe the legacy verifier design/implementation that exists before this redesign; they are not the target architecture after `docs/testing/architecture.md` was updated.
 
@@ -115,13 +115,13 @@ Until implementation completes, distinguish **target contract** from **currently
 
 Agents implementing the redesign must not treat the current column as durable architecture or the target column as already executable before the corresponding migration pass lands.
 
-## Safe migration order
+## Migration capability phases
 
-The implementation may use several commits/PRs, but the dependency order below is architectural. Do not skip prerequisite compatibility.
+The phases below describe capability transitions and compatibility dependencies; they are not the concrete coding sequence for this redesign. **Pass A–F in `docs/testing/verify-redesign-implementation-preflight.md` is the authoritative implementation order and pass-boundary contract.** In particular, Pass A establishes target discovery and splits mixed release proof before Pass B changes the public CLI, even though public CLI and release reclassification are described in separate capability phases below.
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **complete**.
+Status on `architecture/verify-redesign`: **complete**. Runtime implementation has not started; the next implementation boundary is preflight **Pass A**.
 
 Required:
 
@@ -221,7 +221,7 @@ Current Storybook infrastructure already provides deterministic stories, Control
 
 For test naming/placement:
 
-- current executable behavior owners may still use `*.browser.spec.ts` until Phase 2 migration;
+- current executable behavior owners may still use `*.browser.spec.ts` until preflight Pass C removes the legacy naming/discovery path;
 - target behavior suffix is `*.behavior.spec.ts`;
 - visual target remains `*.visual.spec.ts`;
 - complete product scenarios stay E2E rather than Storybook fixtures.
@@ -230,14 +230,14 @@ Older Storybook examples using the legacy suffix describe current/historical exe
 
 ## Verification during the migration itself
 
-Each risky pass requires focused proof of the mechanism it changes.
+Each risky pass requires focused proof of the mechanism it changes. Follow the preflight pass boundaries:
 
-At minimum verify:
-
-- CLI parser/type composition for Phase 1;
-- discovery/classification/TypeScript/Vitest exclusion for Phase 2;
-- owner parsing, dependency traversal, fallback, inventory validation, direct/moved/removed spec behavior, and project applicability preservation for Phase 3;
-- Vitest related fallback, mutation full semantics, performance budget selection, and reclassified runtime checks for Phase 4.
+- **Pass A:** parser/internal type composition, target suffix discovery/exclusions, old+new compatibility, and mixed-release split equivalence;
+- **Pass B:** canonical public type parsing, invalid combinations, type isolation/prerequisites, literal full semantics, and stale invocation handling;
+- **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, and add/remove/move fail-closed behavior;
+- **Pass D:** E2E owner parsing, dependency traversal, fallback, inventory validation, direct/moved/removed spec behavior, additional-owner validation, and project applicability preservation;
+- **Pass E:** Vitest-native related fallback, explicit mutation target validation/selection/full semantics, and performance discovery only for real durable budgets;
+- **Pass F:** workflow/public-command inventory, release gate migration, and proof that removed compatibility mechanisms have no remaining consumers.
 
 Do not use a green broad run as proof that ownership or fallback logic is correct. Resolver unit tests must prove the risk-specific cases.
 
