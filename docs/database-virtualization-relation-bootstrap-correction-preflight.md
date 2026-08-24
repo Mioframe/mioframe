@@ -56,8 +56,10 @@ Do not edit `src/entities/databaseData/REVIEW.md`; architect owns review state.
 3. Run the failing product scenario focused until it passes without retries/flaky classification.
 4. Run the existing Database virtualization structural scenarios to confirm settled start/interior/end spacer behavior, bounded nested ranges, and deep scrolling remain correct.
 5. Run focused type-check.
+6. When the correction appears complete, run the complete cumulative branch gate: `pnpm verify --base origin/develop`.
+7. If that branch gate exposes another PR-caused in-contract failure, fix it and use the smallest relevant focused verifier command for fast feedback; then rerun `pnpm verify --base origin/develop`. Repeat until the branch gate is clean.
 
-If pass 1 disproves the handoff hypothesis or requires ownership expansion, stop and report the evidence instead of continuing.
+If pass 1 disproves the handoff hypothesis or a later branch-gate failure requires ownership/architecture expansion, stop and report the evidence instead of continuing.
 
 ## Required removal of replaced logic
 
@@ -86,9 +88,9 @@ No compatibility path or fallback timer.
   - Risk or platform matrix: nested relation roots plus top-level table.
   - Durable ownership/impact updates: none expected.
 
-## Final verification
+## Verification
 
-Use the smallest verifier-managed commands useful to the correction, for example:
+Use the smallest verifier-managed commands useful while implementing or correcting, for example:
 
 - `pnpm verify --only e2e --files tests/e2e/databaseViewsAndQueryFlows.spec.ts`
 - `pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`
@@ -96,4 +98,10 @@ Use the smallest verifier-managed commands useful to the correction, for example
 
 If the verifier does not accept the exact file scoping above, use its documented nearest focused form; do not invoke Playwright directly.
 
-Do not run broad final `pnpm verify`, `pnpm verify --full`, or `pnpm verify:release` as the coding-agent handoff gate. Exact-head GitHub CI is architect-owned.
+Before coding handoff, run the complete branch-diff verifier using the normal local profile:
+
+- `pnpm verify --base origin/develop`
+
+Do not add `--profile github-actions` to the ordinary local branch gate. Do not substitute `pnpm verify --full` or `pnpm verify:release` for this PR-diff gate.
+
+If the branch gate fails for a PR-caused issue inside the accepted contract, correct that issue with focused verification for the iteration and then rerun the complete branch gate until it passes cleanly. Exact-head GitHub CI remains architect-owned after handoff.
