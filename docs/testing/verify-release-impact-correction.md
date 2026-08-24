@@ -1,6 +1,6 @@
 # Verify release-impact correction
 
-Status: **architecture simplified and ready; implementation pending**.
+Status: **implemented and architect-reviewed; Pass E closed**.
 
 This document is the durable Pass E architecture for PR #216. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
 
@@ -43,7 +43,7 @@ It provides:
 
 Do not redesign or duplicate that sub-boundary.
 
-Pass E is reopened only because the production-build input population was defined too narrowly from static imports. The real release build also consumes repository files through tool discovery, TypeScript/build metadata, dependency-install control and file-as-data/artifact roots.
+Pass E was reopened because the production-build input population had been defined too narrowly from static imports. The real release build also consumes repository files through tool discovery, TypeScript/build metadata, dependency-install control and file-as-data/artifact roots.
 
 ## Design rule
 
@@ -111,7 +111,7 @@ Do not broaden this into `config/**`.
 
 ### 2. Tool-discovered production configuration
 
-Static imports are not the only ownership mechanism. The planner must represent the current repository-owned inputs and a small fail-closed family boundary for plausible replacements, without reproducing loader extension matrices.
+Static imports are not the only ownership mechanism. The planner represents the current repository-owned inputs and a small fail-closed family boundary for plausible replacements, without reproducing loader extension matrices.
 
 #### Browserslist
 
@@ -294,9 +294,9 @@ postcss.config.test.ts
 
 ## Planner ownership model
 
-Keep implementation local to `scripts/lib/releaseRisk.ts`. No new registry/module is justified.
+Implementation stays local to `scripts/lib/releaseRisk.ts`. No new registry/module is justified.
 
-The local model needs only:
+The local model is limited to:
 
 ```text
 current exact production-build inputs
@@ -309,13 +309,13 @@ pnpm-workspace.yaml full fallback
 
 Do not encode exhaustive third-party loader extension lists.
 
-This is simpler than both rejected alternatives:
+This remains simpler than the rejected alternatives:
 
 1. **example patch** — adding only the currently missed paths repeats the ownership-completeness failure;
 2. **loader mirror / generic registry** — copying every supported config extension creates another source of truth and future drift;
 3. **generic root/config fallback** — `config/**`, all `*.config.*`, or all root files creates broad false positives.
 
-## Existing Pass E ownership to preserve
+## Existing Pass E ownership preserved
 
 Keep all accepted relations not superseded by this production-build boundary, including:
 
@@ -354,15 +354,13 @@ Also preserve:
 - current 120-minute `verification-release` job envelope;
 - CI topology and independent `release-version` gate.
 
-## Required independent proof
+## Independent proof
 
-Use a fresh test-author context before production edits. Primary owner: `scripts/lib/releaseRisk.test.ts`.
+A fresh test-author context added the primary proof in `scripts/lib/releaseRisk.test.ts` before production edits. The oracle is the real build mechanisms above, not production planner constants.
 
-The oracle is the real build mechanisms above, not production planner constants.
+### Current real production-build inputs
 
-### RED A — current real production-build inputs
-
-Prove:
+Proof covers representative current inputs including:
 
 ```text
 .browserslistrc
@@ -384,11 +382,9 @@ mode: focused
 checks: artifact + build + managed-updates + release-smoke
 ```
 
-The current implementation must fail the newly uncovered cases.
+### Fail-closed config families without loader mirroring
 
-### RED B — fail-closed config families without loader mirroring
-
-Synthetic/non-current family members:
+Synthetic/non-current family members include:
 
 ```text
 browserslist
@@ -405,19 +401,11 @@ mode: full
 checks: all six source-impact release checks
 ```
 
-This proves unknown significant members do not silently skip while the verifier remains independent from third-party extension matrices.
+### Public artifact population
 
-### RED C — public artifact population
+A representative nested path and a proof-looking filename under `public/**` both select the focused production-build consumers because Vite copies the whole population.
 
-Representative nested path:
-
-```text
-public/icons/example.svg
-```
-
-and a proof-looking filename under `public/**` both select the focused production-build consumers because Vite copies the whole population.
-
-### RED D — known negative members
+### Known negative members
 
 Known non-production TypeScript configs:
 
@@ -428,7 +416,7 @@ tsconfig.scripts.json
 
 remain release-negative solely from the tsconfig family.
 
-Keep nearby unrelated paths negative:
+Nearby unrelated paths remain negative:
 
 ```text
 .env.example
@@ -440,64 +428,51 @@ config/unrelatedRuntimeConfig.ts
 postcss.config.test.ts
 ```
 
-### RED E — dependency install control
+### Dependency install control
 
 ```text
 pnpm-workspace.yaml
 → full six
 ```
 
-Do not weaken existing tests to obtain these results.
+Existing tests were not weakened to obtain these results.
 
 ## Verification boundary
 
-Implementation scope remains narrow:
+The implementation remained narrow:
 
 ```text
 scripts/lib/releaseRisk.ts
 scripts/lib/releaseRisk.test.ts
 ```
 
-No changes are expected in:
+No production build semantics, release execution, release inventory, verifier output behavior, timeout, or CI topology was changed by this correction.
 
-```text
-releaseSpecInventory.ts
-managedUpdatesProof.mjs
-scripts/verify.ts
-vite.config.ts
-postcss.config.js
-pwa-assets.config.ts
-public/**
-CI workflows
-```
-
-If implementation requires changing production build semantics instead of planner ownership, stop and return to architecture review.
-
-Focused coding-agent feedback only:
+Agent-reported focused feedback was green for:
 
 ```bash
 pnpm verify --only unit-tests --files \
   scripts/lib/releaseRisk.ts \
   scripts/lib/releaseRisk.test.ts
 
+pnpm verify --only type-check
+
 pnpm verify --fix-only --files \
   scripts/lib/releaseRisk.ts \
   scripts/lib/releaseRisk.test.ts
 ```
 
-Run `pnpm verify --only type-check` only if useful for the touched TypeScript surface.
-
-Broad local verify/release/browser suites remain architect-owned through exact-head CI after semantic review.
+Architect review independently re-read the complete planner boundary, the retained release-spec inventory/runners, and the real current build-input sources. No blocker or major issue remains in Pass E. GitHub CI on the reviewed implementation head had already passed format, lint, type-check and unit-test steps when this review closed; release/browser jobs were still running and are not treated as final merge evidence.
 
 ## Acceptance criteria
 
-Pass E production-build ownership is complete only when:
+Pass E production-build ownership is accepted because:
 
 1. release-spec inventory/execution behavior remains unchanged;
 2. `.browserslistrc`, `postcss.config.js`, `pwa-assets.config.ts` and `public/favicon.svg` cannot resolve `skip`;
 3. current positively-known production-build inputs select the focused four consumers;
 4. non-current paths inside the confirmed Browserslist/PostCSS/PWA-assets/tsconfig families fail closed to full rather than being treated as known focused consumers;
-5. no exhaustive third-party loader extension table is introduced;
+5. no exhaustive third-party loader extension table was introduced;
 6. all `public/**` paths are production artifact inputs;
 7. production env filenames are covered while `.env.example` stays negative;
 8. current production/config TypeScript configs are release-owned;
@@ -505,20 +480,19 @@ Pass E production-build ownership is complete only when:
 10. unknown root `tsconfig*.json` fails closed to full six;
 11. `pnpm-workspace.yaml` fails closed to full six;
 12. existing package/release-fixture/publisher/managed-update ownership remains unchanged;
-13. no broad `config/**`, all-root-files, generic `*.config.*`, generic registry, graph or new module is introduced;
-14. focused independent proof is green;
-15. architect reviews the complete Pass E boundary again before closure.
+13. no broad `config/**`, all-root-files, generic `*.config.*`, generic registry, graph or new module was introduced;
+14. focused independent proof is green per agent feedback and current CI unit/static evidence;
+15. architect re-reviewed the complete Pass E boundary, including retained release-spec inventory.
 
-## Completion order
+## PR completion order after Pass E
 
-Pass E remains open until:
+Pass E is closed. PR #216 still requires:
 
-1. fresh independent proof establishes these mechanism-level REDs;
-2. the local `releaseRisk.ts` correction is implemented;
-3. focused proof/static feedback is green;
-4. architect reviews the entire release-impact boundary, including retained release-spec inventory;
-5. the separate output-contract minors are corrected;
-6. full PR semantic review is clean;
-7. exact-head CI is healthy;
-8. the mandatory representative benchmark records both critical-path/merge latency and aggregate expensive compute;
-9. architect records the final stop/reopen decision and requires CI on the resulting documentation head.
+1. correction and architect review of the two verifier-output minors;
+2. one complete PR-level semantic review;
+3. removal of resolved review artifacts;
+4. stable exact-head CI on the corrected implementation;
+5. the mandatory representative benchmark with both critical-path/merge latency and aggregate expensive compute;
+6. an explicit architect stop/reopen decision;
+7. CI on the resulting final documentation head;
+8. final ancestry/thread/check revalidation and merge-readiness verdict.
