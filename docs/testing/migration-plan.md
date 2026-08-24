@@ -121,7 +121,7 @@ The implementation may use several commits/PRs, but the dependency order below i
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **active documentation step**.
+Status on `architecture/verify-redesign`: **complete**.
 
 Required:
 

@@ -1,9 +1,9 @@
 # ADR: Unified `pnpm verify` architecture
 
-- **Status:** Draft
+- **Status:** Accepted; implementation pending
 - **Project:** Mioframe
 - **Date:** 2026-08-24
-- **Scope:** Verification architecture. This document defines the target redesign and intentionally differs from parts of the current canonical testing policy until the redesign is adopted.
+- **Scope:** Accepted verification architecture. The canonical project policy in `docs/testing/architecture.md` is synchronized with this decision; executable migration state and sequencing are tracked in `docs/testing/migration-plan.md`.
 
 ## Context
 
@@ -477,7 +477,6 @@ The redesign is architecture-ready for implementation when the implementation ca
 
 The architecture decisions that affect ownership and safety are resolved above. Remaining choices should be made from the current repository during implementation preflight and should not redefine this model:
 
-- exact public spelling of the final `--only` type values;
 - exact local directory name used when one colocated owner requires several specs of the same type;
 - exact Playwright tag/annotation syntax for additional owners;
 - exact `dependency-cruiser` configuration/API wiring and Vue/TypeScript resolution settings;
