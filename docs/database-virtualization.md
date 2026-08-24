@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **virtualization implementation and proofs accepted; PR #217 remains pending operator visual reinspection, exact-head CI, and final resulting-PR review**.
+Status: **virtualization implementation accepted; PR #217 is blocked by one over-budget moving-surface E2E proof, operator visual reinspection, exact-head CI, and final resulting-PR review**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -16,7 +16,8 @@ In scope through completion:
 - native-table spacer/bootstrap integration;
 - sticky header/action behavior;
 - accessibility and logical ARIA contracts;
-- presentation regressions introduced or exposed by the virtualization/native-table migration.
+- presentation regressions introduced or exposed by the virtualization/native-table migration;
+- stable, proportional proof of those virtualization contracts.
 
 Explicitly deferred to later PRs:
 
@@ -25,23 +26,6 @@ Explicitly deferred to later PRs:
 - other causes of Short -> Full or scrolling stalls that are not caused by virtualization correctness/integration.
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
-
-## Completed contracts
-
-- native-table integration correction: `docs/database-virtualization-integration-correction-handoff.md`;
-- relation cold-bootstrap correction: `docs/database-virtualization-relation-bootstrap-correction-handoff.md`;
-- branch-E2E proof correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
-- shared frame correction: `docs/md-table-frame-correction-handoff.md`;
-- deep-state shared discriminator: `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`;
-- consolidated completion pass: `docs/database-virtualization-completion-pass-handoff.md`;
-- supporting top-level diagnosis: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`.
-
-Current reviews:
-
-- `src/entities/databaseData/REVIEW.md`;
-- `src/features/relationValueEdit/REVIEW.md`;
-- `src/shared/ui/virtualization/REVIEW.md`;
-- `src/shared/ui/Table/REVIEW.md`.
 
 ## Accepted virtualization architecture
 
@@ -59,7 +43,7 @@ Implementation flow:
 
 The removed entity root/table ancestor/sibling geometry-discovery path must not return.
 
-## Settled presentation contracts
+## Settled implementation contracts
 
 Leading/trailing row and column spacer DOM exists only when the corresponding virtual distance is greater than zero.
 
@@ -68,6 +52,8 @@ A non-empty logical collection with no mounted virtual items may render only tra
 `MDTable` uses one native root-owned outer border/radius with no per-row pseudo-element perimeter.
 
 Database body action cells remain sticky/right below the shared sticky-header plane; the header action intersection remains locally elevated inside the header plane.
+
+`RelationValueFieldData` renders its loading indicator and `DatabaseDataTable` mutually exclusively, so explicit local `0/0` offsets are truthful whenever the table is mounted.
 
 ## Shared deep-state surfaceOffset contract — accepted
 
@@ -79,11 +65,9 @@ on the same root/list. Both deep phases reach the logical tail, top recovery rea
 
 `useVirtualCollection.ts` remains unchanged. No shared/TanStack production correction, `virtualizer.measure()`, cache-reset protocol, or virtualizer exposure is justified.
 
-## Top-level moving-surface diagnosis — no production defect confirmed
+## Top-level numeric diagnosis — production geometry mismatch not confirmed
 
-A historical exact-head CI run reproduced the moving-surface product scenario failure 3/3 on desktop Chromium. Later runs passed without a production correction.
-
-The consolidated completion pass performed the required consumer-side numeric diagnosis. The coding agent reports supplied widget offsets matched current physical root-to-`DatabaseViewLayout` offsets at every checkpoint:
+The completion pass compared widget-supplied surface offsets with current DOM-derived root-to-`DatabaseViewLayout` offsets throughout the real product lifecycle. Reported values matched at every checkpoint:
 
 - initial top: vertical `178`, horizontal `16`;
 - first deep: vertical `178`, horizontal `16`;
@@ -91,39 +75,59 @@ The consolidated completion pass performed the required consumer-side numeric di
 - returned top: vertical `0`, horizontal `16`;
 - second deep: vertical `0`, horizontal `16`.
 
-Both deep phases reached logical row `46`; the historical failure was not reproduced; temporary diagnostic instrumentation was removed.
+Both deep phases reached logical row `46` during the diagnostic run. Temporary instrumentation was removed.
 
-Together with the accepted shared deep-state proof, current evidence does not support another production geometry/cache/lifecycle correction. Do not add timers, extra observers, remounts, cache resets, or shared changes for this historical episode.
+Together with the accepted shared deep-state proof, current evidence does not justify another production geometry/cache/lifecycle correction. Do not add timers, extra observers, remounts, cache resets, or shared changes without new evidence that survives a proportional product proof.
 
-Any new exact-head reproduction reopens this finding from the new concrete evidence.
+## Active proof blocker — moving-surface E2E exceeds its budget
 
-## Relation local-root invariant — resolved
+Exact-head GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only `verification-browser (e2e)`. Static, visual, Storybook behavior, and release-version lanes passed.
 
-`RelationValueFieldData` now renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit local `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` are truthful whenever the table is mounted.
+Owning scenario:
 
-Owner-local component proof and relevant relation/database E2E are reported green.
+`tests/e2e/databaseVirtualizationFlows.spec.ts` -> `keeps real preceding Database content connected to the table-owned surface range`.
+
+Desktop Chromium exhausted the 30-second per-test timeout on all three attempts, but at different phases. Mobile Chrome passed the same scenario.
+
+The scenario currently:
+
+1. creates the real Weekly Plan starter example, which already contains five rows;
+2. performs **40 sequential full add-item UI flows**;
+3. only then runs the surface movement/deep-range contract.
+
+This setup is disproportionate to the contract and consumes the same global timeout that is supposed to prove geometry correctness.
+
+### Required proof correction
+
+Keep the same real product scenario but remove unnecessary stress setup:
+
+- use an explicit compact desktop viewport;
+- create only a small fixed number of additional rows sufficient to guarantee vertical overflow and a virtualized deep range after the success card is removed;
+- preserve the real success card and real dismiss action;
+- preserve physical surface movement proof;
+- preserve bounded mounted-range assertions;
+- preserve first and second deep-range assertions against `aria-rowcount`;
+- do not increase timeout, add sleeps, accept retries, or weaken logical assertions.
+
+Large-data stress remains owned by the separate virtualization stress/capability proofs; this scenario owns moving-surface correctness only.
+
+If the corrected proportional proof still fails to reach the logical tail with meaningful test budget remaining, reopen production architecture from that concrete result.
 
 ## Sticky action/header stacking — resolved
 
-`DatabaseDataTable` body action cells now use local `z-index: 0`, below shared sticky `thead` (`z-index: 1`), while the header action cell remains locally elevated.
+`DatabaseDataTable` body action cells use local `z-index: 0`, below shared sticky `thead` (`z-index: 1`), while the header action cell remains locally elevated.
 
-The existing sticky native-table application E2E now performs `document.elementFromPoint()` hit-testing after simultaneous vertical + horizontal scrolling and proves:
-
-- body right edge belongs to the sticky body action cell rather than an ordinary value cell;
-- top-right header/action intersection belongs to the header action cell rather than a body action cell;
-- ordinary header area remains above body action cells.
+The existing sticky native-table application E2E performs `document.elementFromPoint()` hit-testing after simultaneous vertical + horizontal scrolling and proves body-right, top-right header/action intersection, and ordinary header-band ownership.
 
 No shared `MDTable` correction was required.
 
-## Verification evidence
+## Verification workflow
 
-Coding agent reports focused unit/E2E/relation E2E/format/ESLint/Oxlint/type-check green and cumulative:
+Use focused verifier feedback for the moving-surface proof correction, then the normal cumulative branch gate:
 
 `pnpm verify --base origin/develop`
 
-passed in one iteration with no remaining local failure.
-
-Exact-head GitHub CI remains the authoritative automatic merge gate. A retry/flaky pass is not accepted. Any new moving-surface reproduction reopens that finding.
+Do not increase the test timeout or force retries. Do not force `--profile github-actions` on the normal final branch gate.
 
 ## Residual Chromium jank
 
@@ -135,19 +139,21 @@ Retained evidence and future discriminators are recorded in `docs/database-chrom
 
 PR #217 may merge only when:
 
-1. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
-2. exact-head GitHub CI is green without retry/flaky classification;
-3. final resulting-PR review finds no blocker.
+1. the moving-surface product proof is proportional and stable within the normal test budget;
+2. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
+3. coding-agent `pnpm verify --base origin/develop` passes cleanly on the final code/proof;
+4. exact-head GitHub CI is green without retry/flaky classification;
+5. final resulting-PR review finds no blocker.
 
 ## Forbidden before merge
 
 - expanding #217 into unrelated residual performance optimization;
-- speculative moving-surface production recovery without new failing evidence;
+- speculative production moving-surface recovery while the current proof is over-budget;
+- increasing E2E timeout or adding sleeps/retry recovery;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
 - exposing TanStack virtualizer instances;
 - second geometry/range/measurement state;
-- retry/remount/sleep/timeout/force recovery;
 - Number/value/query or worker/query/storage performance optimization;
 - broad shared-UI redesign unrelated to confirmed virtualization blockers.
