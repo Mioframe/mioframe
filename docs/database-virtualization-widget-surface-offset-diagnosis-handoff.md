@@ -1,99 +1,59 @@
 # Database virtualization widget surface-offset diagnosis handoff
 
+Status: **ready as Pass A of `docs/database-virtualization-completion-pass-handoff.md`**.
+
 ## Goal
 
-Determine why the top-level Database product scenario still fails on desktop Chromium after the shared deep-state `surfaceOffset` contract was proved correct.
+Determine why the top-level Database product scenario can fail on desktop Chromium after the shared deep-state `surfaceOffset` contract was proved correct.
 
 ## Confirmed current behavior and evidence
 
 - Shared Storybook browser proof at `e52d6c7bf2397a62c6669078043f874025a0fdc0` passes `deep -> change surfaceOffset while deep -> top -> deep` on the same root/list, including bounded mount count and consistent public/physical geometry.
 - `useVirtualCollection.ts` is unchanged; shared production is no longer the current owner candidate.
-- Exact-head CI on `dcb72917f2fcd49c58a1caa9f8f6cc7ade58bd4a` still fails the top-level moving-surface product scenario 3/3 on desktop Chromium; Mobile Chrome passes.
+- Exact-head CI previously failed the top-level moving-surface product scenario 3/3 on desktop Chromium; a later run passed without a production correction. The known instability therefore remains unresolved.
 - `DatabaseViewWidget` currently derives vertical/horizontal offsets from two `useElementBounding` snapshots plus current root scroll position and refreshes those snapshots from `onMounted`/`onUpdated`.
-- VueUse `useElementBounding` documents synchronous bounding-box refresh by default and optional next-frame refresh; sibling layout movement is not itself a durable canonical layout fact.
 
 ## Non-goals
 
-- no production correction before diagnosis;
+- no moving-surface production correction in this pass;
 - no shared virtualization or TanStack change;
 - no entity geometry fallback;
-- no relation-value correction in this pass;
-- no MDTable, worker/query/storage, or performance follow-up.
+- no permanent diagnostic API/state;
+- no MDTable, worker/query/storage, or residual performance work.
 
-## Affected scenario
+## Source of truth
 
-Top-level `.database-view`: non-zero success-card extent -> deep range -> dismiss card while deep -> surface moves -> top -> deep.
+At the same lifecycle point compare:
 
-## Ownership matrix
+1. actual physical root-to-`DatabaseViewLayout` content-coordinate offset from current DOM geometry;
+2. numeric offset currently supplied by `DatabaseViewWidget` to `DatabaseViewLayout`/`DatabaseDataTable`.
 
-- widget: owns the top-level root-to-layout offset and is the current diagnosis target;
-- shared/entity/feature/page/service/worker: unchanged during diagnosis.
-
-## Source of truth and state shape
-
-Compare, at the same lifecycle points:
-
-1. the actual physical root-to-`DatabaseViewLayout` content-coordinate offset derived from current DOM geometry;
-2. the numeric offset value currently supplied by `DatabaseViewWidget` to `DatabaseViewLayout`/`DatabaseDataTable`.
-
-No persistent diagnostic state or public API is allowed.
-
-## Public API / entry points
-
-No public API change. Existing internal props remain the observation path.
-
-## Minimum sufficient design
-
-Use temporary, task-local diagnostic instrumentation in `DatabaseViewWidget` only if necessary to expose the supplied numeric offsets to verifier-managed product E2E output. Instrumentation must be removed before handoff and must not remain in the resulting PR diff.
-
-Capture the offset pair and physical DOM-derived offset at these checkpoints:
+Checkpoints:
 
 - initial top before first deep;
 - settled first deep before dismiss;
 - immediately after dismiss/layout movement while still deep;
-- after returning top;
-- immediately before/while the second deep transition fails or succeeds.
+- returned top;
+- second deep attempt.
 
-Run the owning E2E under the normal focused verifier first. Because the defect is repeatedly CI-profile-specific, a targeted `github-actions` profile run is explicitly allowed for this diagnosis. The normal final branch gate must still use the default local profile.
+## Minimum sufficient diagnosis
+
+Use temporary task-local instrumentation in `DatabaseViewWidget` only if needed to expose the supplied values to verifier-managed E2E output. Remove all instrumentation before handoff.
+
+Run the owning E2E normally first. If it does not reproduce, a targeted focused `--profile github-actions` verifier run is allowed for this diagnosis only.
 
 ## Decision rule
 
-- If supplied offsets diverge from the physical DOM-derived offsets at any checkpoint, widget offset production/lifecycle is confirmed as root cause. Return evidence; do not implement the correction in this pass.
-- If supplied offsets remain truthful throughout the failing sequence and the product still fails, stop and return evidence: the current architecture assumption is invalid and must be reconsidered before production edits.
+- `widget-offset-mismatch`: supplied and physical values diverge; return the first divergence and complete numeric trace. Do not implement the correction in this pass.
+- `offsets-truthful-product-still-fails`: values remain truthful through a reproduced failure; return the trace and stop for architecture reconsideration.
+- `not-reproduced`: no failure reproduced in authorized runs; still return supplied/physical traces for the observed successful lifecycle. Do not infer a production fix.
 
-## Rejected approaches
+Independent Passes B/C in the completion handoff may proceed regardless of this diagnostic result.
 
-- speculative `updateTiming: 'next-frame'`, extra `nextTick`, rAF, observer, or cache reset without numeric evidence;
-- adding a permanent `data-*` geometry API solely for tests;
-- restoring entity-owned root/table discovery;
-- weakening the product E2E.
+## Verification
 
-## Shared UI blast radius
-
-None. Shared production is already proved for the exact deep-state sequence.
-
-## Acceptance matrix
-
-- diagnosis captures supplied and physical offsets at all named checkpoints;
-- evidence reproduces the desktop Chromium failure under a verifier-managed run when possible;
-- no permanent production/test-only diagnostic surface remains;
-- the result selects either widget lifecycle mismatch or architecture reconsideration with concrete numeric evidence.
-
-## Required test proof
-
-Primary product owner remains `tests/e2e/databaseVirtualizationFlows.spec.ts`. The existing moving-surface scenario must not be weakened. Diagnostic logging/assertion support may be temporary only unless it protects a stable observable contract without exposing implementation details.
-
-## Required verification
-
-Focused E2E first. Targeted CI-profile diagnosis is allowed because exact-head CI repeatedly reproduces the defect. No full production branch gate is required until temporary instrumentation has been removed; after cleanup run `pnpm verify --base origin/develop` and report exact result.
+Primary product owner remains `tests/e2e/databaseVirtualizationFlows.spec.ts`. Do not weaken the moving-surface scenario or permanently assert private widget state. After temporary instrumentation is removed, the consolidated completion task owns the final `pnpm verify --base origin/develop` gate.
 
 ## Forbidden
 
-Production correction; shared virtualization changes; `virtualizer.measure()`; permanent diagnostic DOM/API; entity fallback observer; sleeps; timeout inflation; retry-as-success; direct Playwright/Vite/browser commands; mutating Git workflow; relation-value correction in this pass.
-
-## Implementation readiness
-
-- Diagnosis target: resolved.
-- Production correction: intentionally unresolved until numeric evidence exists.
-- Unresolved blockers before diagnosis: none.
-- Verdict: **ready for diagnosis only**.
+Moving-surface production correction; permanent `data-*` diagnostics; shared virtualization edits; `virtualizer.measure()`; entity observer fallback; speculative nextTick/rAF/timer/observer fixes; sleeps/timeout inflation/retry-as-success; direct browser commands; mutating Git workflow.
