@@ -1,121 +1,67 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; PR #217 completion is blocked only by Database table integration/visual compatibility**.
+Status: **shared virtualization architecture accepted; PR #217 implementation is complete pending operator visual acceptance and exact-head CI**.
 
-This is the architecture source of truth for PR #217. Workflow or merge instructions in older profiling/result documents are historical where they conflict with this file.
+This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
 Current contracts:
 
-- integration correction: `docs/database-virtualization-integration-correction-handoff.md`;
-- implementation preflight: `docs/database-virtualization-integration-correction-preflight.md`;
+- completed integration correction: `docs/database-virtualization-integration-correction-handoff.md`;
+- completed implementation preflight: `docs/database-virtualization-integration-correction-preflight.md`;
 - active review: `src/entities/databaseData/REVIEW.md`;
-- raw measurements: `docs/database-virtualization-production-results.md`;
 - deferred residual performance work: `docs/database-chrome-jank-follow-up.md`.
 
-## PR #217 goal
+## PR #217 accepted architecture
 
-Ship a structurally scalable Database table that preserves existing product behavior and normal table presentation.
-
-Required structural target remains at least 30,000 rows × 300 properties without materializing the 9,000,000 logical row/property intersections.
-
-## Accepted architecture
-
-- `@tanstack/vue-virtual` remains the sole virtual-item range/measurement/cache engine.
-- `useVirtualCollection` remains the shared one-axis virtualization boundary.
-- Database uses independent row and property virtual collections over canonical complete sources.
-- Native `<table>` rendering remains.
+- `@tanstack/vue-virtual` is the sole virtual-item range/measurement/cache engine.
+- `useVirtualCollection` is the shared one-axis virtualization boundary.
+- Database uses independent row/property virtual collections and native `<table>` rendering.
 - Only mounted row × mounted property intersections instantiate expensive outer cells.
 - Service/worker remains canonical for row membership/filter/sort/order.
 - Existing inline-edit, relation-root, accessibility, dynamic-sizing, sticky-surface, and value ownership remains unchanged.
-- No paging/index/cache/worker redesign, second geometry engine, generic virtual grid/table, or new virtualization manager is justified in #217.
-
-Structural boundedness and deep correctness are accepted from existing product proof.
+- Structural boundedness and deep correctness are accepted, including 30,000 × 300 without materializing 9,000,000 logical intersections.
 
 ## Database table integration
 
-`entities/databaseData` owns how virtual ranges are represented inside the native table. `shared/ui/Table` remains generic and must not become Database-virtualization-aware.
+`entities/databaseData` owns virtual spacer representation. `shared/ui/Table` remains generic.
 
-`DatabaseDataTable` uses presentation spacer DOM around mounted ranges. A spacer is truthful only while it represents a non-zero virtual distance.
-
-### Boundary invariant
+Boundary invariant:
 
 > Leading/trailing row and column spacer DOM exists only when the corresponding virtual distance is greater than zero.
 
-When the virtual distance is zero, the logical real row/cell must be the physical table boundary.
+Implemented in `DatabaseDataTable` using only `rows.leadingSize`, `rows.trailingSize`, `columns.leadingSize`, and `columns.trailingSize`:
 
-This matters because `MDTable` intentionally derives its outer corners and bottom-edge behavior from physical first/last table structure. Always-rendered zero-size spacers currently steal that structure and cause the operator-confirmed border/radius regression.
+- zero-distance spacer `<col>`, `<th>`, `<td>`, and `<tr>` elements are omitted;
+- `physicalColumnCount` counts only rendered spacer columns;
+- non-zero spacers remain presentation-only geometry;
+- no Database-specific border/radius system and no shared `MDTable` change was added.
 
-### Selected correction
+Application E2E protects logical start, interior range, and logical end for top-level and relation/no-action paths while retaining boundedness, deep scrolling, ARIA, dynamic sizing, sticky, relation, and editing proof.
 
-Use the existing `rows.leadingSize`, `rows.trailingSize`, `columns.leadingSize`, and `columns.trailingSize` as the only facts.
-
-- render each spacer `<col>`, `<th>`, `<td>`, or `<tr>` only when its matching size is greater than zero;
-- count only rendered spacer columns in physical colspan calculations;
-- retain non-zero spacers unchanged as presentation-only geometry;
-- do not duplicate `MDTable` corner/border rules in Database CSS;
-- do not change shared `MDTable`.
-
-If this minimum correction is insufficient, architecture must be revisited before adding another styling system.
-
-## Required #217 scenarios
-
-Before merge:
-
-1. initial logical top/left uses real cells/rows as physical boundaries;
-2. interior virtual ranges keep non-zero spacer geometry;
-3. logical bottom/right restores real cells/rows as physical boundaries;
-4. top-level action-column and relation/no-action tables remain correct;
-5. vertical/horizontal deep scrolling still reaches correct sentinels;
-6. mounted rows/properties/cells remain bounded;
-7. ARIA counts/indices, dynamic row sizing, measured property width, sticky surfaces, nested relations, and editing remain correct;
-8. the real application table visually matches the pre-virtualization border/corner behavior at representative start and end states.
-
-Application E2E remains the product/browser proof owner in `tests/e2e/databaseVirtualizationFlows.spec.ts`.
-
-The current visual runner is Storybook-only and `databaseData` has no isolated Storybook product-service fixture. Do not introduce product bootstrap/mocking infrastructure solely for a screenshot. The structural boundary is protected in E2E; operator inspection of the real application table is the final appearance check for this correction.
+The final visible border/corner result still requires operator inspection on the real application table. If appearance remains wrong, revisit this integration decision before adding another styling system.
 
 ## Residual Chromium jank
 
-Residual heterogeneous-content Chrome jank is **not a merge blocker for PR #217** after the scope decision recorded here.
+Residual heterogeneous-content Chrome jank is intentionally **deferred to a separate PR** and is not a #217 merge blocker.
 
-Retained evidence:
+Retained evidence and the next String-vs-Number/data-density discriminator are recorded in `docs/database-chrome-jank-follow-up.md`.
 
-- sparse all-string verifier control remains fast and bounded;
-- heterogeneous/Number fixtures reproduce slower switches and intermittent vertical Long Tasks;
-- horizontal scrolling stayed clean in the diagnostic;
-- Firefox was noticeably better in operator testing on the same laptop;
-- the actual production owner is unresolved.
+Do not add Number-specific, geometry, worker/query/storage, Material, or shared-virtualization performance changes to #217.
 
-That work moves to `docs/database-chrome-jank-follow-up.md` and a separate PR.
+## Merge criteria
 
-Do not add Number-specific, geometry, worker/query/storage, Material, or shared virtualization changes to #217 based on the current reproducer label.
+PR #217 may merge when:
 
-PR #217 is acceptable with this known follow-up risk provided:
+1. operator inspection confirms the Database table border/corner appearance is restored at representative start/end states;
+2. exact-head GitHub CI is green.
 
-- the integration/visual regression is fixed;
-- structural boundedness/correctness remains intact;
-- the accepted all-string control has no evidence of regression from the integration correction;
-- no new obvious user-facing performance regression is introduced by the correction;
-- exact-head GitHub CI is green.
+Residual Chromium heterogeneous-table jank remains an explicitly accepted tracked follow-up risk, not resolved behavior.
 
-## Forbidden in the current correction
+## Forbidden before merge
 
-- shared `MDTable` changes;
-- new Database-specific border/radius framework;
-- geometry ownership changes;
-- TanStack or `useVirtualCollection` changes;
-- Number/value/query performance optimization;
-- worker/query/storage/paging/index/cache work;
-- verifier/benchmark infrastructure;
-- screenshots inside application E2E;
-- timeout inflation, sleeps, force, or retry-as-success;
-- unrelated cleanup.
-
-## Readiness
-
-Shared virtualization: **accepted**.  
-Bounded mounted work: **accepted**.  
-Product correctness architecture: **accepted**.  
-Residual Chromium jank: **deferred to a separate PR with retained evidence**.  
-Database table visual/integration compatibility: **blocked pending the ready correction**.  
-Merge readiness: **should not merge until the integration blocker is fixed, operator appearance is accepted, and exact-head CI is green**.
+- shared `MDTable` changes without a newly established shared defect;
+- Database-specific duplicate border/radius framework;
+- geometry/TanStack/`useVirtualCollection` changes;
+- Number/value/query or worker/query/storage performance optimization;
+- new verifier/benchmark/visual infrastructure solely for this correction;
+- timeout inflation, sleeps, force, retry-as-success, or unrelated cleanup.
