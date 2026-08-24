@@ -37,7 +37,15 @@ test('opens under the configured GitHub Pages base path with no broken critical 
   expect(failedResponses).toEqual([]);
 });
 
-test('links a fetchable PWA manifest scoped to the base path', async ({ page, baseURL }) => {
+// Deterministic manifest content/scope validation (JSON validity, `name`,
+// `start_url`/`scope` base-path scoping) is static tooling proof now: see
+// scripts/release/productionArtifactStaticProof.mjs's
+// validateProductionArtifactManifest (see
+// docs/testing/verify-redesign-implementation-preflight.md's "Release-suite
+// reclassification"). This spec proves only the truthful browser/runtime
+// contract: the built page actually links a manifest, and that linked
+// resource is fetchable from the running server.
+test('links a fetchable PWA manifest', async ({ page, baseURL }) => {
   await launchApp(page);
 
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
@@ -46,12 +54,6 @@ test('links a fetchable PWA manifest scoped to the base path', async ({ page, ba
   const manifestUrl = new URL(manifestHref ?? '', baseURL);
   const response = await page.request.get(manifestUrl.toString());
   expect(response.ok()).toBe(true);
-
-  const manifest = await response.json();
-  expect(typeof manifest.name).toBe('string');
-  expect(String(manifest.start_url ?? manifest.scope ?? '')).toContain(
-    new URL(baseURL ?? '').pathname,
-  );
 });
 
 test('does not throw a page error on first launch with the service worker registered', async ({

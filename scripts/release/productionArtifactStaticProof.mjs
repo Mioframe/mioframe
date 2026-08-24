@@ -15,6 +15,7 @@ import { extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
+import { resolveArtifactBasePath } from './buildArtifact.mjs';
 
 const DIST_DIR = 'dist';
 const FORBIDDEN_JS_PATTERNS = [
@@ -33,6 +34,53 @@ function collectJsFiles(dir) {
 }
 
 /**
+ * Validates the deterministic generated PWA manifest (`dist/manifest.webmanifest`)
+ * against the configured release base path. Preserves the manifest-content
+ * meaning historically asserted in the browser-integration
+ * `productionArtifactSmoke.spec.ts` suite (see
+ * docs/testing/verify-redesign-implementation-preflight.md's "Release-suite
+ * reclassification"): the manifest is valid JSON, `name` is a string, and
+ * `start_url` or `scope` is scoped to the configured base path. Browser
+ * proof (page manifest link + fetchability) remains in that Playwright spec.
+ * @param distDir Built artifact directory to validate.
+ * @param basePath Configured release base path (e.g. `/`).
+ * @returns Validation errors; empty when the manifest passes.
+ */
+export function validateProductionArtifactManifest(distDir, basePath) {
+  const manifestPath = join(distDir, 'manifest.webmanifest');
+
+  if (!existsSync(manifestPath)) {
+    return [`Generated PWA manifest not found at ${manifestPath}.`];
+  }
+
+  let manifest;
+
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch (error) {
+    return [
+      `${manifestPath} is not valid JSON: ${error instanceof Error ? error.message : String(error)}.`,
+    ];
+  }
+
+  const errors = [];
+
+  if (typeof manifest.name !== 'string') {
+    errors.push(`${manifestPath} "name" must be a string.`);
+  }
+
+  const scopedUrl = String(manifest.start_url ?? manifest.scope ?? '');
+
+  if (!scopedUrl.includes(basePath)) {
+    errors.push(
+      `${manifestPath} "start_url"/"scope" ("${scopedUrl}") must be scoped to the configured release base path "${basePath}".`,
+    );
+  }
+
+  return errors;
+}
+
+/**
  * Validates the deterministic emitted-file/manifest/generated-artifact
  * invariants against an already-built production artifact:
  *
@@ -45,11 +93,17 @@ function collectJsFiles(dir) {
  * - the built managed controller worker (`dist/sw.js`, compiled from
  *   `src/sw.ts` via the injectManifest strategy) never calls
  *   `skipWaiting()` or `clients.claim()` — it must never manage its own
- *   code's lifecycle.
+ *   code's lifecycle;
+ * - the generated PWA manifest is scoped to the configured release base
+ *   path (see {@link validateProductionArtifactManifest}).
  * @param [distDir] Built artifact directory to validate.
+ * @param [basePath] Configured release base path used for the build.
  * @returns Validation errors; empty when the artifact passes.
  */
-export function validateProductionArtifactStatic(distDir = DIST_DIR) {
+export function validateProductionArtifactStatic(
+  distDir = DIST_DIR,
+  basePath = resolveArtifactBasePath(),
+) {
   const errors = [];
 
   if (!existsSync(distDir)) {
@@ -86,6 +140,8 @@ export function validateProductionArtifactStatic(distDir = DIST_DIR) {
       errors.push(`${swPath} must never call clients.claim().`);
     }
   }
+
+  errors.push(...validateProductionArtifactManifest(distDir, basePath));
 
   return errors;
 }

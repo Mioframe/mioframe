@@ -236,6 +236,7 @@ const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationTy
   oxlint: 'static',
   eslint: 'static',
   'type-check': 'static',
+  'storybook-build': 'static',
   'unit-tests': 'unit',
   e2e: 'e2e',
   'storybook-behavior': 'behavior',
@@ -256,8 +257,12 @@ const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationTy
 // Pure execution prerequisites: never a proof leaf on their own, so they
 // carry no verification type instead of inventing a ninth type for them
 // (see the implementation preflight's "pure execution prerequisites such as
-// e2e-install are not invented as a ninth verification type").
-const PREREQUISITE_LABELS: ReadonlySet<string> = new Set(['e2e-install', 'storybook-build']);
+// e2e-install are not invented as a ninth verification type"). Storybook
+// buildability itself is a `static` proof leaf (see
+// VERIFICATION_TYPE_BY_LABEL); reuse of its build artifact by
+// storybook-behavior/visual is a separate execution optimization and does
+// not remove that static proof ownership (see scripts/REVIEW.md B1).
+const PREREQUISITE_LABELS: ReadonlySet<string> = new Set(['e2e-install']);
 
 /**
  * Resolve the single verification type a planner leaf label belongs to.

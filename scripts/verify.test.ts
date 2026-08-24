@@ -403,6 +403,18 @@ describe('buildCommands full mode', () => {
     expect(requireRunEntry(commands, 'managed-updates-e2e').verificationType).toBe('e2e');
   });
 
+  it('routes managed-updates-static through the existing expensive-command lock boundary', () => {
+    // Two real `vite build` invocations (see
+    // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs)
+    // must use the same expensive-command coordination the historical
+    // `managed-updates` aggregate used, not a weaker `medium` weight that
+    // bypasses withExpensiveCommandLock in scripts/verify.ts (see
+    // scripts/REVIEW.md M1).
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'managed-updates-static').weight).toBe('expensive');
+  });
+
   it('does not add release-only checks outside full mode', () => {
     const commands = buildCommands([], { fullMode: false });
     const labels = commands.map((entry) => entry.label);
@@ -428,6 +440,7 @@ describe('buildCommands verification type composition', () => {
       oxlint: 'static',
       eslint: 'static',
       'type-check': 'static',
+      'storybook-build': 'static',
       'unit-tests': 'unit',
       e2e: 'e2e',
       'storybook-behavior': 'behavior',
@@ -442,13 +455,26 @@ describe('buildCommands verification type composition', () => {
     }
   });
 
-  it('leaves pure execution prerequisites without a verification type', () => {
+  it('leaves the pure execution prerequisite without a verification type', () => {
     const commands = buildCommands([], { fullMode: true });
     const e2eInstall = commands.find((entry) => entry.label === 'e2e-install');
-    const storybookBuild = commands.find((entry) => entry.label === 'storybook-build');
 
     expect(e2eInstall?.verificationType).toBeNull();
-    expect(storybookBuild?.verificationType).toBeNull();
+  });
+
+  it('owns Storybook buildability as static proof, distinct from behavior/visual artifact reuse', () => {
+    // storybook-build is a `static` proof leaf in its own right (see
+    // scripts/REVIEW.md B1): behavior/visual reusing the identical build
+    // artifact is only an execution optimization and must not merge
+    // Storybook buildability's proof ownership into either lane's type.
+    const commands = buildCommands([], { fullMode: true });
+    const storybookBuild = commands.find((entry) => entry.label === 'storybook-build');
+    const storybookBehavior = commands.find((entry) => entry.label === 'storybook-behavior');
+    const visual = commands.find((entry) => entry.label === 'visual');
+
+    expect(storybookBuild?.verificationType).toBe('static');
+    expect(storybookBehavior?.verificationType).toBe('behavior');
+    expect(visual?.verificationType).toBe('visual');
   });
 
   it('throws for an unregistered command label', () => {

@@ -22,12 +22,12 @@ describe('classifyCommandWeight', () => {
     expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
   });
 
-  it('treats the browser-integration and E2E managed-update leaves as expensive, and the static leaf as medium', () => {
+  it('treats every managed-update leaf, including the static controller-identity build, as expensive', () => {
     expect(classifyCommandWeight({ label: 'managed-updates-browser-integration' })).toBe(
       'expensive',
     );
     expect(classifyCommandWeight({ label: 'managed-updates-e2e' })).toBe('expensive');
-    expect(classifyCommandWeight({ label: 'managed-updates-static' })).toBe('medium');
+    expect(classifyCommandWeight({ label: 'managed-updates-static' })).toBe('expensive');
   });
 
   it('keeps release-version and release-config light, and build/artifact-static medium', () => {
