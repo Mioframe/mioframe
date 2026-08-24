@@ -26,7 +26,7 @@ The previous relation-filter cold-bootstrap regression is resolved in the same f
 Restore deterministic Database virtualization behavior/proof without reopening the accepted architecture:
 
 - table surface movement inside the same physical scroll root must be reflected by the existing table-owned surface geometry so later deep scrolling reaches the correct logical range;
-- interior spacer proof must establish a *logical* interior mounted range before asserting two-sided spacer structure;
+- interior spacer proof must establish a _logical_ interior mounted range before asserting two-sided spacer structure;
 - settled logical boundaries still omit zero-distance spacer DOM;
 - transient non-empty/no-range bootstrap remains presentation-only and disappears after TanStack mounts real items;
 - bounded mounted work, relation roots, editing, sticky behavior, ARIA, and dynamic sizing remain intact.
