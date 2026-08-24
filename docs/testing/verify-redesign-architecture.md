@@ -3,30 +3,27 @@
 - **Status:** Draft
 - **Project:** Mioframe
 - **Date:** 2026-08-24
-- **Scope:** Verification architecture only; no implementation details are prescribed beyond what is required by the decisions below.
+- **Scope:** Verification architecture. This document defines the target redesign and intentionally differs from parts of the current canonical testing policy until the redesign is adopted.
 
 ## Context
 
-Mioframe needs one project-wide entry point for verification.
-
-The current verification approach has become difficult to evolve safely, especially for browser-based tests where changed production files do not have a direct static-import relationship with the tests that exercise them.
+Mioframe needs one project-wide verification entry point that is safe for coding agents and cheap enough for normal development.
 
 The main constraints are:
 
-- verification must be reliable enough for coding agents;
-- the system should require as little manual metadata and maintenance as possible;
-- expensive browser checks, especially E2E, must not run in full for every change;
-- ambiguity must never silently reduce coverage;
-- the architecture must stay simple enough to implement and maintain quickly;
-- FSD ownership and repository structure should do as much of the work as possible.
+- `pnpm verify` must be the normal verification entry point;
+- default verification compares the current workspace against `develop`;
+- expensive tests, especially E2E, should be narrowed when that can be proven safe;
+- ambiguity must widen coverage, never silently reduce it;
+- structural mistakes that make affected-test selection unreliable must fail verification;
+- normal test ownership should come from repository structure rather than manually maintained mappings;
+- the design must remain small and explicit rather than becoming a generic verification framework.
 
-The goal is not to find the mathematically smallest possible test set. The goal is the **smallest test set that can be proven safe to run**.
+The goal is not the mathematically smallest test set. The goal is the **smallest test set that can be proven safe to run**.
 
-## Decision
+## Public command contract
 
-`pnpm verify` is the single entry point for project verification.
-
-### Default mode
+### Default
 
 ```bash
 pnpm verify
@@ -34,12 +31,13 @@ pnpm verify
 
 Default verification:
 
-1. compares the current changes against `develop`;
-2. determines which checks are applicable;
-3. narrows the scope inside each applicable test type when this can be done safely;
-4. expands coverage conservatively when the affected scope cannot be proven.
+1. computes changed paths and statuses relative to `develop`;
+2. determines which verification types have relevant impact;
+3. narrows tests inside each relevant type using that type's own impact mechanism;
+4. widens only the affected type when safe narrowing cannot be proven;
+5. validates the structural invariants that make narrowing trustworthy.
 
-For normal code changes, most verification types may still be applicable. Impact analysis primarily exists to reduce the **number of tests inside a type**, especially expensive browser tests.
+Skipping an entire verification type requires deterministic evidence that the change is irrelevant to that type. For ordinary production changes, several types may remain applicable; the main optimization is normally **inside a type**, not aggressive elimination of types.
 
 ### Type filter
 
@@ -47,9 +45,20 @@ For normal code changes, most verification types may still be applicable. Impact
 pnpm verify --only <type>
 ```
 
-`--only` restricts verification to one explicit verification type.
+`--only` exposes verification **types**, not low-level runner/check labels.
 
-It does not redefine the impact model of that type; the type still uses its normal affected-test selection rules.
+Examples of internal checks such as format, Oxlint, ESLint, type-check, Storybook build, browser setup, or individual release-runtime checks remain verifier implementation details.
+
+`--only` uses the selected type's normal affected-test model; it does not imply a full run of that type.
+
+### Explicit file scope
+
+```bash
+pnpm verify --files <paths...>
+pnpm verify --only <type> --files <paths...>
+```
+
+`--files` is a focused scope override for readable existing paths, primarily for implementation feedback and diagnosis. Automatic default planning remains status-aware for added, modified, removed, and moved paths; `--files` is not a replacement for historical path identity.
 
 ### Full mode
 
@@ -57,321 +66,425 @@ It does not redefine the impact model of that type; the type still uses its norm
 pnpm verify --full
 ```
 
-`--full` performs complete verification:
+`--full` means complete project verification:
 
-- all verification types;
-- all tests within those types;
+- every verification type;
+- every test/spec in those types;
+- every registered mutation and performance target;
 - no affected-test narrowing;
 - no dependency-graph optimization.
 
-This is the release-grade verification mode and is required for the `develop` → `main` release path.
+`--full` and `--only` are mutually exclusive.
 
-`full` means full. It is not an optimization profile.
+This is the release-grade verification mode for the `develop` → `main` path. There is no separate top-level `release` verification type.
 
----
+Release-oriented proof is classified by what it verifies:
+
+- source/build/config invariants → static;
+- isolated browser/runtime/PWA contracts → browser integration;
+- isolated interactive UI contracts → behavior;
+- complete production/user flows → E2E;
+- measurable performance invariants → performance.
 
 ## Verification types
 
-The top-level verification taxonomy is based on **what is being verified**, not on execution cost, runner, or whether a browser is required.
+The public taxonomy is based on **what contract is being verified**, not on runner, cost, or whether a browser is used.
 
-### 1. Static checks
+### 1. Static
 
-Examples include linting, type checking, formatting or other deterministic source-level validation present in the repository.
+Static verification includes deterministic source/workspace checks such as formatting, linting, type-checking, instruction compatibility, configuration validation, and other repository-owned static checks.
 
-Static checks are cheap and do not require affected-test ownership logic.
+Static checks use file capability and configuration ownership rather than test ownership.
 
-Exact tools and commands remain implementation details.
+### 2. Unit
 
-### 2. Unit tests
+Unit tests use Vitest and the suffix:
 
-Unit tests are executed with Vitest.
+```text
+*.test.ts
+```
 
-Selection should rely on Vitest's own related/affected capability where static imports provide a reliable dependency relationship.
+Affected selection should use Vitest's native related/affected dependency analysis wherever static imports provide the required relation.
 
-Mioframe should not duplicate Vitest's dependency analysis unless a concrete repository limitation requires it.
+Mioframe must not maintain a second persistent unit dependency graph unless a concrete verified limitation makes Vitest insufficient.
 
-**Rule:** use the test runner's native dependency analysis before building custom analysis.
+If a relevant unit relationship cannot be safely resolved, widen to the complete unit type.
 
-### 3. Behavior tests
+### 3. Behavior
 
-Behavior tests verify isolated interactive behavior of a UI owner without requiring a complete product flow.
+Behavior tests verify isolated interactive UI behavior without requiring a complete product flow.
 
-Possible owners include FSD modules such as features, widgets, panes, shared UI components, or other concrete UI owners allowed by repository architecture.
+Examples include focus, keyboard interaction, pointer/touch behavior, overlay interaction, scrolling, responsive interaction, and accessibility interaction contracts.
 
-#### Placement
+Accessibility and keyboard navigation are subtypes of behavior, not separate top-level types.
 
-Behavior tests are colocated with their owner.
+Behavior specs use:
 
-For a single test file, use an explicit behavior suffix.
+```text
+*.behavior.spec.ts
+```
 
-If the behavior suite becomes large enough to require multiple files, a dedicated local test directory may be created next to that owner. It must remain local to that owner; there is no repository-wide behavior-test dumping ground.
+They are colocated with their real UI owner. One file is preferred when small; a dedicated local directory next to that owner is allowed when several behavior specs are genuinely needed. There is no repository-wide behavior dumping ground.
 
-#### Accessibility
+Existing behavior specs using legacy browser-oriented naming are migrated to the new suffix when this redesign is implemented.
 
-Accessibility and keyboard-navigation checks are a subtype of behavior tests, not a separate top-level verification type.
+### 4. Visual
 
-### 4. Visual tests
+Visual tests verify bounded rendering and visual regression contracts.
 
-Visual tests verify rendering and visual regressions.
+Visual specs use:
 
-They are colocated with the component or UI owner they verify.
+```text
+*.visual.spec.ts
+```
 
-The same structural rule as behavior tests applies:
+They are colocated with the UI owner they render. A local owner-specific directory is allowed only when several visual specs are required.
 
-- one explicit visual test file when small;
-- a local owner-specific directory when the suite must be split;
-- no shared global directory containing unrelated visual tests.
+There is no global visual directory containing unrelated owners in the target architecture.
 
-Visual ownership comes from code placement rather than a manually maintained global mapping.
+### 5. Browser integration
 
-### 5. Browser integration tests
+Browser integration tests verify browser-specific runtime contracts of a concrete module, service, worker, entity boundary, or runtime mechanism without exercising a complete user flow.
 
-Browser integration tests verify a browser-specific runtime contract of a module or service without exercising a complete end-user flow.
+Examples include browser storage, workers, browser APIs, service-worker lifecycle, cache/update behavior, installation/runtime mechanisms, and similar browser boundaries.
 
-Examples may include browser storage, workers, browser APIs, update/runtime mechanisms, or similar integration boundaries.
+Browser integration specs use:
 
-#### Ownership and placement
+```text
+*.browser-integration.spec.ts
+```
 
-A browser integration test is owned by the concrete module, entity, service, worker, or other runtime owner it verifies.
+They are colocated with their concrete runtime owner and selected primarily from path/ownership.
 
-It is colocated with that owner and selected primarily through repository path/ownership.
+PWA and release-runtime contracts are not separate verification types. They belong here when the tested contract is an isolated browser/runtime boundary.
 
-It should use an explicit browser-integration naming convention.
+### 6. Performance / stress
 
-No ownership graph or tag system is required for normal local browser integration tests.
+Performance is a separate type because its acceptance criterion is a measurable performance invariant rather than functional correctness.
 
-#### PWA and release-runtime checks
+Performance specs use:
 
-PWA-related checks are not a separate top-level verification type.
+```text
+*.performance.spec.ts
+```
 
-Service worker, cache, install/update lifecycle, and similar PWA/runtime-release checks are treated as a subtype/profile of browser integration.
+A performance spec must define a measurable threshold, budget, or invariant.
 
-They must be included in `pnpm verify --full`.
+For local performance risks, the spec is colocated with the owner and selected by path/ownership.
 
-### 6. Performance / stress tests
+For genuinely cross-system performance contracts, ownership follows the same primary/additional owner model as cross-owner E2E.
 
-Performance tests remain a separate top-level type because their acceptance criterion is a measurable performance invariant rather than functional correctness.
+### 7. Mutation
 
-#### Local performance tests
+Mutation is a separate verification type.
 
-If the performance risk belongs to one concrete module or UI owner, the test is colocated with that owner.
+Mutation does **not** introduce a `*.mutation.spec.ts` test-file type. Mutation testing mutates registered production targets and evaluates existing owning tests.
 
-Selection is path/ownership based.
+Default affected selection runs registered mutation targets impacted by the change. `pnpm verify --full` runs the complete registered mutation inventory.
 
-#### Cross-system performance tests
+Mutation registration remains explicit because not every production file is automatically a meaningful mutation target.
 
-If a performance property exists only across multiple systems, the test may have multiple affected owners.
+### 8. E2E
 
-Its ownership representation should follow the same minimal ownership model used for cross-owner E2E scenarios.
+E2E verifies complete product/user scenarios crossing product composition and potentially services, workers, persistence, routing, permissions, or other boundaries.
 
-Performance tests must have a measurable invariant or threshold. A functional flow executed in a browser is not sufficient to classify a test as performance.
+E2E specs use:
 
-### 7. End-to-end tests
+```text
+*.e2e.spec.ts
+```
 
-E2E tests verify complete product/user scenarios.
+E2E remains in a dedicated test territory rather than being colocated with lower-level production modules.
 
-They are the most expensive verification type and therefore require the strongest affected-test narrowing.
+## E2E ownership
 
-E2E selection cannot rely only on direct static imports because a scenario may depend on routing, workers, storage, services, and several FSD owners without importing them directly from the test file.
+### Primary owner from filesystem
 
-#### Primary ownership
+The common E2E case requires no manual source-to-test mapping.
 
-Each E2E test has one primary owner represented structurally by its location.
+The primary owner is encoded by directory structure, for example:
 
-The repository structure, not a large manually maintained mapping table, is the default ownership source of truth.
+```text
+tests/e2e/pages/Settings/<scenario>.e2e.spec.ts
+tests/e2e/pages/RepoExplorer/<scenario>.e2e.spec.ts
+tests/e2e/widgets/RepositoryExplorerWidget/<scenario>.e2e.spec.ts
+```
 
-This keeps the common case simple for coding agents.
+The path deterministically yields an owner such as:
 
-#### Multiple owners
+```text
+page:Settings
+widget:RepositoryExplorerWidget
+```
 
-A scenario may legitimately affect multiple owners.
+A large global production-path → E2E-spec registry is not part of the target architecture and must be removed after migration.
 
-That should be treated as an exceptional case.
+### Additional owners
 
-For such tests, additional ownership must be declared using the smallest explicit metadata mechanism supported by the final implementation. Tags are acceptable if they remain simple, validated, and limited to this exceptional case.
+A complete product scenario may exceptionally belong to more than one product owner.
 
-The common case must not require agents to maintain owner tags manually.
+The directory still defines one primary owner. Additional owners are declared with minimal Playwright-native tag/annotation metadata, using a machine-validated owner namespace.
 
-#### Affected owner discovery
+Additional-owner metadata is exceptional, not required for the common case.
 
-For E2E, changed production files are traced through a reverse import/dependency graph until an FSD product owner is reached.
+Validation must reject:
 
-The graph is used to discover affected owners, not to infer business semantics of individual E2E scenarios.
+- unknown owners;
+- invalid owner kinds;
+- malformed owner metadata;
+- redundant declaration of the primary owner;
+- ownership references that no longer exist after moves/removals.
 
-The intended stopping boundary is the product-composition level, primarily widgets and panes/pages.
+Do not introduce a custom E2E DSL, wrapper API, or second ownership registry for this purpose.
 
-The exact implementation of the import graph should prefer existing repository/tool capabilities or a proven library. A custom TypeScript dependency analyzer should not be the default approach.
+## E2E affected-owner discovery
 
-No generic graph abstraction or infrastructure layer should be introduced merely for future flexibility.
+Direct static imports from an E2E spec are insufficient because user scenarios may traverse many layers that the spec does not import.
 
----
+For production changes, `verify` builds a production dependency graph with `dependency-cruiser` and uses its reverse edges to discover affected product owners.
 
-## Affected-test selection pipeline
+The graph is only a mechanical source-dependency tool. It does not infer business semantics or scenario meaning.
 
-Default `pnpm verify` follows this conceptual pipeline:
+### Traversal boundary
 
-1. Compute changed files relative to `develop`.
-2. Classify which verification types are applicable.
-3. For each applicable type, use its own selection mechanism:
-   - static: normal static checks;
-   - unit: Vitest related/affected selection;
-   - behavior: colocated ownership;
-   - visual: colocated ownership;
-   - browser integration: colocated ownership/path;
-   - local performance: colocated ownership/path;
-   - E2E: affected FSD owners discovered through reverse dependencies;
-   - cross-system performance: affected owners using the same ownership principle as cross-owner E2E.
-4. Validate verification structure and ownership invariants.
-5. If safe narrowing cannot be proven, widen the scope conservatively.
+Starting from each changed relevant production file:
 
-There is no requirement for one universal affected-test algorithm across every test type.
+1. traverse reverse dependencies through `shared`, `entities`, and `features`;
+2. when a `widget` is reached, record it as an affected product owner but continue traversal upward;
+3. when a `page/pane` is reached, record it as an affected product owner and stop that traversal branch;
+4. select all E2E specs whose primary or additional ownership contains any affected owner.
 
-Each type uses the simplest reliable mechanism appropriate to its dependency model.
+This deliberately collects both widget-owned and page/pane-owned scenarios when both are reachable.
 
----
+`src/app` bootstrap/global routing impact or any relevant production impact that cannot be reduced to trustworthy product owners widens to the complete E2E type.
+
+### Dependency graph implementation constraint
+
+Use `dependency-cruiser` as the concrete dependency-analysis mechanism for this redesign.
+
+Do not build a custom TypeScript/Vue import parser, persistent graph registry, graph database, generic graph service, or speculative cache layer unless implementation evidence later proves the selected tool insufficient.
+
+The verifier needs only the concrete operation required here: production dependencies → reverse traversal → affected owners.
+
+## Affected selection by type
+
+Default `pnpm verify` uses different mechanisms for different dependency models:
+
+| Type | Primary affected-selection mechanism |
+| --- | --- |
+| static | changed-file capability/config ownership |
+| unit | Vitest related/affected resolution |
+| behavior | colocated owner + suffix |
+| visual | colocated owner + suffix |
+| browser integration | colocated runtime owner + suffix |
+| local performance | colocated owner + suffix |
+| cross-system performance | primary/additional product ownership |
+| mutation | affected registered mutation targets |
+| E2E | reverse dependency graph → product owners → owner-structured specs |
+
+There is no universal affected-test algorithm across all verification types.
+
+## Status-aware planning
+
+Changed path identity and status are first-class inputs.
+
+Automatic planning must preserve added, modified, removed, and moved paths, including old and new identities for moves.
+
+General rules:
+
+- directly added/modified test specs may select themselves;
+- production changes use the owning type's normal resolver;
+- moved tests validate both previous and current ownership identity;
+- removed tests use their previous ownership identity;
+- when a previous relation required for safe narrowing cannot be reconstructed, widen to the complete owning type;
+- removed files are never passed as current formatter/linter targets.
+
+A narrow run with no selected tests is not evidence that the verification type is unnecessary; planner diagnostics must make that state explicit.
 
 ## Fallback policy
 
 Fallback is a safety mechanism, not the normal execution path.
 
-The central rule is:
+The core rule is:
 
-> `verify` narrows coverage only when it can prove that the narrower scope is safe.
+> `verify` narrows only when the narrower scope can be proven safe.
 
-When that proof is unavailable, coverage expands to the next meaningful scope while preserving as much known information as possible.
+Uncertainty widens the **owning verification type**, not the whole project.
 
-Example for E2E:
+For E2E:
 
-1. affected E2E tests/scenarios that can be mapped safely;
-2. all E2E tests belonging to the affected owner(s);
-3. all E2E tests if ownership cannot be established safely;
-4. full project verification only when the uncertainty is broader than the E2E type itself or when `--full` is requested.
+1. a directly changed E2E spec selects that spec;
+2. a relevant production change with safely discovered owner(s) selects all E2E specs for those primary/additional owners;
+3. if relevant production impact exists but owners cannot be safely established, run all E2E;
+4. only explicit `--full` means complete project verification.
 
-A fallback must never silently skip a potentially affected test.
+The same principle applies to other types: unresolved relevant impact widens to the complete owning type.
 
-Frequent fallback is considered an architecture/diagnostics signal. If ordinary changes regularly degrade to broad execution, the affected-test model is not working well enough and should be corrected rather than normalized.
+### Invalid structure is not fallback
 
----
+Uncertainty and invalid architecture are different states.
+
+If ownership is unknown because dependency information is incomplete, coverage widens.
+
+If the repository violates a structural rule that the planner depends on, verification fails instead of hiding the defect behind a broader run.
+
+Examples of blocking structural errors include:
+
+- a spec with an unrecognized or wrong type suffix;
+- a behavior/visual/browser-integration/local-performance spec outside its valid owner location;
+- an E2E spec outside the allowed E2E owner structure;
+- invalid or stale additional-owner metadata;
+- ambiguous classification that prevents deterministic ownership.
+
+Frequent fallback is a diagnostics signal. If ordinary changes repeatedly widen to full types, the ownership/impact model should be corrected rather than normalizing the broad execution.
+
+## Naming contract
+
+Every verification type represented by standalone test-spec files has a unique deterministic suffix:
+
+| Type | Suffix |
+| --- | --- |
+| unit | `*.test.ts` |
+| behavior | `*.behavior.spec.ts` |
+| visual | `*.visual.spec.ts` |
+| browser integration | `*.browser-integration.spec.ts` |
+| E2E | `*.e2e.spec.ts` |
+| performance/stress | `*.performance.spec.ts` |
+
+Static and mutation are verification types but are not standalone test-spec file types and therefore have no spec suffix.
+
+Legacy test names and locations are migrated to this contract; compatibility naming should not remain indefinitely after migration.
 
 ## Structural invariants
 
-`verify` must validate the structural rules that its own affected-test logic depends on.
+`verify` validates the minimum structural rules required for safe automatic selection.
 
-A violation that makes test selection unreliable must fail verification and require correction.
+At minimum:
 
-At minimum, the architecture assumes:
+- spec suffix uniquely determines its test type;
+- unit tests follow the unit convention;
+- behavior, visual, browser-integration, and local-performance specs are colocated with their real owner;
+- E2E specs are under the allowed page/widget ownership structure;
+- the E2E primary owner is derivable from the path;
+- additional E2E/cross-system-performance owners are valid and machine-validated;
+- ambiguous or unclassifiable specs fail verification;
+- removed/moved ownership facts cannot silently disappear.
 
-- behavior tests are colocated with their owner;
-- visual tests are colocated with their owner;
-- browser integration tests are colocated with their runtime owner;
-- local performance tests are colocated with their owner;
-- E2E tests exist only in the allowed E2E ownership structure;
-- the primary E2E owner can be derived structurally;
-- any exceptional multi-owner metadata uses valid owners and a validated format;
-- test naming is sufficient to classify tests deterministically;
-- ambiguous/unclassifiable tests do not silently bypass verification.
+These invariants exist because impact selection depends on them, not for stylistic policing.
 
-The final implementation should keep these invariants minimal. Rules should exist because selection depends on them, not to enforce stylistic preferences.
+## FSD ownership boundary
 
----
+Verification follows Mioframe ownership:
 
-## Ownership principles
+- **feature**: user-triggered actions, flows, feature state, business behavior;
+- **entity**: domain model/data/entity operations;
+- **widget**: product-block composition;
+- **page/pane**: routing, navigation, composition, pane layout state;
+- **shared**: reusable lower-level primitives and infrastructure;
+- **service/worker**: persistence, IO, providers, worker/background/browser-runtime boundaries.
 
-Verification follows existing Mioframe/FSD ownership.
+Local tests stay with the narrowest truthful owner.
 
-- **feature** owns feature-specific user behavior and state;
-- **entity** owns domain behavior and entity operations;
-- **widget** composes product functionality;
-- **pane/page** owns navigation/composition and page-level flows;
-- **shared** owns reusable low-level primitives;
-- **service/worker** owns IO, persistence, providers, workers, and browser/runtime boundaries.
-
-Tests should stay with the narrowest real owner whenever the test is local.
-
-Cross-owner metadata is reserved for genuinely cross-system scenarios.
-
----
+E2E product ownership is intentionally at widget/page/pane composition level; lower FSD layers are traversed to discover those product owners rather than becoming E2E owners themselves.
 
 ## Simplicity constraints
 
-The implementation must avoid the failure mode of the previous verify redesign, where custom dependency logic became too difficult to maintain.
+The implementation must remain smaller than the problem it solves.
 
 Therefore:
 
-- do not build a complete custom dependency graph system unless existing tooling is demonstrably insufficient;
-- do not maintain a large manual path-to-test mapping table;
-- do not require routine manual tags for every E2E test;
-- do not introduce a manager/service/registry abstraction solely to make the architecture look generic;
-- prefer repository structure, static imports, runner-native affected selection, and small validated conventions;
-- prefer a broader safe test run over complex inference;
-- keep the affected-owner calculation as a small concrete implementation until real requirements justify extraction.
-
----
+- do not maintain a large manual production-path → E2E-test table;
+- do not require ownership tags on ordinary E2E specs;
+- do not build a second unit dependency graph;
+- do not build a universal graph-based verification framework;
+- do not add Nx/Turborepo solely for affected verification;
+- do not introduce a manager/service/registry abstraction only for genericity or hypothetical reuse;
+- do not build custom dependency parsing while `dependency-cruiser` satisfies the required graph operation;
+- do not optimize for the smallest possible test set when a broader simple run is safely sufficient;
+- do not preserve replaced planner/mapping mechanisms after the new ownership mechanism is complete.
 
 ## Agent-safety requirements
 
-The verification architecture must be difficult for coding agents to misuse.
+The target architecture must be difficult for coding agents to misuse.
 
 Required properties:
 
-- the normal placement of a test should automatically establish ownership;
-- test classification should be deterministic from naming/location wherever possible;
-- exceptional metadata must be minimal and machine validated;
-- invalid structure must fail loudly;
-- uncertainty must increase coverage rather than reduce it;
-- error messages should explain what structural rule was violated and what the valid placement/ownership is.
+- ordinary test placement establishes ownership automatically;
+- suffix establishes test type automatically;
+- exceptional metadata is minimal and validated;
+- invalid structure fails loudly with actionable diagnostics;
+- uncertainty always expands coverage;
+- the verifier explains why a type is skipped, focused, full, or invalid;
+- normal implementation does not require agents to remember a separate mapping document.
 
-The system should not depend on agents remembering an external manual mapping document during ordinary implementation.
+## Migration implications
 
----
+Adopting this ADR requires a coordinated migration rather than running old and new ownership models indefinitely in parallel.
+
+The migration must include, where applicable:
+
+- public `--only` type names replacing low-level labels as the normal CLI surface;
+- unique spec suffixes and corresponding test discovery configuration;
+- migration of legacy behavior/visual/E2E/browser-related names and locations;
+- owner-structured E2E directories;
+- removal of the current manual E2E source-to-scenario registry after equivalent owner-based selection is active;
+- `dependency-cruiser` integration for E2E affected-owner discovery;
+- status-aware validation for add/remove/move cases;
+- mutation participation in `--full`;
+- reclassification of current release-oriented checks into static, behavior, browser-integration, E2E, or performance according to the contract they prove;
+- synchronization of testing documentation, verification skills, verifier tests, and CI with the new public contract.
+
+The migration should preserve proven verifier orchestration that is not part of this redesign, including useful process execution, locks, timeouts, diagnostics, and CI ownership, unless a concrete incompatibility requires change.
 
 ## Non-goals
 
 This ADR does not require:
 
 - the absolutely minimal possible test set;
-- a universal dependency graph for every verification type;
 - automatic inference of business semantics from source code;
 - one runner for all test types;
-- a large framework such as Nx/Turborepo solely for verification;
-- custom graph infrastructure for hypothetical future reuse;
-- perfect zero-fallback affected analysis.
+- a separate `release` verification category;
+- an ownership tag on every E2E test;
+- a generic verification DSL;
+- custom graph infrastructure;
+- perfect zero-fallback affected analysis;
+- speculative caching or parallelism architecture.
 
-The architecture optimizes for **reliable narrowing with low maintenance cost**.
+## Acceptance criteria
 
----
+The redesign is architecture-ready for implementation when the implementation can satisfy all of the following:
 
-## Acceptance criteria for the architecture
+1. `pnpm verify` is the normal project verification entry point.
+2. Default verification is status-aware relative to `develop`.
+3. `--only <type>` exposes verification types rather than internal runner labels.
+4. `--full` executes every verification type, every test/spec, and every registered mutation/performance target without narrowing.
+5. There is no top-level release type; release-oriented checks are owned by the contract they prove.
+6. Every standalone spec type has one deterministic suffix.
+7. Unit impact delegates to Vitest related/affected resolution where possible.
+8. Behavior, visual, browser-integration, and local-performance ownership is derived from colocation.
+9. E2E primary ownership is derived from page/widget directory structure.
+10. The common E2E case requires no manual source-to-test mapping or owner metadata.
+11. Exceptional multi-owner E2E/performance uses only minimal validated additional-owner metadata.
+12. E2E production impact uses `dependency-cruiser` reverse dependencies to collect affected widgets and pages/panes.
+13. Widget traversal continues upward so page/pane-owned scenarios are not lost; page/pane is the terminal product-composition boundary.
+14. Unknown relevant E2E impact widens to all E2E, not the whole project.
+15. Structural violations fail instead of silently widening or skipping.
+16. Added, modified, removed, and moved paths are handled explicitly.
+17. The current large manual E2E mapping registry is removed after migration.
+18. The implementation does not create a generic graph framework or parallel ownership system.
 
-The design is ready for implementation when the implementation task can satisfy all of the following:
+## Remaining implementation decisions
 
-1. `pnpm verify` is the only normal project verification entry point.
-2. Default verification compares changes against `develop`.
-3. `--only <type>` selects one verification type without inventing a separate impact model.
-4. `--full` executes all checks and all tests without narrowing.
-5. Unit narrowing delegates to Vitest where possible.
-6. Colocated browser test types derive ownership from repository structure.
-7. E2E affected selection uses changed-code dependencies to discover affected FSD owners.
-8. The common E2E case requires no manual ownership mapping.
-9. Cross-owner E2E/performance cases use only minimal validated explicit metadata.
-10. Structural violations fail verification.
-11. Uncertainty widens coverage safely.
-12. The implementation does not introduce a large custom graph framework or manual global mapping table.
+The architecture decisions that affect ownership and safety are resolved above. Remaining choices should be made from the current repository during implementation preflight and should not redefine this model:
 
----
+- exact public spelling of the final `--only` type values;
+- exact local directory name used when one colocated owner requires several specs of the same type;
+- exact Playwright tag/annotation syntax for additional owners;
+- exact `dependency-cruiser` configuration/API wiring and Vue/TypeScript resolution settings;
+- exact static subchecks grouped under `static`;
+- exact mutation target registration representation;
+- exact cross-system performance directory convention if such a test currently exists or is introduced;
+- migration pass order and temporary compatibility boundaries;
+- CI job wiring and internal labels after the public type-based CLI is introduced.
 
-## Open implementation decisions
-
-These were intentionally not fixed in this ADR and should be resolved from the current repository before coding:
-
-- exact test filename suffixes;
-- exact local directory names when a colocated suite has multiple files;
-- exact `--only` type names exposed by the CLI;
-- exact representation of exceptional multi-owner metadata;
-- which existing dependency-analysis tool/library is used for reverse imports;
-- exact FSD path parsing based on the current repository layout;
-- exact static checks included in verification;
-- exact commands/runners already present in the repository;
-- CI wiring for default versus `--full` verification.
-
-These are implementation details unless repository inspection shows that one of them changes ownership or safety guarantees.
+If any of these implementation details would require changing ownership, public semantics, fallback safety, or the verification taxonomy, the ADR must be revisited before implementation continues.
