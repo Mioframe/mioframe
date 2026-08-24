@@ -1,46 +1,37 @@
 # Review
 
-Verdict: blocked by an invalid fixed surface-offset assumption in `RelationValueFieldData`; correction is now implementation-ready in the PR #217 virtualization completion pass.
-
-Active completion contract:
-
-- `docs/database-virtualization-completion-pass-handoff.md`
-- `docs/database-virtualization-completion-pass-preflight.md`
+Verdict: implementation accepted; no remaining relation-value virtualization blocker.
 
 ## Scope reviewed
 
 - `RelationValueField.vue` local scroll root `.relation-value-field__data`.
-- `RelationValueFieldData.vue` loading/progress and `DatabaseDataTable` composition.
-- Accepted shared deep-state surface-offset capability and current explicit-root ownership direction.
+- `RelationValueFieldData.vue` loading/table composition.
+- Explicit relation-root `verticalSurfaceOffset=0` / `horizontalSurfaceOffset=0` contract.
+- Owner-local component proof and relevant relation/database E2E reported by the coding agent.
 
-## Blocker — fixed zero offset is not always truthful
+## Resolved — truthful zero-offset invariant
 
-`RelationValueFieldData` passes `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` to `DatabaseDataTable`.
+`RelationValueFieldData` now makes loading and table rendering mutually exclusive:
 
-Horizontal zero is consistent with the current unpadded local root. Vertical zero is not unconditional: while `isLoading && !propertiesIdList`, `RelationValueFieldData` renders `MDCircularProgressIndicator` before `DatabaseDataTable` in the same `.relation-value-field__data` scroll root. The table therefore has real preceding content and its root-to-table vertical surface offset is non-zero during that state.
+- while `isLoading && !propertiesIdList`, only the existing progress indicator is rendered;
+- `DatabaseDataTable` is mounted only in the complementary state via `v-else`.
 
-## Required final state
+Therefore, whenever the table exists, it is the first unpadded content of the current local `.relation-value-field__data` root and explicit `0/0` offsets are truthful.
 
-Use the minimum feature-local correction:
+The correction adds no geometry observer, offset state, hard-coded spinner dimension, shared virtualization change, or entity ancestor/sibling discovery.
 
-- when `isLoading && !propertiesIdList`, render only the existing progress indicator;
-- mount `DatabaseDataTable` only in the complementary state;
-- retain explicit `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` because, whenever the table then exists, it is the first unpadded content of the local root.
+## Proof
 
-Do not add bounding observation, geometry state, or a hard-coded spinner offset.
+The new owner-local component contract proves spinner/table mutual exclusion and transition to the table once the loading-only state ends. The coding agent also reports relevant relation/database E2E and cumulative `pnpm verify --base origin/develop` green.
 
-## Required proof
+Exact-head GitHub CI remains architect-owned final automatic proof.
 
-Use the lowest faithful feature/component contract to prove loading/table mutual exclusion; add an owner-local test only if no existing proof owns that contract. Keep relevant nested relation/database E2E green.
+## Blockers
 
-## Merge condition
+None.
 
-This blocker is resolved only when the invariant is truthful in production, focused proof is green, cumulative branch verification passes, and exact-head CI remains green.
+## Items not required
 
-## Forbidden
-
-- restoring entity-owned ancestor/sibling observation;
-- feature-local MutationObserver/rAF/per-scroll geometry tracking;
-- hard-coded non-zero spinner height as `surfaceOffset`;
-- shared virtualization changes;
-- weakening virtualization/relation E2E assertions.
+- top-level Database moving-surface diagnosis;
+- Database sticky action/header stacking;
+- residual performance/jank investigation.
