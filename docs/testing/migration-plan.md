@@ -26,24 +26,25 @@ The current repository already provides substantial verification infrastructure 
 - `scripts/lib/changedPaths.ts` preserves added, modified, removed, and both identities of renamed/moved paths.
 - `scripts/verify.ts` already owns command planning/execution, command locks, Playwright container bounds, result/log handling, and fail-closed planner states.
 - `pnpm verify`, `--files`, `--full`, status/resume, and fix support already exist.
-- `--only` currently exposes low-level labels rather than the target verification types.
-- `pnpm verify:release` currently aliases the existing full/release behavior and is transitional; the target public contract is `pnpm verify --full`.
+- Public `--only` now exposes exactly the canonical verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`. Low-level leaf labels remain private verifier identifiers for execution, logs, weights, locks, and diagnostics.
+- `pnpm verify:release` still aliases `pnpm verify --full` as transitional compatibility; final alias removal remains a later pass.
 
 ### Static
 
-- format, Oxlint, ESLint, type-check, instruction compatibility, Storybook build, build/release configuration checks, and related deterministic operations are currently separate internal labels/checks.
+- format, Oxlint, ESLint, type-check, instruction compatibility, Storybook build, build/release configuration checks, and related deterministic operations remain separate internal labels/checks composed under the public `static` type.
 - removed files are already projected away from direct formatter/linter child-command inputs where required.
+- Storybook buildability is a static proof; GitHub duplicate-build avoidance is an internal execution optimization rather than a public fallback flag.
 
 ### Unit
 
-- Vitest is the unit runner.
+- Vitest is the unit runner and is exposed publicly as the `unit` verification type.
 - current automatic unit selection does not yet fully implement the target native related/affected model for all source/test-support changes.
 - current `*.test.ts` and supported script-test naming remains executable.
 
 ### Storybook behavior
 
 - Storybook stories are colocated under `src/**/*.stories.*`.
-- isolated UI browser proof currently uses the legacy `*.browser.spec.ts` suffix.
+- isolated UI browser proof currently uses the legacy `*.browser.spec.ts` suffix while the public verification type is already `behavior`.
 - mixed discovery currently executes owner-local `src/**/*.browser.spec.ts` plus justified central `tests/e2e/storybook/**/*.spec.ts` cross-owner/infrastructure proof.
 - current owner-local behavior selection is filesystem-derived for migrated owners.
 - existing central Storybook behavior mappings remain where current cross-owner/infrastructure proof still uses them.
@@ -52,7 +53,7 @@ Target difference: ordinary behavior proof becomes `*.behavior.spec.ts`. Central
 
 ### Visual
 
-- `*.visual.spec.ts` is already the target suffix.
+- `*.visual.spec.ts` is already the target suffix and `visual` is the public verification type.
 - mixed discovery currently executes owner-local `src/**/*.visual.spec.ts` for migrated owners plus legacy central `tests/e2e/visual/**/*.spec.ts` for remaining owners.
 - owner-local baseline resolution is already filesystem-derived for migrated owners.
 - broad visual fallback remains for unresolved central ownership and visual infrastructure.
@@ -61,14 +62,14 @@ Target difference: all ordinary visual owner proof eventually becomes owner-loca
 
 ### Browser integration
 
-- browser/runtime contracts currently exist across application E2E, release checks, service/runtime tests, and Storybook/browser lanes without one distinct public `browser-integration` type or suffix.
-- PWA/service-worker/cache/update/runtime proof is currently split across existing release/runtime mechanisms.
+- `browser-integration` is now a public verification type and Pass A classified the split release/runtime leaves by this ownership.
+- ordinary owner-local browser/runtime proof has not yet migrated to the target `*.browser-integration.spec.ts` suffix/location; current release/runtime infrastructure remains transitional and its release-only leaves are still composed by literal full mode rather than a new affected release planner.
 
-Target difference: isolated browser/runtime contracts move to `*.browser-integration.spec.ts` next to the concrete runtime owner and become the `browser-integration` type.
+Target difference: isolated browser/runtime contracts move to `*.browser-integration.spec.ts` next to the concrete runtime owner and participate in ordinary type-local affected planning.
 
 ### Application E2E
 
-- application E2E specs currently live mainly as root `tests/e2e/*.spec.ts` files.
+- application E2E specs currently live mainly as root `tests/e2e/*.spec.ts` files while `e2e` is already the public verification type.
 - `scripts/lib/e2eRisk.ts` owns the manual `E2E_SCENARIO_SCOPES` source-prefix -> spec registry.
 - unknown relevant application source and broad E2E infrastructure already fail closed to full application E2E.
 - `scripts/lib/e2eProjectApplicability.ts` owns persistent `desktop | mobile | both` project applicability for current root application specs.
@@ -83,37 +84,37 @@ Target difference:
 
 ### Mutation
 
-- Stryker and verifier-managed mutation execution already exist.
-- mutation is currently not treated as part of literal complete `--full` verification.
-- persistent affected-target ownership is not yet the final target model.
+- Stryker and verifier-managed mutation execution already exist under the public `mutation` verification type.
+- literal `pnpm verify --full` now executes the complete inventory currently configured by `stryker.config.mjs` without an affected `-m` override.
+- focused/default mutation still uses the existing location/adjacency-derived affected scope; persistent explicit target ownership is not yet the final model.
 
-Target difference: mutation is a public verification type; default runs affected registered targets and `--full` runs the complete registered mutation inventory.
+Target difference: mutation uses one validated explicit project-owned target inventory; default runs affected registered targets and `--full` runs every registered target.
 
 ### Performance
 
+- `performance` is a valid public verification type but currently has no persistent automated target inventory, so a focused performance selection is valid and empty.
 - task-specific measurement exists as implementation evidence.
-- persistent performance verification is not yet normalized under the target suffix/ownership model.
 
 Target difference: durable automated performance/stress proof uses `*.performance.spec.ts`, measurable budgets, local ownership where possible, and E2E-like primary/additional ownership only for genuinely cross-system contracts.
 
 ## Public-contract mismatch during migration
 
-Until implementation completes, distinguish **target contract** from **currently executable compatibility**:
+Until implementation completes, distinguish **current executable compatibility** from the **durable target** where later ownership passes still differ:
 
 | Concern | Current executable state | Target |
 | --- | --- | --- |
-| `--only` | low-level labels | `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e` |
+| `--only` | exactly `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e` | same canonical public types |
 | behavior suffix | `*.browser.spec.ts` | `*.behavior.spec.ts` |
 | visual suffix | `*.visual.spec.ts` | `*.visual.spec.ts` |
-| browser integration | no distinct public type/suffix | `*.browser-integration.spec.ts` |
+| browser integration | public type exists; release/runtime leaves remain transitional and ordinary owner-local target suffix is not yet migrated | `*.browser-integration.spec.ts` next to runtime owner |
 | E2E suffix/location | root/legacy `tests/e2e/*.spec.ts` | `tests/e2e/{pages,widgets}/<Owner>/*.e2e.spec.ts` |
 | E2E impact | manual `E2E_SCENARIO_SCOPES` | reverse dependency graph -> product owner |
 | unit impact | current planner behavior | Vitest native related/affected + safe fallback |
-| release | separate internal/release labels and alias | no public release type; classify checks by proof type |
-| mutation in full | currently excluded/legacy | all registered mutation targets |
-| `--full` | current legacy semantics | literal all types/all registered tests and targets |
+| release | private release-oriented leaf labels and `verify:release` alias remain transitional | no public release type; checks classified by proof type and `pnpm verify --full` is canonical |
+| mutation in full | complete current Stryker-configured inventory | complete validated explicit mutation target inventory |
+| `--full` | literal complete current inventories with no narrowing; mutation uses current Stryker inventory and persistent performance inventory is currently empty | literal all types/all target specs/all registered mutation and performance targets |
 
-Agents implementing the redesign must not treat the current column as durable architecture or the target column as already executable before the corresponding migration pass lands.
+Agents implementing the redesign must not treat remaining transitional suffixes, mappings, or target ownership gaps as durable architecture.
 
 ## Migration capability phases
 
@@ -121,7 +122,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **complete**. Preflight **Pass A** (classification foundations and mixed-release split) is implemented and architect-accepted. The current implementation boundary is **Pass B** (public type CLI).
+Status on `architecture/verify-redesign`: **complete for Pass A; Pass B implementation landed and is in architect correction/re-review**. Pass A is architect-accepted. The current implementation boundary remains **Pass B correction**; Pass C must not start until the active `REVIEW.md` finding is resolved and Pass B is architect-accepted.
 
 Required:
 
@@ -130,9 +131,11 @@ Required:
 - verification-facing skills and repository rules use verification types rather than durable low-level labels;
 - older verifier design documents are treated as legacy implementation records, not competing target architecture.
 
-No verifier runtime behavior changes are required in this phase.
+No additional verifier runtime architecture change is required in this phase.
 
 ### Phase 1 — type-level CLI and classification shell
+
+Status: **implementation landed; architect acceptance pending the active Pass B correction/re-review**.
 
 Introduce the public type contract without rewriting existing runners.
 
@@ -140,15 +143,16 @@ Required:
 
 - `--only` accepts only target verification types;
 - type -> existing internal check composition is explicit and local to verifier planning;
-- low-level labels become internal implementation details;
-- `--full` rejects narrowing options and is defined as literal all types;
+- low-level labels are internal implementation details;
+- `--full` rejects narrowing options and is defined as literal all currently executable types/inventories;
 - default planning continues to use current safe resolvers while later phases replace their ownership models;
 - diagnostics explain selected type, focused/full reason, and internal checks that execute.
 
 Compatibility:
 
-- internal labels may remain in implementation until consumers/CI are migrated;
-- they must not remain the long-term agent-facing API.
+- internal labels remain valid private implementation identifiers for logs, weights, locks, timeouts, command entries, and diagnostics;
+- removed public low-level label parsing must not be restored;
+- current `verify:release`, legacy suffixes, and ownership mappings remain only until their later pass consumers are migrated.
 
 ### Phase 2 — spec taxonomy and local owner migration
 
@@ -201,15 +205,15 @@ Required:
 
 ### Phase 5 — remove compatibility debt
 
-After all target mechanisms are executable and CI consumers are migrated:
+After all target mechanisms are executable and remaining consumers are migrated:
 
-- remove public low-level `--only` labels;
-- remove `pnpm verify:release` if no external repository consumer still requires the alias;
+- keep the Pass B public type-only `--only` contract; do not reintroduce removed low-level public labels;
+- remove `pnpm verify:release` when no external repository consumer still requires the alias;
 - remove legacy `*.browser.spec.ts` discovery;
 - remove obsolete central ordinary behavior/visual discovery;
 - remove legacy root E2E naming/discovery;
 - remove `E2E_SCENARIO_SCOPES` and related registry validation;
-- remove transitional docs/comments that describe legacy mechanisms as current.
+- remove transitional docs/comments that describe migrated compatibility mechanisms as current.
 
 Do not remove a compatibility path merely to reduce file count; remove it only after its consumer inventory is empty.
 
@@ -262,5 +266,5 @@ The redesign migration is complete when:
 - structural invalidity fails verification;
 - mutation participates in literal `--full`;
 - release-sensitive checks have no separate public type;
-- legacy suffixes, labels, aliases, mappings, and ordinary central dumping grounds have no remaining consumers;
+- legacy suffixes, aliases, mappings, and ordinary central dumping grounds have no remaining consumers;
 - `pnpm verify --full` runs all types, all tests/specs, and all registered mutation/performance targets without narrowing.
