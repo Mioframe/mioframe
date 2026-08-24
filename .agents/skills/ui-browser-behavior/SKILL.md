@@ -1,178 +1,222 @@
 ---
 name: ui-browser-behavior
-description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or application E2E by ownership.'
+description: 'Use for browser-observable UI behavior and choose behavior, browser-integration, or E2E by contract ownership. Follow the target suffix/ownership model from docs/testing/architecture.md and current executable compatibility from migration-plan.md.'
 ---
 
 # UI browser behavior workflow
 
-Follow `docs/testing/architecture.md`. For isolated reusable UI and Storybook-owned proof, also follow `docs/testing/storybook.md` and the current executable state in `docs/testing/migration-plan.md`.
+Follow `docs/testing/architecture.md`. For isolated reusable UI and Storybook-owned fixtures also follow `docs/testing/storybook.md`. `docs/testing/migration-plan.md` records which target suffixes/locations are executable during migration.
 
-Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, private third-party implementation, or visual appearance.
+Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, private third-party implementation, or screenshot appearance unless the selected type is visual.
 
-## Activation
+## Choose the verification type
 
-Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, public motion outcomes, or an observable rendered effect that cannot be faithfully proved in Vitest.
+Use **behavior** when the observable contract belongs to interactive UI and can be exercised without complete product orchestration.
+
+Typical behavior contracts:
+
+- focus and focus restoration;
+- keyboard navigation;
+- pointer/touch interaction;
+- drag and scrolling behavior;
+- overlay actionability/containment;
+- responsive interaction;
+- browser-observable accessibility interaction;
+- public motion lifecycle.
+
+Use **browser-integration** when the contract belongs to a concrete runtime/service/worker/entity boundary rather than UI interaction.
+
+Typical browser-integration contracts:
+
+- browser storage;
+- workers;
+- browser APIs;
+- service-worker lifecycle;
+- cache/install/update/runtime behavior;
+- provider/runtime integration requiring a real browser.
+
+Use **e2e** when the complete product scenario crosses composition and product boundaries such as page/widget flow, feature orchestration, services, workers, persistence, navigation, permissions, providers, reload, import/export, or repository state.
+
+Do not route reusable component behavior into E2E merely because the component has product consumers. Do not route service-worker/runtime mechanics into UI behavior merely because the result is visible somewhere in the product.
+
+## Target naming and placement
+
+### Behavior
+
+Ordinary behavior proof is owner-local:
+
+```text
+<Owner>.behavior.spec.ts
+```
+
+Use one file when practical. A small owner-local directory is allowed when several behavior specs are genuinely needed.
+
+Storybook may provide the deterministic isolated fixture, but the behavior spec owns real input and assertions.
+
+### Browser integration
+
+Runtime integration proof is colocated with the concrete runtime owner:
+
+```text
+<Owner>.browser-integration.spec.ts
+```
+
+Do not create a central browser-integration dumping ground merely because Playwright runs the test.
+
+### E2E
+
+Complete product scenarios live in dedicated E2E territory:
+
+```text
+tests/e2e/pages/<Owner>/<scenario>.e2e.spec.ts
+tests/e2e/widgets/<Owner>/<scenario>.e2e.spec.ts
+```
+
+The directory defines the primary product owner.
+
+Additional E2E owners are exceptional validated Playwright-native owner metadata. Do not add owner tags to every scenario.
+
+## Migration compatibility
+
+The current repository may still execute:
+
+- owner-local `*.browser.spec.ts` behavior specs;
+- central `tests/e2e/storybook/**/*.spec.ts` behavior/infrastructure proof;
+- legacy root application `tests/e2e/*.spec.ts` E2E;
+- manual E2E source mappings.
+
+These are transitional mechanisms only where `docs/testing/migration-plan.md` says they remain executable.
+
+When implementing the redesign:
+
+- add target discovery before renaming/moving existing proof;
+- preserve existing assertions and platform applicability during migration;
+- remove legacy discovery/mappings only after replacement ownership is proven;
+- never add new permanent metadata to keep an obsolete migration mechanism alive.
 
 ## Supported-browser policy
 
-`.browserslistrc` is the canonical product browser baseline. A browser matching that query is supported; one missing browser-specific capability does not make the whole browser unsupported.
+`.browserslistrc` is the canonical product browser baseline.
 
-- When a supported browser implements the standard Web APIs required by a scenario, Mioframe must provide the normal product behavior and the applicable browser engine must remain in the owning proof matrix.
-- When a supported browser does not implement a required API, detect the capability and provide an explicit user-visible unavailable state or supported alternative. Do not expose a broken action, fail silently, or use the unrelated missing capability to exclude that browser from standards-based scenarios.
-- Project applicability must follow the observable API, engine, viewport, input, lifecycle, or composition difference. Browser-name filtering without a confirmed capability or engine reason is invalid.
+A missing browser-specific capability does not make the whole browser unsupported. Detect missing required APIs and provide the product's explicit unavailable/fallback behavior where applicable.
 
-## Choose the execution lane
+Project applicability must follow real engine, viewport, input, lifecycle, or capability differences. Browser-name filtering without a confirmed observable reason is invalid.
 
-Use `storybook-behavior` when the observable contract belongs to reusable UI and can be exercised without product routing, persistence, services, or feature orchestration.
+## Behavior workflow
 
-Use `e2e` when the complete product scenario crosses page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, or repository boundaries.
-
-Do not route reusable component behavior into application E2E merely because the component has product consumers.
-
-## Storybook ownership
-
-Before writing a Storybook behavior spec:
-
-1. identify the truthful UI owner;
-2. for Material, use the canonical family owner defined by its contract/runtime boundary;
-3. for other UI, use the current FSD component or cohesive local UI module;
-4. use a family/module-level spec only when one shared observable browser contract belongs to that owner;
-5. otherwise split proof by owner.
-
-The durable and current executable default for ordinary reusable UI is an owner-local `*.browser.spec.ts` under `src/`. Filesystem-derived owner-local discovery owns the impact relation.
-
-Central `tests/e2e/storybook/**/*.spec.ts` remains only for truthful cross-owner or Storybook-infrastructure contracts that cannot belong to one source owner. Do not add a new central registry mapping for an ordinary component/family merely because older examples used that migration-era structure.
-
-Always re-read `docs/testing/migration-plan.md` before choosing placement; it is the executable-state owner and may advance independently of older family artifacts or examples.
-
-## Workflow
-
-1. Name the browser-owned contract and truthful owner.
-2. Choose `storybook-behavior` or application `e2e` by contract ownership.
-3. Inspect native owners, rendered hierarchy, focus order, layout ownership, and public inputs that matter.
-4. Establish deterministic initial state without performing the action under test.
-5. Drive public controls through real user input.
-6. Wait for observable readiness/outcomes.
-7. Assert the exact public result, not a proxy that merely correlates with it.
-8. Use owner-local discovery for ordinary reusable UI; use central proof only for a demonstrated cross-owner/infrastructure contract.
-9. Preserve each application E2E spec's current persistent project applicability unless a dedicated audited reclassification changes it.
-10. Run focused verifier-managed proof and return to the top-level task. This skill does not run a separate final gate.
-
-## Scenario selection
-
-Test materially distinct current scenarios, not every theoretical path.
-
-Separate paths when they have different owners or failure risks, for example:
-
-- Enter and Space when the adapter/current scenario could treat them differently;
-- submit and reset when both are used or changed;
-- pointer and keyboard controlled-state intent when wrapper normalization differs;
-- accepted versus rejected controlled intent when renderer-local mutation could drift from the controlling prop;
-- attempted disabled activation when the adapter owns disabled forwarding;
-- programmatic state updates when hidden renderer drift is a real risk;
-- composition pass-through when a decorative child suppresses its own actionability so an enclosing owner must receive input on the same visible region.
-
-For controlled custom-element adapters, real-browser proof must validate the observable renderer event lifecycle required by the canonical behavior and chosen private mapping. When the renderer exposes a cancelable pre-mutation intent, prove one real action produces one public intent and that rejecting the intent leaves the rendered state controlled by the unchanged prop.
-
-For decorative/presentation composition, do not stop at proving the child is inert. Also prove real input on the child’s visible region reaches the intended owner action and owner-controlled state is reflected back into the child.
-
-Do not duplicate native or renderer behavior merely because the underlying component supports it. Use current scenarios and changed risk to choose proof.
-
-## Public CSS token proof
-
-Only an active Mioframe public token requires browser proof.
-
-When a token is part of the accepted contract:
-
-- set a distinctive non-default value through the public surface;
-- assert the intended rendered result when observable;
-- do not inspect private renderer DOM;
-- do not treat a declaration or resolved custom-property value alone as proof.
-
-Do not test every third-party renderer variable or internal default.
-
-## Motion and transient state
-
-Distinguish Mioframe-owned/publicly observable motion from private renderer-owned animation.
-
-For Mioframe-owned/public motion, use real input and assert exact acquisition, release, interruption, completion, or final-state behavior.
-
-For private renderer animation that Mioframe cannot observe through the public boundary:
-
-- do not invent host-level proxy assertions;
-- do not inspect private renderer DOM;
-- do not use screenshots as transition-lifecycle proof;
-- test only Mioframe-owned integration and report the unautomated renderer-owned part accurately.
+1. Name the observable browser contract.
+2. Identify the truthful owner.
+3. Choose behavior, browser-integration, or E2E by ownership and orchestration boundary.
+4. Inspect native owners, rendered hierarchy, focus order, layout/runtime ownership, and public inputs that matter.
+5. Establish deterministic initial state without performing the action under test.
+6. Drive public controls through real user/browser input.
+7. Wait for observable readiness/outcomes.
+8. Assert the exact public result, not a correlated proxy.
+9. Preserve platform applicability unless a dedicated audited decision changes it.
+10. Run the smallest useful verifier-managed focused proof during implementation.
 
 ## Interaction fidelity
 
 - Prefer role, accessible name, and label locators.
-- Do not invoke private APIs, component methods, internal handlers, or synthetic internal events.
-- Lower-level setup may establish initial state only outside the behavior under test.
-- Wait for observable contracts, not framework callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
-- Treat detachment, lost ordinary input, or unexplained scrolling as possible product defects before weakening tests.
+- Do not invoke private component APIs, internal handlers, or synthetic internal events.
+- Lower-level setup may establish valid initial state only outside the behavior under test.
+- Wait for observable contracts, not framework callbacks, DOM identity, arbitrary sleeps, or guessed animation durations.
+- Treat detachment, lost ordinary input, unexplained scrolling, or repeated-action requirements as possible defects before weakening proof.
 - Do not use `force`, broad retries, or recovery loops that may repeat an already-delivered action.
 
 ## Accessibility
 
-Browser proof owns real focus order, keyboard operation, focus restoration, pointer target actionability, overlay containment, and other browser-observable accessibility behavior. Automated scans are supplemental only.
+Real focus order, keyboard operation, focus restoration, pointer target actionability, and overlay containment are behavior proof.
+
+Native semantics, explicit ARIA ownership, disabled/readonly semantics, props/emits/slots, and non-browser wiring normally belong to unit/component-contract proof.
+
+Automated accessibility scans are supplemental only.
 
 ## Storybook fixture rules
 
 - Follow `docs/testing/storybook.md` for story roles and catalogue naming.
 - A fixture prepares deterministic state only; the spec performs the behavior.
-- Keep product bootstrap, storage, services, navigation, network, diagnostics, and business rules outside isolated stories.
-- Specs contain no screenshots.
-- Storybook `play` is not merge proof.
+- Keep product bootstrap, persistence, services, workers, product routing, network state, diagnostics, and business orchestration outside isolated stories.
+- Behavior specs contain no screenshots.
+- Storybook `play` is not a parallel merge-proof system.
 - Forced visual state never proves acquisition, transition, cancellation, cleanup, or actionability.
+
+## Public CSS/token browser proof
+
+Only an active Mioframe public token requires browser proof.
+
+When a public token is part of the accepted contract:
+
+- set a distinctive non-default value through the public surface;
+- assert the intended rendered result when observable;
+- do not inspect private renderer DOM;
+- do not treat declaration/resolved-property presence alone as rendered proof.
+
+Do not test every third-party renderer variable or internal default.
+
+## Motion and transient state
+
+Distinguish Mioframe-owned/publicly observable motion from private renderer animation.
+
+For Mioframe-owned/public motion, use real input and assert exact acquisition, release, interruption, completion, or final-state behavior.
+
+For private renderer animation outside Mioframe's observable boundary, do not invent host-level proxy assertions or inspect private renderer DOM.
 
 ## Impact ownership
 
-For `storybook-behavior`:
+### Behavior and browser integration
 
-- a changed owner-local spec selects itself;
-- ordinary reusable UI uses deterministic owner-local relation when the current resolver supports it;
-- use one explicit central mapping only for a truthful cross-owner or infrastructure relation that local ownership cannot express;
-- never create duplicate registry metadata for a relation already expressed by supported local ownership;
-- never use spec paths as `sourcePrefixes` merely to group tests;
-- shared config/helpers use full-lane fallback unless every consumer is explicit, small, stable, and validated;
-- removed/moved/unresolved relevant ownership uses full owning-lane fallback or blocking validation, never silent skip.
+- a changed target spec selects itself;
+- ordinary local source changes select owner-local specs through deterministic colocation;
+- shared config/helpers widen to the complete owning type unless every consumer is explicit, small, stable, and validated;
+- removed/moved/unresolved ownership widens safely or fails structural validation;
+- do not create duplicate registry metadata for a local relation.
 
-For application E2E, source-to-product-scenario impact remains explicit because product scenarios are intentionally centralized rather than colocated.
+### E2E
 
-## Mobile and responsive execution
+Production impact resolves product owners through the reverse dependency model in `docs/testing/architecture.md`:
 
-Source impact chooses scenarios; project applicability belongs to persistent test metadata.
+- traverse through lower FSD layers;
+- record reachable widgets and continue upward;
+- record reachable pages/panes and stop that branch;
+- select E2E by primary/additional owner.
 
-Application E2E uses persistent spec-level project applicability from `scripts/lib/e2eProjectApplicability.ts`. Each root application spec is classified as `desktop`, `mobile`, or `both`; source-impact selection does not change that classification. Reclassify a spec only through a dedicated audit of the scenario's observable platform, input, viewport, lifecycle, and composition requirements, preserving explicit mobile-risk coverage.
+Unknown relevant owner discovery widens to full E2E. Invalid ownership structure fails verification.
 
-Missing or stale applicability metadata is verifier-invalid. Direct Playwright collection must not silently omit an unclassified root application spec; the fail-safe behavior is to leave it eligible for both projects.
+Do not maintain production-path -> E2E-spec source mappings after the graph/owner replacement is proven.
 
-Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
+## Mobile and project applicability
 
-## Commands
+Source impact chooses scenarios. Platform/project applicability is a separate persistent contract.
+
+Preserve existing audited desktop/mobile/both applicability while migrating E2E files. Reclassify only through a dedicated review of observable platform, input, viewport, lifecycle, and composition requirements.
+
+Missing/stale applicability metadata must fail closed or leave an unclassified scenario eligible for the broad fail-safe project set; it must never silently omit the scenario.
+
+## Target commands
 
 ```bash
-pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only behavior --files <paths...>
+pnpm verify --only browser-integration --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
-Use readable existing paths accepted by the current verifier. Preserve applicable `--profile` and `--files` scope when rerunning a failed browser lane. For PR work, required GitHub CI on the exact published head owns the broad repository gate; this skill adds no separate broad local completion run.
+During migration, use the current branch's executable compatibility only when the target command has not landed yet. Do not treat legacy label names as the durable API.
 
 ## Forbidden
 
-- deterministic logic, schemas, migrations, service/storage/CRDT transformations;
-- component unit or visual tests as substitutes for browser proof;
-- broad application E2E when Storybook owns reusable behavior;
+- deterministic logic, schemas, migrations, service/storage transformations in browser UI proof;
+- component/unit or screenshot tests as substitutes for required browser behavior;
+- broad E2E when isolated behavior owns the contract;
 - complete product flows in Storybook fixtures;
-- screenshots in browser specs;
-- central registry metadata for an ordinary owner-local component/family proof;
+- screenshots in behavior specs;
+- central registry metadata for ordinary owner-local proof;
+- manual production-path -> E2E mappings after structural ownership is proven;
+- routine owner tags on every E2E;
+- custom E2E wrapper/ownership DSL;
 - architectural boundary violations to simplify setup;
-- duplicate registry metadata for a relation already expressed by supported local ownership;
-- source mappings overloaded with spec grouping;
-- changing application-E2E desktop/mobile applicability without a dedicated audited reclassification;
+- changing E2E platform applicability without a dedicated audit;
 - declaration-only CSS assertions presented as rendered proof;
-- private renderer DOM or animation parameters;
+- private renderer DOM/animation internals;
 - proxy assertions presented as proof of a different contract;
-- proving only decorative-child non-action when the contract requires pass-through to an enclosing owner;
-- exhaustive testing of third-party behavior unchanged by Mioframe.
+- exhaustive testing of unchanged third-party behavior.

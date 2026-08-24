@@ -8,8 +8,8 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Read the root and applicable nested `AGENTS.md` files before editing. Use relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect task-relevant files and direct dependencies first. Expand only when evidence shows wider impact.
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
-- `docs/testing/architecture.md` is the canonical project-wide testing policy.
-- `docs/testing/storybook.md` is the canonical Storybook ownership, authoring, and target-placement policy; `docs/testing/migration-plan.md` records which target locations and verifier mechanisms are currently executable.
+- `docs/testing/architecture.md` is the canonical project-wide testing and verification policy, including verification type names, test-spec suffixes, affected ownership, fallback, and E2E ownership.
+- `docs/testing/storybook.md` is the canonical Storybook workbench, story-authoring, fixture-isolation, and catalogue policy. `docs/testing/migration-plan.md` records which target test locations, suffixes, commands, and verifier mechanisms are currently executable during migration.
 - `src/shared/ui/material/docs/component-workflow.md`, `component-contract.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
@@ -88,9 +88,9 @@ For Material-specific worker roles, source authority, resume/correction routing,
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc.
 - Keep validation, parsing, and extraction close to the defining boundary.
-- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, and proportional coverage.
-- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook-owned browser/visual proof. Colocate `*.stories.ts` now; place browser/visual Playwright specs only where `docs/testing/migration-plan.md` says the current runner can discover them. Do not treat target colocation as already implemented.
-- Keep complete cross-owner product scenarios centralized in application E2E; do not move them into Storybook fixtures.
+- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, proportional coverage, target test-spec suffixes, and affected-test ownership.
+- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook workbench/fixture rules. Use `docs/testing/migration-plan.md` for current executable legacy suffix/location compatibility; do not treat a target suffix/location as executable before the runner supports it.
+- Keep complete product scenarios in application E2E. E2E primary/additional ownership, directory structure, and affected-owner discovery follow `docs/testing/architecture.md`; do not move product flows into Storybook fixtures.
 - Keep unit tests and helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels.
 - Split tests by behavior when setup becomes conditional or failures no longer identify one contract.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
@@ -112,8 +112,8 @@ For Material-specific worker roles, source authority, resume/correction routing,
 
 ## Verification ownership
 
-- Coding agents own code and the proof they need to implement or diagnose that code. They may run focused verifier-managed checks such as `pnpm verify --only <label> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
-- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, or a manually reconstructed full checklist solely because code is ready to hand back.
+- Coding agents own code and the proof they need to implement or diagnose that code. They may run focused verifier-managed checks such as `pnpm verify --only <type> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
+- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, or a manually reconstructed full checklist solely because code is ready to hand back. Any legacy `verify:release` alias is migration compatibility, not a separate completion gate or target public type.
 - GitHub CI on the exact PR head is the authoritative automatic repository verification gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
 - A coding agent must not be asked to rerun checks that CI will perform automatically unless a concrete failing contract needs local diagnosis or a task-specific risk cannot be represented by the normal CI gate.
 - Required contract proof must still exist in code before handoff. CI does not replace missing tests, architecture review, browser/visual evidence, or a narrow implementation-specific proof explicitly required by the task.

@@ -64,8 +64,8 @@ For Vue and user-visible UI work, follow the applicable Vue, browser, visual, an
 - When visually resetting a native interactive element, restore the enabled clickable cursor and visible focus/state-layer behavior. Disabled or non-action states must not appear clickable.
 - Follow `docs/testing/storybook.md`: colocate CSF stories as `<Owner>.stories.ts`, keep them deterministic, and use only the documented catalogue hierarchy.
 - Add the `visual` tag only to stories intentionally used as canonical screenshot inputs.
-- Do not place `*.browser.spec.ts` or `*.visual.spec.ts` under `src` until `docs/testing/migration-plan.md` says that owning Playwright lane supports colocated discovery. Until then keep executable specs in the current runner-owned location while preserving the source owner contract.
-- Keep complete product scenarios out of Storybook fixtures; they remain application E2E.
+- Test-spec naming and target placement follow `docs/testing/architecture.md`: behavior `*.behavior.spec.ts`, visual `*.visual.spec.ts`, browser integration `*.browser-integration.spec.ts`, performance `*.performance.spec.ts`, and E2E `*.e2e.spec.ts`. During migration, use a legacy suffix/location only where `docs/testing/migration-plan.md` says the current runner still requires it; do not create new permanent proof in an obsolete naming model.
+- Keep complete product scenarios out of Storybook fixtures; they remain application E2E with ownership/placement from `docs/testing/architecture.md`.
 - Keep user-facing copy in the application's established UI language. After user-visible changes, scan touched surfaces for mixed-language strings, stale task wording, and unnecessary technical terms.
 
 ## Diagnostics and privacy

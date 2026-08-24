@@ -1,135 +1,184 @@
 ---
 name: verification
-description: 'Use verifier-managed checks for implementation feedback and risk-specific proof. GitHub CI on the exact PR head is the architect-owned final repository verification gate.'
+description: 'Use verifier-managed checks for implementation feedback and risk-specific proof. Verification types are the public CLI contract; GitHub CI on the exact PR head is the architect-owned final repository gate.'
 ---
 
 # Verification workflow
 
-Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` records which target discovery/ownership mechanisms are currently executable.
+Follow `docs/testing/architecture.md`. `docs/testing/migration-plan.md` records which target mechanisms are currently executable and which legacy compatibility paths still exist.
+
+For Storybook authoring/workbench behavior also follow `docs/testing/storybook.md`. Project-wide verification type names, suffixes, affected ownership, and fallback rules come from `docs/testing/architecture.md`.
 
 ## Ownership
 
-Verification has two different purposes and owners:
+Verification has two distinct purposes:
 
-1. **Coding-agent feedback/proof** — focused checks needed to implement, diagnose, or prove a narrow task-specific risk.
+1. **Coding-agent feedback/proof** — focused checks used to implement, diagnose, or prove a narrow task-specific risk.
 2. **Repository merge gate** — automatic verification on the exact published PR head in GitHub CI, owned by the architect.
 
-Do not collapse these into one coding-agent handoff ritual.
+Coding agents own code and task-specific proof. They do not own a mandatory broad final local verification ritual merely because implementation is ready.
 
-Coding agents own code. They may run focused verifier-managed checks when useful, but they do **not** own a mandatory final `pnpm verify`, `pnpm verify --full`, `pnpm verify:release`, or manually reconstructed full checklist merely because their code is ready to hand back.
+The architect owns PR creation/update, exact-head CI review, semantic review, and merge readiness.
 
-The architect owns PR creation/update, exact-head CI review, semantic review, roadmap status, and merge readiness.
-
-## Canonical commands
-
-Mioframe verifier entry points are:
+## Target public command contract
 
 ```bash
 pnpm verify
-pnpm verify --only <label> --files <paths...>
+pnpm verify --only <type>
+pnpm verify --files <paths...>
+pnpm verify --only <type> --files <paths...>
 pnpm verify --full
-pnpm verify:release
 pnpm verify:status
 pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-Use these commands normally when they are actually required. The verifier owns its execution environment and transitive tooling.
+Public verification types are:
 
-Do not prepend shell-level environment assignments such as `NAME=value pnpm verify ...` or `env NAME=value pnpm verify ...` to select verifier behavior. Agent-selectable behavior must be represented by a verifier CLI option or resolved automatically by the verifier.
-
-Do not preflight verifier internals or infer that a verifier command is unavailable from generic sandbox capabilities. Attempt the canonical command when the task actually requires it. If the runtime rejects it, use the runtime's normal command-scoped approval/escalation path without changing the command. Never ask the operator to run verifier commands, broaden approval to generic shell execution, or enable unrestricted/full-access execution.
-
-## Coding-agent use
-
-During implementation or correction, use focused verifier-managed checks only when they materially shorten the feedback loop or prove a task-specific risk.
-
-Examples:
-
-```bash
-pnpm verify --only format --files <paths...>
-pnpm verify --only oxlint --files <paths...>
-pnpm verify --only eslint --files <paths...>
-pnpm verify --only type-check
-pnpm verify --only unit-tests --files <paths...>
-pnpm verify --only storybook-behavior --files <paths...>
-pnpm verify --only storybook-behavior --files <spec...> --repeat <2..20>
-pnpm verify --only e2e --files <paths...>
-pnpm verify --only visual --files <paths...>
-pnpm verify --only mutation --files <paths...>
+```text
+static
+unit
+behavior
+visual
+browser-integration
+performance
+mutation
+e2e
 ```
 
-Focused checks are optional implementation/diagnostic tools unless the architecture/task explicitly requires one as risk-specific proof.
+Low-level operations such as format, Oxlint, ESLint, type-check, Storybook build, browser setup, build/artifact preparation, and release/runtime checks are verifier internals, not durable `--only` API values.
 
-Do not run broad automatic verification solely to produce a handoff status that CI will immediately reproduce. Do not mechanically execute every label one-by-one. Do not ask a coding agent to verify architect-authored documentation or workflow-only edits when no code change remains.
+`--full` means every verification type, every test/spec, and every registered mutation/performance target with no affected-test narrowing. It is incompatible with narrowing options such as `--only` and `--files`.
 
-If a coding task changes verifier tooling itself, run the smallest checks necessary to prove the changed verifier contract during implementation. The final repository gate still belongs to exact-head CI.
+There is no public `release` verification type. Release-sensitive proof is classified by the contract it verifies.
 
-## Required proof versus gate execution
+## Migration-aware execution
 
-A skipped local check is not evidence that a proof type is unnecessary. Required contract proof must exist in the repository at the correct owner before handoff.
+During implementation of the verify redesign, the current repository may still accept legacy low-level labels, `*.browser.spec.ts`, root application E2E specs, manual E2E mappings, or the `verify:release` alias.
 
-Examples:
+Treat those only as current executable compatibility described by `docs/testing/migration-plan.md`.
 
-- a browser-owned interaction requires faithful browser proof in code;
-- a public token override path may require rendered browser proof;
-- a product scenario may require application E2E;
-- an explicitly identified flake may require a bounded stability diagnostic while fixing it.
+Do not:
 
-Once that proof exists and the coding agent has used whatever focused feedback was needed to implement it, the automatic repository-wide execution of all applicable checks belongs to CI.
+- preserve a legacy label merely because a focused command currently uses it;
+- add new source-to-E2E mappings to the legacy registry while implementing the replacement;
+- add new ordinary `*.browser.spec.ts` proof when the target behavior suffix is already executable for that owner;
+- describe a target mechanism as executable before its migration phase lands.
 
-CI is not a substitute for missing tests, stale ownership metadata, architecture review, required measurements, or visual evidence. Conversely, local duplication of CI is not a substitute for architect exact-head review.
+When a focused check is useful during the migration itself, use the narrowest command actually supported by the current branch state. The implementation task must still move the public surface to the target contract.
+
+## Target spec taxonomy
+
+| Type | Target naming |
+| --- | --- |
+| unit | `*.test.<supported-ext>`; normally `*.test.ts` |
+| behavior | `*.behavior.spec.ts` |
+| visual | `*.visual.spec.ts` |
+| browser-integration | `*.browser-integration.spec.ts` |
+| performance | `*.performance.spec.ts` |
+| e2e | `*.e2e.spec.ts` |
+
+Static and mutation are verification types but not independent test-spec suffixes.
+
+Legacy naming is allowed only where the migration plan says the current runner still requires it.
+
+## Focused coding-agent use
+
+Use focused verifier-managed checks only when they materially shorten feedback or prove a task-specific risk.
+
+Examples after the target CLI is executable:
+
+```bash
+pnpm verify --only static --files <paths...>
+pnpm verify --only unit --files <paths...>
+pnpm verify --only behavior --files <paths...>
+pnpm verify --only visual --files <paths...>
+pnpm verify --only browser-integration --files <paths...>
+pnpm verify --only performance --files <paths...>
+pnpm verify --only mutation --files <paths...>
+pnpm verify --only e2e --files <paths...>
+```
+
+Do not mechanically run every type one-by-one. Do not run broad verification solely to produce a handoff status that exact-head CI will immediately reproduce.
+
+If the coding task changes verifier tooling itself, run the smallest risk-specific checks necessary to prove the changed planner/CLI contract during implementation.
+
+## Impact and ownership
+
+### Unit
+
+Use Vitest native related/affected analysis where static imports represent the relation. Do not build or maintain a second unit dependency graph.
+
+Unresolved relevant unit impact widens to full unit.
+
+### Behavior / visual / browser integration / local performance
+
+Ordinary local proof derives ownership from target suffix plus truthful repository colocation.
+
+Do not add duplicate registry metadata when path/placement already expresses ownership.
+
+Shared config/helpers use full owning-type fallback unless every consumer is explicit, small, stable, and validated.
+
+Removed/moved/unresolved relevant ownership widens safely or fails structural validation; it never silently skips.
+
+### E2E
+
+Target primary ownership comes from:
+
+```text
+tests/e2e/pages/<Owner>/**/*.e2e.spec.ts
+tests/e2e/widgets/<Owner>/**/*.e2e.spec.ts
+```
+
+Changed production code resolves affected product owners through `dependency-cruiser` reverse dependencies.
+
+Traversal records reachable widgets and continues upward; reachable pages/panes are recorded and stop that branch.
+
+The directory gives the primary E2E owner. Additional owners are exceptional machine-validated Playwright-native owner metadata only.
+
+Do not maintain a manual production-path -> E2E-spec registry after the structural/graph replacement is proven.
+
+Do not add routine owner tags to every E2E and do not create a custom E2E wrapper/DSL.
+
+Unknown relevant E2E impact widens to full E2E. Invalid E2E structure fails verification.
+
+### Mutation
+
+Mutation uses a project-owned registered target inventory. Do not infer mutation targets from adjacency.
+
+Default verification runs affected registered targets. `--full` runs the complete registered mutation inventory.
+
+### Performance
+
+Persistent performance proof requires a measurable threshold/budget. Do not create permanent performance infrastructure for one-off task measurements.
+
+## Release-sensitive work
+
+`release` is not a verification type.
+
+Classify release-sensitive proof by contract:
+
+- source/build/config invariant -> static;
+- isolated browser/PWA/runtime/update contract -> browser-integration;
+- isolated interactive UI -> behavior;
+- complete product/user flow -> e2e;
+- measurable performance invariant -> performance.
+
+The target release-grade command is:
+
+```bash
+pnpm verify --full
+```
+
+Legacy `pnpm verify:release` may exist during migration only as compatibility. Do not make new workflows depend on it.
 
 ## Flaky behavior
 
 Known flaky behavior is failed proof, not an accepted warning.
 
-A retry-pass/flaky classification never counts as green evidence. Correct the root cause and rerun the smallest faithful owning proof needed to establish the fix. Do not weaken assertions, inflate timeouts, add sleeps, repeat an already-delivered user action, use `force`, or rely on a stronger CI runner to hide the problem.
+Correct the root cause and rerun the smallest faithful owning proof. Do not weaken assertions, inflate timeouts, add sleeps, repeat already-delivered user actions, use `force`, or rely on a stronger CI runner to hide the issue.
 
-`--repeat` is a bounded Storybook-behavior stability diagnostic only. It requires `--only storybook-behavior` plus explicit `--files`, accepts counts from 2 through 20, and must be used only when a concrete stability risk warrants it. It is not a normal handoff or CI checklist item.
-
-## Impact and ownership
-
-For Storybook behavior and visual proof:
-
-- ordinary reusable UI should use deterministic owner-local discovery where implemented;
-- do not add duplicate registry metadata for a relation already expressed by supported local ownership;
-- justified family/module/cross-owner/infrastructure proof may remain central with the smallest truthful explicit mapping;
-- shared config/helpers normally use full owning-lane fallback unless every consumer is explicit, small, stable, and validated;
-- removed/moved/unresolved relevant ownership must fall back safely or fail validation, never skip silently.
-
-Colocated `src/**/*.browser.spec.ts` and `src/**/*.visual.spec.ts` are Playwright proof inputs only. Automatic unit scope must not classify them as Vitest tests merely because they end in `.spec.ts`.
-
-Application E2E remains centralized and continues to use explicit source-to-product-scenario ownership.
-
-## Visual baselines
-
-Visual discovery/ownership follows `docs/testing/migration-plan.md` and `docs/testing/storybook.md`.
-
-For intentional visual changes:
-
-- inspect every baseline change;
-- keep the smallest bounded accepted surface;
-- use the currently authorized snapshot location;
-- unresolved baseline ownership must fail closed or select full visual proof.
-
-A passing screenshot comparison does not prove Material correctness or browser behavior.
-
-## Mutation
-
-Use mutation only for an explicitly relevant high-risk target and through the verifier-managed surface:
-
-```bash
-pnpm verify --only mutation --files <narrow-source-or-test-paths...>
-```
-
-Do not infer mutation applicability merely from file adjacency and do not add mutation work solely because a broad automatic run might otherwise select it.
-
-## Release-sensitive work
-
-`pnpm verify --full` and `pnpm verify:release` are deliberate full-project/release commands, not coding-agent handoff commands.
-
-Use them locally only when a coding task specifically needs release-output feedback that cannot wait for CI. The authoritative final release/merge gate is the required GitHub workflow on the exact PR head.
+Any bounded repeat/stability mode that exists during migration is diagnostic only; it must not become the target public verification taxonomy.
 
 ## Fix mode
 
@@ -139,35 +188,29 @@ Use:
 pnpm verify --fix-only
 ```
 
-only when the coding change itself needs safe supported formatting/lint fixes or instruction compatibility generation. Inspect resulting changes. Fix mode is development tooling, not merge proof.
+only when the coding change itself needs safe supported formatting/lint fixes or instruction compatibility generation. Inspect resulting changes.
 
-Architect-authored documentation or workflow-only changes are not a reason to send a coding agent back solely for formatting or broad verification; the architect owns those edits and CI owns their automatic repository gate.
+Fix mode is development tooling, not merge proof.
 
 ## CI merge gate
 
-For PR work, GitHub CI is the authoritative automatic repository verification because it runs against the exact published head in the controlled CI environment.
+GitHub CI on the exact published PR head is the authoritative automatic repository gate.
 
 The architect must not recommend merge while required exact-head CI is missing or failing.
 
 If CI fails because of the PR:
 
-1. identify the failed CI contract and exact output;
-2. route the concrete failure to the truthful owner;
+1. identify the failed contract and exact output;
+2. route the failure to the truthful owner;
 3. the coding agent fixes code if code is the owner;
-4. the coding agent may use the smallest useful focused verifier-managed check for feedback;
+4. the coding agent may use the smallest useful focused verifier check for feedback;
 5. the architect republishes the corrected head and reviews CI again.
 
-Do not require a second broad local gate before handing the correction back unless a concrete risk-specific proof requires it.
-
-## Stage-specific rules
-
-Stage-specific skills may require focused verifier proof for a concrete implementation risk, but they must not introduce a mandatory final automatic local repository gate for coding-agent completion.
-
-Any older workflow wording that says a coding worker must run a final automatic `pnpm verify` before handoff is superseded by this ownership rule and should be removed when that workflow is next edited.
+Do not require a second broad local gate before handoff unless a concrete risk-specific proof requires it.
 
 ## Coding-agent report
 
-After coding-agent edits, report implementation state and only verification actually used during implementation:
+After edits, report implementation state and only focused verification actually used:
 
 ```text
 TASK RESULT
@@ -183,4 +226,4 @@ CI GATE
 status: architect-owned
 ```
 
-`complete` means the assigned coding scope and required task-specific proof are implemented with no known in-scope blocker. It does not require reproducing CI locally.
+`complete` means the assigned implementation and required task-specific proof are complete with no known in-scope blocker. It does not require reproducing CI locally.
