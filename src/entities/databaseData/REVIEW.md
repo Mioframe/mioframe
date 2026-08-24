@@ -1,54 +1,68 @@
 # Review
 
-Verdict: Database implementation/proof accepted; merge remains blocked by shared `MDTable` presentation correction.
+Verdict: blocked by the repeated dynamic table-surface CI failure.
 
 ## Scope reviewed
 
-- PR #217 complete Database virtualization/native-table integration through code head `0db8c3ba4c57bcee751af502109d68c85a1cf3d2`.
+- PR #217 complete Database virtualization/native-table integration through code head `2889a1d6598850a4a8886d6d1a7d95a40f8cd1da`.
 - Settled zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
 - Relation cold-bootstrap correction at `ca6c7b0ea640c43fb43c9fb3a474358d2dc236ba`.
-- Branch-E2E correction at `0db8c3ba4c57bcee751af502109d68c85a1cf3d2`.
-- Coding-agent cumulative branch verification: `pnpm verify --base origin/develop`, passed after two complete branch-gate runs.
-- Exact-head GitHub CI on `aad0ecee9204aa8b87f6df6a6ad0df846aab0189`: green.
-- Operator visual inspection: outer table corner rounding still incorrect.
-- Deferred residual Chromium performance risk.
+- Branch-E2E proof correction at `0db8c3ba4c57bcee751af502109d68c85a1cf3d2`.
+- Shared MDTable frame implementation at `2889a1d6598850a4a8886d6d1a7d95a40f8cd1da`.
+- Coding-agent cumulative local branch verification: `pnpm verify --base origin/develop`, passed.
+- Exact-head GitHub CI on `2889a1d6598850a4a8886d6d1a7d95a40f8cd1da`: application E2E failed; all other lanes passed.
 
 ## Resolved — relation-value cold bootstrap
 
-The persisted relation-filter cold-reload scenario remains green. The accepted correction is entity-local: a non-empty source with no virtual items renders transient `aria-hidden` bootstrap table structure, which disappears when TanStack supplies real virtual items. Settled leading/trailing spacers remain positive-distance-only. No second range state or shared/public API was added.
+The persisted relation-filter cold-reload scenario remains green. A non-empty source with no virtual items renders transient `aria-hidden` bootstrap table structure, which disappears when TanStack supplies real virtual items. Settled leading/trailing spacers remain positive-distance-only. No second range state exists.
 
-## Resolved — moving table surface finding is not reproduced as a production defect
+## Blocker — moving table surface is a repeated production contract failure
 
-The existing E2E scenario `keeps real preceding Database content connected to the table-owned surface range` remains unchanged. It passed focused verification, the cumulative local branch gate, and exact-head CI after the latest proof correction.
+Owning product proof:
 
-No stale Database/shared virtualization geometry step is established. No production geometry change is justified.
+`tests/e2e/databaseVirtualizationFlows.spec.ts` — `keeps real preceding Database content connected to the table-owned surface range`.
 
-## Resolved — interior spacer proof establishes logical interior state
+Exact-head CI on `2889a1d...` failed this scenario on desktop Chromium on the initial attempt and both retries. The first deep range succeeds. After the real preceding success card is dismissed, the measured table surface physically moves upward; after returning to the top, the second deep transition does not reach the final logical row. Mobile Chrome passes.
 
-The proof no longer assumes a physical scroll midpoint is a logical virtual midpoint. It derives mounted row/property ranges from `aria-rowindex` / `aria-colindex`, proves both axes are strictly interior, and only then requires both leading and trailing row/column spacers. The same invalid midpoint assumption was removed from the representative recursive-relation proof.
+This is the same failure observed in an earlier exact-head run. It may no longer be classified as unconfirmed or flaky. The previous decision to leave the production geometry ownership unchanged is withdrawn.
 
-No production or shared virtualization code changed for this correction.
+### Architecture correction
 
-## Blocker — shared MDTable outer frame fails operator visual acceptance
+The physical `.database-view` scroll root and the composition that places content before `DatabaseViewLayout` are widget-owned. Therefore the current root-to-Database-surface offset is a widget layout fact, not an entity-owned ancestor/sibling discovery concern.
 
-Owner: [`src/shared/ui/Table`](../../shared/ui/Table/REVIEW.md).
+Required final ownership:
 
-The Database consumer no longer owns the unresolved visual root cause. `DatabaseDataTable` does not draw the outer frame or corner radii; its local presentation only removes border/padding from virtual spacers and owns sticky action behavior. The remaining broken rounded outline is now tracked at the shared component that actually owns those styles.
+- `DatabaseViewWidget` supplies current vertical/horizontal root-to-layout surface offsets;
+- `DatabaseRelationValueInline` supplies the truthful local offsets for its own root (currently zero because the Database layout is the first unpadded root content);
+- `DatabaseViewLayout` forwards these values;
+- `DatabaseDataTable` consumes them and removes its current root/table `useElementBounding`, ancestor-root `MutationObserver`, and `onUpdated` surface-discovery path;
+- `useVirtualCollection` forwards the supplied reactive `surfaceOffset`; TanStack remains the sole range/measurement/cache/scroll-correction owner.
 
-Database requirements during the shared correction:
+Before the consumer correction, the shared virtualization browser capability must directly prove a same-root dynamic `surfaceOffset` change. If that proof fails with current shared production code, stop and return to architecture rather than adding a Database workaround.
 
-- do not reintroduce zero-distance settled spacers;
-- preserve transient cold-bootstrap structure;
-- preserve bounded/deep virtualization and ARIA contracts;
-- preserve sticky action/header behavior;
-- do not add Database-specific duplicate border/radius CSS.
+Do not add per-scroll/rAF geometry measurement, another MutationObserver over the table subtree, cache reset, retry, remount, or force-update recovery.
+
+## Resolved — interior spacer proof
+
+The proof derives mounted row/property ranges from `aria-rowindex` / `aria-colindex`, proves a logical interior range, and only then requires both leading and trailing spacers. Physical midpoint is no longer treated as logical midpoint.
+
+## Shared MDTable status
+
+The previously confirmed shared frame implementation defect has been corrected at `2889a1d...`: root-owned border/radius is active and the per-row pseudo-element perimeter is removed. Static, visual, and Storybook CI lanes pass. Operator reinspection of the real Database presentation remains required before merge, but the current red CI failure is not Table-owned.
 
 ## Accepted follow-up risk — not required for PR #217
 
-Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/database-chrome-jank-follow-up.md` and moves to a separate PR. Number isolation is a reproducer, not an established production owner.
+Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/database-chrome-jank-follow-up.md` and belongs to a separate PR.
+
+## Verification required after correction
+
+- shared dynamic-surface capability browser proof;
+- complete `tests/e2e/databaseVirtualizationFlows.spec.ts` focused verifier run;
+- persisted relation-filter scenario if Database table production code changes;
+- `pnpm verify --base origin/develop` clean;
+- exact-head GitHub CI green;
+- operator Database border/corner reinspection.
 
 ## Merge condition
 
-After the shared `MDTable` review blocker is corrected, operator visual acceptance is clean, the coding-agent branch gate passes, and exact-head GitHub CI is green on the final head, perform final full PR merge-readiness review.
-
-Do not delete this `REVIEW.md` before those conditions are satisfied.
+Do not merge until the moving-surface contract is corrected, branch verification and exact-head CI are green, operator presentation reinspection is clean, and the final full PR review has no blockers.
