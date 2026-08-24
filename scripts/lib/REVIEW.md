@@ -2,6 +2,22 @@
 
 Verdict: blocked
 
+## Selected next correction
+
+Implement **B2 mutation ownership only** in the next coding pass.
+
+Authoritative handoff: [`../../docs/testing/verify-mutation-impact-correction.md`](../../docs/testing/verify-mutation-impact-correction.md).
+
+Required order:
+
+```text
+fresh test-author pass
+→ separate implementation pass
+→ architect mutation-boundary review
+```
+
+Do not include B1 release-impact work in the same agent task.
+
 ## Scope reviewed
 
 - Full PR #216 verifier-modernization semantic review against current repository rules and target architecture.
