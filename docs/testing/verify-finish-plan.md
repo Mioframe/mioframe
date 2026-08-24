@@ -1,6 +1,6 @@
 # Verify modernization finish plan
 
-Status: **full PR semantic review completed but blocked; Pass E shared release-execution support is architecturally resolved and pending implementation; benchmark remains deferred**.
+Status: **full PR semantic review is blocked by two implementation corrections; benchmark remains deferred**.
 
 This document owns final integration order. Lane semantics remain in their architecture documents.
 
@@ -10,11 +10,12 @@ This document owns final integration order. Lane semantics remain in their archi
 - `docs/testing/verify-target-architecture.md` — target architecture and exit criteria;
 - `docs/testing/verify-agent-output.md` — canonical output contract;
 - `docs/testing/verify-output-correction.md` — closed M1/M2 correction and review record;
-- `docs/testing/verify-unit-impact-correction.md` — closed unit-impact correction;
+- `docs/testing/verify-unit-impact-correction.md` — accepted unit-impact architecture;
 - `docs/testing/verify-app-e2e-discovery-correction.md` — closed application-E2E discovery architecture;
-- `docs/testing/verify-release-impact-correction.md` — current Pass E architecture including the reopened shared execution-support boundary;
+- `docs/testing/verify-release-impact-correction.md` — current Pass E correction architecture;
+- `docs/testing/verify-mutation-impact-correction.md` — current mutation correction architecture;
 - `docs/testing/verify-modernization.md` — implementation/review/benchmark status;
-- `scripts/lib/REVIEW.md` — active semantic blocker;
+- `scripts/lib/REVIEW.md` — active semantic blockers;
 - `docs/testing/REVIEW.md` — mandatory benchmark blocker.
 
 Documentation, review state, PR metadata, CI interpretation, benchmark record, and merge readiness are architect-owned.
@@ -30,45 +31,27 @@ release intent: version:patch
 
 Any architect-owned documentation/review commit changes the authoritative head. Final CI evidence must match the resulting exact head.
 
-## Closed areas
+## Areas that remain accepted
 
-Keep closed unless new repository evidence directly contradicts them:
+Keep these closed unless new repository evidence directly contradicts them:
 
 - Pass A bounded-output architecture and M1/M2 correction;
 - Pass B metadata classification;
-- Pass C unit impact / real `vitest related` / file-as-data / bounded scan ownership;
+- core Pass C unit dependency selection: real `vitest related`, file-as-data, bounded scan ownership, and status-aware fallback;
 - root-only application-E2E discovery and real collector proof;
-- Pass D explicit mutation registry shared with Stryker;
+- the seven audited high-risk mutation target entries and one Stryker/verifier registry;
 - Pass E release-spec inventory and existing exact release mappings;
 - Pass E production-build mechanism ownership;
 - Pass F CI topology and independent `release-version`;
 - artifact 17-minute outer timeout and current 120-minute release-job envelope.
 
-## Full PR semantic review
+The mutation correction changes the shared Vitest test-path source of truth and mutation orchestration, not the accepted seven-target population or unit dependency-selection model.
 
-A complete review from scratch was performed after the previously known implementation corrections closed.
+## Semantic blocker B1 — release shared execution support
 
-No new blocker/major/minor findings were found in:
+The real release execution roots import shared repository-owned command/runtime support, but `releaseRisk.ts` does not currently classify that support.
 
-- repository metadata classification;
-- unit selection and status-aware fallback;
-- application-E2E discovery/scenario ownership;
-- Storybook behavior/visual ownership;
-- mutation ownership/Stryker agreement;
-- verifier invocation, bounded output, warning/progress behavior, locks and timeouts;
-- release-spec execution inventory;
-- production-build input ownership;
-- CI lane placement/aggregation.
-
-The review found one semantic blocker in release-impact ownership and therefore ended `blocked`, not `ready`. After that blocker is corrected, perform a new complete PR-level semantic review rather than treating this blocked review as final acceptance.
-
-## Reopened Pass E boundary
-
-### Problem
-
-The real release execution roots import shared repository-owned command/runtime support, but `releaseRisk.ts` does not currently classify that support. Those changes can therefore resolve `skip` while affecting real release checks.
-
-Current audited support population:
+Audited population:
 
 ```text
 scripts/lib/commandLock.ts
@@ -78,7 +61,7 @@ scripts/lib/runLocalCommand.ts
 scripts/lib/signalForward.ts
 ```
 
-Truthful current consumers:
+Truthful consumers:
 
 ```text
 artifact
@@ -87,38 +70,103 @@ managed-updates
 release-smoke
 ```
 
-The detailed root/import audit and architecture are in `verify-release-impact-correction.md`; the active finding is `scripts/lib/REVIEW.md` B1.
+Architecture is resolved in `verify-release-impact-correction.md`:
 
-### Architecture decision
+- fresh independent test-author audit/proof first;
+- complete current support population, not example-by-example patching;
+- implementation local to `releaseRisk.ts`;
+- unrelated `scripts/lib/**` remains negative;
+- no generic runtime dependency graph.
 
-Keep the mechanism explicit and local to `scripts/lib/releaseRisk.ts`.
+## Semantic blocker B2 — mutation changed identity and Vitest ownership
 
-Do **not**:
+The mutation lane currently has two linked ownership defects.
 
-- add only the newly noticed paths without proving the current support population is exhausted;
-- broaden release ownership to `scripts/lib/**`;
-- add a runtime import graph or generic registry;
-- change release execution/grouping, timeouts, artifact reuse, CI topology, or `release-version` policy.
+### Changed identity
 
-Before implementation, a fresh independent test-author context must perform the bounded transitive runtime-import audit from the accepted release execution roots and author meaningful RED proof in `scripts/lib/releaseRisk.test.ts`.
+`getChangedFileProjection()` already preserves deleted path identity and both rename sides. `buildCommands()` then incorrectly passes only `existingChangedFiles` to `resolveMutationPlan()`.
+
+Accepted fix:
+
+```text
+canonical changedFiles projection
+→ resolveMutationPlan(changedFiles)
+```
+
+Do not add another Git/status parser or a status-bearing mutation API. Current mutation semantics require identity, and the canonical projection already preserves it.
+
+Required integration proof includes deletion and rename-old identity for `stryker.config.mjs` through the real changed-path-context/buildCommands boundary.
+
+### Vitest test ownership
+
+Mutation registry validation uses a suffix-only `.test.ts` heuristic that disagrees with `vitest.config.ts`. `unitRisk.ts` already has a separate, more accurate duplicate.
+
+Accepted fix:
+
+```text
+scripts/lib/vitestTestPaths.ts
+→ one narrow Vitest test-path/discovery contract
+   ├─ vitest.config.ts
+   ├─ unitRisk.ts
+   └─ mutationTargets.ts
+```
+
+The shared owner must derive the Vitest include globs and path predicate from one local rule definition so they cannot drift independently.
+
+Ownership consequences:
+
+```text
+scripts/lib/vitestTestPaths.ts
+→ full unit infrastructure
+
+stryker.config.mjs
+scripts/lib/mutationTargets.ts
+vitest.config.ts
+scripts/lib/vitestTestPaths.ts
+→ mutation all registered targets after registry validation
+```
 
 Required proof includes:
 
-```text
-runLocalCommand.ts
-→ focused artifact + build + managed-updates + release-smoke
+- real Vitest-owned `.test.mjs` positive, e.g. `scripts/agentEnvironment.test.mjs`;
+- `.test.ts` outside real Vitest discovery negative;
+- `vitest.config.ts` and the new shared path owner trigger mutation full;
+- the shared path owner triggers full unit;
+- real seven-target mutation registry remains valid and unchanged.
 
-commandLock.ts OR signalForward.ts
-→ same focused four
+Detailed architecture: `verify-mutation-impact-correction.md`.
+
+## Correction sequencing
+
+The two semantic blockers are independent planner owners and should not be mixed into one coding implementation pass.
+
+Recommended correction order:
+
+```text
+1. mutation correction
+   a. fresh independent test-author pass
+   b. separate implementation pass
+   c. architect full mutation-boundary review
+
+2. release shared-support correction
+   a. fresh independent test-author bounded audit/proof
+   b. separate releaseRisk implementation pass
+   c. architect complete Pass E review
+
+3. new complete PR-level semantic review from scratch
 ```
 
-Then prove the complete current five-file population and at least one unrelated nearby `scripts/lib/**` negative.
+Mutation goes first because the external review identified a defect in the planner/source-of-truth layer and its correction also removes duplicated Vitest discovery ownership used by unit planning. Release correction remains fully specified and independent.
 
-The implementation pass is separate and changes only the planner owner unless new repository evidence invalidates the accepted architecture.
+If either owner-level review finds a broader ownership problem, stop and return to architecture rather than starting the next pass.
 
-## Workflow improvement
+## Workflow guards already in place
 
-`.agents/skills/verification/SKILL.md` now requires release-impact work to re-audit the complete bounded shared release-execution support closure whenever a release execution root changes repository-relative runtime imports. This converts the repeated omission into a durable workflow guard without adding production dependency-graph infrastructure.
+`implementation-preflight` now requires impact/selection work to record ownership mechanisms, status transitions, bounded populations, independent oracle, and real delegated-resolver semantics where applicable.
+
+`verification/SKILL.md` additionally requires release-impact work to re-audit the complete bounded shared release-execution support closure when release execution roots change repository-relative runtime imports.
+
+No further generic registry or dependency-graph infrastructure is justified by the current findings.
 
 ## Mandatory benchmark — deferred
 
@@ -129,42 +177,46 @@ The target architecture still requires:
 2. aggregate expensive compute
 ```
 
-Do not perform the benchmark while the semantic blocker is open. Benchmark only after the correction and a new complete PR semantic review are clean.
+Do not perform the benchmark while either semantic blocker is open. Benchmark only after both corrections and a new complete PR semantic review are clean.
 
 The final benchmark record must include source run/change class, both metrics, interpretation, and explicit stop/reopen decision. Permanent benchmark infrastructure remains out of scope unless measurement demonstrates a separate need.
 
 ## CI interpretation
 
-CI runs on heads before the reopened correction are intermediate evidence only. Do not spend time treating the current documentation head as a merge candidate while B1 is open.
+CI on `32e33108ea91eb17c4d6960e97ede1c32e84dae7` is useful historical execution evidence but not final merge evidence. The current PR head has moved due architect-owned review/documentation commits, and semantic blockers are open.
 
-After implementation and clean semantic re-review, obtain stable exact-head CI for the accepted implementation. Final benchmark/completion documentation will move the head again and require final exact-head CI afterward.
+After both implementations and the clean semantic re-review, obtain stable exact-head CI for the accepted implementation. Benchmark/completion documentation will move the head again and therefore requires final exact-head CI afterward.
 
 ## Remaining order
 
 ```text
-1. fresh independent test-author pass for shared release-execution support in scripts/lib/releaseRisk.test.ts
-2. separate implementation pass in scripts/lib/releaseRisk.ts against accepted proof
-3. architect complete Pass E re-review and close scripts/lib/REVIEW.md only if the full support boundary is clean
-4. perform a new complete PR-level semantic review from scratch
-5. close or route any newly discovered findings
-6. obtain stable exact-head CI for the semantically accepted implementation
-7. perform and record the mandatory representative benchmark:
-   - critical path / merge latency
-   - aggregate expensive compute
-8. record stop vs separate-follow-up decision
-9. remove docs/testing/REVIEW.md only when the benchmark blocker is genuinely closed
-10. update final completion docs and PR metadata
-11. require CI on the resulting final documentation head
-12. re-check current develop ancestry and exact PR head
-13. re-check unresolved review threads and all required CI lanes
-14. give merge-readiness verdict
-15. squash merge only after explicit user instruction and only when semantic review, benchmark, and exact-head CI are all satisfied
+1. fresh independent test-author pass for mutation correction
+2. separate mutation implementation pass
+3. architect review the complete mutation boundary and close B2 only if clean
+4. fresh independent test-author pass for release shared-execution support
+5. separate releaseRisk implementation pass
+6. architect complete Pass E review and close B1 only if clean
+7. perform a new complete PR-level semantic review from scratch
+8. close or route any newly discovered findings
+9. obtain stable exact-head CI for the semantically accepted implementation
+10. perform and record the mandatory representative benchmark:
+    - critical path / merge latency
+    - aggregate expensive compute
+11. record stop vs separate-follow-up decision
+12. remove docs/testing/REVIEW.md only when the benchmark blocker is genuinely closed
+13. update final completion docs and PR metadata
+14. require CI on the resulting final documentation head
+15. re-check current develop ancestry and exact PR head
+16. re-check unresolved review threads and all required CI lanes
+17. give merge-readiness verdict
+18. squash merge only after explicit user instruction and only when semantic review, benchmark, and exact-head CI are all satisfied
 ```
 
 ## Stop rule
 
 Stop verifier modernization only when:
 
+- mutation ownership preserves canonical changed identity and uses the real shared Vitest test-path contract;
 - release-impact ownership is closed over all confirmed current production-build, release-spec, release-runtime, and shared release-execution mechanisms;
 - output findings remain closed;
 - a complete PR semantic review has no unresolved findings;
