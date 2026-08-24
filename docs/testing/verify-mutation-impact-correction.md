@@ -1,88 +1,63 @@
 # Verify mutation-impact correction
 
-Status: **architecture resolved; implementation pending after full PR review finding**.
+Status: **agent-ready; independent test-author pass required before implementation**.
 
-This document owns the mutation correction discovered during the PR #216 semantic review. `docs/testing/verify-target-architecture.md` remains the wider verifier target and `docs/testing/architecture.md` remains canonical testing policy.
+This document is the implementation contract for the mutation correction in PR #216.
 
-## Goal
+## Problem
 
-Preserve the existing explicit high-risk mutation registry while fixing two ownership failures:
+Two ownership defects remain:
 
-1. mutation planning must receive canonical changed-path identity for deleted and renamed paths instead of only current-tree files;
-2. mutation registry validation must use the real Vitest-owned test contract instead of a local `.test.ts` suffix heuristic.
+1. `buildCommands()` passes `existingChangedFiles` to `resolveMutationPlan()`, so deleted paths and the old side of renames disappear after `changedPaths.ts` already preserved them;
+2. `validateMutationRegistry()` uses a local `*.test.ts` heuristic instead of the real Vitest test-discovery contract.
 
-Do not redesign mutation testing, add adjacency inference, or introduce a generic planner/test-discovery framework.
+A third consequence belongs to the same defect: `stryker.config.mjs` executes Vitest through `vitest.config.ts`, so changes to Vitest discovery configuration are mutation-execution semantic changes and must never silently skip mutation.
 
-## Retained mutation architecture
+## Required final state
 
-Keep the accepted model:
+### Canonical changed identity
 
-```text
-changed registered source
-or changed registered owning test
-→ focused mutation of the exact registered source
-
-mutation registry / mutation execution config change
-→ all registered targets or invalid
-
-unregistered change
-→ skip
-
-invalid registry
-→ invalid
-```
-
-`MUTATION_TARGETS` remains the single explicit high-risk target registry consumed by verifier planning and `stryker.config.mjs`. Stryker continues to derive `mutate` from this registry and may keep `vitest.related: true`.
-
-## Finding A — canonical changed identity is filtered away before mutation planning
-
-`scripts/lib/changedPaths.ts` already owns Git status and its flat projection preserves the identities mutation planning needs:
-
-- deleted path remains present;
-- rename projects both `oldPath` and `newPath`.
-
-Mutation planning itself does not need to distinguish `added` from `modified` or inspect Git history. Its decisions are identity-based: an exact registry/config path, registered source, or registered owning test either appears in the changed identity set or does not.
-
-The defect is therefore orchestration, not the mutation resolver API. `buildCommands()` currently computes:
+Keep `resolveMutationPlan()` identity-based. Do not add another Git/status model.
 
 ```text
-existingChangedFiles = changedFiles.filter(fileExists)
-```
-
-and passes `existingChangedFiles` to `resolveMutationPlan()`. This drops deleted paths and the old side of a rename after `changedPaths.ts` already preserved them.
-
-### Architecture decision
-
-Keep `resolveMutationPlan(changedFiles: readonly string[])` identity-based.
-
-Pass the canonical flat `changedFiles` projection directly to the mutation planner:
-
-```text
-getChangedFileProjection(scope)
+getChangedFileProjection(...)
 → buildCommands(changedFiles)
 → resolveMutationPlan(changedFiles)
 ```
 
-`existingChangedFiles` remains valid only for owners that require a current filesystem file, such as focused format/lint input lists. It must not gate mutation ownership.
+`existingChangedFiles` remains only for checks that require current filesystem files, such as format/lint.
 
-This is simpler than adding a second status-aware mutation API because no current mutation decision depends on the status value once canonical old/new identity has been preserved.
+Required behavior:
 
-### Required status behavior
+```text
+deleted stryker.config.mjs
+→ all registered mutation targets or invalid
 
-At the real orchestration boundary:
+rename oldPath = stryker.config.mjs
+→ all registered mutation targets or invalid
+```
 
-- deleted `stryker.config.mjs` → all registered mutation targets or invalid, never skip;
-- rename old side `stryker.config.mjs` → all registered mutation targets or invalid, never skip;
-- deleted registered source/test that remains in the resulting registry → registry validation invalid because the configured owner no longer exists;
-- source/test rename accompanied by a valid registry update → the changed registry itself selects all registered targets, while the resulting registry validates current-tree ownership.
+A deleted registered source/test that still exists in the resulting registry must remain `invalid` because registry validation checks the current tree.
 
-Do not reconstruct Git status in `mutationTargets.ts`.
+### One Vitest test-path owner
 
-## Finding B — mutation registry has a false Vitest ownership heuristic
+Create:
 
-Current `validateMutationRegistry()` treats any path ending in `.test.ts` as Vitest-owned. That diverges from the real repository configuration.
+```text
+scripts/lib/vitestTestPaths.ts
+```
 
-The current Vitest include contract contains:
+It owns only Vitest test-file discovery shape. It must expose the minimum shared contract used by current consumers:
+
+```ts
+VITEST_TEST_INCLUDE
+VITEST_TEST_EXCLUDE
+isVitestOwnedTestPath(filePath)
+```
+
+The include/exclude constants and predicate must come from one local rule definition, not three copied heuristics.
+
+Current Vitest-owned test shapes are:
 
 ```text
 src/**/*.test.ts
@@ -94,69 +69,34 @@ playwright.*.test.ts
 eslint.config.test.ts
 ```
 
-and excludes Playwright `tests/e2e/**/*.spec.ts`.
-
-A real example is `scripts/agentEnvironment.test.mjs`, which is Vitest-owned but the current mutation validator would reject. Conversely, an arbitrary existing `.test.ts` outside the configured roots can be accepted by the current validator even though Vitest will not discover it.
-
-`unitRisk.ts` already contains an independently implemented copy of this same test-path contract. Adding a corrected second copy to `mutationTargets.ts` would retain two mutable sources of truth and repeat the drift that caused this finding.
-
-## Architecture decision — one narrow Vitest test-path owner
-
-Introduce one small tool-owned module:
+Current exclusions remain:
 
 ```text
-scripts/lib/vitestTestPaths.ts
+tests/e2e/**/*.spec.ts
+node_modules/**
+.*/**
 ```
-
-It owns only the repository's Vitest **test file path/discovery shape**, not unit impact, test execution, or dependency resolution.
-
-The module should expose the minimum shared contract needed by current consumers, conceptually:
-
-```ts
-export const VITEST_TEST_INCLUDE: readonly string[];
-export function isVitestOwnedTestPath(filePath: string): boolean;
-```
-
-The include globs and predicate must derive from one local rule definition so they cannot drift independently.
 
 Consumers:
 
 ```text
 vitest.config.ts
-→ uses VITEST_TEST_INCLUDE for test.include
+→ use VITEST_TEST_INCLUDE / VITEST_TEST_EXCLUDE
 
 scripts/lib/unitRisk.ts
-→ uses isVitestOwnedTestPath instead of its private duplicate test-shape logic
+→ use isVitestOwnedTestPath
 
 scripts/lib/mutationTargets.ts
-→ uses isVitestOwnedTestPath for registry validation
+→ use isVitestOwnedTestPath
 ```
 
-This is a justified shared low-level contract because the same real Vitest discovery rule already has multiple current consumers. It is deliberately narrower than a generic test registry or proof taxonomy.
+Do not import `vitest.config.ts` into planners.
 
-Do not import the full `vitest.config.ts` into planners; that would couple impact planning to Vite/Vue config initialization instead of sharing the small stable path contract.
+### Ownership of the shared contract
 
-## Ownership of the shared Vitest contract
+`scripts/lib/vitestTestPaths.ts` is full-unit infrastructure.
 
-The new shared path owner changes verification semantics itself and therefore must not become an unowned helper.
-
-### Unit
-
-`scripts/lib/vitestTestPaths.ts` is global Vitest discovery infrastructure. A change to it must select **full unit** just like `vitest.config.ts`.
-
-`unitRisk.ts` must keep the existing exact/direct/related/file-as-data/scan/status behavior unchanged apart from replacing its duplicate test-path predicate with the shared owner.
-
-### Mutation
-
-Mutation execution uses `stryker.config.mjs` with:
-
-```text
-testRunner: vitest
-vitest.configFile: vitest.config.ts
-vitest.related: true
-```
-
-Therefore the mutation execution semantic-change set must include:
+Mutation semantic-change paths are exactly:
 
 ```text
 stryker.config.mjs
@@ -165,107 +105,148 @@ vitest.config.ts
 scripts/lib/vitestTestPaths.ts
 ```
 
-A change to any of these selects all registered mutation targets after registry validation, never silent skip.
+A change to any of them selects all registered mutation targets after registry validation.
 
-Do not broaden this into every unit-test helper/config file. These four paths are confirmed mutation registry/execution owners.
+Keep the seven existing `MUTATION_TARGETS` entries and Stryker `mutate` derivation unchanged.
 
-## Independent proof
+## TEST IMPACT
 
-Use a fresh dedicated test-author context before production edits.
+### 1. Changed identity at orchestration boundary
 
-Primary proof owners:
+Primary proof: `scripts/verify.test.ts`.
 
-```text
-scripts/lib/mutationTargets.test.ts
-scripts/verify.test.ts
-```
+Oracle: canonical changed-path contract in `changedPaths.ts` and mutation acceptance in `verify-target-architecture.md`.
 
-If the shared Vitest path owner needs direct proof, add the smallest focused unit proof for that module rather than duplicating the same cases in every consumer test.
+Must reject: deleted/renamed-away `stryker.config.mjs` becomes mutation `skip` because current-tree existence filtering erased its identity.
 
-### Required RED / failure sensitivity
+RED required. Construct deletion and rename through `resolveVerifyChangedPathContext()` test seams, then pass the resulting `changedFiles` into `buildCommands()`. Direct `resolveMutationPlan(['stryker.config.mjs'])` is insufficient.
 
-Meaningful pre-fix failures must cover both defects.
+### 2. Real Vitest ownership
 
-At `buildCommands → resolveMutationPlan` integration:
+Primary proof: `scripts/lib/vitestTestPaths.test.ts` and `scripts/lib/mutationTargets.test.ts`.
 
-```text
-deleted stryker.config.mjs
-→ mutation run for all registered sources (or invalid), not skip
+Oracle: current `vitest.config.ts` discovery contract.
 
-rename with oldPath = stryker.config.mjs
-→ same
-```
-
-Use `resolveVerifyChangedPathContext()`'s existing test seams / canonical projection to construct the deletion/rename scope. Do not prove only `resolveMutationPlan(['stryker.config.mjs'])`; that already passes and misses the orchestration defect.
-
-Vitest ownership:
+Must reject:
 
 ```text
 scripts/agentEnvironment.test.mjs
-→ accepted as Vitest-owned when used as a registry owner test
-
-an existing/synthetic *.test.ts outside the real Vitest include roots
 → rejected as non-Vitest-owned
+
+some/path/outside/configured/roots/example.test.ts
+→ accepted only because it ends with .test.ts
 ```
 
-Also prove:
+RED required. Missing `vitestTestPaths.ts` is an acceptable new-API red for its focused test file; the mutation-registry proof must independently demonstrate the existing heuristic defect.
+
+### 3. New shared owner is itself owned
+
+Primary proof: `scripts/lib/unitRisk.test.ts` and `scripts/lib/mutationTargets.test.ts`.
+
+Must reject:
 
 ```text
-vitest.config.ts
-scripts/lib/vitestTestPaths.ts
-→ mutation full/all registered targets
+scripts/lib/vitestTestPaths.ts change
+→ focused/skip unit instead of full unit
+
+vitest.config.ts or scripts/lib/vitestTestPaths.ts change
+→ mutation skip/focused instead of all registered targets
 ```
 
-The real existing `MUTATION_TARGETS` registry must remain valid and unchanged unless independent repository evidence shows one of its seven current owners is wrong.
+RED required where current behavior is observable before production edits.
 
-## Minimum implementation scope
+## Pass order
 
-Expected production/config owners:
+### Pass 1 — fresh test-author context
 
-```text
-scripts/verify.ts
-scripts/lib/mutationTargets.ts
-scripts/lib/unitRisk.ts
-scripts/lib/vitestTestPaths.ts
-vitest.config.ts
-```
-
-Expected focused proof owners:
+May change only:
 
 ```text
-scripts/verify.test.ts
+scripts/lib/vitestTestPaths.test.ts   # new
 scripts/lib/mutationTargets.test.ts
-plus one narrow shared-path-contract test only if needed
+scripts/lib/unitRisk.test.ts
+scripts/verify.test.ts
 ```
 
-The correction must not change the seven audited mutation targets, Stryker thresholds/concurrency/mutator settings, mutation timeout, CI topology, or unit dependency-selection architecture.
+Requirements:
 
-## Forbidden
+- author the proofs above from the accepted contract;
+- demonstrate meaningful RED for both ownership defects;
+- do not edit production code;
+- do not weaken existing mutation/unit assertions.
 
-Do not:
+### Pass 2 — separate implementation context
 
-- add a second Git/status parser;
-- add status fields to mutation planning when canonical flat identity is sufficient;
-- keep or add a local suffix-only Vitest ownership heuristic;
-- copy the Vitest include rules separately into unitRisk and mutationTargets;
-- infer mutation targets from source/test adjacency;
-- broaden mutation execution changes to arbitrary `scripts/**`, `config/**`, or all test files;
-- add a generic test registry, dependency graph, or cross-lane planner abstraction;
-- weaken registry existence/uniqueness/reason validation;
-- change the seven current mutation target entries merely to make tests pass.
+Treat accepted test expectations/assertions as read-only.
+
+May change only:
+
+```text
+scripts/lib/vitestTestPaths.ts        # new
+vitest.config.ts
+scripts/lib/unitRisk.ts
+scripts/lib/mutationTargets.ts
+scripts/verify.ts
+```
+
+Minimum implementation:
+
+1. add the narrow shared Vitest path owner;
+2. switch `vitest.config.ts`, `unitRisk.ts`, and `mutationTargets.ts` to it;
+3. pass canonical `changedFiles` to `resolveMutationPlan()`;
+4. add `vitest.config.ts` and `scripts/lib/vitestTestPaths.ts` to mutation semantic-change ownership;
+5. remove replaced private Vitest test-shape logic.
+
+If an accepted test appears wrong, stop and return the conflict; do not edit it from the implementation pass.
 
 ## Acceptance criteria
 
-The mutation correction is complete only when:
+- deleted `stryker.config.mjs` cannot silently skip mutation;
+- rename old-side `stryker.config.mjs` cannot silently skip mutation;
+- real Vitest-owned `.test.mjs` is accepted;
+- `.test.ts` outside configured Vitest roots is rejected;
+- `vitest.config.ts` and `scripts/lib/vitestTestPaths.ts` select all registered mutation targets;
+- `scripts/lib/vitestTestPaths.ts` selects full unit;
+- one shared Vitest discovery owner replaces private duplicate heuristics;
+- seven mutation targets and Stryker mutate surface remain unchanged;
+- existing unit related/file-as-data/scan/status semantics remain unchanged;
+- no mutation timeout, thresholds, CI topology, release planning, or release execution changes.
 
-1. canonical deleted and rename-old path identity reaches mutation planning without current-tree filtering;
-2. deletion/rename of `stryker.config.mjs` cannot silently skip mutation at the `buildCommands` integration boundary;
-3. mutation registry validation and Vitest config share one test-path contract;
-4. real `.test.mjs` Vitest owners are accepted;
-5. `.test.ts` outside real Vitest discovery is rejected;
-6. `vitest.config.ts` and the shared Vitest test-path owner select all registered mutation targets as execution-semantic changes;
-7. the shared Vitest test-path owner selects full unit as global unit discovery infrastructure;
-8. existing unit-impact behavior remains otherwise unchanged;
-9. the seven audited mutation targets and Stryker mutate surface remain unchanged and in agreement;
-10. no adjacency inference, generic registry/graph, broad directory fallback, or second Git/status owner is introduced;
-11. architect re-reviews the full mutation boundary after implementation, including orchestration and the actual Vitest config contract.
+## Focused verification
+
+Test-author RED/implementation GREEN should use the smallest relevant verifier-managed unit scope, for example:
+
+```bash
+pnpm verify --only unit-tests --files \
+  scripts/lib/vitestTestPaths.test.ts \
+  scripts/lib/mutationTargets.test.ts \
+  scripts/lib/unitRisk.test.ts \
+  scripts/verify.test.ts
+```
+
+After implementation, also run when useful:
+
+```bash
+pnpm verify --only type-check
+pnpm verify --only oxlint --files \
+  scripts/lib/vitestTestPaths.ts \
+  scripts/lib/mutationTargets.ts \
+  scripts/lib/unitRisk.ts \
+  scripts/verify.ts \
+  vitest.config.ts
+```
+
+Exact-head CI and PR-wide review remain architect-owned.
+
+## Forbidden
+
+- editing release-impact/release execution code in this pass;
+- adding a second Git/status parser or status-bearing mutation planner API;
+- retaining/copying another private Vitest test-shape heuristic;
+- importing full `vitest.config.ts` into planners;
+- generic test registry/discovery framework;
+- adjacency-based mutation ownership;
+- changing the seven audited mutation targets without new independent repository evidence;
+- changing Stryker thresholds, timeout, `vitest.related`, CI topology, verifier timeout/lock/output behavior;
+- implementation-agent edits to accepted test expectations/assertions;
+- Git/GitHub lifecycle operations from coding/test-author contexts.
