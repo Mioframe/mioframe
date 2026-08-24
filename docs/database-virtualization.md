@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted provisionally; PR #217 remains blocked by the deep-state surface-movement discriminator and one relation-value loading offset invariant**.
+Status: **shared virtualization architecture accepted; PR #217 remains blocked by the top-level widget surface-offset diagnosis and one relation-value loading offset invariant**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -10,19 +10,19 @@ Current contracts:
 - completed relation cold-bootstrap correction: `docs/database-virtualization-relation-bootstrap-correction-handoff.md`;
 - completed branch-E2E proof correction: `docs/database-virtualization-branch-e2e-correction-handoff.md`;
 - completed shared frame correction: `docs/md-table-frame-correction-handoff.md`;
-- previous dynamic surface-offset correction: `docs/database-virtualization-dynamic-surface-offset-correction-handoff.md` — its widget-owned direction remains preferable to entity discovery, but it did not resolve exact-head CI;
-- **active architecture discriminator**: `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`;
-- active discriminator preflight: `docs/database-virtualization-deep-state-surface-offset-discriminator-preflight.md`;
+- completed deep-state shared discriminator: `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`;
+- **active top-level diagnosis**: `docs/database-virtualization-widget-surface-offset-diagnosis-handoff.md`;
+- active diagnosis preflight: `docs/database-virtualization-widget-surface-offset-diagnosis-preflight.md`;
 - active Database review: `src/entities/databaseData/REVIEW.md`;
-- active shared virtualization review: `src/shared/ui/virtualization/REVIEW.md`;
+- shared virtualization review: `src/shared/ui/virtualization/REVIEW.md`;
 - active relation-value review: `src/features/relationValueEdit/REVIEW.md`;
 - shared Table review: `src/shared/ui/Table/REVIEW.md`;
 - deferred residual performance work: `docs/database-chrome-jank-follow-up.md`.
 
 ## Accepted virtualization architecture
 
-- `@tanstack/vue-virtual` remains the sole virtual-item range/measurement/cache/scroll-correction engine unless the active discriminator proves the current shared boundary cannot satisfy deep-state surface movement.
-- `useVirtualCollection` remains the shared one-axis boundary; no production API change is selected before the discriminator.
+- `@tanstack/vue-virtual` is the sole virtual-item range/measurement/cache/scroll-correction engine.
+- `useVirtualCollection` remains the shared one-axis boundary with its current public API.
 - Database uses independent row/property virtual collections and native `<table>` rendering.
 - Only mounted row × mounted property intersections instantiate expensive outer cells.
 - Service/worker remains canonical for row membership/filter/sort/order.
@@ -33,69 +33,66 @@ Current contracts:
 
 Leading/trailing row and column spacer DOM exists only when the corresponding virtual distance is greater than zero.
 
-A non-empty logical collection with no mounted virtual items may render only transient `aria-hidden` bootstrap table structure. That structure disappears as soon as TanStack supplies real virtual items and never becomes a second range/measurement owner.
+A non-empty logical collection with no mounted virtual items may render only transient `aria-hidden` bootstrap table structure. It disappears when TanStack supplies real virtual items and never becomes a second range/measurement owner.
 
 `MDTable` uses one native root-owned outer border/radius; the previous per-row pseudo-element perimeter is removed.
 
-## Current surface-offset ownership direction
+## Shared deep-state surfaceOffset contract — accepted
 
-The physical scroll-root/composition owner should supply root-to-collection-surface layout facts. `DatabaseDataTable` must not rediscover upper-layer sibling/ancestor topology.
+The reusable browser capability now proves the exact lifecycle that the product failure exercises:
 
-Current top-level implementation flow is:
+`deep -> change physical pre-surface extent + reactive surfaceOffset while still deep -> top -> deep`.
+
+On the same root/list it changes approximately 240px -> 96px, reaches logical tail `9999` before and after, recovers item `0` at top, keeps mounted work bounded, and proves self-consistent leading/trailing/total geometry and physical scroll extent.
+
+`useVirtualCollection.ts` remains unchanged. Therefore no shared/TanStack production correction, `virtualizer.measure()`, cache-reset protocol, or virtualizer exposure is justified by the current evidence.
+
+## Current top-level ownership direction
+
+The physical scroll-root/composition owner supplies root-to-collection-surface layout facts. `DatabaseDataTable` must not rediscover upper-layer sibling/ancestor topology.
+
+Current implementation flow:
 
 `DatabaseViewWidget -> DatabaseViewLayout -> DatabaseDataTable -> useVirtualCollection(surfaceOffset) -> TanStack scrollMargin`
 
-The old entity-owned root/table `useElementBounding`, root `MutationObserver`, and `onUpdated` discovery path has been removed. Do not restore it as a fallback.
+The removed entity root/table `useElementBounding`, root `MutationObserver`, and ancestor/sibling discovery path must not return as fallback.
 
-This implementation direction is **not yet accepted as sufficient**, because exact-head CI still fails the moving-surface product scenario.
+## Active blocker — top-level widget numeric offset lifecycle
 
-TanStack source inspection alone does not justify unconditional cache reset: `scrollMargin` participates in measurement-layout dependencies and the Vue adapter forwards reactive option changes. `virtualizer.measure()` is not an accepted correction before the browser discriminator.
+Exact-head CI on `dcb72917f2fcd49c58a1caa9f8f6cc7ade58bd4a` still failed the moving-surface product scenario 3/3 on desktop Chromium while Mobile Chrome passed.
 
-## Active blocker — deep-state surface movement
+Because shared behavior is now proved, the next required evidence is consumer-side: compare the numeric vertical/horizontal offset supplied by `DatabaseViewWidget` with the actual DOM-derived root-to-`DatabaseViewLayout` offset at the same product checkpoints:
 
-Exact-head CI on `dcb72917f2fcd49c58a1caa9f8f6cc7ade58bd4a` failed only the top-level moving-surface product scenario on desktop Chromium, initial attempt plus two retries. Mobile Chrome passed.
+1. initial top;
+2. settled first deep;
+3. immediately after success-card dismiss while still deep;
+4. returned top;
+5. second deep attempt.
 
-The product sequence is:
+Current widget production derives offsets from two `useElementBounding` states plus current root scroll position and refreshes the bounds from `onMounted` / `onUpdated`. This is the current diagnosis target, not yet a confirmed root cause.
 
-1. non-zero real preceding success-card content;
-2. first deep/end virtual range succeeds;
-3. preceding content is removed **while the root is still deep**;
-4. the table surface physically moves upward;
-5. the root returns to top;
-6. the second deep transition fails to reach the logical final row.
+Decision rule:
 
-The current shared browser proof instead performs `deep -> top -> change offset -> deep`. It therefore cannot resolve ownership for the failing lifecycle.
+- if supplied offsets diverge from physical offsets, widget offset production/lifecycle owns the correction;
+- if supplied offsets remain truthful throughout a reproduced failure, stop and reconsider architecture before production edits.
 
-### Required discriminator before any further production patch
-
-On the same physical root and logical collection:
-
-1. start with a non-zero physical pre-surface extent and matching reactive `surfaceOffset`;
-2. reach a settled logical tail;
-3. while still deep, shrink the physical pre-surface extent and reactive `surfaceOffset`;
-4. prove the surface changed and root/list identity is retained;
-5. return to top and prove first logical identity;
-6. scroll deep again and prove logical tail plus self-consistent public/DOM geometry.
-
-If this shared capability fails with current production shared code, stop and return to architecture for the shared boundary/engine interaction. Do not patch Database/widget code.
-
-If it passes, shared production remains unchanged and the next architecture task is consumer diagnosis of the actual numeric offsets supplied through the top-level widget lifecycle. Do not perform that diagnosis/fix inside the discriminator task.
+Do not speculate with `next-frame`, `nextTick`, rAF, extra observers, or cache reset before numeric evidence.
 
 ## Separate blocker — relationValueEdit loading topology
 
-`RelationValueFieldData` currently passes vertical/horizontal zero to `DatabaseDataTable`. Horizontal zero matches the current local root. Vertical zero is not unconditional while a loading progress indicator is rendered before the table in the same `.relation-value-field__data` root.
+`RelationValueFieldData` passes vertical/horizontal zero to `DatabaseDataTable`. Horizontal zero matches the current local root. Vertical zero is not unconditional while a loading progress indicator is rendered before the table in the same `.relation-value-field__data` root.
 
-This remains feature-owned and must be corrected without restoring entity geometry discovery. It is intentionally not part of the active discriminator task.
+This remains feature-owned and must be corrected without restoring entity geometry discovery. It is deferred until the primary top-level diagnosis resolves.
 
 ## Verification workflow
 
-For the discriminator, use focused verifier-managed Storybook behavior first. The task may then run `pnpm verify --base origin/develop` to observe the cumulative branch state; the known moving-surface application E2E remains an unresolved blocker and must not trigger speculative production edits inside the discriminator pass.
+For the active diagnosis use the focused verifier first. Because the defect is repeatedly specific to GitHub Actions Chromium conditions, a targeted focused `--profile github-actions` run is allowed for diagnosis only when the normal profile does not reproduce it.
 
-For later coding corrections, the normal pre-handoff gate remains:
+The ordinary pre-handoff branch gate remains:
 
 `pnpm verify --base origin/develop`
 
-Do not force `--profile github-actions` for the normal local branch gate.
+Do not force `--profile github-actions` on that normal final branch gate.
 
 ## Residual Chromium jank
 
@@ -107,9 +104,9 @@ Retained evidence and the next String-vs-Number/data-density discriminator are r
 
 PR #217 may merge only when:
 
-1. the strengthened deep-state shared surface-offset discriminator establishes the correct owner;
-2. the repeated top-level moving-surface product scenario passes cleanly without retry;
-3. the relation-value loading/zero-offset invariant is truthful;
+1. top-level numeric offset diagnosis leads to a verified correction or architecture decision;
+2. repeated moving-surface product E2E passes cleanly without retry;
+3. relation-value loading/zero-offset invariant is truthful;
 4. operator inspection confirms Database border/corner/sticky presentation;
 5. coding-agent `pnpm verify --base origin/develop` passes cleanly on final code;
 6. exact-head GitHub CI is green;
@@ -117,12 +114,12 @@ PR #217 may merge only when:
 
 ## Forbidden before merge
 
-- another Database/widget production patch before the active discriminator result;
+- speculative top-level production correction before numeric diagnosis;
 - restoring entity-owned ancestor/sibling geometry discovery;
-- unconditional `virtualizer.measure()` or cache reset without failed shared capability evidence and a new architecture decision;
+- shared virtualization/TanStack changes without new contrary evidence;
+- unconditional `virtualizer.measure()` or cache reset;
 - exposing TanStack virtualizer instances;
 - second geometry/range/measurement state;
 - retry/remount/sleep/timeout/force recovery;
-- Database-specific shared virtualization behavior;
 - Number/value/query or worker/query/storage performance optimization;
-- broad shared-UI redesign unrelated to the confirmed blockers.
+- broad shared-UI redesign unrelated to confirmed blockers.
