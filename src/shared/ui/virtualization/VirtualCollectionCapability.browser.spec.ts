@@ -324,8 +324,16 @@ test.describe('VirtualCollectionCapability shared composable', () => {
     const listHandle = await page
       .locator('.virtual-collection-capability-fixture__list')
       .elementHandle();
+    const preSurface = page.getByTestId('vcc-pre-surface');
     const firstItem = page.getByTestId('vcc-item-0');
 
+    await expect(preSurface).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await preSurface.boundingBox();
+        return Math.abs((box?.height ?? 0) - SURFACE_OFFSET_PX);
+      })
+      .toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
     await expect(firstItem).toBeVisible();
     await expect(firstItem).toHaveAttribute('data-item-offset', '0');
     expect(Number(await page.getByTestId('vcc-leading-size').textContent())).toBe(0);
@@ -351,43 +359,86 @@ test.describe('VirtualCollectionCapability shared composable', () => {
           trailingSize: Number(
             document.querySelector('[data-testid="vcc-trailing-size"]')?.textContent,
           ),
+          mountedCount: items.length,
           lastItemIndex: Number(last.getAttribute('data-item-index')),
           lastItemOffset: Number(last.getAttribute('data-item-offset')),
           lastItemSize: Number(last.getAttribute('data-item-size')),
+          preSurfaceExtent:
+            document.querySelector('[data-testid="vcc-pre-surface"]')?.getBoundingClientRect()
+              .height ?? 0,
+          scrollTop: viewportEl?.scrollTop ?? 0,
           scrollHeight: viewportEl?.scrollHeight ?? 0,
         };
       });
 
-    const expectSettledDeepGeometry = async (surfaceOffset: number) => {
+    const readRetainedIdentity = async () => {
+      try {
+        return {
+          sameViewport: await page.evaluate(
+            (root) => root === document.querySelector('[data-testid="vcc-viewport"]'),
+            rootHandle,
+          ),
+          sameList: await page.evaluate(
+            (list) =>
+              list === document.querySelector('.virtual-collection-capability-fixture__list'),
+            listHandle,
+          ),
+        };
+      } catch {
+        return { sameViewport: false, sameList: false };
+      }
+    };
+
+    const expectSettledDeepGeometry = async (surfaceOffset: number, phase: string) => {
       let previousGeometry: Awaited<ReturnType<typeof readDeepGeometry>> | undefined;
       let settledGeometry: Awaited<ReturnType<typeof readDeepGeometry>> | undefined;
+      let lastObservedGeometry: Awaited<ReturnType<typeof readDeepGeometry>> | undefined;
 
-      await expect
-        .poll(async () => {
-          const geometry = await readDeepGeometry();
-          const trailingValid =
-            Math.abs(
-              geometry.trailingSize -
-                (geometry.totalSize - (geometry.lastItemOffset + geometry.lastItemSize)),
-            ) <= GEOMETRY_TOLERANCE_PX;
-          const scrollHeightValid =
-            Math.abs(geometry.scrollHeight - (surfaceOffset + geometry.totalSize)) <=
-            STRUCTURAL_TOLERANCE_PX;
-          const isSettled =
-            geometry.lastItemIndex === VERTICAL_SCALE_ITEM_COUNT - 1 &&
-            geometry.leadingSize > 100000 &&
-            trailingValid &&
-            scrollHeightValid &&
-            previousGeometry !== undefined &&
-            previousGeometry.lastItemIndex === geometry.lastItemIndex &&
-            previousGeometry.trailingSize === geometry.trailingSize &&
-            previousGeometry.totalSize === geometry.totalSize &&
-            previousGeometry.scrollHeight === geometry.scrollHeight;
-          if (isSettled) settledGeometry = geometry;
-          previousGeometry = geometry;
-          return isSettled;
-        })
-        .toBe(true);
+      try {
+        await expect
+          .poll(async () => {
+            const geometry = await readDeepGeometry();
+            lastObservedGeometry = geometry;
+            const trailingValid =
+              Math.abs(
+                geometry.trailingSize -
+                  (geometry.totalSize - (geometry.lastItemOffset + geometry.lastItemSize)),
+              ) <= GEOMETRY_TOLERANCE_PX;
+            const surfaceExtentValid =
+              Math.abs(geometry.preSurfaceExtent - surfaceOffset) <= GEOMETRY_TOLERANCE_PX;
+            const scrollHeightValid =
+              Math.abs(geometry.scrollHeight - (surfaceOffset + geometry.totalSize)) <=
+              STRUCTURAL_TOLERANCE_PX;
+            const isSettled =
+              geometry.lastItemIndex === VERTICAL_SCALE_ITEM_COUNT - 1 &&
+              geometry.mountedCount > 0 &&
+              geometry.mountedCount < 50 &&
+              geometry.leadingSize > 100000 &&
+              geometry.scrollTop > 0 &&
+              surfaceExtentValid &&
+              trailingValid &&
+              scrollHeightValid &&
+              previousGeometry !== undefined &&
+              previousGeometry.lastItemIndex === geometry.lastItemIndex &&
+              previousGeometry.trailingSize === geometry.trailingSize &&
+              previousGeometry.totalSize === geometry.totalSize &&
+              previousGeometry.preSurfaceExtent === geometry.preSurfaceExtent &&
+              previousGeometry.scrollHeight === geometry.scrollHeight;
+            if (isSettled) settledGeometry = geometry;
+            previousGeometry = geometry;
+            return isSettled;
+          })
+          .toBe(true);
+      } catch (error) {
+        const identity = await readRetainedIdentity();
+        throw new Error(
+          `${phase} deep geometry did not settle: ${JSON.stringify({
+            ...lastObservedGeometry,
+            ...identity,
+          })}\n${String(error)}`,
+          { cause: error },
+        );
+      }
 
       if (!settledGeometry) {
         throw new Error('unreachable: poll only resolves once geometry is settled');
@@ -400,45 +451,41 @@ test.describe('VirtualCollectionCapability shared composable', () => {
               (settledGeometry.lastItemOffset + settledGeometry.lastItemSize)),
         ),
       ).toBeLessThanOrEqual(GEOMETRY_TOLERANCE_PX);
+      expect(settledGeometry.lastItemIndex).toBe(VERTICAL_SCALE_ITEM_COUNT - 1);
+      expect(settledGeometry.mountedCount).toBeLessThan(50);
+      expect(settledGeometry.leadingSize).toBeGreaterThan(100000);
+      expect(settledGeometry.scrollTop).toBeGreaterThan(0);
+      expect(Math.abs(settledGeometry.preSurfaceExtent - surfaceOffset)).toBeLessThanOrEqual(
+        GEOMETRY_TOLERANCE_PX,
+      );
+      expect(
+        Math.abs(settledGeometry.scrollHeight - (surfaceOffset + settledGeometry.totalSize)),
+      ).toBeLessThanOrEqual(STRUCTURAL_TOLERANCE_PX);
+      return settledGeometry;
     };
 
     await page.getByTestId('vcc-scrollto-end-button').click();
-    await expectSettledDeepGeometry(SURFACE_OFFSET_PX);
+    const firstDeepGeometry = await expectSettledDeepGeometry(SURFACE_OFFSET_PX, 'initial');
+
+    await page.getByTestId('vcc-change-surface-offset').click();
+    const changedDeepGeometry = await expectSettledDeepGeometry(96, 'changed while deep');
+
+    expect(rootHandle).not.toBeNull();
+    expect(listHandle).not.toBeNull();
+    expect(await readRetainedIdentity()).toEqual({ sameViewport: true, sameList: true });
+    expect(firstDeepGeometry.lastItemIndex).toBe(VERTICAL_SCALE_ITEM_COUNT - 1);
+    expect(changedDeepGeometry.lastItemIndex).toBe(VERTICAL_SCALE_ITEM_COUNT - 1);
 
     await page.getByTestId('vcc-scrollto-index-input').fill('0');
     await page.getByTestId('vcc-scrollto-index-button').click();
     await expect(firstItem).toBeVisible();
     await expect(firstItem).toHaveAttribute('data-item-offset', '0');
-
-    await page.getByTestId('vcc-change-surface-offset').click();
-
     await expect
-      .poll(async () => {
-        const viewportBox = await viewport.boundingBox();
-        const itemBox = await firstItem.boundingBox();
-        return (itemBox?.y ?? 0) - (viewportBox?.y ?? 0);
-      })
-      .toBeLessThan(SURFACE_OFFSET_PX - GEOMETRY_TOLERANCE_PX);
-    await expect(firstItem).toHaveAttribute('data-item-offset', '0');
-    expect(Number(await page.getByTestId('vcc-leading-size').textContent())).toBe(0);
-
-    expect(rootHandle).not.toBeNull();
-    expect(listHandle).not.toBeNull();
-    expect(
-      await page.evaluate(
-        (root) => root === document.querySelector('[data-testid="vcc-viewport"]'),
-        rootHandle,
-      ),
-    ).toBe(true);
-    expect(
-      await page.evaluate(
-        (list) => list === document.querySelector('.virtual-collection-capability-fixture__list'),
-        listHandle,
-      ),
-    ).toBe(true);
+      .poll(async () => Number(await page.getByTestId('vcc-leading-size').textContent()))
+      .toBe(0);
 
     await page.getByTestId('vcc-scrollto-end-button').click();
-    await expectSettledDeepGeometry(96);
+    await expectSettledDeepGeometry(96, 'second deep');
   });
 
   test('accepts a valid undefined source value at an in-bounds index without throwing', async ({
