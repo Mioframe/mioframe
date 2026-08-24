@@ -4,7 +4,7 @@ Verdict: blocked
 
 ## Selected next correction
 
-Implement the remaining **B2 source-of-truth correction only**.
+Finish **B2 Vitest rule semantic equivalence only**.
 
 Authoritative handoff: [`../../docs/testing/verify-mutation-impact-correction.md`](../../docs/testing/verify-mutation-impact-correction.md).
 
@@ -14,14 +14,13 @@ Production owner:
 scripts/lib/vitestTestPaths.ts
 ```
 
-Existing behavioral tests are read-only constraints. No new RED/test-author pass is required because this follow-up is behavior-preserving.
-
 Do not include B1 release-impact work in the same coding pass.
 
 ## Scope reviewed
 
 - PR #216 verifier-modernization semantic blockers under `scripts/lib`.
-- Mutation B2 implementation through `7dc95007adce210f9ab7346fd2fdfb5867ccbcf1`, including changed-path orchestration, Vitest discovery ownership, unit integration, mutation registry validation, Stryker ownership, tests, and TypeScript project inclusion.
+- Mutation B2 implementation through `225183571bef9854d7eb7f72b8b19d94277a884f`.
+- Shared Vitest discovery population, glob rendering, predicate matching semantics, existing behavioral proof, and downstream unit/mutation consumers.
 - Existing release-impact B1 remains open.
 
 ## Blockers
@@ -49,30 +48,29 @@ Required final state: close release-impact ownership over the complete current s
 
 Verification: fresh bounded audit/proof in `releaseRisk.test.ts`, then implementation and complete Pass E re-review per `verify-release-impact-correction.md`.
 
-### B2 — Shared Vitest owner still duplicates the discovery contract internally
+### B2 — One Vitest rule kind does not match the glob it renders
 
 Owner: `scripts/lib/vitestTestPaths.ts`
 
-Problem: the previous correction fixed the observable mutation/unit behavior, but `vitestTestPaths.ts` still owns the same discovery semantics twice: the `VITEST_TEST_INCLUDE` / `VITEST_TEST_EXCLUDE` glob arrays and a separately hand-written prefix/suffix/regex implementation in `isVitestOwnedTestPath()`.
+Problem: the latest correction successfully replaces duplicated discovery populations with one declarative rule population, but `rootPrefixSuffix` still derives two non-equivalent behaviors from the same rule. `ruleToGlob()` renders `playwright.*.test.ts`, while `ruleMatches()` requires the wildcard middle to be non-empty. Standard glob `*` matches zero or more non-separator characters, so the rendered glob accepts `playwright..test.ts` while the planner predicate rejects it.
 
 Evidence:
 
-- [`vitestTestPaths.ts`](./vitestTestPaths.ts) — config-facing globs and planner-facing predicate are independently editable representations.
-- [`vitestTestPaths.test.ts`](./vitestTestPaths.test.ts) — representative behavior tests do not mechanically couple those representations.
-- [`../../vitest.config.ts`](../../vitest.config.ts), [`unitRisk.ts`](./unitRisk.ts), and [`mutationTargets.ts`](./mutationTargets.ts) consume different public surfaces from the shared owner.
+- [`vitestTestPaths.ts`](./vitestTestPaths.ts) — `rootPrefixSuffix` renders `${prefix}*${suffix}` but returns `middle.length > 0 && !middle.includes('/')`.
+- [`vitestTestPaths.test.ts`](./vitestTestPaths.test.ts) — current representative tests cover a normal `playwright.lanes.test.ts` path but do not cover the zero-length wildcard boundary.
 
 Basis:
 
-- [`../../docs/testing/verify-mutation-impact-correction.md`](../../docs/testing/verify-mutation-impact-correction.md) — one local declarative rule population must mechanically drive the glob exports and predicate.
-- [`../../AGENTS.md`](../../AGENTS.md) — avoid duplicated ownership logic and prefer the minimum complete source of truth.
+- [`../../docs/testing/verify-mutation-impact-correction.md`](../../docs/testing/verify-mutation-impact-correction.md) — generated glob exports and `isVitestOwnedTestPath()` must express the same discovery semantics from the same rule population.
+- Picomatch wildcard semantics used by the ecosystem: `*` matches any character zero or more times, excluding path separators.
 
-Risk: a future Vitest discovery edit can update real config discovery while unit/mutation classification remains stale, recreating the ownership drift this correction exists to remove.
+Risk: config-facing discovery and planner-facing ownership can still disagree for a path admitted by the exported Vitest include glob, so the source-of-truth invariant is not yet closed.
 
-Required final state: one narrow local declarative rule population in `vitestTestPaths.ts` mechanically derives `VITEST_TEST_INCLUDE`, `VITEST_TEST_EXCLUDE`, and `isVitestOwnedTestPath()`, with no behavior change and no generic discovery framework/dependency.
+Required final state: each local `DiscoveryRule` kind must have matcher semantics equivalent to the glob syntax it renders. For `rootPrefixSuffix`, zero-length wildcard content must be handled consistently with `*`; slash crossing must remain rejected. Do not change the exported glob contract or reintroduce a second discovery population.
 
-Verification: keep existing behavioral tests unchanged and green; focused type/static checks pass; architect verifies the duplicate representation is actually removed.
+Verification: add the smallest independent regression proof for the zero-length `*` boundary, then keep all existing Vitest path, unit, mutation, type, and static checks green. Architect rechecks semantic equivalence before closing B2.
 
-Resolved parts of the original B2 are not findings anymore: canonical deleted/rename identity reaches mutation planning; real `.test.mjs` ownership is accepted; invalid external `.test.ts` is rejected; `vitest.config.ts` and `vitestTestPaths.ts` select all mutation targets; `vitestTestPaths.ts` selects full unit; seven mutation targets/Stryker mutate surface are unchanged; the `tsconfig.node.json` include is justified.
+Resolved B2 parts are not findings anymore: canonical deleted/rename identity reaches mutation planning; real `.test.mjs` ownership is accepted; invalid external `.test.ts` is rejected; `vitest.config.ts` and `vitestTestPaths.ts` select all mutation targets; `vitestTestPaths.ts` selects full unit; seven mutation targets/Stryker mutate surface are unchanged; one declarative Vitest rule population now owns include/exclude data.
 
 ## Major issues
 
@@ -88,8 +86,8 @@ None.
 
 ## Items not required
 
-- No new RED phase or test-author pass is required for the remaining B2 correction.
-- No generic glob engine, test registry, dependency graph, or cross-lane abstraction is required.
+- No generic glob engine, new dependency, test registry, dependency graph, or cross-lane abstraction is required.
+- Do not reopen already accepted mutation/unit ownership decisions.
 - Benchmark execution remains deferred until semantic blockers are closed and a new full PR semantic review is clean.
 
 ## Unresolved questions
