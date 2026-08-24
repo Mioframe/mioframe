@@ -50,7 +50,10 @@ const VITEST_EXCLUDE_RULES: readonly DiscoveryRule[] = [
   { kind: 'rootDotDirExclusion' },
 ];
 
-/** Renders one {@link DiscoveryRule} as the Vitest glob string it represents. */
+/**
+ * Renders one {@link DiscoveryRule} as the Vitest glob string it represents.
+ * @param rule
+ */
 function ruleToGlob(rule: DiscoveryRule): string {
   switch (rule.kind) {
     case 'recursiveRootSuffix':
@@ -66,7 +69,11 @@ function ruleToGlob(rule: DiscoveryRule): string {
   }
 }
 
-/** Whether `filePath` satisfies one {@link DiscoveryRule}'s matching semantics. */
+/**
+ * Whether `filePath` satisfies one {@link DiscoveryRule}'s matching semantics.
+ * @param rule
+ * @param filePath
+ */
 function ruleMatches(rule: DiscoveryRule, filePath: string): boolean {
   switch (rule.kind) {
     case 'recursiveRootSuffix':
