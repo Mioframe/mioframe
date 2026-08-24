@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -2105,5 +2106,227 @@ describe('resolveVerifyChangedPathContext', () => {
       { status: 'modified', path: 'a.ts' },
       { status: 'modified', path: 'b.ts' },
     ]);
+  });
+});
+
+// Deterministic real-CLI subprocess proof for
+// docs/testing/verify-output-correction.md's M1/M2 presentation defects
+// (see also scripts/REVIEW.md). Both specs launch the real `scripts/verify.ts`
+// CLI via `process.execPath`, with a temporary PATH prepended so verify's own
+// internal `spawn('node' | 'pnpm', ...)` calls resolve to small deterministic
+// shim scripts instead of doing real release/lint work. Only that external
+// child-process boundary is replaced: real CLI argument resolution, command
+// planning (`buildCommands`/`selectOnlyCommands`), the real `main()`
+// execution loop, progress formatting, `runCommand()`, log capture, and the
+// real final summary all run unmodified. `GITHUB_ACTIONS=1` is set on the
+// subprocess env solely so `scripts/lib/commandLock.ts`'s `shouldSkipLock`
+// bypasses the real machine lock (see its `isGitHubActions` check), so this
+// proof can never contend with a concurrently running local `pnpm verify`.
+//
+// The oracle for both specs is docs/testing/verify-agent-output.md plus
+// docs/testing/verify-output-correction.md, never scripts/verify.ts's
+// current output.
+
+const OXLINT_WARNING_TOKEN = 'MIOFRAME_TEST_OXLINT_WARNING_9f2c31';
+
+/**
+ * Build a temporary PATH-shim directory with deterministic executable
+ * `node`/`pnpm` scripts that stand in for every external child process
+ * `scripts/verify.ts` spawns in these specs. `node` always exits 0 with no
+ * output (used by the plain `node scripts/release/*.mjs` release checks).
+ * `pnpm` also exits 0 for every invocation except one whose arguments
+ * contain `oxlint`, which additionally prints one stable warning-bearing
+ * line carrying {@link OXLINT_WARNING_TOKEN} so the real
+ * `getWarningSummary()` / `runCommand()` / `printCompactVerifySummary()`
+ * warning path executes for real instead of being mocked away.
+ */
+function createVerifyCliPathShimDir(): string {
+  const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-cli-shim-'));
+  const pnpmShimSource = [
+    '#!/bin/sh',
+    '# Deterministic pnpm shim for scripts/verify.test.ts CLI subprocess proof.',
+    '# Replaces only the external child-process boundary; never real work.',
+    'case " $* " in',
+    '  *" oxlint "*)',
+    `    echo "example.ts:1:1  warning  no-unused-vars: 1 warning generated (${OXLINT_WARNING_TOKEN})"`,
+    '    ;;',
+    'esac',
+    'exit 0',
+    '',
+  ].join('\n');
+  const nodeShimSource = [
+    '#!/bin/sh',
+    '# Deterministic node shim for scripts/verify.test.ts CLI subprocess proof.',
+    'exit 0',
+    '',
+  ].join('\n');
+
+  const pnpmPath = path.join(shimDir, 'pnpm');
+  const nodePath = path.join(shimDir, 'node');
+  fs.writeFileSync(pnpmPath, pnpmShimSource);
+  fs.writeFileSync(nodePath, nodeShimSource);
+  fs.chmodSync(pnpmPath, 0o755);
+  fs.chmodSync(nodePath, 0o755);
+
+  return shimDir;
+}
+
+/**
+ * Run the real `scripts/verify.ts` CLI as a subprocess through a
+ * deterministic PATH-shim child-process boundary (see
+ * {@link createVerifyCliPathShimDir}).
+ * @param args Verify CLI arguments (after the script path).
+ * @param shimDir Directory from {@link createVerifyCliPathShimDir}.
+ * @returns Captured stdout and process exit status.
+ */
+function runVerifyCliSubprocess(
+  args: readonly string[],
+  shimDir: string,
+): { stdout: string; status: number | null } {
+  const result = spawnSync(process.execPath, ['scripts/verify.ts', ...args], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GITHUB_ACTIONS: 'true',
+      PATH: `${shimDir}${path.delimiter}${process.env.PATH ?? ''}`,
+    },
+  });
+
+  return { stdout: result.stdout, status: result.status };
+}
+
+// M1: docs/testing/verify-output-correction.md "runnable progress is based
+// on resolved runnable population". scripts/release/buildArtifact.mjs has an
+// accepted four-check release mapping in scripts/lib/releaseRisk.ts's
+// NARROW_EXACT_MAPPINGS (['artifact', 'build', 'managed-updates',
+// 'release-smoke']), so a `--only release-impact` invocation scoped to it
+// must resolve exactly four runnable checks and report indexed 1/4..4/4
+// progress -- not the denominator-free `[verify]` form every `--only`
+// invocation currently renders unconditionally.
+describe('verify CLI subprocess: release-impact progress indexing (M1)', () => {
+  it('reports indexed 1/4..4/4 running/completion progress for a resolved four-check release-impact invocation, counting only runnable checks', () => {
+    const shimDir = createVerifyCliPathShimDir();
+
+    try {
+      const { stdout, status } = runVerifyCliSubprocess(
+        ['--only', 'release-impact', '--files', 'scripts/release/buildArtifact.mjs'],
+        shimDir,
+      );
+
+      expect(status).toBe(0);
+
+      // Run order matches RELEASE_IMPACT_CHECKS declaration order in
+      // scripts/lib/releaseRisk.ts, filtered to the four selected checks:
+      // build, artifact, release-smoke, managed-updates. release-config and
+      // publisher-node-import are skipped for this changed file and must
+      // never be counted in the denominator.
+      expect(stdout).toContain('[verify 1/4] build running');
+      expect(stdout).toContain('[verify 2/4] artifact running');
+      expect(stdout).toContain('[verify 3/4] release-smoke running');
+      expect(stdout).toContain('[verify 4/4] managed-updates running');
+
+      expect(stdout).toMatch(/\[verify 1\/4] build passed \(/);
+      expect(stdout).toMatch(/\[verify 2\/4] artifact passed \(/);
+      expect(stdout).toMatch(/\[verify 3\/4] release-smoke passed \(/);
+      expect(stdout).toMatch(/\[verify 4\/4] managed-updates passed \(/);
+    } finally {
+      fs.rmSync(shimDir, { recursive: true, force: true });
+    }
+  });
+
+  // Regression guard for the required final rule's other branch ("resolved
+  // runnable count <= 1 -> [verify]"): a release-impact invocation resolving
+  // exactly one runnable check (scripts/release/validateReleaseConfig.mjs ->
+  // only release-config) must stay denominator-free rather than render the
+  // degenerate `1/1`.
+  it('keeps a single-runnable release-impact invocation denominator-free', () => {
+    const shimDir = createVerifyCliPathShimDir();
+
+    try {
+      const { stdout, status } = runVerifyCliSubprocess(
+        ['--only', 'release-impact', '--files', 'scripts/release/validateReleaseConfig.mjs'],
+        shimDir,
+      );
+
+      expect(status).toBe(0);
+      expect(stdout).toContain('[verify] release-config running');
+      expect(stdout).toMatch(/\[verify] release-config passed \(/);
+      expect(stdout).not.toMatch(/\[verify \d+\/\d+] release-config/);
+    } finally {
+      fs.rmSync(shimDir, { recursive: true, force: true });
+    }
+  });
+});
+
+// M2: docs/testing/verify-output-correction.md "warning detail has one
+// normal-mode owner". Today runCommand() prints the bounded warning summary
+// immediately after a passed-with-warnings child process regardless of
+// verbose mode, and printCompactVerifySummary() prints the same warning
+// summary again -- so normal-mode output duplicates it, and the compact
+// block that is supposed to be the one normal-mode owner never carries the
+// exact per-check `.verify/logs/<label>.log` pointer.
+describe('verify CLI subprocess: normal-mode warning non-duplication (M2)', () => {
+  it('prints the bounded oxlint warning summary exactly once in normal mode, with the exact log path and focused rerun', () => {
+    const shimDir = createVerifyCliPathShimDir();
+
+    try {
+      const { stdout, status } = runVerifyCliSubprocess(
+        ['--only', 'oxlint', '--files', 'scripts/verify.ts'],
+        shimDir,
+      );
+
+      expect(status).toBe(0);
+
+      const summaryMarkerIndex = stdout.indexOf('VERIFY RESULT');
+      expect(summaryMarkerIndex).toBeGreaterThan(-1);
+      const preSummarySection = stdout.slice(0, summaryMarkerIndex);
+      const summarySection = stdout.slice(summaryMarkerIndex);
+
+      // The completion line may report passed-with-warnings as progress
+      // state, but the bounded warning detail itself (identified by its
+      // unique token) must have exactly one owner in normal-mode output: the
+      // compact final summary. runCommand()'s current unconditional
+      // immediate print puts the token in preSummarySection too, so this
+      // must fail against the current implementation.
+      expect(stdout).toMatch(/\[verify] oxlint passed with warnings \(/);
+      expect(preSummarySection).not.toContain(OXLINT_WARNING_TOKEN);
+      expect(summarySection).toContain(OXLINT_WARNING_TOKEN);
+
+      const tokenOccurrences = (stdout.match(new RegExp(OXLINT_WARNING_TOKEN, 'g')) ?? []).length;
+      expect(tokenOccurrences).toBe(1);
+
+      // The compact warning block must carry the exact owning-check log
+      // pointer, per "warning block includes the exact
+      // .verify/logs/oxlint.log pointer" -- currently missing from
+      // printCompactVerifySummary()'s warning loop entirely.
+      expect(summarySection).toContain('.verify/logs/oxlint.log');
+      expect(summarySection).toMatch(/rerun: pnpm verify .*--only oxlint/);
+    } finally {
+      fs.rmSync(shimDir, { recursive: true, force: true });
+    }
+  });
+
+  // Per "Verbose mode does not need the normal-mode non-duplication
+  // guarantee": --verbose may still raw-stream the child's actual output and
+  // print additional immediate diagnostic detail.
+  it('retains raw/additional warning diagnostics in verbose mode', () => {
+    const shimDir = createVerifyCliPathShimDir();
+
+    try {
+      const { stdout, status } = runVerifyCliSubprocess(
+        ['--verbose', '--only', 'oxlint', '--files', 'scripts/verify.ts'],
+        shimDir,
+      );
+
+      expect(status).toBe(0);
+      // Verbose mode raw-streams the child's actual stdout line.
+      expect(stdout).toContain('example.ts:1:1');
+
+      const tokenOccurrences = (stdout.match(new RegExp(OXLINT_WARNING_TOKEN, 'g')) ?? []).length;
+      expect(tokenOccurrences).toBeGreaterThanOrEqual(1);
+    } finally {
+      fs.rmSync(shimDir, { recursive: true, force: true });
+    }
   });
 });

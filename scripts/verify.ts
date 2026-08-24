@@ -480,8 +480,10 @@ function formatHelpTimeout(milliseconds: number): string {
 export interface CheckProgressLabel {
   label: string;
   /**
-   * 1-based position among runnable checks this invocation; `null` for a
-   * focused/--only invocation where no denominator is known.
+   * 1-based position among runnable checks this invocation; `null` when this
+   * invocation resolves at most one runnable check (a truly single-check
+   * invocation stays denominator-free regardless of whether `--only` was
+   * passed).
    */
   checkIndex: number | null;
   /** Total runnable checks this invocation; `null` alongside `checkIndex`. */
@@ -982,7 +984,12 @@ async function runCommand(
 
   console.log(formatCheckCompletionLine(progress, completionStatus, durationMs));
 
-  if (status === 'passed' && warningSummary) {
+  // Normal mode has exactly one warning-detail owner: the compact final
+  // summary's warning block (see printCompactVerifySummary). This immediate
+  // block is opt-in raw diagnostic detail for --verbose only, per
+  // docs/testing/verify-agent-output.md "Verbose mode" and
+  // docs/testing/verify-output-correction.md "M2".
+  if (verboseMode && status === 'passed' && warningSummary) {
     console.log(`[${label}] warnings: ${warningSummary}`);
     console.log(`[${label}] full log: ${logPath}`);
   }
@@ -1957,12 +1964,17 @@ function printCompactVerifySummary(
   }
 
   for (const result of results) {
-    if (result.status === 'failed' || !result.hasWarnings) {
+    // Only an executed, passed check can carry warnings (skipped/invalid
+    // results always report `hasWarnings: false`); narrowing on
+    // `status === 'passed'` gives this block a typed `logPath` alongside the
+    // existing `hasWarnings` filter.
+    if (result.status !== 'passed' || !result.hasWarnings) {
       continue;
     }
 
     console.log(`${result.label}: passed with warnings`);
     console.log(`warnings: ${result.warningSummary}`);
+    console.log(`details: ${result.logPath}`);
     console.log(`rerun: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`);
   }
 
@@ -2303,8 +2315,13 @@ async function main(
       continue;
     }
 
-    const checkIndex = onlyLabel === null ? completedRunnableChecks + 1 : null;
-    const totalRunnableChecksForProgress = onlyLabel === null ? totalRunnableChecks : null;
+    // Progress indexing depends on the resolved runnable population for this
+    // invocation, not on whether `--only` was passed: a multi-check `--only
+    // release-impact` grouping must still report indexed progress, while a
+    // truly single-runnable invocation (focused or not) stays
+    // denominator-free. See docs/testing/verify-output-correction.md "M1".
+    const checkIndex = totalRunnableChecks > 1 ? completedRunnableChecks + 1 : null;
+    const totalRunnableChecksForProgress = totalRunnableChecks > 1 ? totalRunnableChecks : null;
 
     console.log(
       formatCheckRunningLine({
