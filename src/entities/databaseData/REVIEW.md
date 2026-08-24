@@ -1,29 +1,38 @@
 # Review
 
-Verdict: blocked pending operator visual acceptance and exact-head CI.
+Verdict: blocked by a reproducible relation-value cold-render regression, operator visual acceptance, and exact-head CI.
 
 ## Scope reviewed
 
 - PR #217 current Database virtualization/native-table integration.
-- Final zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
-- Updated application E2E boundary proof.
+- Zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
+- Exact-head GitHub E2E at `63a984a85c8f3a4c3b75eea9be122ea64691c963`.
 - Deferred residual Chromium performance risk.
 
-## Implementation review
+## Blocker — non-empty nested relation table may fail to bootstrap after cold reload
 
-The final integration correction matches the accepted architecture.
+Owner: `src/entities/databaseData` unless focused reproduction disproves this ownership.
 
-`DatabaseDataTable` now derives four spacer-presence facts directly from existing virtual distances, conditionally renders the matching `<col>`, `<th>`, `<td>`, and `<tr>` spacer DOM, and counts only rendered spacer columns in `physicalColumnCount`.
+Problem: exact-head GitHub CI fails `tests/e2e/databaseViewsAndQueryFlows.spec.ts` in `applies string, boolean, and relation filters and persists them after reload`. The same assertion fails on the initial attempt and both retries: after reload the relation filter still filters rows correctly, but the saved related value text is not rendered in the Filters Sheet. The same scenario passed on earlier PR head `1c1a3789ef66cc950eba543566502aec8567f3ec` before the zero-distance spacer correction.
 
-No shared `MDTable`, virtualization API, geometry ownership, worker/query/storage, value-renderer, or performance code changed.
+Current evidence points to a lifecycle-state collapse in `DatabaseDataTable`: spacer presence is derived only from `leadingSize/trailingSize > 0`, while `useVirtualCollection` also reports zero leading/trailing sizes when a non-empty source has not yet produced its first mounted range. In a nested auto-sized relation root this may leave the native table without enough initial structure to establish the first range. This is the leading hypothesis, not a proven root cause.
 
-`tests/e2e/databaseVirtualizationFlows.spec.ts` now covers logical start, interior range, and logical end for both top-level and relation/no-action tables. Existing boundedness and deep product assertions remain intact. Focused type-check and E2E feedback passed.
+Required final state:
+
+- a non-empty Database table must bootstrap its first virtual range in top-level and nested auto-sized roots, including cold reload of saved relation-filter values;
+- after the range resolves, zero-distance leading/trailing spacer DOM must remain absent at logical boundaries so the restored native-table border/radius contract is preserved;
+- no persistent second range state, timeout/retry recovery, shared `MDTable` change, or second virtualization engine;
+- if focused reproduction disproves the DatabaseDataTable bootstrap hypothesis and requires a different owner or public/shared contract, stop and return to architecture instead of broadening the correction.
+
+Verification:
+
+- the existing relation-filter persistence E2E passes without retry/flaky classification;
+- existing Database virtualization start/interior/end spacer-boundary and nested-root proofs remain green;
+- focused type-check remains green.
 
 ## Remaining blocker — operator visual acceptance
 
 Owner: operator/architect review of `entities/databaseData` presentation.
-
-Problem: structural correctness is now proven, but the reported defect was visible border/corner appearance. The current product surface has no faithful existing screenshot owner without adding unrelated Storybook/product-bootstrap infrastructure.
 
 Required final state: inspect the real application table and confirm the pre-virtualization outer border/corner appearance is restored at ordinary top/left and representative deep/end scroll states. If a concrete visual mismatch remains, reopen the integration architecture before changing shared `MDTable` or duplicating its styling.
 
@@ -33,4 +42,4 @@ Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/d
 
 ## Merge condition
 
-After operator visual acceptance and green exact-head GitHub CI, this review has no remaining semantic blocker for PR #217. Delete this `REVIEW.md` when those conditions are satisfied.
+After the cold-render regression is fixed, operator visual acceptance is complete, and exact-head GitHub CI is green, review the full resulting PR again. Do not delete this `REVIEW.md` before those conditions are satisfied.
