@@ -1,5 +1,7 @@
 # Database virtualization dynamic surface-offset correction handoff
 
+Status: **superseded as the active implementation contract by `docs/database-virtualization-deep-state-surface-offset-discriminator-handoff.md`**. The widget-owned direction below remains relevant historical architecture, but exact-head CI proved this correction insufficient. Do not use this document to authorize another production patch before the active discriminator result.
+
 ## Goal
 
 Make a Database virtual collection remain correct when its table surface moves inside an unchanged physical scroll root, including after preceding widget content is removed.
@@ -119,9 +121,4 @@ If that gate finds another PR-caused in-contract failure, fix narrowly, focused-
 
 ## Implementation readiness
 
-- Product behavior: resolved.
-- Ownership: resolved — scroll-root composition owner supplies surface offset; entity consumes; shared forwards; TanStack computes.
-- Public contract: resolved, no shared API expansion.
-- Proof ownership: resolved.
-- Unresolved blockers: none before implementation; if the new shared dynamic-surface capability proof fails, stop after capturing evidence because the selected consumer-only production correction is invalidated.
-- Verdict: **ready**.
+This historical correction was implemented but exact-head CI still failed the same moving-surface product contract. It is **not ready as the active implementation contract**. Use the deep-state discriminator handoff instead.
