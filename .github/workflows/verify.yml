@@ -168,36 +168,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Verify format
-        run: pnpm verify --verbose --only format
+      # The static type covers format, Oxlint, ESLint, type-check, and Storybook
+      # buildability as internal leaf checks (see scripts/verify.ts's
+      # VERIFICATION_TYPE_BY_LABEL). Storybook buildability's duplicate-build
+      # avoidance against the storybook-behavior/visual jobs below is derived
+      # internally by the planner for this focused github-actions `static`
+      # invocation (see `storybookBuildCiFallback` in scripts/verify.ts) —
+      # there is no public CLI flag for it.
+      - name: Verify static
+        run: pnpm verify --verbose --only static
 
-      - name: Verify oxlint
-        run: pnpm verify --verbose --only oxlint
-
-      - name: Verify eslint
-        run: pnpm verify --verbose --only eslint
-
-      - name: Verify type-check
-        run: pnpm verify --verbose --only type-check
-
-      - name: Verify unit tests
-        run: pnpm verify --verbose --only unit-tests
+      - name: Verify unit
+        run: pnpm verify --verbose --only unit
 
       - name: Verify mutation
         run: pnpm verify --verbose --only mutation
-
-      # Parallel-free fallback proof for the Storybook static build, running inside this
-      # already-provisioned job with no dependency on either browser lane. It exists so a
-      # storybook-build-relevant change is still proven buildable even when no browser lane
-      # happens to select Storybook. --storybook-build-ci-fallback requests the verifier's narrow
-      # CI-only fallback contract (see `storybookBuildCiFallback` in scripts/lib/verifyInvocation.ts
-      # and scripts/verify.ts): this step builds only when the ordinary storybook-build plan
-      # requires it AND neither the storybook-behavior nor the visual plan will run. When either
-      # browser lane is selected, that self-contained lane already builds the equivalent static
-      # Storybook output itself, so this step skips successfully instead of duplicating that work.
-      # No artifact is produced or uploaded here; nothing downstream consumes this step's output.
-      - name: Verify storybook build (CI fallback)
-        run: pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback
 
       - name: Upload static verify logs
         if: ${{ failure() || cancelled() }}
@@ -271,7 +256,7 @@ jobs:
       fail-fast: false
       matrix:
         lane:
-          - storybook-behavior
+          - behavior
           - visual
     name: verification-browser (${{ matrix.lane }})
     runs-on: ubuntu-24.04

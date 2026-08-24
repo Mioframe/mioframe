@@ -66,7 +66,7 @@ describe('full verification registry validation', () => {
 describe('runVerifyCli invocation ownership', () => {
   it('passes one invocation to lock metadata and actual execution', async () => {
     const invocation = resolveVerifyInvocation(
-      ['--base', 'origin/develop', '--profile', 'github-actions', '--only', 'type-check'],
+      ['--base', 'origin/develop', '--profile', 'github-actions', '--only', 'static'],
       { GITHUB_ACTIONS: 'false' },
     );
     const runMain = vi.fn();

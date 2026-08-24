@@ -27,7 +27,6 @@ import {
   printSummary,
   resolveCommandStatus,
   resolvePlaywrightCommandTimeoutMs,
-  resolvePublicOnlyLabel,
   resolveVerifyChangedPathContext,
   runVerifyCli,
   selectOnlyCommands,
@@ -254,27 +253,27 @@ describe('getAllSiblingTestFiles', () => {
 describe('getCliFilesOverride', () => {
   it('rejects bare --files with no paths', () => {
     expect(() => getCliFilesOverride(['--files'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('rejects --only with an empty --files list', () => {
-    expect(() => getCliFilesOverride(['--only', 'eslint', '--files'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    expect(() => getCliFilesOverride(['--only', 'static', '--files'])).toThrow(
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('rejects empty comma-delimited --files values', () => {
     expect(() => getCliFilesOverride(['--files=,'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
     expect(() => getCliFilesOverride(['--files= , '])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('keeps explicit file lists working', () => {
-    expect(getCliFilesOverride(['--only', 'eslint', '--files', 'scripts/verify.ts'])).toEqual([
+    expect(getCliFilesOverride(['--only', 'static', '--files', 'scripts/verify.ts'])).toEqual([
       'scripts/verify.ts',
     ]);
   });
@@ -310,11 +309,13 @@ describe('buildCommands full mode', () => {
     expect(runByLabel.visual).toBe('run');
   });
 
-  it('does not run mutation testing in full/release mode', () => {
+  it('runs the complete registered mutation inventory in full mode, with no affected -m override', () => {
     const commands = buildCommands([], { fullMode: true });
-    const labels = commands.map((entry) => entry.label);
+    const entry = requireRunEntry(commands, 'mutation');
 
-    expect(labels).not.toContain('mutation');
+    expect(entry.command).toBe('pnpm');
+    expect(entry.args).toEqual(['exec', 'stryker', 'run']);
+    expect(entry.verificationType).toBe('mutation');
   });
 
   it('targets the whole project instead of a changed-file list', () => {
@@ -483,62 +484,75 @@ describe('buildCommands verification type composition', () => {
   });
 });
 
-describe('selectOnlyCommands legacy label expansion', () => {
-  it('expands legacy --only artifact to both its static and browser-integration split leaves', () => {
+describe('selectOnlyCommands', () => {
+  it('selects every leaf owned by the static type, including release-only static leaves in full mode', () => {
     const commands = buildCommands([], { fullMode: true });
-    const selected = selectOnlyCommands(commands, 'artifact');
+    const selected = selectOnlyCommands(commands, 'static');
 
-    expect(selected.map((entry) => entry.label)).toEqual(['artifact-static', 'artifact']);
+    expect(selected.every((entry) => entry.verificationType === 'static')).toBe(true);
+    expect(selected.map((entry) => entry.label)).toEqual(
+      expect.arrayContaining([
+        'agent-environment',
+        'format',
+        'oxlint',
+        'eslint',
+        'type-check',
+        'storybook-build',
+        'release-version',
+        'release-config',
+        'build',
+        'publisher-node-import',
+        'artifact-static',
+        'managed-updates-static',
+      ]),
+    );
+    expect(selected.map((entry) => entry.label)).not.toContain('unit-tests');
   });
 
-  it('expands legacy --only managed-updates to its static, browser-integration, and E2E split leaves in order', () => {
+  it('includes the browser-integration release-only leaves under --only browser-integration', () => {
     const commands = buildCommands([], { fullMode: true });
-    const selected = selectOnlyCommands(commands, 'managed-updates');
+    const selected = selectOnlyCommands(commands, 'browser-integration');
 
     expect(selected.map((entry) => entry.label)).toEqual([
-      'managed-updates-static',
+      'artifact',
       'managed-updates-browser-integration',
+    ]);
+  });
+
+  it('includes the e2e-install prerequisite alongside the selected e2e proof leaf, in planned order', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'e2e');
+
+    expect(selected.map((entry) => entry.label)).toEqual([
+      'e2e-install',
+      'e2e',
+      'release-smoke',
       'managed-updates-e2e',
     ]);
   });
 
-  it('still selects a single leaf by exact match for a label with no legacy split', () => {
+  it('never selects a proof leaf owned by another type', () => {
     const commands = buildCommands([], { fullMode: true });
-    const selected = selectOnlyCommands(commands, 'release-smoke');
 
-    expect(selected.map((entry) => entry.label)).toEqual(['release-smoke']);
+    for (const type of ['static', 'unit', 'behavior', 'visual', 'mutation'] as const) {
+      const selected = selectOnlyCommands(commands, type);
+
+      expect(
+        selected.every((entry) => entry.label === 'e2e-install' || entry.verificationType === type),
+      ).toBe(true);
+    }
   });
 
-  it('returns every command unchanged when onlyLabel is null', () => {
+  it('returns a valid, non-failing empty selection for performance, which has no current inventory', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(selectOnlyCommands(commands, 'performance')).toEqual([]);
+  });
+
+  it('returns every command unchanged when onlyType is null', () => {
     const commands = buildCommands([], { fullMode: true });
 
     expect(selectOnlyCommands(commands, null)).toEqual(commands);
-  });
-});
-
-describe('resolvePublicOnlyLabel', () => {
-  it('resolves every public label to itself', () => {
-    expect(resolvePublicOnlyLabel('unit-tests')).toBe('unit-tests');
-    expect(resolvePublicOnlyLabel('artifact')).toBe('artifact');
-    expect(resolvePublicOnlyLabel('managed-updates')).toBe('managed-updates');
-  });
-
-  it('resolves an internal artifact split leaf to its owning legacy public label', () => {
-    expect(resolvePublicOnlyLabel('artifact-static')).toBe('artifact');
-  });
-
-  it('resolves every internal managed-updates split leaf to its owning legacy public label', () => {
-    expect(resolvePublicOnlyLabel('managed-updates-static')).toBe('managed-updates');
-    expect(resolvePublicOnlyLabel('managed-updates-browser-integration')).toBe('managed-updates');
-    expect(resolvePublicOnlyLabel('managed-updates-e2e')).toBe('managed-updates');
-  });
-
-  it('resolves the public e2e-install prerequisite label to itself', () => {
-    expect(resolvePublicOnlyLabel('e2e-install')).toBe('e2e-install');
-  });
-
-  it('falls back to the label itself for a label that is neither public nor a registered split leaf', () => {
-    expect(resolvePublicOnlyLabel('not-a-real-label')).toBe('not-a-real-label');
   });
 });
 
@@ -1437,7 +1451,7 @@ describe('getActionRequired', () => {
     expect(actions).toContainEqual(expect.stringContaining('[Vue warn]: Invalid watch source: 0'));
   });
 
-  it('suggests a rerun through the owning legacy public label when an internal split leaf fails in full mode, instead of crashing on an invalid --only value', () => {
+  it('retains a valid full-scope rerun for a failed leaf in full mode, instead of an invalid --full --only combination', () => {
     const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
 
     const actions = getActionRequired(
@@ -1453,11 +1467,11 @@ describe('getActionRequired', () => {
     );
 
     expect(actions).toContainEqual(expect.stringContaining('Fix failed artifact-static errors'));
-    expect(actions).toContainEqual(expect.stringContaining('--only artifact'));
-    expect(actions).not.toContainEqual(expect.stringContaining('--only artifact-static'));
+    expect(actions).toContainEqual(expect.stringContaining('pnpm verify --full'));
+    expect(actions.some((action) => action.includes('--only'))).toBe(false);
   });
 
-  it('suggests a rerun through the owning legacy public label for each split managed-updates leaf', () => {
+  it('retains a valid full-scope rerun for every split managed-updates leaf, never narrowing by type', () => {
     const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
 
     for (const label of [
@@ -1478,8 +1492,8 @@ describe('getActionRequired', () => {
       );
 
       expect(actions).toContainEqual(expect.stringContaining(`Fix failed ${label} errors`));
-      expect(actions).toContainEqual(expect.stringContaining('--only managed-updates'));
-      expect(actions).not.toContainEqual(expect.stringContaining(`--only ${label}`));
+      expect(actions).toContainEqual(expect.stringContaining('pnpm verify --full'));
+      expect(actions.some((action) => action.includes('--only'))).toBe(false);
     }
   });
 
@@ -1527,6 +1541,34 @@ describe('getActionRequired', () => {
         'pnpm verify --base origin/develop --profile github-actions --only e2e',
       ),
     );
+  });
+
+  it('never narrows the CI-profile rerun by type during a full invocation', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    const actions = getActionRequired(
+      [
+        makeExecutedResult({
+          label: 'visual',
+          command: 'pnpm test:visual',
+          status: 'passed',
+        }),
+      ],
+      {
+        ciProfileRisk: {
+          affectedChecks: ['visual'],
+          activeProfile: makeProfile({ name: 'local' }),
+          githubActionsProfile: makeProfile({ name: 'github-actions' }),
+          differences: [],
+        },
+        invocation: fullInvocation,
+      },
+    );
+
+    expect(actions).toContainEqual(
+      expect.stringContaining('pnpm verify --full --profile github-actions'),
+    );
+    expect(actions.some((action) => action.includes('--only'))).toBe(false);
   });
 
   it('reports a zero-exit blocked unit-tests result through the normal VERIFY RESULT summary', () => {
@@ -1590,6 +1632,38 @@ describe('getActionRequired', () => {
       expect(output).toContain('e2e: low-level path scripts/verify.ts -> full app e2e');
       expect(output).toContain('ci profile risk:');
       expect(output).toContain('- none');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('reports the selected verification type on the summary "only" line', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      printSummary([], 'local-changes', [], {
+        invocation: resolveVerifyInvocation(['--only', 'unit'], { GITHUB_ACTIONS: 'false' }),
+        totalDurationMs: 0,
+      });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(output).toContain('only: unit');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('reports "all" on the summary "only" line for an unfocused invocation', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      printSummary([], 'local-changes', [], {
+        invocation: resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' }),
+        totalDurationMs: 0,
+      });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(output).toContain('only: all');
     } finally {
       logSpy.mockRestore();
     }
@@ -1658,6 +1732,35 @@ describe('verify help output', () => {
     expect(result.stdout).toContain(
       'Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
     );
+  });
+
+  it('lists exactly the eight canonical verification types for --only and no legacy labels', () => {
+    const result = spawnSync(process.execPath, ['scripts/verify.ts', '--help'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env },
+    });
+
+    expect(result.status).toBe(0);
+
+    for (const type of [
+      'static',
+      'unit',
+      'behavior',
+      'visual',
+      'browser-integration',
+      'performance',
+      'mutation',
+      'e2e',
+    ]) {
+      expect(result.stdout).toContain(`\n  ${type}\n`);
+    }
+
+    expect(result.stdout).not.toContain('--storybook-build-ci-fallback');
+    expect(result.stdout).not.toContain('--full --only');
+    expect(result.stdout).not.toContain('--only eslint');
+    expect(result.stdout).not.toContain('--only unit-tests');
+    expect(result.stdout).not.toContain('--only storybook-behavior');
   });
 });
 

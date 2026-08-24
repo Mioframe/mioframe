@@ -26,18 +26,18 @@ describe('verify invocation validation', () => {
     ).toThrow('Duplicate verify option: --files');
   });
 
-  it('rejects combined fix mode for labels that cannot apply fixers', () => {
-    expect(() => resolveVerifyInvocation(['--fix', '--only', 'type-check'], LOCAL_ENV)).toThrow(
-      '--fix --only type-check is unsupported',
+  it('rejects combined fix mode for types that cannot apply fixers', () => {
+    expect(() => resolveVerifyInvocation(['--fix', '--only', 'unit'], LOCAL_ENV)).toThrow(
+      '--fix --only unit is unsupported',
     );
     expect(() => resolveVerifyInvocation(['--fix', '--only', 'e2e'], LOCAL_ENV)).toThrow(
       '--fix --only e2e is unsupported',
     );
   });
 
-  it('keeps fixer labels valid for both fix modes', () => {
-    expect(resolveVerifyInvocation(['--fix', '--only', 'eslint'], LOCAL_ENV).fixMode).toBe('fix');
-    expect(resolveVerifyInvocation(['--fix-only', '--only', 'format'], LOCAL_ENV).fixMode).toBe(
+  it('keeps --only static valid for both fix modes', () => {
+    expect(resolveVerifyInvocation(['--fix', '--only', 'static'], LOCAL_ENV).fixMode).toBe('fix');
+    expect(resolveVerifyInvocation(['--fix-only', '--only', 'static'], LOCAL_ENV).fixMode).toBe(
       'fix-only',
     );
   });
@@ -46,7 +46,7 @@ describe('verify invocation validation', () => {
     const invocation = resolveVerifyInvocation(['--base', 'origin/develop'], LOCAL_ENV);
 
     expect(() =>
-      formatVerifyInvocationCommand({ ...invocation, fixMode: 'fix', onlyLabel: 'type-check' }, {}),
+      formatVerifyInvocationCommand({ ...invocation, fixMode: 'fix', onlyType: 'unit' }, {}),
     ).toThrow('Invalid resolved verify invocation');
   });
 });

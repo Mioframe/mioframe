@@ -2,61 +2,20 @@ import path from 'node:path';
 
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from '../playwrightContainer.ts';
 
-export const VERIFY_INVOCATION_VERSION = 4;
+export const VERIFY_INVOCATION_VERSION = 5;
 
 /** Inclusive bounds for `--repeat`; keeps agent/CI stability reruns bounded. */
 export const MIN_STORYBOOK_BEHAVIOR_REPEAT = 2;
 export const MAX_STORYBOOK_BEHAVIOR_REPEAT = 20;
 
-export const VERIFY_LABELS: readonly string[] = [
-  'agent-environment',
-  'format',
-  'oxlint',
-  'eslint',
-  'type-check',
-  'unit-tests',
-  'e2e-install',
-  'e2e',
-  'storybook-behavior',
-  'visual',
-  'storybook-build',
-  'mutation',
-  'release-version',
-  'release-config',
-  'build',
-  'publisher-node-import',
-  'artifact',
-  'release-smoke',
-  'managed-updates',
-];
-
-export const FULL_ONLY_LABELS: ReadonlySet<string> = new Set([
-  'release-version',
-  'release-config',
-  'build',
-  'publisher-node-import',
-  'artifact',
-  'release-smoke',
-  'managed-updates',
-]);
-
-export const FIX_ONLY_LABELS: ReadonlySet<string> = new Set([
-  'agent-environment',
-  'format',
-  'oxlint',
-  'eslint',
-]);
-
-const FULL_FORBIDDEN_LABELS: ReadonlySet<string> = new Set(['mutation']);
-
 /**
- * The eight canonical verification types from the accepted unified `pnpm
- * verify` architecture (see docs/testing/verify-redesign-architecture.md).
- * Pass A of the verify redesign (see
- * docs/testing/verify-redesign-implementation-preflight.md) tags every
- * verifier proof leaf command with exactly one of these internally; the
- * public `--only` CLI still selects legacy low-level labels (`onlyLabel`),
- * not these types, until a later pass switches it over.
+ * The eight canonical public verification types from the accepted unified
+ * `pnpm verify` architecture (see docs/testing/verify-redesign-architecture.md).
+ * This is the complete public `--only` contract: low-level runner/check
+ * labels (format, Oxlint, ESLint, type-check, Storybook build, individual
+ * release-runtime checks, and so on) are private verifier implementation
+ * identifiers only and are never accepted through public `--only` (see
+ * docs/testing/verify-redesign-pass-b-implementation.md).
  */
 export const VERIFICATION_TYPES = [
   'static',
@@ -102,22 +61,16 @@ export interface VerifyInvocation {
   version: number;
   scope: VerifyInvocationScope;
   profile: VerifyProfile;
-  onlyLabel: string | null;
+  /** Selected public verification type, or `null` for the default (all types). */
+  onlyType: VerificationType | null;
   verbose: boolean;
   fixMode: FixMode;
   /**
-   * Narrow GitHub Actions fallback contract for the `storybook-build` label only (see
-   * `.github/workflows/verify.yml`): requests the build only when the ordinary
-   * `storybook-build` plan requires it and neither `storybook-behavior` nor `visual` will run.
-   * Valid only with `--only storybook-build` and outside `--full`.
-   */
-  storybookBuildCiFallback: boolean;
-  /**
-   * Narrow repeated-execution stability contract for the `storybook-behavior`
-   * label only: asks Playwright to repeat the selected tests this many times
-   * within one Storybook behavior invocation, for deterministic flake
-   * diagnosis. Valid only with `--only storybook-behavior`, `--files`, and
-   * outside `--full`; bounded to
+   * Narrow repeated-execution stability contract for the `behavior`
+   * verification type only: asks Playwright to repeat the selected tests
+   * this many times within one behavior invocation, for deterministic flake
+   * diagnosis. Valid only with `--only behavior`, `--files`, and outside
+   * `--full`; bounded to
    * [{@link MIN_STORYBOOK_BEHAVIOR_REPEAT}, {@link MAX_STORYBOOK_BEHAVIOR_REPEAT}].
    * `null` for an ordinary invocation.
    */
@@ -158,13 +111,7 @@ function assertUniqueOption(seenOptions: Set<string>, flag: string): void {
 
 const VERIFY_PROFILES: ReadonlySet<string> = new Set(['local', 'github-actions']);
 const FIX_MODES: ReadonlySet<string> = new Set(['none', 'fix', 'fix-only']);
-const BOOLEAN_FLAGS: ReadonlySet<string> = new Set([
-  '--verbose',
-  '--fix',
-  '--fix-only',
-  '--full',
-  '--storybook-build-ci-fallback',
-]);
+const BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['--verbose', '--fix', '--fix-only', '--full']);
 const VALUE_FLAGS: readonly string[] = ['--base', '--only', '--profile', '--repeat'];
 
 /**
@@ -252,18 +199,19 @@ function getCliBaseRef(argv: readonly string[]): string | null {
   );
 }
 
-function getCliOnlyLabel(argv: readonly string[]): string | null {
+function getCliOnlyType(argv: readonly string[]): VerificationType | null {
   const value = getCliOption(
     argv,
     '--only',
-    `Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`,
+    `Missing value for --only. Accepted types: ${VERIFICATION_TYPES.join(', ')}`,
   );
 
-  if (value !== null && !VERIFY_LABELS.includes(value)) {
+  if (value !== null && !isVerificationType(value)) {
     throw new Error(
-      [`Invalid value for --only: ${value}`, `Accepted labels: ${VERIFY_LABELS.join(', ')}`].join(
-        '\n',
-      ),
+      [
+        `Invalid value for --only: ${value}`,
+        `Accepted types: ${VERIFICATION_TYPES.join(', ')}`,
+      ].join('\n'),
     );
   }
 
@@ -290,9 +238,9 @@ function getCliProfile(argv: readonly string[]): VerifyProfile | null {
 
 /**
  * Parse and range-validate `--repeat` from the verify CLI. Combination rules
- * (requires `--only storybook-behavior`, requires `--files`, rejects `--full`)
- * are enforced separately by {@link assertModeCombination}, since they depend
- * on other resolved fields.
+ * (requires `--only behavior`, requires `--files`, rejects `--full`) are
+ * enforced separately by {@link assertModeCombination}, since they depend on
+ * other resolved fields.
  * @param argv Raw CLI arguments after the script name.
  * @returns Parsed repeat count, or null when `--repeat` was not provided.
  */
@@ -300,7 +248,7 @@ function getCliRepeat(argv: readonly string[]): number | null {
   const value = getCliOption(
     argv,
     '--repeat',
-    'Missing value for --repeat. Example: pnpm verify --only storybook-behavior --files <spec> --repeat 10',
+    'Missing value for --repeat. Example: pnpm verify --only behavior --files <spec> --repeat 10',
   );
 
   if (value === null) {
@@ -342,7 +290,7 @@ export function getCliFilesOverride(argv: readonly string[]): string[] | null {
 
       if (cursor >= argv.length || argv[cursor].startsWith('--')) {
         throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+          'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
         );
       }
 
@@ -361,7 +309,7 @@ export function getCliFilesOverride(argv: readonly string[]): string[] | null {
 
       if (value.length === 0) {
         throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+          'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
         );
       }
 
@@ -376,7 +324,7 @@ export function getCliFilesOverride(argv: readonly string[]): string[] | null {
 
   if (hasExplicitFilesFlag && explicitFiles.length === 0) {
     throw new Error(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   }
 
@@ -409,25 +357,18 @@ function isInvocationScope(scope: unknown): scope is VerifyInvocationScope {
 /** Fields validated together by {@link assertModeCombination}. */
 interface ModeCombinationInput {
   scope: VerifyInvocationScope;
-  onlyLabel: string | null;
+  onlyType: VerificationType | null;
   fixMode: FixMode;
-  storybookBuildCiFallback: boolean;
   repeat: number | null;
 }
 
-function assertModeCombination({
-  scope,
-  onlyLabel,
-  fixMode,
-  storybookBuildCiFallback,
-  repeat,
-}: ModeCombinationInput): void {
+function assertModeCombination({ scope, onlyType, fixMode, repeat }: ModeCombinationInput): void {
   if (!isInvocationScope(scope)) {
     throw new Error('Invalid verify scope.');
   }
 
-  if (onlyLabel !== null && !VERIFY_LABELS.includes(onlyLabel)) {
-    throw new Error(`Invalid value for --only: ${onlyLabel}`);
+  if (onlyType !== null && !isVerificationType(onlyType)) {
+    throw new Error(`Invalid value for --only: ${String(onlyType)}`);
   }
 
   if (!FIX_MODES.has(fixMode)) {
@@ -435,26 +376,18 @@ function assertModeCombination({
   }
 
   if (scope.kind === 'full') {
-    if (onlyLabel !== null && FULL_FORBIDDEN_LABELS.has(onlyLabel)) {
-      throw new Error(`--only ${onlyLabel} is not available with --full.`);
+    if (onlyType !== null) {
+      throw new Error('--full cannot be combined with --only.');
     }
-  } else if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel)) {
-    throw new Error(
-      `--only ${onlyLabel} requires --full. Run: pnpm verify --full --only ${onlyLabel}`,
-    );
+
+    if (fixMode === 'fix-only') {
+      throw new Error('--full cannot be combined with --fix-only.');
+    }
   }
 
-  if (fixMode !== 'none' && onlyLabel !== null && !FIX_ONLY_LABELS.has(onlyLabel)) {
+  if (fixMode !== 'none' && onlyType !== null && onlyType !== 'static') {
     throw new Error(
-      `--${fixMode} --only ${onlyLabel} is unsupported. Accepted ${fixMode} labels: ${[
-        ...FIX_ONLY_LABELS,
-      ].join(', ')}`,
-    );
-  }
-
-  if (storybookBuildCiFallback && (scope.kind === 'full' || onlyLabel !== 'storybook-build')) {
-    throw new Error(
-      '--storybook-build-ci-fallback requires --only storybook-build and cannot be combined with --full.',
+      `--${fixMode} --only ${onlyType} is unsupported. Fix modes are supported only with --only static.`,
     );
   }
 
@@ -473,8 +406,8 @@ function assertModeCombination({
       throw new Error('--repeat cannot be combined with --full.');
     }
 
-    if (onlyLabel !== 'storybook-behavior') {
-      throw new Error('--repeat requires --only storybook-behavior.');
+    if (onlyType !== 'behavior') {
+      throw new Error('--repeat requires --only behavior.');
     }
 
     if (scope.kind !== 'explicit-files') {
@@ -498,12 +431,11 @@ export function resolveVerifyInvocation(
   assertRecognizedCliArgs(argv);
   const explicitBaseRef = getCliBaseRef(argv);
   const explicitFiles = getCliFilesOverride(argv);
-  const onlyLabel = getCliOnlyLabel(argv);
+  const onlyType = getCliOnlyType(argv);
   const explicitProfile = getCliProfile(argv);
   const hasFix = argv.includes('--fix');
   const hasFixOnly = argv.includes('--fix-only');
   const full = argv.includes('--full');
-  const storybookBuildCiFallback = argv.includes('--storybook-build-ci-fallback');
   const repeat = getCliRepeat(argv);
 
   if (hasFix && hasFixOnly) {
@@ -548,10 +480,9 @@ export function resolveVerifyInvocation(
     version: VERIFY_INVOCATION_VERSION,
     scope,
     profile,
-    onlyLabel,
+    onlyType,
     verbose: argv.includes('--verbose'),
     fixMode: hasFix ? 'fix' : hasFixOnly ? 'fix-only' : 'none',
-    storybookBuildCiFallback,
     repeat,
   };
   assertModeCombination(invocation);
@@ -584,10 +515,7 @@ export function isResolvedVerifyInvocation(value: unknown): value is VerifyInvoc
     return false;
   }
 
-  if (
-    value.onlyLabel !== null &&
-    !(typeof value.onlyLabel === 'string' && VERIFY_LABELS.includes(value.onlyLabel))
-  ) {
+  if (value.onlyType !== null && !isVerificationType(value.onlyType)) {
     return false;
   }
 
@@ -595,22 +523,15 @@ export function isResolvedVerifyInvocation(value: unknown): value is VerifyInvoc
     return false;
   }
 
-  if (typeof value.storybookBuildCiFallback !== 'boolean') {
-    return false;
-  }
-
   if (value.repeat !== null && typeof value.repeat !== 'number') {
     return false;
   }
 
-  const onlyLabel = value.onlyLabel === null ? null : value.onlyLabel;
-
   try {
     assertModeCombination({
       scope: value.scope,
-      onlyLabel,
+      onlyType: value.onlyType,
       fixMode: value.fixMode,
-      storybookBuildCiFallback: value.storybookBuildCiFallback,
       repeat: value.repeat,
     });
     return true;
@@ -641,8 +562,8 @@ export function formatShellCommand(command: string, args: readonly string[] = []
 export interface FormatVerifyInvocationCommandOptions {
   /** Remove fix mode for a verification rerun. */
   readOnly?: boolean;
-  /** Replace the focused label; null removes it. */
-  onlyLabel?: string | null;
+  /** Replace the focused type; null removes it. */
+  onlyType?: VerificationType | null;
   /** Replace the runtime profile. */
   profile?: VerifyProfile;
 }
@@ -664,9 +585,7 @@ export function formatVerifyInvocationCommand(
   const candidate: VerifyInvocation = {
     ...invocation,
     profile: options.profile ?? invocation.profile,
-    onlyLabel: Object.hasOwn(options, 'onlyLabel')
-      ? (options.onlyLabel ?? null)
-      : invocation.onlyLabel,
+    onlyType: Object.hasOwn(options, 'onlyType') ? (options.onlyType ?? null) : invocation.onlyType,
     fixMode: options.readOnly ? 'none' : invocation.fixMode,
   };
 
@@ -695,16 +614,12 @@ export function formatVerifyInvocationCommand(
 
   args.push('--profile', candidate.profile);
 
-  if (candidate.onlyLabel !== null) {
-    args.push('--only', candidate.onlyLabel);
+  if (candidate.onlyType !== null) {
+    args.push('--only', candidate.onlyType);
   }
 
   if (candidate.repeat !== null) {
     args.push('--repeat', String(candidate.repeat));
-  }
-
-  if (candidate.storybookBuildCiFallback) {
-    args.push('--storybook-build-ci-fallback');
   }
 
   return formatShellCommand('pnpm', ['verify', ...args]);

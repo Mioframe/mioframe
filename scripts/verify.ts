@@ -30,13 +30,11 @@ import { resolveStorybookBuildPlan, type StorybookBuildPlan } from './lib/storyb
 import { resolveVisualPlan, type VisualPlan } from './lib/visualRisk.ts';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
 import {
-  FIX_ONLY_LABELS,
   formatShellCommand,
   formatVerifyInvocationCommand,
-  FULL_ONLY_LABELS,
   getCliFilesOverride,
   resolveVerifyInvocation,
-  VERIFY_LABELS,
+  VERIFICATION_TYPES,
   type FixMode,
   type VerificationType,
   type VerifyInvocation,
@@ -218,18 +216,18 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   'managed-updates-browser-integration': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'managed-updates-e2e': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
-const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
+const cliOnlyType = currentVerifyInvocation?.onlyType ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
 
 // Internal verification-type ownership for every planner leaf label (Pass A
 // of the verify redesign: see
-// docs/testing/verify-redesign-implementation-preflight.md). The public CLI
-// still selects legacy `onlyLabel` values (see VERIFY_LABELS); this mapping
-// only makes proof ownership explicit on planned command entries so a later
-// pass can switch `--only` to these types without re-deriving ownership.
-// Every proof leaf label must appear here with exactly one type; a label
-// that is a pure execution prerequisite (never itself a proof leaf) is
-// listed in PREREQUISITE_LABELS instead of being invented as a ninth type.
+// docs/testing/verify-redesign-implementation-preflight.md). The public
+// `--only` CLI selects by these types (see resolveVerificationType and
+// selectOnlyCommands); leaf labels themselves remain private identifiers for
+// logs, weights, timeouts, and locks. Every proof leaf label must appear
+// here with exactly one type; a label that is a pure execution prerequisite
+// (never itself a proof leaf) is listed in PREREQUISITE_LABELS instead of
+// being invented as a ninth type.
 const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationType>>> = {
   'agent-environment': 'static',
   format: 'static',
@@ -294,48 +292,6 @@ function resolveVerificationType(label: string): VerificationType | null {
  */
 export function withVerificationType<T extends CommandEntry>(entry: T): T {
   return { ...entry, verificationType: resolveVerificationType(entry.label) };
-}
-
-// Pass A legacy `--only` compatibility: a currently public low-level label
-// that used to select one mixed-type proof leaf now expands to every
-// type-homogeneous internal leaf split from it, so the legacy selection
-// still runs everything it covered before the split (see
-// docs/testing/verify-redesign-implementation-preflight.md's "Legacy label
-// compatibility"). A label absent here still selects by exact match, as
-// before this pass.
-export const LEGACY_LABEL_LEAF_LABELS: Readonly<Partial<Record<string, readonly string[]>>> = {
-  artifact: ['artifact-static', 'artifact'],
-  'managed-updates': [
-    'managed-updates-static',
-    'managed-updates-browser-integration',
-    'managed-updates-e2e',
-  ],
-};
-
-/**
- * Resolve the public `--only` label a rerun suggestion must use for a given
- * command label. A public label (in {@link VERIFY_LABELS}) resolves to
- * itself. An internal split leaf (a value in {@link LEGACY_LABEL_LEAF_LABELS})
- * resolves to its owning legacy public label, since the leaf itself is not a
- * valid `--only` value — rerunning the legacy label still selects every
- * split leaf, including the one that failed or warned (see
- * {@link selectOnlyCommands}).
- * @param label Command label from a collected result.
- * @returns A public `--only` label safe to pass to
- * {@link formatVerifyInvocationCommand}.
- */
-export function resolvePublicOnlyLabel(label: string): string {
-  if (VERIFY_LABELS.includes(label)) {
-    return label;
-  }
-
-  for (const [legacyLabel, leafLabels] of Object.entries(LEGACY_LABEL_LEAF_LABELS)) {
-    if (leafLabels?.includes(label)) {
-      return legacyLabel;
-    }
-  }
-
-  return label;
 }
 
 const EXPENSIVE_SKIP_REASON =
@@ -805,28 +761,6 @@ function formatHelpTimeout(milliseconds: number): string {
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 }
 
-/**
- * Resolve the worst-case internal timeout for a public `--only` label, for
- * help display only. A legacy label split into several internal leaves (see
- * {@link LEGACY_LABEL_LEAF_LABELS}) sums every leaf's own timeout, since a
- * legacy selection runs every leaf it historically covered.
- * @param label Public verify label.
- * @returns Worst-case timeout in milliseconds, or `null` when no leaf under
- * this label has a fixed internal timeout.
- */
-function getLegacyLabelTimeoutMs(label: string): number | null {
-  const leafLabels = LEGACY_LABEL_LEAF_LABELS[label] ?? [label];
-  const timeouts = leafLabels
-    .map((leafLabel) => COMMAND_TIMEOUT_MS_BY_LABEL[leafLabel])
-    .filter((value): value is number => value !== undefined);
-
-  if (timeouts.length === 0) {
-    return null;
-  }
-
-  return timeouts.reduce((sum, value) => sum + value, 0);
-}
-
 function getLastMeaningfulLine(text: string): string | null {
   const lines = text
     .split('\n')
@@ -845,49 +779,35 @@ function printHelp(): void {
   console.log('  --verbose           Stream command output to stdout/stderr.');
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
-  console.log(
-    `                      With either fix mode and --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
-  );
+  console.log('                      With either fix mode, --only is valid only with `static`.');
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
   console.log('                      Cannot be combined with --full.');
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
-  console.log('  --only <label>      Run one focused verification check.');
-  console.log('  --storybook-build-ci-fallback');
-  console.log(
-    '                      With `--only storybook-build` (not `--full`): build only when the',
-  );
-  console.log(
-    '                      ordinary storybook-build plan requires it and neither storybook-behavior',
-  );
-  console.log('                      nor visual will run. See .github/workflows/verify.yml.');
+  console.log('  --only <type>       Run one focused verification type.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('                      Cannot be combined with --full.');
+  console.log('  --repeat <count>    With `--only behavior` and `--files` (integer 2-20): repeat');
+  console.log('                      the selected behavior tests this many times within one');
+  console.log('                      invocation, for deterministic flake diagnosis.');
   console.log(
-    '  --repeat <count>    With `--only storybook-behavior` and `--files` (integer 2-20):',
+    '  --full              Literal complete project verification: every verification type,',
   );
   console.log(
-    '                      repeat the selected Storybook behavior tests this many times within',
+    '                      every test/spec, and the complete registered mutation inventory, with',
   );
-  console.log('                      one invocation, for deterministic flake diagnosis.');
   console.log(
-    '  --full              Unconditional full-project release scope: do not resolve changed paths,',
+    '                      no affected-test narrowing. Cannot be combined with --only, --files,',
   );
-  console.log('                      run full proof plus release-version/release-config/build/');
   console.log(
-    '                      publisher-node-import/artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
+    '                      --base, --repeat, or --fix-only. Equivalent to `pnpm verify:release`.',
   );
   console.log('');
-  console.log('Labels for --only:');
+  console.log('Types for --only:');
 
-  for (const label of VERIFY_LABELS) {
-    const modeNote = FULL_ONLY_LABELS.has(label)
-      ? ' (requires --full)'
-      : label === 'mutation'
-        ? ' (not available with --full)'
-        : '';
-    console.log(`  ${label}${modeNote}`);
+  for (const type of VERIFICATION_TYPES) {
+    console.log(`  ${type}`);
   }
 
   console.log('');
@@ -898,16 +818,12 @@ function printHelp(): void {
   console.log('  pnpm verify --profile github-actions --only e2e');
   console.log('  .env.local: VERIFY_BASE=origin/develop');
   console.log(`  ${VERIFY_PROFILE_ENV}=github-actions pnpm verify --only visual`);
-  console.log('  pnpm verify --verbose --only type-check');
-  console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
-  console.log('  pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback');
-  console.log(
-    '  pnpm verify --only storybook-behavior --files src/foo.browser.spec.ts --repeat 10',
-  );
+  console.log('  pnpm verify --verbose --only static');
+  console.log('  pnpm verify --only static --files src/foo.ts src/bar.vue');
+  console.log('  pnpm verify --only behavior --files src/foo.behavior.spec.ts --repeat 10');
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
-  console.log('  pnpm verify --full --only artifact');
   console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
@@ -919,10 +835,8 @@ function printHelp(): void {
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
 
-  for (const label of VERIFY_LABELS) {
-    const timeoutMs = getLegacyLabelTimeoutMs(label);
-
-    if (timeoutMs === null) {
+  for (const [label, timeoutMs] of Object.entries(COMMAND_TIMEOUT_MS_BY_LABEL)) {
+    if (timeoutMs === undefined) {
       continue;
     }
 
@@ -1458,15 +1372,19 @@ export interface BuildCommandsOptions {
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
   /**
-   * Dedicated GitHub Actions fallback contract for the `storybook-build` label only (see
-   * `.github/workflows/verify.yml`): storybook-behavior and visual run as separate
-   * self-contained CI jobs that build their own Storybook when selected, so this narrows the
-   * `storybook-build` trigger to the ordinary storybook-build plan alone, skipping whenever a
-   * self-contained browser lane will already supply the equivalent static-build prerequisite.
-   * Has no effect on any other label and does not change `--full` or the ordinary (non-CI)
-   * `--only storybook-build` reuse-aware trigger. Sourced from the resolved
-   * `VerifyInvocation.storybookBuildCiFallback` (the `--storybook-build-ci-fallback` CLI flag);
-   * defaults to `false`.
+   * Internal GitHub Actions duplicate-build avoidance for a focused `static`
+   * type invocation only (see `.github/workflows/verify.yml`):
+   * storybook-behavior and visual run as separate self-contained CI jobs
+   * that build their own Storybook when selected, so this narrows the
+   * `storybook-build` trigger to the ordinary storybook-build plan alone,
+   * skipping whenever a self-contained browser lane will already supply the
+   * equivalent static-build prerequisite. Has no effect on any other label
+   * and does not change `--full` or the ordinary (non-GitHub-focused-static)
+   * reuse-aware trigger. There is no public CLI flag or persisted field for
+   * this (see docs/testing/verify-redesign-pass-b-implementation.md's
+   * "Storybook CI fallback"); `main()` derives it from the resolved
+   * invocation as `profile === 'github-actions' && onlyType === 'static'`.
+   * Defaults to `false`.
    */
   storybookBuildCiFallback?: boolean;
   /**
@@ -1705,8 +1623,8 @@ export function buildCommands(
   // In GitHub Actions, storybook-behavior and visual are separate
   // self-contained jobs that never reuse this lane's output (see
   // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
-  // only to `--full` and to the ordinary (non-CI-fallback) `--only
-  // storybook-build` invocation (i.e. without `--storybook-build-ci-fallback`).
+  // only to `--full` and to the ordinary (non-GitHub-focused-static) case,
+  // i.e. when `storybookBuildCiFallback` is false.
   const storybookBehaviorNeedsStaticBuild =
     storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
   const visualNeedsStaticBuild =
@@ -1874,10 +1792,23 @@ export function buildCommands(
     });
   }
 
-  // Mutation testing is a test-design/PR-quality tool, not a release-publish
-  // blocker: it is expensive/slow and does not validate the production
-  // artifact, so it never runs in full/release mode (pnpm verify:release).
-  if (!fullMode && mutationScope.length > 0) {
+  // Pass B mutation transition: literal full mode now includes mutation,
+  // using the complete inventory already registered in stryker.config.mjs
+  // (no affected `-m` override). See
+  // docs/testing/verify-redesign-pass-b-implementation.md's "Mutation
+  // transition"; the explicit Pass E mutation target registry is not
+  // introduced yet, so focused/default mutation keeps the existing affected
+  // adjacency scope below.
+  if (fullMode) {
+    commands.push({
+      kind: 'run',
+      label: 'mutation',
+      command: 'pnpm',
+      args: ['exec', 'stryker', 'run'],
+      weight: classifyCommandWeight({ label: 'mutation' }),
+      triggerReason: 'full-project release verification',
+    });
+  } else if (mutationScope.length > 0) {
     commands.push({
       kind: 'run',
       label: 'mutation',
@@ -1886,7 +1817,7 @@ export function buildCommands(
       weight: classifyCommandWeight({ label: 'mutation' }),
       triggerReason: `mutation scope: ${mutationScope.join(', ')}`,
     });
-  } else if (!fullMode) {
+  } else {
     commands.push({
       kind: 'skipped',
       label: 'mutation',
@@ -1903,34 +1834,30 @@ export function buildCommands(
 }
 
 /**
- * Select the planned command entries for a resolved `--only` label. A
- * legacy label listed in {@link LEGACY_LABEL_LEAF_LABELS} expands to every
- * type-homogeneous internal leaf split from it, so the legacy selection
- * still runs everything it historically covered.
+ * Select the planned command entries for a resolved `--only` verification
+ * type. Selects every proof leaf owned by that type, plus the `e2e-install`
+ * pure execution prerequisite when `e2e` is selected (see
+ * docs/testing/verify-redesign-pass-b-implementation.md's "Type selection");
+ * no other type ever selects a leaf owned by another type. An empty
+ * selection — for example `--only performance`, which currently has no
+ * persistent proof inventory — is a valid, non-failing outcome, not an
+ * error.
  * @param commands Full planned command list.
- * @param [onlyLabel] Resolved `--only` label, or `null` for no narrowing.
+ * @param [onlyType] Resolved `--only` verification type, or `null` for no narrowing.
  * @returns The selected command entries, in their original planned order.
  */
 export function selectOnlyCommands(
   commands: readonly CommandEntry[],
-  onlyLabel: string | null = cliOnlyLabel,
+  onlyType: VerificationType | null = cliOnlyType,
 ): CommandEntry[] {
-  if (onlyLabel === null) {
+  if (onlyType === null) {
     return [...commands];
   }
 
-  const leafLabels = LEGACY_LABEL_LEAF_LABELS[onlyLabel] ?? [onlyLabel];
-  const selectedCommands = commands.filter((entry) => leafLabels.includes(entry.label));
-
-  if (selectedCommands.length > 0) {
-    return selectedCommands;
-  }
-
-  if (onlyLabel === 'e2e-install') {
-    return [withVerificationType(createE2EInstallCommand('empty e2e scope'))];
-  }
-
-  throw new Error(`Verify command list is missing required label: ${onlyLabel}`);
+  return commands.filter(
+    (entry) =>
+      entry.verificationType === onlyType || (onlyType === 'e2e' && entry.label === 'e2e-install'),
+  );
 }
 
 /**
@@ -1974,6 +1901,7 @@ export function getActionRequired(
   }
 
   const actions: string[] = [];
+  const fullMode = invocation.scope.kind === 'full';
   const failedResults = results.filter(
     (result): result is ExecutedCommandResult | InvalidCommandResult => result.status === 'failed',
   );
@@ -1981,9 +1909,21 @@ export function getActionRequired(
     (result) => result.status !== 'failed' && result.hasWarnings,
   );
 
+  // A full invocation can never be reformatted as `--full --only <type>` (see
+  // docs/testing/verify-redesign-pass-b-implementation.md's "Rerun/status
+  // behavior"), so a failure/warning during full mode retains the valid
+  // full-scope rerun instead of narrowing by verification type.
+  const getRerunCommand = (label: string, profileOverride?: 'github-actions') =>
+    fullMode
+      ? getVerifyRerunCommand(invocation, { profile: profileOverride })
+      : getVerifyRerunCommand(invocation, {
+          onlyType: resolveVerificationType(label),
+          profile: profileOverride,
+        });
+
   for (const result of failedResults) {
     actions.push(
-      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: resolvePublicOnlyLabel(result.label) })}`,
+      `Fix failed ${result.label} errors. Rerun through verify: ${getRerunCommand(result.label)}`,
     );
 
     if (result.blockingLogIssue) {
@@ -2004,20 +1944,17 @@ export function getActionRequired(
 
   for (const result of warningResults) {
     actions.push(
-      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: resolvePublicOnlyLabel(result.label) })}`,
+      `Fix ${result.label} warnings. Rerun through verify: ${getRerunCommand(result.label)}`,
     );
     actions.push(`Reason: ${result.warningSummary}`);
   }
 
   if (ciProfileRisk !== null) {
-    const rerunChecks = ciProfileRisk.affectedChecks
-      .map((label) =>
-        getVerifyRerunCommand(invocation, {
-          onlyLabel: label,
-          profile: 'github-actions',
-        }),
-      )
-      .join(' ; ');
+    const rerunChecks = fullMode
+      ? getVerifyRerunCommand(invocation, { profile: 'github-actions' })
+      : ciProfileRisk.affectedChecks
+          .map((label) => getRerunCommand(label, 'github-actions'))
+          .join(' ; ');
     actions.push(
       `CI-profile risk remains for ${ciProfileRisk.affectedChecks.join(', ')} because local Playwright used profile ${ciProfileRisk.activeProfile.name}.`,
     );
@@ -2107,7 +2044,7 @@ export function printSummary(
   console.log(`profile: ${profile.name} (source: ${profile.source})`);
   console.log(`release: ${fullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
   console.log(`verbose: ${invocation.verbose ? 'on' : 'off'}`);
-  console.log(`only: ${invocation.onlyLabel ?? 'all'}`);
+  console.log(`only: ${invocation.onlyType ?? 'all'}`);
   console.log(`scope: ${fullMode ? 'full-project (changed-file scope ignored)' : scope}`);
   console.log(`base ref: ${baseRef ?? 'n/a'}`);
   console.log(`changed files: ${changedFiles.length}`);
@@ -2332,7 +2269,7 @@ async function main(
   }
 
   const totalStartedAt = performance.now();
-  const onlyLabel = invocation.onlyLabel;
+  const onlyType = invocation.onlyType;
   const verifyProcessEnv = getVerifyProcessEnv(process.env, invocation.profile);
   const { changedFiles, scope, baseRef, packageJsonOldRef } =
     resolveVerifyChangedPathContext(invocation);
@@ -2341,21 +2278,22 @@ async function main(
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
       fixMode: invocation.fixMode,
-      // `--storybook-build-ci-fallback` is only ever resolved to true alongside
-      // `--only storybook-build` outside `--full` (enforced by
-      // `resolveVerifyInvocation`), so this passes straight through (see
-      // `storybookBuildCiFallback` on BuildCommandsOptions).
-      storybookBuildCiFallback: invocation.storybookBuildCiFallback,
+      // Internal GitHub-focused-static Storybook build fallback (see
+      // `storybookBuildCiFallback` on BuildCommandsOptions): derived from the
+      // resolved invocation, not a public flag. `onlyType` is already null
+      // whenever `scope.kind === 'full'` (full mode rejects `--only`), so
+      // this is naturally false in full mode without a separate check.
+      storybookBuildCiFallback: invocation.profile === 'github-actions' && onlyType === 'static',
       repeat: invocation.repeat,
     }),
-    onlyLabel,
+    onlyType,
   );
   const results: CommandResult[] = [];
   let hasFailed = false;
   const runnableCommands = commands.filter((entry) => entry.kind === 'run');
   const totalRunnableChecks = runnableCommands.length;
   let completedRunnableChecks = 0;
-  ensureLogsDirectory(onlyLabel === null ? null : commands.map((entry) => entry.label));
+  ensureLogsDirectory(onlyType === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
@@ -2374,7 +2312,7 @@ async function main(
       continue;
     }
 
-    if (onlyLabel === null) {
+    if (onlyType === null) {
       console.log(
         `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
       );

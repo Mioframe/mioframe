@@ -42,10 +42,10 @@ The default development server uses HTTPS and Vite HMR.
 Use verifier-managed focused checks that faithfully prove the changed contract:
 
 ```bash
-pnpm verify --only <label> --files <exact-readable-paths...>
+pnpm verify --only <type> --files <exact-readable-paths...>
 ```
 
-Examples include `unit-tests`, `storybook-behavior`, `e2e`, `visual`, `type-check`, `eslint`, `format`, and other labels documented by the verification skill.
+`<type>` is one of the eight canonical verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`. See the verification skill for full usage.
 
 Use automatic fixes only when appropriate:
 
