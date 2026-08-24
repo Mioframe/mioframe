@@ -121,7 +121,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **complete**. Pass A implementation has landed, but architect review remains **blocked** by active findings in `scripts/REVIEW.md`. The current implementation boundary is **Pass A correction**; **Pass B must not start** until those findings are resolved and Pass A is accepted.
+Status on `architecture/verify-redesign`: **complete**. Preflight **Pass A** (classification foundations and mixed-release split) is implemented and architect-accepted. The current implementation boundary is **Pass B** (public type CLI).
 
 Required:
 
