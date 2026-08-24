@@ -1,78 +1,36 @@
 # Review
 
-Verdict: blocked
+Verdict: blocked pending operator visual acceptance and exact-head CI.
 
 ## Scope reviewed
 
 - PR #217 current Database virtualization/native-table integration.
-- Accepted bounded-DOM/deep-correctness evidence.
-- Completed heterogeneous Chromium attribution.
-- Current spacer DOM against shared `MDTable` structural styling.
+- Final zero-distance spacer correction at `d3c81c27805316a8ebd46e53c96137520e6d14a4`.
+- Updated application E2E boundary proof.
+- Deferred residual Chromium performance risk.
 
-## Blockers
+## Implementation review
 
-### B1 — Zero-distance virtual spacers break the Database table's logical visual boundary
+The final integration correction matches the accepted architecture.
 
-Owner: `src/entities/databaseData`
+`DatabaseDataTable` now derives four spacer-presence facts directly from existing virtual distances, conditionally renders the matching `<col>`, `<th>`, `<td>`, and `<tr>` spacer DOM, and counts only rendered spacer columns in `physicalColumnCount`.
 
-Problem: `DatabaseDataTable` always renders leading/trailing row and column spacer elements, including when their virtual size is `0`. `MDTable` derives outer corners and bottom-edge behavior from physical first/last table structure, so zero-size presentation spacers become the structural boundary instead of the real logical row/cell. Operator testing confirms broken borders and corner radii.
+No shared `MDTable`, virtualization API, geometry ownership, worker/query/storage, value-renderer, or performance code changed.
 
-Evidence:
+`tests/e2e/databaseVirtualizationFlows.spec.ts` now covers logical start, interior range, and logical end for both top-level and relation/no-action tables. Existing boundedness and deep product assertions remain intact. Focused type-check and E2E feedback passed.
 
-- [`DatabaseDataTable.vue`](./DatabaseDataTable.vue) — leading/trailing `<col>`, `<th>`, `<td>`, and row-spacer `<tr>` elements are rendered unconditionally from virtual sizes.
-- [`../../shared/ui/Table/MDTable.vue`](../../shared/ui/Table/MDTable.vue) — outer corner/bottom styling uses physical `first-child` / `last-child` structure.
-- [`../../../docs/database-virtualization-integration-correction-handoff.md`](../../../docs/database-virtualization-integration-correction-handoff.md) — ready minimum correction contract.
-- Operator manual testing reports visibly broken table border/radius appearance.
+## Remaining blocker — operator visual acceptance
 
-Basis:
+Owner: operator/architect review of `entities/databaseData` presentation.
 
-- [`../../../AGENTS.md`](../../../AGENTS.md) — preserve existing visible behavior, prefer the minimum complete local solution, and control shared-UI blast radius.
-- [`../../../docs/database-virtualization.md`](../../../docs/database-virtualization.md) — spacer DOM belongs to `databaseData`; shared `MDTable` remains generic.
+Problem: structural correctness is now proven, but the reported defect was visible border/corner appearance. The current product surface has no faithful existing screenshot owner without adding unrelated Storybook/product-bootstrap infrastructure.
 
-Risk: merging #217 leaves an ordinary Database table visibly regressed and makes presentation-only spacer DOM part of the visible boundary contract.
+Required final state: inspect the real application table and confirm the pre-virtualization outer border/corner appearance is restored at ordinary top/left and representative deep/end scroll states. If a concrete visual mismatch remains, reopen the integration architecture before changing shared `MDTable` or duplicating its styling.
 
-Required final state: render each leading/trailing spacer only when its corresponding virtual distance is greater than zero. Real logical rows/cells regain the physical table boundary at logical start/end. Keep non-zero spacer geometry, bounded virtualization, sticky/action/no-action paths, ARIA semantics, dynamic sizing, relations, and editing unchanged. Do not change shared `MDTable`.
+## Accepted follow-up risk — not required for PR #217
 
-Verification: update `tests/e2e/databaseVirtualizationFlows.spec.ts` to prove zero-distance spacers are absent at logical boundaries and non-zero spacers remain in interior virtual ranges for representative top-level and relation/no-action paths. Operator verifies the real application's border/radius appearance before merge.
-
-## Known follow-up risk — not required for PR #217
-
-Residual heterogeneous-content Chromium jank remains real but is intentionally deferred to a separate PR.
-
-Evidence retained in [`../../../docs/database-chrome-jank-follow-up.md`](../../../docs/database-chrome-jank-follow-up.md):
-
-- all-string verifier control is fast and bounded;
-- Number isolation reproduces ~631–636 ms switches with repeated 241–244 ms Long Tasks;
-- vertical scrolling has intermittent >100 ms Long Tasks;
-- horizontal scrolling was clean in the diagnostic;
-- Firefox was better in operator testing;
-- production root-cause owner remains unresolved.
-
-Do not continue String-vs-Number attribution or add speculative performance changes in #217.
-
-## Major issues
-
-None.
-
-## Minor issues
-
-None.
-
-## Accepted risks
-
-- Residual Chromium heterogeneous-table jank is accepted only as a tracked follow-up risk for #217, not as resolved behavior. It must remain documented for the next performance PR.
-
-## Items not required
-
-- Equal-density String-vs-Number attribution in #217.
-- Number-specific UI optimization.
-- Geometry ownership changes.
-- Replacing TanStack or rewriting `useVirtualCollection`.
-- Worker/query/storage redesign, paging, indexes, or caches.
-- Shared `MDTable` changes.
-- New Storybook/product bootstrap solely for visual screenshots.
-- Historical checkout/worktree/bisect orchestration.
+Residual heterogeneous-content Chromium jank remains tracked in `../../../docs/database-chrome-jank-follow-up.md` and moves to a separate PR. Number isolation is a reproducer, not an established production owner.
 
 ## Merge condition
 
-After B1 is resolved, the real table appearance is operator-accepted, existing structural/product proof remains intact, and exact-head GitHub CI is green, this review has no remaining semantic blocker for PR #217. Residual Chrome jank proceeds separately.
+After operator visual acceptance and green exact-head GitHub CI, this review has no remaining semantic blocker for PR #217. Delete this `REVIEW.md` when those conditions are satisfied.
