@@ -1,17 +1,15 @@
 # Verify output correction
 
-Status: **architecture ready; implementation pending**.
+Status: **implemented and architect-reviewed; closed**.
 
-This document is the narrow correction handoff for the two remaining verifier-output findings in PR #216. `docs/testing/verify-agent-output.md` remains the canonical output contract; this file does not redefine that contract.
+This document records the completed correction for the two final verifier-output findings in PR #216. `docs/testing/verify-agent-output.md` remains the canonical output contract.
 
 ## Goal
 
-Close the two remaining presentation defects without changing verification selection, execution semantics, proof ownership, timeouts, retry policy, or CI topology:
+The correction had two bounded requirements:
 
-1. multi-check `--only release-impact` must use runnable index/total progress;
-2. normal-mode passed-with-warnings diagnostics must be presented once, with an exact log pointer and focused rerun.
-
-## Scope and ownership
+1. multi-check `--only release-impact` must report runnable index/total progress;
+2. normal-mode passed-with-warnings diagnostics must have one bounded owner with an exact per-check log pointer and focused rerun.
 
 Production owner:
 
@@ -25,20 +23,11 @@ Primary proof owner:
 scripts/verify.test.ts
 ```
 
-No other production module is required. In particular, do not change release-impact planning, release execution, workflow topology, command locks, timeout policy, or child-tool warning semantics.
+No release-impact planning, release execution, workflow topology, timeout, lock, fail-fast, retry, or warning-detection semantics were changed.
 
-## M1 — runnable progress is based on resolved runnable population
+## M1 — runnable progress
 
-Current defect:
-
-```text
-onlyLabel !== null
-→ progress denominator disabled
-```
-
-That is incorrect for `release-impact`, because the grouping can resolve several runnable source-impact checks in one invocation.
-
-Required final rule:
+Final rule:
 
 ```text
 resolved runnable count > 1
@@ -48,29 +37,24 @@ resolved runnable count <= 1
 → [verify]
 ```
 
-The denominator is the already-resolved runnable command population for this invocation; skipped entries are not counted. Do not special-case `release-impact` in presentation logic. Do not introduce a second progress state model.
+The denominator comes from the already-resolved runnable command population; skipped entries are not counted. The implementation is generic and does not special-case `release-impact`.
 
-Keep the existing sequential execution, heartbeat, completion formatting, fail-fast-expensive behavior, command order, and selected checks unchanged.
+The existing sequential execution, heartbeat/completion formatting, fail-fast-expensive behavior, command order, and selected checks remain unchanged.
 
-## M2 — warning detail has one normal-mode owner
+## M2 — warning-detail ownership
 
-Current defect:
-
-- `runCommand()` prints warning summary + log immediately after a successful warning-bearing child process even in normal mode;
-- `printCompactVerifySummary()` then prints the same warning detail again.
-
-Required final ownership:
+Final ownership:
 
 ```text
 normal mode
-→ completion line may say "passed with warnings"
+→ completion line may report "passed with warnings"
 → compact final summary owns warning detail exactly once
 
 verbose mode
-→ raw child output and additional immediate diagnostic detail remain allowed
+→ raw child output and additional immediate warning diagnostics remain allowed
 ```
 
-For each normal-mode warning-bearing executed check, the compact warning detail must contain:
+Normal-mode warning detail contains:
 
 ```text
 <label>: passed with warnings
@@ -79,129 +63,74 @@ details: <exact .verify/logs/<label>.log path>
 rerun: <canonical focused verify command>
 ```
 
-Equivalent bounded wording is acceptable, but the warning summary must not be duplicated in normal terminal output. The existing overall `logs: .verify/logs` line is not a replacement for the exact owning-check log pointer.
-
-Do not change how `getWarningSummary()` detects warnings. Do not make warnings fatal. Do not suppress the normal completion line; it is progress state, not duplicate warning detail.
+`getWarningSummary()` semantics and warning pass/fail behavior are unchanged.
 
 ## Independent proof
 
-Use a fresh test-author context before production edits. The oracle is `docs/testing/verify-agent-output.md` plus this correction handoff, not current `scripts/verify.ts` output.
+A fresh test-author pass added deterministic real-CLI subprocess proof in `scripts/verify.test.ts` before the production correction.
 
-The primary proof must exercise the real verify CLI presentation path without running expensive real child tools and without exporting private orchestration internals solely for tests.
+The proof launches `scripts/verify.ts` through `process.execPath` and replaces only the external child `node`/`pnpm` boundary with temporary executable `PATH` shims. Real invocation parsing, command planning, `selectOnlyCommands()`, the `main()` loop, progress formatting, `runCommand()`, log capture, and final summary all execute unchanged.
 
-Use deterministic subprocess proof in `scripts/verify.test.ts`:
+The proof rejects the two original observable defects:
 
-- launch `scripts/verify.ts` through `process.execPath`;
-- prepend a temporary directory to `PATH` containing minimal executable `node`/`pnpm` shims for child commands;
-- keep the real verifier process, command planning, `selectOnlyCommands()`, `main()` loop, progress formatting, `runCommand()`, log capture and final summary intact;
-- the shims only replace the external child process boundary and exit deterministically.
+### M1
 
-Do not introduce a production test hook, export `main()`/`runCommand()` only for proof, or execute real release/browser/build/lint workloads for this presentation contract.
-
-### RED A — multi-check release-impact progress
-
-Use an explicit changed file with an accepted four-check release mapping:
+For:
 
 ```text
 pnpm verify --only release-impact --files scripts/release/buildArtifact.mjs
 ```
 
-Run it through the deterministic CLI subprocess/shim setup.
+four resolved runnable release checks must report `1/4` through `4/4` running/completion progress. A one-runnable release-impact case remains denominator-free.
 
-Expected observable result:
+### M2
 
-- exactly four runnable release checks execute;
-- running/completion progress uses `1/4` through `4/4` rather than denominator-free `[verify]` lines;
-- no skipped release checks are included in the denominator.
+A normal focused warning-bearing `oxlint` run must:
 
-The current implementation must fail this assertion because every `--only` invocation currently nulls the denominator.
+- not raw-stream child output;
+- report `passed with warnings` in the completion line;
+- emit the bounded warning summary exactly once;
+- include `.verify/logs/oxlint.log` in the compact warning block;
+- include the canonical focused rerun.
 
-Also preserve the single-runnable focused form with a one-check release-impact case such as:
+A verbose-mode guard preserves raw/additional warning diagnostics.
+
+The test oracle is the accepted output contract, not current production output, and no production test hook or private orchestration export was added.
+
+## Architect re-review
+
+Architect re-review covered the complete affected output path rather than only the patch:
+
+- `selectOnlyCommands()` grouping behavior;
+- resolved runnable population and execution loop;
+- progress, completion and heartbeat contracts;
+- warning capture, immediate diagnostics, compact summary and rerun/log pointers;
+- changed proof oracle and plausible wrong outcomes;
+- unchanged release-impact selection, execution order, timeout, lock, fail-fast and CI ownership.
+
+Result:
 
 ```text
-scripts/release/validateReleaseConfig.mjs
+blockers: 0
+major issues: 0
+minor issues: 0
+accepted risks: 0
 ```
 
-which must remain denominator-free rather than rendering `1/1`.
+The correction is closed. `scripts/REVIEW.md` is removed because no active output review state remains.
 
-### RED B — normal warning detail is not duplicated
+## Verification evidence
 
-Run a normal focused `oxlint` invocation through the same deterministic CLI boundary, with the fake `pnpm` child emitting one stable warning-bearing line and exiting successfully.
-
-Expected observable result:
-
-- child output is not raw-streamed in normal mode;
-- the completion line reports `passed with warnings`;
-- the bounded warning summary appears once in normal terminal output;
-- the warning block includes the exact `.verify/logs/oxlint.log` pointer;
-- the warning block includes the canonical focused rerun command.
-
-The current implementation must fail because `runCommand()` and the compact summary both emit the warning detail, while the compact warning block lacks the exact per-check log pointer.
-
-Add/retain a verbose-mode guard proving detailed/raw warning diagnostics remain available when `--verbose` is explicitly requested. Verbose mode does not need the normal-mode non-duplication guarantee.
-
-## Minimum implementation design
-
-Keep the implementation local and explicit.
-
-For M1, derive whether progress has an index/total from the already-computed `totalRunnableChecks`, not from `onlyLabel`.
-
-For M2:
-
-- immediate warning-summary/log printing from `runCommand()` must be verbose-only;
-- normal-mode warning detail remains owned by `printCompactVerifySummary()`;
-- add the exact executed-check log path to that compact warning block.
-
-No generic reporter abstraction, event layer, presentation registry, or second summary model is justified.
-
-## Acceptance criteria
-
-The correction is complete when:
-
-1. a real CLI `--only release-impact` invocation with four resolved runnable checks prints indexed `1/4` … `4/4` progress for running/completion lines;
-2. a release-impact invocation with one runnable check keeps denominator-free focused progress;
-3. skipped checks are not included in the progress denominator;
-4. normal warning-bearing execution prints the bounded warning summary only once;
-5. the normal warning block includes the exact per-check log path and canonical focused rerun;
-6. verbose mode retains raw/additional diagnostics;
-7. warning detection and pass/fail semantics are unchanged;
-8. selected checks, command order, release-impact planning, fail-fast behavior, heartbeat cadence, timeouts, locks and CI topology are unchanged;
-9. no new production test-only API or generic logging/progress abstraction is introduced;
-10. focused independent proof is green after implementation;
-11. architect re-reviews the complete output boundary before closing `scripts/REVIEW.md`.
-
-## Verification boundary
-
-Focused test-author/implementation feedback:
+Coding/test-author focused feedback reported green:
 
 ```bash
 pnpm verify --only unit-tests --files \
   scripts/verify.ts \
   scripts/verify.test.ts
+
+pnpm verify --only type-check
+
+pnpm verify --only oxlint --files scripts/verify.ts
 ```
 
-Use:
-
-```bash
-pnpm verify --fix-only --files \
-  scripts/verify.ts \
-  scripts/verify.test.ts
-```
-
-only if the touched files need formatting/lint fixes. Run `pnpm verify --only type-check` only when useful for the changed TypeScript surface.
-
-Broad repository/release/browser verification remains architect-owned through exact-head CI.
-
-## Forbidden
-
-- Changing release-impact selection or `releaseRisk.ts`.
-- Special-casing `release-impact` in the progress formatter when runnable-count logic is sufficient.
-- Counting skipped checks in the denominator.
-- Suppressing the warning completion state to hide duplication.
-- Removing the final warning block instead of keeping one actionable owner.
-- Treating the overall `.verify/logs` directory pointer as the exact warning-check detail pointer.
-- Changing warning detection or making warnings fatal.
-- Exporting private orchestration solely for tests.
-- Adding a generic logger, event bus, reporter registry, second progress model, or new module.
-- Changing heartbeat cadence, timeout policy, locks, fail-fast behavior, command ordering, retry policy, CI workflows, benchmark work, or other closed verifier passes.
-- Editing architect-owned documentation, `REVIEW.md`, PR metadata, or GitHub lifecycle state from the coding/test-author contexts.
+Exact-head CI remains architect-owned and is not replaced by this focused evidence.
