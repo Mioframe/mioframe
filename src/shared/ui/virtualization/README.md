@@ -1,6 +1,6 @@
 # Virtual collection
 
-Status: **architecture, public API, implementation, and browser capability proof accepted**.
+Status: **architecture and public API accepted; PR #217 is adding direct browser proof for dynamic same-root `surfaceOffset` changes**.
 
 This README is the source of truth for the reusable library in `src/shared/ui/virtualization`.
 
@@ -116,7 +116,9 @@ const rows = useVirtualCollection(sourceRows, {
 });
 ```
 
-`item.offset`, `leadingSize`, and `trailingSize` remain collection-surface-relative. Consumers must not subtract TanStack scroll margin themselves.
+`surfaceOffset` is reactive. If the collection surface moves while the same physical root remains mounted—for example because content before the collection is inserted, removed, or changes size—the root/layout owner must update the supplied offset. `useVirtualCollection` forwards that value to TanStack as `scrollMargin`; public `item.offset`, `leadingSize`, and `trailingSize` remain collection-surface-relative.
+
+Consumers must not subtract TanStack scroll margin themselves, reset the engine measurement cache, or expose/call the virtualizer merely because the surface offset changed. TanStack owns the measurement layout and measured-size cache.
 
 ## Public API
 
@@ -179,7 +181,11 @@ Optional narrow override for work mounted around the visible range. It is not a 
 
 ### `surfaceOffset`
 
-Distance along the active axis from the physical scroll-root origin to the logical collection-surface origin. Public geometry stays surface-relative.
+Reactive distance along the active axis from the physical scroll-root origin to the logical collection-surface origin.
+
+The value may change during the lifetime of the same root. The consumer that owns the physical root/layout topology owns producing the current offset; shared virtualization owns forwarding it reactively; TanStack owns recalculating range/measurement positions from that input.
+
+A dynamic offset change is not a request to clear measured item sizes. Do not add a parallel cache-reset protocol or call TanStack measurement APIs from consumers.
 
 ### `items`
 
@@ -254,9 +260,9 @@ Product-level responsiveness must be measured in the real consumer; the shared c
 
 **Shared virtualization** owns reactive source-to-count/key/estimate mapping, axis configuration, explicit root/surface-offset/overscan forwarding, public item mapping, extents, and `vItem`.
 
-**Consumer** owns DOM/layout topology, spacer strategy, accessibility, sticky/floating surfaces, focus/edit/selection behavior, and presentation-specific sizing policy.
+**Consumer** owns DOM/layout topology, the current physical root-to-collection-surface offset, spacer strategy, accessibility, sticky/floating surfaces, focus/edit/selection behavior, and presentation-specific sizing policy.
 
-**TanStack** owns range calculation, geometry, ResizeObserver behavior, measurement cache, disconnected-element cleanup, scroll correction, and engine lifecycle.
+**TanStack** owns range calculation, geometry, `scrollMargin` measurement layout, `ResizeObserver` behavior, measurement cache, disconnected-element cleanup, scroll correction, and engine lifecycle.
 
 ## Browser proof
 
@@ -268,7 +274,9 @@ The colocated capability proof is:
 
 It covers bounded mounted work, item mapping, grow/shrink measurement, stable-key remapping, non-zero `surfaceOffset`, deep extents, valid `undefined` values, and remount behavior.
 
-The previously intermittent non-zero-`surfaceOffset` proof now reads deep public/DOM geometry in one browser-side snapshot and requires a self-consistent state stable across consecutive observations. The risk-specific `--repeat 10` diagnostic passed with no retries/flaky classification as part of the final 300/300 capability stability executions.
+PR #217 adds the missing risk-specific proof that a reactive `surfaceOffset` can change while the same physical root and collection remain mounted, and that top/deep ranges plus public surface-relative geometry stay correct afterward. Until that proof lands, the documented architecture/API remains accepted but this dynamic path is an active verification blocker.
+
+The previously intermittent non-zero-`surfaceOffset` proof reads deep public/DOM geometry in one browser-side snapshot and requires a self-consistent state stable across consecutive observations. The risk-specific `--repeat 10` diagnostic passed with no retries/flaky classification as part of the final 300/300 capability stability executions.
 
 Database-specific native-table proof remains owned by `src/entities/databaseData`.
 
@@ -278,14 +286,15 @@ Database-specific native-table proof remains owned by `src/entities/databaseData
 - shared rendering components added only for convenience;
 - functional/renderless VNode cloning when a directive is sufficient;
 - independent observers, caches, registries, or range math;
-- database/domain knowledge in shared virtualization;
+- consumer/domain knowledge in shared virtualization;
 - hidden full-collection measurement;
+- cache reset on `surfaceOffset` change without browser evidence that the current TanStack contract is insufficient;
 - abstraction justified only by hypothetical reuse.
 
 ## Readiness
 
 Architecture/public API: **accepted**.
 
-Implementation/browser capability proof: **passed**.
+Existing implementation/browser capability proof: **passed except for the newly required dynamic same-root `surfaceOffset` case**.
 
-Production Database consumer migration and profiling are **complete** in PR #217. Remaining merge work, if any, belongs to the Database consumer/review scope and must not reopen this shared abstraction without new evidence. See [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
+PR #217 must prove that case before applying its consumer ownership correction. If the shared proof passes, shared production code remains unchanged. If it fails, stop and revisit this boundary before adding consumer workarounds. See [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
