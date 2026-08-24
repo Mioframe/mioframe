@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **shared virtualization architecture accepted; Database table integration remains blocked by Chrome-only heterogeneous-content responsiveness and visual-boundary regressions**.
+Status: **shared virtualization architecture accepted; Database table integration remains blocked by unresolved Chromium value-path responsiveness and visual-boundary regressions**.
 
 This is the architecture source of truth for large Database rendering in PR #217.
 
@@ -10,7 +10,7 @@ Related current contracts:
 - active review findings: `src/entities/databaseData/REVIEW.md`;
 - raw product measurements: `docs/database-virtualization-production-results.md`;
 - completed sparse all-string diagnostic: `docs/database-virtualization-performance-attribution-handoff.md`, `docs/database-virtualization-performance-attribution-preflight.md`;
-- active heterogeneous attribution: `docs/database-virtualization-heterogeneous-attribution-handoff.md`, `docs/database-virtualization-heterogeneous-attribution-preflight.md`.
+- completed heterogeneous attribution: `docs/database-virtualization-heterogeneous-attribution-handoff.md`, `docs/database-virtualization-heterogeneous-attribution-preflight.md`.
 
 ## Goal
 
@@ -60,13 +60,13 @@ This adaptation belongs to `entities/databaseData` unless a separate shared-UI r
 
 Accepted:
 
-- all measured S0/G1 runs retain 12 mounted rows / 8 property headers / 96 expensive outer cells;
+- all measured S0/G1 runs retain bounded mounted rows / property headers / expensive outer cells;
 - G1 does not materialize the 9,000,000 logical row/property intersections;
 - deep logical row/property/value correctness passes.
 
 ### Canonical all-string control
 
-The verifier-managed current-head all-string diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` is fast:
+The verifier-managed all-string diagnostic on production-equivalent head `1c1a3789ef66cc950eba543566502aec8567f3ec` is fast:
 
 - S0 usable: 269.8 / 281.1 / 283.8 ms; median 281.1 ms;
 - G1 usable: 323.5 / 321.5 / 305.9 ms; median 321.5 ms;
@@ -76,48 +76,64 @@ The verifier-managed current-head all-string diagnostic on production-equivalent
 
 This is canonical verifier-owned evidence for the sparse all-string rectangular fixture.
 
-A previous non-verifier current-geometry run reported 1.6–2.5 s usable times and 291–429 ms Long Tasks. Because the canonical verifier run on the same production implementation does not reproduce that behavior, the earlier result is retained only as environment/protocol warning evidence, not as proof of a general runtime regression.
+A previous non-verifier current-geometry run reported 1.6–2.5 s usable times and 291–429 ms Long Tasks. Because the canonical verifier run on the same production implementation does not reproduce that behavior, the earlier result remains environment/protocol warning evidence rather than proof of a general runtime regression.
 
-### Real heterogeneous Chrome defect
+### Heterogeneous Chromium attribution
 
-Operator testing on the same laptop provides the relevant failing discriminator:
+The completed verifier-managed heterogeneous diagnostic reproduces the real performance class.
 
-- a real Database containing different property types still has a perceptible Short -> Full delay in Chrome;
-- scrolling that table in Chrome produces freezes/jank;
-- Firefox on the same laptop does not exhibit the same problem.
+Scalar-mix switch samples:
 
-The all-string fixture therefore does not represent the failing content shape.
+- 719.5 ms, no Long Tasks;
+- 385.6 ms, no Long Tasks;
+- 928.9 ms, no Long Tasks.
 
-`DatabasePropertyValueInline` dispatches Boolean, Number, String, Date, and Relation values to distinct render paths. Relation content is especially distinct because a relation value may compose a nested `DatabaseViewLayout`/virtualized Database inside an outer cell.
+Number-isolation switch samples:
+
+- 631.3 ms with 3 Long Tasks, maximum 241 ms, total 520 ms;
+- 635.5 ms with 3 Long Tasks, maximum 244 ms, total 523 ms.
+
+Vertical wheel scrolling:
+
+- scalar mix produced 168 ms and 183 ms Long Tasks in two of three samples;
+- Number isolation produced a 210 ms Long Task in one of two samples.
+
+Horizontal wheel scrolling produced no Long Tasks in the reported samples. Mounted outer work remained bounded and deep correctness passed.
+
+This establishes **Number isolation as a reproducible fixture path**, but not `databaseNumber` as the production root-cause owner.
+
+`NumberValueInline` and `StringValueInline` are both simple span/text renderers. Effective-value/property query infrastructure is also shared. The current diagnostic report does not establish that the String and Number probes used identical stored-value density and positions. Therefore property type, data density/shape, shared query/subscription work, and layout/measurement interaction remain unresolved discriminators.
+
+Operator Firefox testing on the same laptop remains useful comparison evidence, but the current app-E2E verifier has no Firefox project; adding one opportunistically is not part of this attribution.
 
 ## Root/surface geometry — candidate only
 
 The current `DatabaseDataTable` derives root-to-table surface offsets and refreshes root/table bounds from its own update lifecycle. This remains a plausible hot-path amplifier because the component also updates as virtual ranges change.
 
-However, the canonical fast all-string verifier run uses this same implementation. Current evidence therefore does **not** justify declaring the geometry lifecycle the root cause or immediately restoring historical numeric-offset ownership.
+However, the canonical fast all-string verifier run uses the same implementation. Current evidence therefore does **not** justify declaring the geometry lifecycle the root cause or restoring historical numeric-offset ownership.
 
 Required rule:
 
-> Do not change root/surface ownership until heterogeneous Chrome attribution shows that geometry refresh contributes materially to the failing path.
+> Do not change root/surface ownership until narrow attribution shows that geometry refresh contributes materially to the failing path.
 
-If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. Numeric surface offsets or composition-owned measurement may then be reconsidered from evidence; no generic geometry manager/provider or second virtual-item measurement system is justified now.
+If attribution later proves it significant, choose the smallest correction that keeps surface offsets truthful without coupling expensive layout reads to ordinary virtual-range updates. No generic geometry manager/provider or second virtual-item measurement system is justified now.
 
-## Heterogeneous attribution requirement
+## Next performance discriminator
 
-Before the next production performance correction, reproduce the failing class with deterministic heterogeneous fixtures through repository verifier surfaces.
+Before any production performance correction, distinguish the Number reproducer from fixture/value-density effects.
 
-The active attribution proof must:
+The next evidence must compare String and Number under an identical controlled shape:
 
-1. use verifier-managed desktop Chromium, because the current application-E2E verifier has no Firefox project;
-2. cover Short -> Full and representative vertical/horizontal wheel scrolling;
-3. retain the accepted sparse all-string result as the fast control;
-4. record mounted outer rows/headers/cells and main-thread responsiveness/Long Tasks;
-5. distinguish scalar String/Number/Date/Boolean composition from representative relation/nested-Database content;
-6. narrow the first reproducing render path before selecting a production correction owner.
+- same logical rows/columns;
+- same persisted-value density and exact populated cell positions;
+- same Short/Full views and filter shape;
+- same viewport and verifier-managed desktop Chromium environment;
+- same switch and vertical-wheel protocol;
+- same mounted-work and deep-correctness assertions.
 
-Firefox remains relevant operator comparison evidence, but adding a Firefox application-E2E project is not part of PR #217 attribution unless separately architected.
+If equal-density Number remains materially worse while String stays clean, attribute the next layer below the fixture type. If both behave similarly, treat data density/shared query/layout work rather than Number-specific rendering as the leading owner direction.
 
-Stop attribution once the smallest reproducible path and narrowest actual owner are established. Do not optimize worker/query/storage, shared virtualization, geometry, or Material components speculatively.
+Stop once the narrowest production owner can be selected. Do not broaden to the full matrix or implement speculative worker/query/storage, geometry, virtualization, or Material changes.
 
 ## Dynamic sizing and nested content
 
@@ -125,7 +141,7 @@ Rows and mounted property headers continue to be measured through the shared `vI
 
 Production wrapping, progressive widths, sticky header/action surfaces, nested relation roots, recursive relation previews, and inline editing remain required behavior.
 
-A bounded outer `12 / 8 / 96` count does not prove nested relation content is cheap: a mounted relation cell may compose additional nested Database UI. Heterogeneous performance proof must therefore describe the rendered content shape, not only the outer logical matrix.
+A bounded outer cell count does not prove nested relation content is cheap; relation cells may compose additional nested Database UI. Relation-specific profiling is required only if the current narrower scalar/value-path attribution fails to explain the defect.
 
 ## Accessibility
 
@@ -142,18 +158,20 @@ The visual border/radius contract requires separate bounded visual-regression pr
 ## Required scenarios before acceptance
 
 1. Sparse all-string S0/G1 remains fast and bounded.
-2. The minimal heterogeneous path that reproduces Chrome jank is identified and corrected.
-3. Short -> Full has no material perceptible freeze in the failing heterogeneous Chrome case.
-4. Sustained vertical and horizontal scrolling has no material repeated jank in that case.
-5. Mounted outer work remains bounded and deep correctness passes.
-6. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
-7. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
+2. The Number reproducer is attributed to the actual production layer and corrected without regressing the control.
+3. Short -> Full has no material perceptible freeze in the failing Chrome case.
+4. Sustained vertical scrolling has no material repeated jank in that case.
+5. Horizontal scrolling remains responsive.
+6. Mounted outer work remains bounded and deep correctness passes.
+7. Nested relation/dynamic sizing/sticky/editing/accessibility behavior remains correct.
+8. Table borders and corner radii match the established pre-virtualization appearance in initial and representative scrolled/end states.
 
 ## Forbidden
 
-- selecting geometry, TanStack, worker/query/storage, or Material as root cause before heterogeneous attribution;
+- treating `databaseNumber` as root cause solely because Number isolation reproduces;
+- selecting geometry, TanStack, worker/query/storage, or Material as root cause before the narrow discriminator identifies that owner;
 - replacing TanStack or adding a second range/size/cache engine without evidence;
-- paging/index/cache redesign before the actual failing render path is identified;
+- paging/index/cache redesign before the actual failing layer is identified;
 - generic geometry manager/provider or automatic root discovery;
 - changing shared `MDTable` merely to understand Database spacer conventions;
 - spacer DOM owning visible borders/radii;
@@ -170,14 +188,16 @@ Shared virtualization: **accepted**.
 
 Bounded mounted-DOM invariant: **accepted**.
 
-Sparse all-string current-head responsiveness: **accepted in verifier-owned Chrome evidence**.
+Sparse all-string responsiveness: **accepted in verifier-owned Chrome evidence**.
 
-Heterogeneous real-table responsiveness: **blocked; Chrome switch/scroll jank must be reproduced and attributed by render path**.
+Heterogeneous Chromium defect: **reproduced**.
 
-Root/surface geometry ownership: **not selected as correction yet; candidate only**.
+Number isolation: **accepted as reproducing fixture path; production owner unresolved**.
+
+Root/surface geometry ownership: **candidate only; not selected for correction**.
 
 Database table visual compatibility: **blocked; borders/corner radii regressed under spacer DOM**.
 
 Inline-edit/error/accessibility ownership: **accepted**.
 
-Merge readiness: **blocked; attribute and correct the heterogeneous Chrome path, restore table visual boundaries, then obtain focused switch/scroll/visual proof and green exact-head GitHub CI**.
+Merge readiness: **blocked; attribute the Number reproducer to the actual production owner, correct it, restore table visual boundaries, then obtain focused switch/scroll/visual proof and green exact-head GitHub CI**.
