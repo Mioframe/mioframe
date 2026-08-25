@@ -99,6 +99,7 @@ For Material-specific worker roles, source authority, resume/correction routing,
 ## Naming and workspace conventions
 
 - Use `pnpm` for package management and project commands.
+- Prefer TypeScript for new or task-touched Node/tooling scripts when the current runtime/toolchain can execute TypeScript directly. Use `.js`/`.mjs` only when a concrete loader/runtime requires JavaScript; verify that requirement instead of choosing JavaScript by default. Do not mass-convert untouched legacy scripts solely for extension consistency.
 - `pages` and `widgets` directories use PascalCase; other submodules use lower camel case.
 - Vue components and class-centric files use PascalCase; other TypeScript files use lower camel case or lowercase.
 - Feature modules use user-action names; entity modules use stable domain concepts.
