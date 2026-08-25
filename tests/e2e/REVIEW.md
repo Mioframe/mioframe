@@ -25,7 +25,15 @@ Evidence:
 Recovered failure evidence:
 
 ```json
-{"loadingIndicatorCount":0,"databaseTableCount":1,"tableAriaRowcounts":["3"],"rowBootstrapCount":0,"mountedRealTbodyRowCount":2,"renderedRowTexts":["alpha target 1787680495219-lov1e2","beta target 1787680495219-yv6uvq"],"selectedRelationViewChipTexts":["checkdefault view"]}
+{
+  "loadingIndicatorCount": 0,
+  "databaseTableCount": 1,
+  "tableAriaRowcounts": ["3"],
+  "rowBootstrapCount": 0,
+  "mountedRealTbodyRowCount": 2,
+  "renderedRowTexts": ["alpha target 1787680495219-lov1e2", "beta target 1787680495219-yv6uvq"],
+  "selectedRelationViewChipTexts": ["checkdefault view"]
+}
 ```
 
 The same attempt's original assertion reported `expected "alpha target 1787680495219-lov1e2" in row text order: ; expected >= 0, received -1`; whole-test retry then passed.
