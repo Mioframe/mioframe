@@ -7,9 +7,8 @@ This README is the source of truth for the reusable library in `src/shared/ui/vi
 Database-specific architecture and performance work remain separate:
 
 - [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md)
-- [`docs/database-virtualization-browser-proof.md`](../../../../docs/database-virtualization-browser-proof.md)
-- [`docs/database-virtualization-collection-api-result.md`](../../../../docs/database-virtualization-collection-api-result.md)
-- [`docs/database-virtualization-profiling.md`](../../../../docs/database-virtualization-profiling.md)
+- [`docs/database-virtualization-production-results.md`](../../../../docs/database-virtualization-production-results.md)
+- [`docs/database-chrome-jank-follow-up.md`](../../../../docs/database-chrome-jank-follow-up.md)
 
 ## Purpose
 

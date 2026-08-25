@@ -2,7 +2,7 @@
 
 Status: **PR #217 virtualization implementation, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. The remaining automatic merge gate is exact-head GitHub CI on the final repository head.**
 
-This is the architecture source of truth for PR #217. Older profiling, diagnostic, handoff, preflight, and result documents are historical where they conflict with this file.
+This is the architecture source of truth for PR #217. Temporary implementation handoff, preflight, diagnostic, and stage-result artifacts are intentionally not retained after closure. Retained measurement evidence and deferred performance scope are documented separately.
 
 ## PR #217 scope
 
@@ -103,7 +103,7 @@ The failure was therefore owned by the E2E proof boundary, not by relation persi
 
 The temporary relation-readiness diagnostic was removed. Focused E2E and the coding-agent cumulative `pnpm verify --base origin/develop` gate both passed with no retry/flaky classification after the correction.
 
-Historical `database-virtualization-relation-readiness-*` documents record completed diagnostic/correction passes and are not active contracts.
+Earlier relation-readiness diagnostic passes are historical evidence only and are not active contracts.
 
 ## Relation local-root geometry — preserved
 
@@ -113,7 +113,7 @@ The accepted topology keeps `0/0` truthful whenever the relation table is visibl
 
 ## Sticky action/header stacking — accepted
 
-`DatabaseDataTable` body action cells use local `z-index: 0`, below shared sticky `thead` (`z-index: 1`), while the header action cell remains locally elevated.
+`DatabaseDataTable` body action cells use local `z-index: 0`, below shared sticky `thead` (`z-index: 1`), while the header action intersection remains locally elevated.
 
 The sticky native-table application E2E performs `document.elementFromPoint()` hit-testing after simultaneous vertical + horizontal scrolling and proves body-right, top-right header/action intersection, and ordinary header-band ownership.
 

@@ -7,9 +7,8 @@ const storybookStaticDir = toolingConfig.storybook.staticDir;
 const storybookURL = `http://${host}:${port}`;
 const viteBin = './node_modules/.bin/vite';
 
-// Narrow Firefox capability gate: `docs/database-virtualization-collection-api-preflight.md`
-// requires Firefox proof only for the database native-table capability spec (Firefox dynamic
-// table-row measurement is the confirmed risk), not the whole Storybook behavior suite.
+// Firefox is required only for the database native-table virtualization capability because dynamic
+// table-row measurement is the confirmed engine-specific risk.
 const DATABASE_VIRTUALIZATION_CAPABILITY_SPECS = [
   'src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts',
 ];
