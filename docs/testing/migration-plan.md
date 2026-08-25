@@ -26,13 +26,13 @@ The current repository already provides substantial verification infrastructure 
 - `scripts/lib/changedPaths.ts` preserves added, modified, removed, and both identities of renamed/moved paths.
 - `scripts/verify.ts` already owns command planning/execution, command locks, Playwright container bounds, result/log handling, and fail-closed planner states.
 - `pnpm verify`, `--files`, `--full`, status/resume, and fix support already exist.
-- Public `--only` now exposes exactly the canonical verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`. Low-level leaf labels remain private verifier identifiers for execution, logs, weights, locks, and diagnostics.
+- Public `--only` exposes exactly the canonical verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`. Low-level leaf labels remain private verifier identifiers for execution, logs, weights, locks, and diagnostics.
 - `pnpm verify:release` still aliases `pnpm verify --full` as transitional compatibility; final alias removal remains a later pass.
 
 ### Static
 
 - format, Oxlint, ESLint, type-check, instruction compatibility, Storybook build, build/release configuration checks, and related deterministic operations remain separate internal labels/checks composed under the public `static` type.
-- removed files are already projected away from direct formatter/linter child-command inputs where required.
+- removed files are projected away from direct formatter/linter child-command inputs where required.
 - Storybook buildability is a static proof; GitHub duplicate-build avoidance is an internal execution optimization rather than a public fallback flag.
 
 ### Unit
@@ -44,32 +44,37 @@ The current repository already provides substantial verification infrastructure 
 ### Storybook behavior
 
 - Storybook stories are colocated under `src/**/*.stories.*`.
-- isolated UI browser proof currently uses the legacy `*.browser.spec.ts` suffix while the public verification type is already `behavior`.
-- mixed discovery currently executes owner-local `src/**/*.browser.spec.ts` plus justified central `tests/e2e/storybook/**/*.spec.ts` cross-owner/infrastructure proof.
-- current owner-local behavior selection is filesystem-derived for migrated owners.
-- existing central Storybook behavior mappings remain where current cross-owner/infrastructure proof still uses them.
+- surviving ordinary isolated UI browser proof now uses the target `*.behavior.spec.ts` suffix at truthful owners under `src/**`; the router-harness infrastructure proof is colocated under `.storybook/router/`.
+- legacy `src/**/*.browser.spec.ts` discovery and ordinary central `tests/e2e/storybook/*.spec.ts` assertion ownership have been removed after their inventories were migrated.
+- `tests/e2e/storybook/storybook.testUtils.ts` remains execution support only; it is not an assertion owner or scenario registry.
+- owner-local behavior selection is filesystem-derived from target suffix and placement, with full-lane fallback for shared Storybook/runtime infrastructure.
 
-Target difference: ordinary behavior proof becomes `*.behavior.spec.ts`. Central product-like dumping grounds are not part of the target; any surviving cross-owner Storybook infrastructure proof must remain explicitly justified and be classified as behavior, not E2E merely because Playwright runs it.
+Target difference for behavior suffix/ordinary ownership: none. Later passes may remove other unrelated compatibility, but must not restore central scenario mapping or the legacy suffix.
 
 ### Visual
 
-- `*.visual.spec.ts` is already the target suffix and `visual` is the public verification type.
-- mixed discovery currently executes owner-local `src/**/*.visual.spec.ts` for migrated owners plus legacy central `tests/e2e/visual/**/*.spec.ts` for remaining owners.
-- owner-local baseline resolution is already filesystem-derived for migrated owners.
-- broad visual fallback remains for unresolved central ownership and visual infrastructure.
+- `*.visual.spec.ts` is the target suffix and `visual` is the public verification type.
+- surviving ordinary visual assertions and their screenshot baselines are owner-local under `src/**`.
+- mixed central visual suites were split so computed-style/geometry/focus behavior moved to behavior proof while screenshot assertions remained visual proof.
+- ordinary central `tests/e2e/visual/**/*.spec.ts` discovery/fallback has been removed. `tests/e2e/visual/storybook.ts` remains a shared deterministic Storybook-opening/stabilization helper only.
+- owner-local baseline resolution is filesystem-derived; unresolved broad rendering impact still widens safely to the full visual type.
 
-Target difference: all ordinary visual owner proof eventually becomes owner-local; the global unrelated visual directory is removed after all surviving proof has truthful local ownership.
+Target difference for ordinary visual ownership: none.
 
 ### Browser integration
 
-- `browser-integration` is now a public verification type and Pass A classified the split release/runtime leaves by this ownership.
-- ordinary owner-local browser/runtime proof has not yet migrated to the target `*.browser-integration.spec.ts` suffix/location; current release/runtime infrastructure remains transitional and its release-only leaves are still composed by literal full mode rather than a new affected release planner.
+- `browser-integration` is a public verification type and the managed-update/artifact runtime corpus now uses target `*.browser-integration.spec.ts` ownership under `src/shared/service/appUpdate/`.
+- the moved corpus remains executed through `playwright.release.config.ts` and `scripts/e2eReleaseContainer.mjs` because those existing execution boundaries preserve built-artifact, fresh-container, and cross-engine semantics; this is execution infrastructure, not release ownership.
+- direct moved browser-integration specs and `src/shared/service/appUpdate/**` production changes participate in ordinary type-local affected planning through `scripts/lib/browserIntegrationRisk.ts`, reusing the existing `artifact` and `managed-updates-browser-integration` leaves.
+- the managed-update browser-integration leaf preserves three ordered fresh-container groups; ordinary runtime groups are Chromium, while the narrow lifecycle smoke remains Firefox/WebKit.
+- architect review of Pass C is currently blocked by `src/shared/service/appUpdate/REVIEW.md` B1 because the required WebKit cross-engine proof was reported flaky. The target ownership/planning is executable, but Pass C is not architect-accepted until that proof is deterministic.
 
-Target difference: isolated browser/runtime contracts move to `*.browser-integration.spec.ts` next to the concrete runtime owner and participate in ordinary type-local affected planning.
+Target difference for browser-integration suffix/owner placement: none. The retained release-named runner/config/container files are internal execution mechanisms and may remain while they are required for the runtime contract.
 
 ### Application E2E
 
 - application E2E specs currently live mainly as root `tests/e2e/*.spec.ts` files while `e2e` is already the public verification type.
+- three transitional release E2E specs remain under `tests/e2e/release/`: `firstUserAndReturningUserSmoke.spec.ts`, `managedReleaseDataCompatibility.spec.ts`, and `managedUpdatesActivationUi.spec.ts`.
 - `scripts/lib/e2eRisk.ts` owns the manual `E2E_SCENARIO_SCOPES` source-prefix -> spec registry.
 - unknown relevant application source and broad E2E infrastructure already fail closed to full application E2E.
 - `scripts/lib/e2eProjectApplicability.ts` owns persistent `desktop | mobile | both` project applicability for current root application specs.
@@ -85,7 +90,7 @@ Target difference:
 ### Mutation
 
 - Stryker and verifier-managed mutation execution already exist under the public `mutation` verification type.
-- literal `pnpm verify --full` now executes the complete inventory currently configured by `stryker.config.mjs` without an affected `-m` override.
+- literal `pnpm verify --full` executes the complete inventory currently configured by `stryker.config.mjs` without an affected `-m` override.
 - focused/default mutation still uses the existing location/adjacency-derived affected scope; persistent explicit target ownership is not yet the final model.
 
 Target difference: mutation uses one validated explicit project-owned target inventory; default runs affected registered targets and `--full` runs every registered target.
@@ -104,17 +109,17 @@ Until implementation completes, distinguish **current executable compatibility**
 | Concern | Current executable state | Target |
 | --- | --- | --- |
 | `--only` | exactly `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e` | same canonical public types |
-| behavior suffix | `*.browser.spec.ts` | `*.behavior.spec.ts` |
-| visual suffix | `*.visual.spec.ts` | `*.visual.spec.ts` |
-| browser integration | public type exists; release/runtime leaves remain transitional and ordinary owner-local target suffix is not yet migrated | `*.browser-integration.spec.ts` next to runtime owner |
-| E2E suffix/location | root/legacy `tests/e2e/*.spec.ts` | `tests/e2e/{pages,widgets}/<Owner>/*.e2e.spec.ts` |
+| behavior suffix | target `*.behavior.spec.ts`; legacy `*.browser.spec.ts` discovery removed | `*.behavior.spec.ts` |
+| visual suffix | target owner-local `*.visual.spec.ts`; ordinary central visual spec discovery removed | `*.visual.spec.ts` |
+| browser integration | target `*.browser-integration.spec.ts` is owner-local under `src/shared/service/appUpdate/` and participates in type-local planning; managed-update proof retains release runner/container infrastructure for execution semantics | `*.browser-integration.spec.ts` next to runtime owner |
+| E2E suffix/location | root/legacy `tests/e2e/*.spec.ts` plus three transitional `tests/e2e/release/*.spec.ts` | `tests/e2e/{pages,widgets}/<Owner>/*.e2e.spec.ts` |
 | E2E impact | manual `E2E_SCENARIO_SCOPES` | reverse dependency graph -> product owner |
 | unit impact | current planner behavior | Vitest native related/affected + safe fallback |
-| release | private release-oriented leaf labels and `verify:release` alias remain transitional | no public release type; checks classified by proof type and `pnpm verify --full` is canonical |
+| release | private release-oriented leaf labels, runner/config names, and `verify:release` alias remain transitional execution compatibility | no public release type; checks classified by proof type and `pnpm verify --full` is canonical |
 | mutation in full | complete current Stryker-configured inventory | complete validated explicit mutation target inventory |
 | `--full` | literal complete current inventories with no narrowing; mutation uses current Stryker inventory and persistent performance inventory is currently empty | literal all types/all target specs/all registered mutation and performance targets |
 
-Agents implementing the redesign must not treat remaining transitional suffixes, mappings, or target ownership gaps as durable architecture.
+Agents implementing the redesign must not treat remaining transitional suffixes, mappings, aliases, or execution-file names as durable architecture.
 
 ## Migration capability phases
 
@@ -122,7 +127,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **Pass A and Pass B are architect-accepted. The current implementation boundary is Pass C.**
+Status on `architecture/verify-redesign`: **Pass A and Pass B are architect-accepted. Pass C implementation has landed, but architect review is blocked by `src/shared/service/appUpdate/REVIEW.md` B1 (required WebKit cross-engine lifecycle proof is flaky). The current implementation boundary remains Pass C correction; Pass D must not start until Pass C is re-reviewed and accepted.**
 
 Required:
 
@@ -131,7 +136,7 @@ Required:
 - verification-facing skills and repository rules use verification types rather than durable low-level labels;
 - older verifier design documents are treated as legacy implementation records, not competing target architecture.
 
-No additional verifier runtime architecture change is required in this phase.
+No additional verifier runtime architecture change is required in this phase beyond closing the active Pass C correction.
 
 ### Phase 1 — type-level CLI and classification shell
 
@@ -152,22 +157,25 @@ Compatibility:
 
 - internal labels remain valid private implementation identifiers for logs, weights, locks, timeouts, command entries, and diagnostics;
 - removed public low-level label parsing must not be restored;
-- current `verify:release`, legacy suffixes, and ownership mappings remain only until their later pass consumers are migrated.
+- current `verify:release` and remaining ownership compatibility stay only until their later pass consumers are migrated.
 
 ### Phase 2 — spec taxonomy and local owner migration
 
+Status: **implementation landed; architect acceptance blocked only by the active WebKit proof finding.**
+
 Make independent test types machine-classifiable by suffix and placement.
 
-Required:
+Implemented in Pass C:
 
-- behavior discovery supports `*.behavior.spec.ts` before existing `*.browser.spec.ts` files are renamed;
-- visual keeps `*.visual.spec.ts` and completes owner-local migration for surviving ordinary visual proof;
-- browser-integration discovery/configuration supports `*.browser-integration.spec.ts` next to runtime owners;
-- persistent performance discovery supports `*.performance.spec.ts` only where a durable budget exists;
+- ordinary behavior uses owner-local `*.behavior.spec.ts`; legacy `*.browser.spec.ts` discovery is removed;
+- visual uses owner-local `*.visual.spec.ts` and colocated baselines; ordinary central visual assertion discovery is removed;
+- managed-update/artifact browser-runtime specs use owner-local `*.browser-integration.spec.ts` under `src/shared/service/appUpdate/`;
 - application/runtime TypeScript and Vitest scopes exclude non-unit Playwright/performance spec suffixes correctly;
-- legacy behavior/visual locations remain executable until each surviving spec is migrated or deliberately retained as justified infrastructure proof.
+- direct/add/remove/move target specs participate in the relevant type-local planning/fail-closed behavior.
 
-Remove old suffix/location compatibility only after repository-wide discovery and ownership validation prove no required consumer remains.
+Still required before Phase 2/Pass C acceptance:
+
+- close `src/shared/service/appUpdate/REVIEW.md` B1 by correcting the concrete WebKit flake root cause and obtaining clean deterministic cross-engine proof without weakening the preserved Firefox/WebKit contract.
 
 ### Phase 3 — E2E structural ownership and reverse graph
 
@@ -207,10 +215,15 @@ Required:
 
 After all target mechanisms are executable and remaining consumers are migrated:
 
-- keep the Pass B public type-only `--only` contract; do not reintroduce removed low-level public labels;
+Already removed by Pass B/C and must not be restored:
+
+- public low-level `--only` labels;
+- legacy `*.browser.spec.ts` discovery;
+- obsolete central ordinary behavior/visual assertion discovery and mapping.
+
+Remaining later cleanup:
+
 - remove `pnpm verify:release` when no external repository consumer still requires the alias;
-- remove legacy `*.browser.spec.ts` discovery;
-- remove obsolete central ordinary behavior/visual discovery;
 - remove legacy root E2E naming/discovery;
 - remove `E2E_SCENARIO_SCOPES` and related registry validation;
 - remove transitional docs/comments that describe migrated compatibility mechanisms as current.
@@ -225,12 +238,13 @@ Current Storybook infrastructure already provides deterministic stories, Control
 
 For test naming/placement:
 
-- current executable behavior owners may still use `*.browser.spec.ts` until preflight Pass C removes the legacy naming/discovery path;
-- target behavior suffix is `*.behavior.spec.ts`;
-- visual target remains `*.visual.spec.ts`;
+- ordinary executable behavior owners use target `*.behavior.spec.ts` beside their truthful owner; `.storybook/router/routerHarness.behavior.spec.ts` is the justified Storybook-infrastructure owner;
+- legacy `*.browser.spec.ts` discovery and central Storybook assertion specs are removed;
+- `tests/e2e/storybook/storybook.testUtils.ts` remains a shared helper only;
+- visual proof uses owner-local `*.visual.spec.ts` and colocated baselines;
 - complete product scenarios stay E2E rather than Storybook fixtures.
 
-Older Storybook examples using the legacy suffix describe current/historical executable state, not a second target naming model.
+Older Storybook examples using the legacy suffix describe historical executable state, not a second current naming model.
 
 ## Verification during the migration itself
 
@@ -238,12 +252,14 @@ Each risky pass requires focused proof of the mechanism it changes. Follow the p
 
 - **Pass A:** parser/internal type composition, target suffix discovery/exclusions, old+new compatibility, and mixed-release split equivalence;
 - **Pass B:** canonical public type parsing, invalid combinations, type isolation/prerequisites, literal full semantics, and stale invocation handling;
-- **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, and add/remove/move fail-closed behavior;
+- **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, add/remove/move fail-closed behavior, and clean preservation of the managed-update browser matrix; the current correction specifically requires deterministic WebKit cross-engine lifecycle proof;
 - **Pass D:** E2E owner parsing, dependency traversal, fallback, inventory validation, direct/moved/removed spec behavior, additional-owner validation, and project applicability preservation;
 - **Pass E:** Vitest-native related fallback, explicit mutation target validation/selection/full semantics, and performance discovery only for real durable budgets;
 - **Pass F:** workflow/public-command inventory, release gate migration, and proof that removed compatibility mechanisms have no remaining consumers.
 
 Do not use a green broad run as proof that ownership or fallback logic is correct. Resolver unit tests must prove the risk-specific cases.
+
+Known flaky behavior is failed proof. A retry that happens to pass does not close a migration acceptance requirement unless the truthful root cause has been corrected and the owning proof is deterministic.
 
 GitHub CI on the exact PR head remains the final automatic repository gate.
 
