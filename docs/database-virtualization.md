@@ -27,6 +27,12 @@ Explicitly deferred to later PRs:
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
 
+## Active diagnosis contract
+
+- `docs/database-virtualization-relation-readiness-discriminator-handoff.md`
+- `docs/database-virtualization-relation-readiness-discriminator-preflight.md`
+- `src/features/relationValueEdit/REVIEW.md`
+
 ## Accepted virtualization architecture
 
 - `@tanstack/vue-virtual` is the sole virtual-item range/measurement/cache/scroll-correction engine.
@@ -95,41 +101,13 @@ The first Chromium attempt failed before the explicit relation-view switch. The 
 
 The same scenario had already failed during coding-agent branch verification. It is therefore a real current proof blocker and cannot be dismissed as unrelated CI noise.
 
-### Relevant PR-owned changes
+Current evidence does not distinguish whether the empty state is caused by:
 
-`RelationValueFieldData` currently renders:
+1. properties loading keeping `DatabaseDataTable` unmounted;
+2. the table being mounted while logical rows are still pending;
+3. logical rows being present while the nested virtualizer has no mounted range.
 
-- the loading progress indicator while `isLoading && !propertiesIdList`;
-- `DatabaseDataTable` only in the `v-else` branch.
-
-`DatabaseDataTable` owns `useDatabaseData()` internally. Therefore the `v-else` correction changes query startup: the row query cannot start until the properties-loading branch releases and the table mounts.
-
-`DatabaseDataTable` also has a transient row bootstrap when logical items exist but TanStack exposes zero mounted virtual rows.
-
-The observed empty relation-row set is compatible with two different mechanisms:
-
-1. delayed table mount delays the row query;
-2. logical rows are already available, but the nested relation virtualizer remains in bootstrap/no-mounted-range state.
-
-No production correction is selected until these are distinguished.
-
-### Required discriminator
-
-At the initial default-view checkpoint capture enough observable/temporary diagnostic state to distinguish the two mechanisms:
-
-- relation properties-loading state;
-- whether `DatabaseDataTable` is mounted;
-- table `aria-rowcount`;
-- mounted non-bootstrap row count;
-- row-bootstrap presence;
-- logical item count already available at the table boundary;
-- selected/effective relation view.
-
-If the table/data query has not started because of loading composition, revisit the feature-owned loading composition while preserving truthful zero surface offsets. Do not introduce a duplicate preload query.
-
-If logical items are already present while mounted rows remain absent, investigate the nested relation virtualizer/root/bootstrap lifecycle. Do not respond with timeout inflation, sleeps, retries, forced remounts, cache resets, or `virtualizer.measure()`.
-
-The test helper itself is not the first correction target: it already waits for the observable row-order contract, and a retry-pass is explicitly invalid proof.
+Run the active readiness discriminator before choosing a production correction.
 
 ## Relation local-root geometry — preserved
 
@@ -147,13 +125,13 @@ No shared `MDTable` correction was required.
 
 ## Verification workflow
 
-For the relation-readiness blocker, use focused verifier-managed E2E diagnostics and then the normal cumulative branch gate:
+For the readiness discriminator use verifier-managed focused E2E only. If the normal profile does not reproduce, one focused `--profile github-actions` run is allowed. The discriminator is diagnostic-only; if all temporary edits are removed and no tracked implementation result remains, no branch handoff gate is required.
+
+After a later production correction, the normal final gate remains:
 
 `pnpm verify --base origin/develop`
 
-A branch-gate retry/flaky classification is not accepted. GitHub exact-head CI remains the authoritative automatic merge gate.
-
-Do not increase test timeout or add sleeps/recovery.
+Do not increase timeout or accept retry/flaky classification.
 
 ## Residual Chromium jank
 
@@ -167,21 +145,20 @@ PR #217 may merge only when:
 
 1. relation-table initial readiness is deterministic and its owning E2E passes without flaky/retry classification;
 2. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
-3. coding-agent `pnpm verify --base origin/develop` passes cleanly after the readiness correction;
+3. coding-agent `pnpm verify --base origin/develop` passes cleanly after the eventual readiness correction;
 4. exact-head GitHub CI is green without retry/flaky classification;
 5. final resulting-PR review finds no blocker.
 
 ## Forbidden before merge
 
 - expanding #217 into unrelated residual performance optimization;
-- changing the relation E2E timeout or helper merely to wait longer;
-- sleeps or retry/recovery loops;
-- restoring a normal-flow spinner before a visible relation table while keeping fixed `verticalSurfaceOffset=0`;
-- duplicate feature-level data preloading solely to start the table query earlier;
-- speculative shared virtualization/TanStack changes before the discriminator;
-- unconditional `virtualizer.measure()` or cache reset;
-- exposed TanStack virtualizer instances;
-- second geometry/range/measurement state;
+- increasing E2E timeout, `test.slow()`, sleeps, or retry recovery;
+- weakening the relation-view E2E helper;
+- duplicate preload/query paths;
 - restoring entity-owned ancestor/sibling geometry discovery;
+- shared virtualization/TanStack changes without new contrary evidence;
+- unconditional `virtualizer.measure()` or cache reset;
+- exposing TanStack virtualizer instances;
+- second geometry/range/measurement state;
 - Number/value/query or worker/query/storage performance optimization;
 - broad shared-UI redesign unrelated to confirmed virtualization blockers.
