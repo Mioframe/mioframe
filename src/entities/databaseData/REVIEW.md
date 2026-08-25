@@ -1,6 +1,12 @@
 # Review
 
-Verdict: virtualization implementation and proportional moving-surface proof are accepted; merge remains blocked by a known relation-table readiness flake, operator visual reinspection, exact-head CI, and final resulting-PR review.
+Verdict: virtualization implementation and proportional moving-surface proof are accepted; merge remains blocked by a known relation-table readiness flake, operator visual reinspection, exact-head CI after correction, and final resulting-PR review.
+
+Active diagnosis contract:
+
+- `docs/database-virtualization-relation-readiness-ci-diagnostic-handoff.md`
+- `docs/database-virtualization-relation-readiness-ci-diagnostic-preflight.md`
+- `src/features/relationValueEdit/REVIEW.md`
 
 ## Resolved
 
@@ -10,19 +16,15 @@ Verdict: virtualization implementation and proportional moving-surface proof are
 - relation local-root explicit `0/0` geometry invariant;
 - sticky action/header stacking and real-browser hit-testing.
 
-Exact-head run #4348 confirms the corrected moving-surface scenario passes on desktop Chromium and Mobile Chrome.
-
 ## Active blocker — relation table readiness
 
 `tests/e2e/databaseViewsAndQueryFlows.spec.ts:269` has a known Chromium flake. A failing attempt observed zero initial relation rows before any explicit view switch and its whole-test retry passed. The same scenario also failed during local branch verification.
 
-The first readiness discriminator did not reproduce the failure. Its healthy local checkpoint showed table mounted, `aria-rowcount=3`, no bootstrap row, two mounted real rows, and default view selected. The authorized local `github-actions` profile failed before Playwright startup and yielded no browser evidence.
+The first local readiness discriminator was inconclusive: healthy local state was table mounted with `aria-rowcount=3`, two real rows and no bootstrap; local `github-actions` profile failed before Playwright startup. Exact-head #4357 later passed without a production correction, confirming intermittency rather than resolution.
 
-Exact-head run #4357 subsequently passed without a production correction. That green run is useful evidence that the failure is intermittent, but it cannot close a known flaky contract.
+Current evidence still does not identify whether the failing empty state is pre-table/data-query readiness or a logical-row/virtual-range readiness gap.
 
-Current evidence still does not distinguish whether a failing empty state occurs before table/data-query readiness or after logical items arrive but before a mounted virtual range exists.
-
-The next diagnostic must surface the readiness snapshot in exact-head CI when the owned assertion fails. Do not select a production correction from the healthy local state alone.
+The active change is test-only CI-visible failure diagnostics on the existing initial default-view assertion. No production correction is authorized until failing-state evidence is captured.
 
 The relation `verticalSurfaceOffset=0` / `horizontalSurfaceOffset=0` invariant remains required whenever the table participates in layout.
 
@@ -32,8 +34,8 @@ No timeout/retry/sleep workaround, helper weakening, duplicate row preload, forc
 
 ## Remaining gates
 
-1. identify and correct the relation readiness flake from failing-state evidence;
-2. clean `pnpm verify --base origin/develop` after the eventual correction;
+1. capture failing relation readiness state and correct its root cause;
+2. clean `pnpm verify --base origin/develop` after the correction;
 3. operator visual reinspection;
-4. exact-head CI green without flaky classification after the correction;
+4. exact-head CI green without flaky classification after correction;
 5. final resulting-PR review.
