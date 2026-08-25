@@ -1,8 +1,9 @@
 # Verify redesign — Pass D implementation contract
 
-- **Status:** Ready for implementation
+- **Status:** Implementation landed; architect review blocked pending `verify-redesign-pass-d-correction.md`
 - **Scope:** Pass D only — structural application E2E ownership, project applicability, exceptional additional-owner metadata, reverse dependency selection, and removal of the manual E2E source registry
 - **Prerequisite:** Pass C architect-accepted
+- **Active review:** `scripts/REVIEW.md`
 
 ## Goal
 
