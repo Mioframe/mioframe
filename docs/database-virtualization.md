@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **virtualization implementation and proportional moving-surface proof correction accepted; PR #217 remains pending exact-head CI, operator visual reinspection, and final resulting-PR review**.
+Status: **virtualization implementation and proportional moving-surface proof correction accepted; PR #217 is blocked by relation-table readiness flakiness, operator visual reinspection, exact-head CI, and final resulting-PR review**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -26,14 +26,6 @@ Explicitly deferred to later PRs:
 - other causes of Short -> Full or scrolling stalls that are not caused by virtualization correctness/integration.
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
-
-## Current correction record
-
-- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`;
-- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`;
-- `src/entities/databaseData/REVIEW.md`.
-
-The production completion pass is complete. The moving-surface proof correction is implemented and now awaits exact-head CI.
 
 ## Accepted virtualization architecture
 
@@ -61,7 +53,7 @@ A non-empty logical collection with no mounted virtual items may render only tra
 
 Database body action cells remain sticky/right below the shared sticky-header plane; the header action intersection remains locally elevated inside the header plane.
 
-`RelationValueFieldData` renders its loading indicator and `DatabaseDataTable` mutually exclusively, so explicit local `0/0` offsets are truthful whenever the table is mounted.
+Relation local-root geometry remains explicit: `verticalSurfaceOffset=0` and `horizontalSurfaceOffset=0` must be truthful whenever the relation table participates in layout.
 
 ## Shared deep-state surfaceOffset contract — accepted
 
@@ -85,52 +77,65 @@ The completion pass compared widget-supplied surface offsets with current DOM-de
 
 Both deep phases reached logical row `46` during the diagnostic run. Temporary instrumentation was removed.
 
-Together with the accepted shared deep-state proof, current evidence does not justify another production geometry/cache/lifecycle correction. Do not add timers, extra observers, remounts, cache resets, or shared changes without new evidence from a proportional product proof.
+Together with the accepted shared deep-state proof, current evidence does not justify another production geometry/cache/lifecycle correction.
 
-## Moving-surface product proof — corrected
+## Moving-surface product proof — accepted
 
-Exact-head GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only application E2E. The old moving-surface scenario used the real five-row Weekly Plan starter example plus 40 sequential Add Item dialog flows, and desktop Chromium exhausted the 30-second test budget at different phases across initial attempt and retries. Mobile Chrome passed.
+The previously over-budget moving-surface E2E now uses a compact deterministic viewport and 16 additional real rows while preserving the real success-card lifecycle, bounded mounted ranges, physical surface movement, and both logical-tail checks.
 
-The correction is test-only. `tests/e2e/databaseVirtualizationFlows.spec.ts` now uses:
+Exact-head GitHub Actions run #4348 on `cf2d9c246c324193bf0398327a1268edfad75426` confirms that scenario passes on both desktop Chromium and Mobile Chrome. The moving-surface finding remains closed.
 
-- desktop viewport `640 x 360`;
-- Mobile Chrome project width `393` with height `360`;
-- five real starter rows;
-- exactly 16 additional Task rows through the existing public Add Item flow;
-- 21 logical data rows, exposed as `aria-rowcount=22` including the header.
+## Active blocker — relation table initial readiness
 
-The corrected proof preserves:
+Exact-head run #4348 failed only application E2E with one Playwright flaky result:
 
-- real starter success card before the table;
-- non-zero initial vertical/horizontal surface offsets;
-- bounded initial top range beginning at logical row index `2`;
-- first deep logical tail `22/22` with bounded mounted work;
-- real `Got it` dismissal;
-- decreased physical vertical surface offset after dismissal;
-- bounded moved top range beginning at logical row index `2`;
-- second deep logical tail `22/22` with bounded mounted work.
+`tests/e2e/databaseViewsAndQueryFlows.spec.ts:269` -> `uses default relation view inline and switches to a selected relation view`.
 
-No production code changed.
+The first Chromium attempt failed before the explicit relation-view switch. The initial default-view assertion observed no mounted relation rows (`joined === ""`). The whole-test retry passed, so the repository correctly rejected the run as flaky.
 
-The coding agent reports the focused moving-surface proof clean in multiple independent executions. Its branch-diff gate later stopped on a different `databaseViewsAndQueryFlows.spec.ts` relation-view flake rather than this corrected scenario. Under repository verification rules an unrelated or differently owned branch-gate failure is reported rather than patched inside this proof correction.
+The same scenario had already failed during coding-agent branch verification. It is therefore a real current proof blocker and cannot be dismissed as unrelated CI noise.
 
-Any exact-head retry/flaky classification of the moving-surface scenario itself reopens this finding.
+### Relevant PR-owned changes
 
-## Verification correction
+`RelationValueFieldData` currently renders:
 
-The architect-authored proof handoff originally required:
+- the loading progress indicator while `isLoading && !propertiesIdList`;
+- `DatabaseDataTable` only in the `v-else` branch.
 
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
+`DatabaseDataTable` owns `useDatabaseData()` internally. Therefore the `v-else` correction changes query startup: the row query cannot start until the properties-loading branch releases and the table mounts.
 
-That requirement was invalid. Current `.agents/skills/verification/SKILL.md` defines `--repeat` as a bounded Storybook-behavior-only diagnostic. E2E does not support it.
+`DatabaseDataTable` also has a transient row bootstrap when logical items exist but TanStack exposes zero mounted virtual rows.
 
-The supported verification contract is:
+The observed empty relation-row set is compatible with two different mechanisms:
 
-- focused E2E: `pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`;
-- required coding-agent branch gate: `pnpm verify --base origin/develop`, with stop/report if a failure is unrelated or requires another owner;
-- exact-head GitHub CI as the authoritative automatic merge gate.
+1. delayed table mount delays the row query;
+2. logical rows are already available, but the nested relation virtualizer remains in bootstrap/no-mounted-range state.
 
-Do not increase timeout or accept retry/flaky classification.
+No production correction is selected until these are distinguished.
+
+### Required discriminator
+
+At the initial default-view checkpoint capture enough observable/temporary diagnostic state to distinguish the two mechanisms:
+
+- relation properties-loading state;
+- whether `DatabaseDataTable` is mounted;
+- table `aria-rowcount`;
+- mounted non-bootstrap row count;
+- row-bootstrap presence;
+- logical item count already available at the table boundary;
+- selected/effective relation view.
+
+If the table/data query has not started because of loading composition, revisit the feature-owned loading composition while preserving truthful zero surface offsets. Do not introduce a duplicate preload query.
+
+If logical items are already present while mounted rows remain absent, investigate the nested relation virtualizer/root/bootstrap lifecycle. Do not respond with timeout inflation, sleeps, retries, forced remounts, cache resets, or `virtualizer.measure()`.
+
+The test helper itself is not the first correction target: it already waits for the observable row-order contract, and a retry-pass is explicitly invalid proof.
+
+## Relation local-root geometry — preserved
+
+The previous `v-else` correction solved a real geometry issue: a normal-flow spinner preceding a mounted table makes fixed vertical surface offset `0` false.
+
+Any readiness correction must keep `0/0` truthful whenever the relation table is visible/participates in layout. Do not restore the old spinner-before-table normal-flow topology.
 
 ## Sticky action/header stacking — resolved
 
@@ -139,6 +144,16 @@ Do not increase timeout or accept retry/flaky classification.
 The existing sticky native-table application E2E performs `document.elementFromPoint()` hit-testing after simultaneous vertical + horizontal scrolling and proves body-right, top-right header/action intersection, and ordinary header-band ownership.
 
 No shared `MDTable` correction was required.
+
+## Verification workflow
+
+For the relation-readiness blocker, use focused verifier-managed E2E diagnostics and then the normal cumulative branch gate:
+
+`pnpm verify --base origin/develop`
+
+A branch-gate retry/flaky classification is not accepted. GitHub exact-head CI remains the authoritative automatic merge gate.
+
+Do not increase test timeout or add sleeps/recovery.
 
 ## Residual Chromium jank
 
@@ -150,20 +165,23 @@ Retained evidence and future discriminators are recorded in `docs/database-chrom
 
 PR #217 may merge only when:
 
-1. exact-head GitHub CI is green without retry/flaky classification for the virtualization proofs;
+1. relation-table initial readiness is deterministic and its owning E2E passes without flaky/retry classification;
 2. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
-3. final resulting-PR review finds no blocker.
+3. coding-agent `pnpm verify --base origin/develop` passes cleanly after the readiness correction;
+4. exact-head GitHub CI is green without retry/flaky classification;
+5. final resulting-PR review finds no blocker.
 
 ## Forbidden before merge
 
 - expanding #217 into unrelated residual performance optimization;
-- speculative production moving-surface recovery without new failing evidence;
-- increasing E2E timeout, `test.slow()`, sleeps, or retry recovery;
-- changing application-E2E project applicability;
-- restoring entity-owned ancestor/sibling geometry discovery;
-- shared virtualization/TanStack changes without new contrary evidence;
+- changing the relation E2E timeout or helper merely to wait longer;
+- sleeps or retry/recovery loops;
+- restoring a normal-flow spinner before a visible relation table while keeping fixed `verticalSurfaceOffset=0`;
+- duplicate feature-level data preloading solely to start the table query earlier;
+- speculative shared virtualization/TanStack changes before the discriminator;
 - unconditional `virtualizer.measure()` or cache reset;
-- exposing TanStack virtualizer instances;
+- exposed TanStack virtualizer instances;
 - second geometry/range/measurement state;
+- restoring entity-owned ancestor/sibling geometry discovery;
 - Number/value/query or worker/query/storage performance optimization;
 - broad shared-UI redesign unrelated to confirmed virtualization blockers.
