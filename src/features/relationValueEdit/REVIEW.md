@@ -1,37 +1,30 @@
 # Review
 
-Verdict: implementation accepted; no remaining relation-value virtualization blocker.
+Verdict: blocked by relation-table initial readiness flakiness.
 
-## Scope reviewed
+Active diagnosis contract:
 
-- `RelationValueField.vue` local scroll root `.relation-value-field__data`.
-- `RelationValueFieldData.vue` loading/table composition.
-- Explicit relation-root `verticalSurfaceOffset=0` / `horizontalSurfaceOffset=0` contract.
-- Owner-local component proof and relevant relation/database E2E reported by the coding agent.
+- `docs/database-virtualization-relation-readiness-discriminator-handoff.md`
+- `docs/database-virtualization-relation-readiness-discriminator-preflight.md`
 
-## Resolved — truthful zero-offset invariant
+## Confirmed evidence
 
-`RelationValueFieldData` now makes loading and table rendering mutually exclusive:
+Exact-head CI run #4348 failed `tests/e2e/databaseViewsAndQueryFlows.spec.ts:269` on Chromium before relation-view switching. The initial default-view assertion observed zero rendered relation rows; whole-test retry passed and was classified flaky.
 
-- while `isLoading && !propertiesIdList`, only the existing progress indicator is rendered;
-- `DatabaseDataTable` is mounted only in the complementary state via `v-else`.
+The same scenario also failed during local branch verification.
 
-Therefore, whenever the table exists, it is the first unpadded content of the current local `.relation-value-field__data` root and explicit `0/0` offsets are truthful.
+The previous `0/0` geometry invariant remains valid: whenever `DatabaseDataTable` participates in layout it is first unpadded content of `.relation-value-field__data`.
 
-The correction adds no geometry observer, offset state, hard-coded spinner dimension, shared virtualization change, or entity ancestor/sibling discovery.
+## Active finding
 
-## Proof
+Current evidence does not yet distinguish whether the empty initial relation table is caused by:
 
-The new owner-local component contract proves spinner/table mutual exclusion and transition to the table once the loading-only state ends. The coding agent also reports relevant relation/database E2E and cumulative `pnpm verify --base origin/develop` green.
+1. properties loading keeping `DatabaseDataTable` unmounted, which also delays its row query;
+2. the table being mounted while logical rows are still pending;
+3. logical rows being present while the nested virtualizer has no mounted row range.
 
-Exact-head GitHub CI remains architect-owned final automatic proof.
+Run the active readiness discriminator before choosing a production correction.
 
-## Blockers
+## Forbidden
 
-None.
-
-## Items not required
-
-- top-level Database moving-surface diagnosis;
-- Database sticky action/header stacking;
-- residual performance/jank investigation.
+Do not fix by timeout/retry/sleep, duplicate preload queries, forced remount, `virtualizer.measure()`, shared virtualization changes, or weakening E2E assertions.
