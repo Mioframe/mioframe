@@ -1,207 +1,138 @@
 # Verify redesign — Pass D completion correction
 
-- **Status:** Ready for correction implementation
+- **Status:** Ready for final Pass D correction implementation
 - **Applies to:** `docs/testing/verify-redesign-pass-d-implementation.md`
-- **Review state:** `scripts/REVIEW.md`
-- **Scope:** close the two remaining Pass D proof/execution blockers only
+- **Active review:** `scripts/REVIEW.md`
+- **Scope:** close the remaining Playwright ownership-inventory completeness blocker and related narrow cleanup only
 
-## Current state
+## Current accepted Pass D implementation state
 
-The structural E2E migration itself has landed. The operator has also installed and locked:
+The structural E2E migration has landed. The following previously-blocking correction work is now implemented and architect-reviewed as acceptable:
 
-```text
-dependency-cruiser: ^18.2.0
-resolved: 18.2.0
-```
+- Playwright ownership metadata collection for both ordinary and release configs runs through the existing `runPlaywrightInContainer` boundary in `--list`/reporter mode; no Pass D metadata path invokes Playwright directly on the host.
+- The existing `pnpm verify` machine-lock / expensive-command coordination remains the execution owner; no second lock or container runner was introduced.
+- `dependency-cruiser@18.2.0` is installed and locked.
+- The real Mioframe `src/**` graph acquires successfully with the required resolver options.
+- A real `src/entities/databaseData/useDatabaseData.ts` proof reaches `widget/DocumentView` and `page/DocumentViewPane` and selects owned E2E without accidental full fallback.
+- Ambiguous or code-module unresolved dependency edges remain fail-closed. An unambiguously non-code unresolved asset edge may be ignored because it cannot carry TypeScript/Vue reverse-owner reachability.
+- The former root/release E2E assertion files are migrated to structural page/widget ownership and the old `E2E_SCENARIO_SCOPES` production-path registry is gone.
 
-Do not redo the scenario migration, ownership model, project applicability, browser-integration split, package installation, or release routing.
+Do not redo any of that work.
 
-Pass E remains blocked until this correction is architect-accepted.
+Pass E remains blocked until the final Pass D correction is architect-accepted.
 
-## Correction A — containerize Playwright ownership inventory
+## Remaining blocker — ownership inventory completeness
 
-The current `scripts/lib/e2eOwnerInventoryCollector.ts` directly invokes the host Playwright binary. Replace only that execution boundary.
+The filesystem target inventory and Playwright-collected owner inventory must represent the same target E2E spec set.
 
-### Required final shape
+Current code validates each collected Playwright entry, but does not prove that every structurally valid target spec on disk was collected by one of the two owning Playwright configs. An empty or partial Playwright inventory can therefore be accepted even though target specs exist.
 
-Keep `resolveStructuralE2EPlan()` synchronous. Do not convert the verifier planner to async.
+The final validation must fail structurally when any of these are true:
 
-Use this boundary:
+- a filesystem target `tests/e2e/pages/<Owner>/**/*.e2e.spec.ts` or `tests/e2e/widgets/<Owner>/**/*.e2e.spec.ts` is missing from the Playwright-collected inventory;
+- Playwright reports a target E2E path that is not in the filesystem target inventory;
+- the collected inventory contains a duplicate target entry;
+- a target entry is otherwise structurally/annotation invalid under the existing rules.
 
-```text
-resolveStructuralE2EPlan()
-  -> collectE2EOwnerInventory()                  # synchronous adapter
-     -> node child collector                     # one narrow async child
-        -> runPlaywrightInContainer(...)         # ordinary --list
-        -> runPlaywrightInContainer(...)         # release --list
-        -> e2eOwnerInventoryReporter.mjs
-```
+Use the existing filesystem discovery from `scripts/lib/e2eOwnerTree.ts`. Do not introduce another target-spec or owner registry.
 
-The narrow child collector may be a new file such as:
+The equality/completeness check may live in `e2eOwnerInventory.ts`, `e2eRisk.ts`, or a narrow existing owner-validation boundary, but there must remain one clear validation path rather than duplicated set-comparison logic.
 
-```text
-scripts/lib/e2eOwnerInventoryContainer.mjs
-```
+### Direct changed/added target behavior
 
-The exact filename is not public API, but there must be only one concrete collector boundary and it must reuse `runPlaywrightInContainer`; do not create another Podman/Playwright runner.
+A direct changed or newly-added target E2E spec must never be silently dropped because the Playwright inventory omitted it.
 
-### Metadata runs
+After completeness validation, an incomplete inventory must produce structural invalidity before selection. Do not paper over the issue by making `selectedSpecsToPlan()` independently invent missing owner entries.
 
-Run Playwright list mode for exactly the two configs that own target E2E inventory:
+## TypeScript-first tooling cleanup in this correction
 
-```text
-playwright.config.ts
-playwright.release.config.ts
-```
+Root `AGENTS.md` now requires TypeScript for new or task-touched Node/tooling scripts whenever the current runtime/toolchain can execute TypeScript directly.
 
-Pass through:
+The Pass D files introduced/touched by this work must therefore be reviewed for unnecessary `.mjs` usage.
 
-```text
---list
---reporter=scripts/lib/e2eOwnerInventoryReporter.mjs
-```
+Prefer conversion to `.ts` for:
 
-No browser execution is required for metadata collection.
+- `scripts/browserIntegration.mjs`;
+- `scripts/lib/e2eGraphCollector.mjs`;
+- `scripts/lib/e2eOwnerInventoryContainer.mjs`;
+- `scripts/lib/e2eOwnerInventoryReporter.mjs`.
 
-The existing reporter remains the Playwright suite/reporter API owner for collecting spec paths and test annotations. Do not parse TypeScript source.
+Convert each file that Node 24 / the current Playwright loader can execute as TypeScript without adding a transpilation/build layer.
 
-### Result exchange
+For the Playwright reporter specifically, first verify that the reporter path accepts the `.ts` module in the actual containerized `--list` execution. If it does, convert it. If it does not, keep `.mjs` and report the concrete loader/runtime reason; do not invent a custom loader merely to force extension consistency.
 
-`runPlaywrightInContainer` mounts the repository at `/work`. Use the already ignored repository-local:
+Do not mass-convert unrelated legacy `.mjs` scripts.
 
-```text
-temp/
-```
+All imports, verifier full-lane classifications, package scripts, comments, and reporter arguments must follow any file rename mechanically.
 
-for narrow JSON exchange files so the same file is visible to the host adapter and container.
+## Minor cleanup
 
-For each container run:
+Remove stale references to the non-existent `scripts/lib/e2eOwnerInventoryCollector.mjs` filename. Comments must describe the actual synchronous `.ts` adapter and container child/reporter path.
 
-- create a unique host-relative file under `temp/`;
-- pass the corresponding `/work/temp/...` path through `MIOFRAME_E2E_OWNER_INVENTORY_OUTPUT_FILE` using `runPlaywrightInContainer`'s existing `extraEnv`;
-- read the reporter JSON after the container list run succeeds;
-- remove temporary files in `finally`.
+## Invariants that must not change
 
-The child collector may write the merged result to one final `temp/` file supplied by the synchronous adapter. Do not depend on parsing `runPlaywrightInContainer` stdout because the existing container runner owns diagnostic output.
+- every Playwright CLI invocation in Pass D remains containerized;
+- Playwright owner metadata still uses Playwright's collected suite/reporter API, not source parsing;
+- metadata collection launches no browser;
+- ordinary and release target inventories remain collected from `playwright.config.ts` and `playwright.release.config.ts`;
+- `pnpm verify` remains single-run coordinated through the existing machine lock;
+- child container execution inherits the owning verify lock context and does not deadlock/reacquire it;
+- standalone expensive/Playwright commands still reject an independent active verify;
+- dependency-cruiser remains the only E2E production import-graph engine;
+- graph acquisition remains once per relevant planning invocation;
+- productionArtifact E2E retains existing release/fresh-container execution;
+- project applicability remains unchanged;
+- no E2E scenario or assertion changes;
+- no owner changes or ordinary `_mioframe-owner` annotations;
+- no Pass E or Pass F work.
 
-Filter the merged inventory to target `*.e2e.spec.ts` files exactly as today.
+## Required deterministic proof
 
-### Verify-lock semantics
+Add/update focused unit proof for at least:
 
-Do not add any lock.
+1. complete filesystem target set == Playwright target inventory -> valid;
+2. one filesystem target missing from Playwright inventory -> invalid;
+3. unexpected Playwright-collected target -> invalid;
+4. duplicate Playwright target entry -> invalid;
+5. direct changed/added target with incomplete discovery -> invalid, never skip;
+6. existing additional-owner annotation validation remains intact;
+7. current real inventory requires zero additional-owner annotations.
 
-The child process inherits the parent environment. Both metadata Playwright invocations must use `runPlaywrightInContainer`, which already routes through `runGuardedExpensiveLocalCommand`.
+Unit tests must not execute Playwright, Podman, or dependency-cruiser.
 
-Therefore:
+After the code correction, run one real focused verifier-managed E2E invocation that exercises the containerized ownership inventory and proves the current repository filesystem/Playwright sets are complete.
 
-- inside the owning `pnpm verify`, inherited `MIOFRAME_MACHINE_LOCK_HELD` / `MIOFRAME_VERIFY_LOCK_HELD` prevents child deadlock;
-- as a standalone collector path, the first container invocation is rejected if an independent local verify owns the machine lock;
-- no nested `pnpm verify` is needed or allowed.
+If any `.mjs` -> `.ts` conversion changes an executable boundary, run the smallest faithful focused proof for that boundary. In particular, reporter conversion requires a real containerized Playwright `--list` path, not an import-only unit test.
 
-Do not change heartbeat, stale-lock recovery, owner tokens, status/resume state, or the GitHub Actions exception.
-
-## Correction B — prove the real dependency-cruiser graph
-
-`dependency-cruiser@18.2.0` is now present. Keep the accepted architecture:
-
-```text
-scripts/lib/e2eGraphCollector.mjs
-  -> dependency-cruiser cruise(['src'], ...)
-  -> JSON module graph
-scripts/lib/e2eGraph.ts
-  -> reverse graph
-scripts/lib/e2eOwnerTraversal.ts
-  -> structural page/widget owners
-```
-
-Do not add a `.dependency-cruiser` config, graph cache, generic graph service, or a second graph implementation.
-
-First run the current real adapter against the repository.
-
-If it succeeds, do not edit graph code merely to refactor it.
-
-If it fails, establish the exact dependency-cruiser/API/resolution cause and make the minimum correction required for:
-
-- `src/**` production graph acquisition;
-- `tsconfig.src.json` path resolution;
-- exclusion of colocated test/spec/story/testUtils files;
-- fail-closed handling of unresolved dependencies that make owner reachability unsafe.
-
-Fixture-backed unit tests remain pure and must not start dependency-cruiser.
-
-## Required real graph proof
-
-After the metadata-container correction, use a real focused E2E invocation whose `--files` input is a lower FSD production module.
-
-A suitable candidate is under:
-
-```text
-src/entities/databaseData/**
-```
-
-Use a concrete existing production file only after the real graph confirms its route into the `widget/DocumentView` chain.
-
-The proof must show that:
-
-- real dependency-cruiser acquisition succeeds;
-- the lower-layer path reaches the truthful structural owner(s);
-- owned E2E is selected from the target inventory;
-- the result is not an accidental full-E2E fallback caused by graph or inventory failure.
-
-If that candidate does not have the expected real dependency path, choose another existing lower-layer production file whose route is demonstrated by the acquired graph and report it. This is a verification choice, not permission to change ownership architecture.
-
-## Tests
-
-Add only narrow deterministic tests required by the changed execution adapter.
-
-At minimum prove that the synchronous ownership-inventory adapter:
-
-- invokes the narrow child collector rather than a Playwright binary;
-- fails closed on non-zero collector exit;
-- fails closed on missing/malformed result JSON;
-- preserves deterministic merged inventory parsing/filtering.
-
-Keep existing tests for:
-
-- owner annotation validation;
-- graph conversion/failure;
-- structural traversal;
-- project applicability;
-- E2E routing;
-- command lock/local command guard.
-
-Do not make unit tests execute Playwright or dependency-cruiser.
+Do not run `pnpm verify --full` merely for this correction.
 
 ## Acceptance
 
-Pass D correction is complete only when all of the following are true:
+Pass D is ready for architect re-review only when:
 
-1. No Pass D ownership-inventory path invokes Playwright directly on the host.
-2. Ordinary and release ownership metadata are collected through `runPlaywrightInContainer` in `--list` mode.
-3. Metadata collection still uses Playwright's suite/reporter API and launches no browser.
-4. Temporary inventory files use ignored repository-local `temp/` and are cleaned up.
-5. The existing single-local-verify machine lock is unchanged.
-6. Metadata list runs participate in the existing guarded expensive-command path.
-7. No nested `pnpm verify`, second lock, or second container runner is introduced.
-8. `dependency-cruiser@18.2.0` is used by the real graph collector successfully, or any concrete compatibility defect discovered is minimally corrected.
-9. One real lower-layer production path is proven to select its truthful structural E2E owner(s) through the dependency graph.
-10. Graph acquisition failure remains fail-closed.
-11. `package.json` and `pnpm-lock.yaml` need no correction merely because dependency-cruiser is now installed.
-12. No Pass D E2E scenario, owner, project applicability, productionArtifact routing, browser-integration routing, or assertion semantics are changed.
-13. No Pass E or Pass F work begins.
+1. filesystem and Playwright target E2E inventories are equality/completeness validated;
+2. missing/unexpected/duplicate target inventory is structural invalidity;
+3. direct changed/added target E2E cannot silently disappear from planning;
+4. the current real inventory passes the completeness check through the containerized collector;
+5. stale collector comments are corrected;
+6. task-touched/new Node tooling uses TypeScript wherever the current runtime/loader supports it, with any retained `.mjs` justified by a concrete technical requirement;
+7. Playwright container execution and verify single-run coordination remain unchanged;
+8. real dependency-cruiser behavior remains unchanged and fail-closed for unsafe uncertainty;
+9. no product/E2E scenario/applicability/owner/release-routing changes are introduced;
+10. Pass E/F do not begin.
 
 ## Forbidden
 
-- host `playwright test --list` or equivalent ownership collection;
-- parsing test source for annotations;
-- changing the verifier planner to async;
-- a second Podman/Playwright abstraction;
-- a second verify lock or lock manager;
+- another E2E owner/spec registry;
+- source parsing for Playwright annotations;
+- accepting partial Playwright discovery as valid;
+- making selection silently skip missing inventory entries;
+- host Playwright fallback;
+- second container runner or lock manager;
 - nested `pnpm verify`;
-- unit tests that execute Playwright or dependency-cruiser;
-- retaining host Playwright as a fallback;
-- weakening graph failure to skip or focused selection when reachability is uncertain;
-- redesigning structural E2E ownership;
-- editing E2E assertions/scenarios unrelated to a concrete correction defect;
-- package/version churn unrelated to a demonstrated dependency-cruiser problem;
-- Pass E or Pass F work.
+- weakening graph uncertainty handling;
+- custom TypeScript transpilation/loader infrastructure solely to eliminate `.mjs`;
+- mass conversion of unrelated legacy `.mjs` files;
+- product behavior or E2E assertion changes;
+- Pass E or Pass F work;
+- coding-agent edits to `docs/**`, `AGENTS.md`, `.agents/skills/**`, or `REVIEW.md`.
