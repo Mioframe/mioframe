@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **virtualization implementation accepted; PR #217 is blocked by one over-budget moving-surface E2E proof, operator visual reinspection, exact-head CI, and final resulting-PR review**.
+Status: **virtualization implementation accepted; PR #217 is blocked by one moving-surface E2E proof-design correction, operator visual reinspection, exact-head CI, and final resulting-PR review**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -26,6 +26,14 @@ Explicitly deferred to later PRs:
 - other causes of Short -> Full or scrolling stalls that are not caused by virtualization correctness/integration.
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
+
+## Active correction contract
+
+- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`
+- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`
+- `src/entities/databaseData/REVIEW.md`
+
+The previous consolidated completion pass is complete for production implementation and is historical for this final proof-design correction.
 
 ## Accepted virtualization architecture
 
@@ -89,29 +97,45 @@ Owning scenario:
 
 Desktop Chromium exhausted the 30-second per-test timeout on all three attempts, but at different phases. Mobile Chrome passed the same scenario.
 
-The scenario currently:
-
-1. creates the real Weekly Plan starter example, which already contains five rows;
-2. performs **40 sequential full add-item UI flows**;
-3. only then runs the surface movement/deep-range contract.
-
-This setup is disproportionate to the contract and consumes the same global timeout that is supposed to prove geometry correctness.
+The scenario currently creates the real five-row Weekly Plan starter example, performs **40 sequential full Add Item UI flows**, then runs the surface movement/deep-range contract. This setup is disproportionate to the owned contract and consumes the same global timeout intended for geometry proof.
 
 ### Required proof correction
 
-Keep the same real product scenario but remove unnecessary stress setup:
+This correction is test-only.
 
-- use an explicit compact desktop viewport;
-- create only a small fixed number of additional rows sufficient to guarantee vertical overflow and a virtualized deep range after the success card is removed;
-- preserve the real success card and real dismiss action;
-- preserve physical surface movement proof;
-- preserve bounded mounted-range assertions;
-- preserve first and second deep-range assertions against `aria-rowcount`;
-- do not increase timeout, add sleeps, accept retries, or weaken logical assertions.
+Before `launchApp`:
 
-Large-data stress remains owned by the separate virtualization stress/capability proofs; this scenario owns moving-surface correctness only.
+- set compact viewport height `360px`;
+- Desktop Chromium uses `640 x 360`;
+- Mobile Chrome preserves its project viewport width and uses height `360`;
+- do not change persistent E2E project applicability.
 
-If the corrected proportional proof still fails to reach the logical tail with meaningful test budget remaining, reopen production architecture from that concrete result.
+Dataset:
+
+- keep the five real Weekly Plan starter rows;
+- create exactly `16` additional Task rows through the existing public Add Item flow;
+- total real data rows: `21`.
+
+The smaller dataset is sufficient to exercise a bounded virtualized range at the compact viewport while removing 24 unnecessary modal setup flows. Current production row virtualization uses a `48px` estimate and overscan `4`, but the E2E's observable bounded-range assertions—not duplicated constants—remain the proof that virtualization actually occurs.
+
+Retain the complete owned lifecycle and assertions:
+
+- real success card precedes the table;
+- initial vertical and horizontal surface offsets are non-zero;
+- initial top range starts at logical row index `2` and is bounded;
+- first deep phase reaches `aria-rowcount` and remains bounded;
+- real `Got it` dismisses the success card;
+- physical vertical surface offset decreases;
+- moved top range starts at logical row index `2` and remains bounded;
+- second deep phase reaches `aria-rowcount` and remains bounded.
+
+Do not increase timeout, use `test.slow()`, add sleeps/retries/recovery, alter production geometry, or change project applicability.
+
+If 21 rows at the compact viewport do not form a bounded virtualized range in either project, stop and report mounted/logical counts rather than silently changing the dataset.
+
+If the proportional proof reaches its owned geometry/range assertions with meaningful budget remaining but still cannot reach logical tail, reopen production architecture from that concrete evidence.
+
+Large-data stress remains owned by separate virtualization proofs, including the 160-row real deep-range scenario and 30,000 × 300 bounded-scale contract.
 
 ## Sticky action/header stacking — resolved
 
@@ -123,11 +147,21 @@ No shared `MDTable` correction was required.
 
 ## Verification workflow
 
-Use focused verifier feedback for the moving-surface proof correction, then the normal cumulative branch gate:
+Focused correction proof:
+
+`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`
+
+Required stability run:
+
+`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
+
+One focused `--profile github-actions` run is allowed only when useful to validate the CI-specific pressure after normal focused proof. Do not use that profile for the normal final branch gate.
+
+Final cumulative branch gate:
 
 `pnpm verify --base origin/develop`
 
-Do not increase the test timeout or force retries. Do not force `--profile github-actions` on the normal final branch gate.
+Do not increase the test timeout or accept retry/flaky classification.
 
 ## Residual Chromium jank
 
@@ -149,7 +183,9 @@ PR #217 may merge only when:
 
 - expanding #217 into unrelated residual performance optimization;
 - speculative production moving-surface recovery while the current proof is over-budget;
-- increasing E2E timeout or adding sleeps/retry recovery;
+- production changes in the active proof-correction pass;
+- increasing E2E timeout, `test.slow()`, sleeps, or retry recovery;
+- changing application-E2E project applicability;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
