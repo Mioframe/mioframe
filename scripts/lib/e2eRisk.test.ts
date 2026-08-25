@@ -420,6 +420,21 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
     expect(plan.specs).toEqual(expectedSpecs);
   });
 
+  it.each([
+    'src/features/relationValueEdit/RelationValueField.vue',
+    'src/features/relationValueEdit/RelationValueFieldData.vue',
+    'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
+  ])('resolves %s to the exact inline relation selected-view spec union', (filePath) => {
+    const plan = resolveAppE2EPlan([filePath]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/databaseItemFlows.spec.ts',
+      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+      'tests/e2e/databaseVirtualizationFlows.spec.ts',
+    ]);
+  });
+
   it('resolves DatabaseViewsSheet.vue to exactly the six-spec database views/reorder set', () => {
     const plan = resolveAppE2EPlan(['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue']);
 
