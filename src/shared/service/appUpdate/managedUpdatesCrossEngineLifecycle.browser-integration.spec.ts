@@ -98,6 +98,22 @@ async function waitForControlledPage(page: Page): Promise<void> {
   });
 }
 
+/**
+ * True only for Playwright's exact, well-known error raised when a
+ * `page.evaluate` call's own execution context is torn down mid-flight by a
+ * real navigation on that page. A boot-failure rollback's own watchdog (see
+ * `scheduleReload()` in `scripts/pages/lib/watchdogInject.mjs`) reloads the
+ * exact page this file polls once the worker confirms rollback -- a real,
+ * expected client-side navigation this poll cannot predict the timing of,
+ * not a proof defect. Any other evaluate failure (a genuine assertion-shaped
+ * problem) still propagates untouched.
+ * @param error - The value thrown by `page.evaluate`.
+ * @returns Whether `error` is this exact transient navigation error.
+ */
+function isTransientNavigationContextDestroyedError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Execution context was destroyed');
+}
+
 async function waitForActiveRelease(
   page: Page,
   releaseNumber: number,
@@ -105,7 +121,18 @@ async function waitForActiveRelease(
 ): Promise<ControllerStateReadResult> {
   const start = Date.now();
   for (;;) {
-    const result = await readControllerState(page);
+    let result: ControllerStateReadResult;
+    try {
+      // eslint-disable-next-line no-await-in-loop -- Sequential polling is the intent here.
+      result = await readControllerState(page);
+    } catch (error) {
+      if (!isTransientNavigationContextDestroyedError(error)) throw error;
+      // The watchdog's own reload destroyed this read's context mid-flight;
+      // treat this tick as unmatched and let the loop's own timeout/sleep
+      // below retry it on the next tick, exactly like an ordinary
+      // not-yet-matched state.
+      result = { status: 'absent' };
+    }
     if (result.status === 'valid' && result.state.activeRelease.releaseNumber === releaseNumber) {
       return result;
     }
