@@ -1,6 +1,6 @@
 # Database virtualization production results — PR #217
 
-> **Current validity:** structural boundedness is confirmed. The canonical verifier-managed current-head sparse all-string control is fast (S0 median 281.1 ms, G1 median 321.5 ms, zero Long Tasks), so the earlier non-verifier 1.6–2.5 s current-geometry run is retained only as environment/protocol warning evidence. Performance acceptance remains blocked because operator testing reproduces a different failing class: a real heterogeneous-property Database janks in Chrome during Short -> Full and scrolling, while Firefox on the same laptop does not.
+> **Current validity:** this is a historical measurement record. Structural boundedness is confirmed. The canonical verifier-managed sparse all-string control is fast (S0 median 281.1 ms, G1 median 321.5 ms, zero Long Tasks), while the earlier non-verifier 1.6–2.5 s run is retained only as environment/protocol warning evidence. Residual heterogeneous-content Chromium jank is explicitly deferred to `docs/database-chrome-jank-follow-up.md` and is not a PR #217 merge criterion.
 
 Date: 2026-08-23  
 Branch: `fix/database-large-data-performance`  

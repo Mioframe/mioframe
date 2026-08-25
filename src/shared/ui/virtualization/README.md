@@ -1,6 +1,6 @@
 # Virtual collection
 
-Status: **architecture and public API accepted; PR #217 is adding direct browser proof for dynamic same-root `surfaceOffset` changes**.
+Status: **architecture, public API, implementation, and browser capability proof accepted, including dynamic same-root `surfaceOffset` changes**.
 
 This README is the source of truth for the reusable library in `src/shared/ui/virtualization`.
 
@@ -272,11 +272,15 @@ The colocated capability proof is:
 - `VirtualCollectionCapability.browser.spec.ts`;
 - `VirtualCollectionCapability.stories.ts`.
 
-It covers bounded mounted work, item mapping, grow/shrink measurement, stable-key remapping, non-zero `surfaceOffset`, deep extents, valid `undefined` values, and remount behavior.
+It covers bounded mounted work, item mapping, grow/shrink measurement, stable-key remapping, non-zero `surfaceOffset`, deep extents, valid `undefined` values, remount behavior, and reactive same-root `surfaceOffset` changes while deeply scrolled.
 
-PR #217 adds the missing risk-specific proof that a reactive `surfaceOffset` can change while the same physical root and collection remain mounted, and that top/deep ranges plus public surface-relative geometry stay correct afterward. Until that proof lands, the documented architecture/API remains accepted but this dynamic path is an active verification blocker.
+The risk-specific dynamic proof keeps the same physical root/list mounted through:
 
-The previously intermittent non-zero-`surfaceOffset` proof reads deep public/DOM geometry in one browser-side snapshot and requires a self-consistent state stable across consecutive observations. The risk-specific `--repeat 10` diagnostic passed with no retries/flaky classification as part of the final 300/300 capability stability executions.
+`deep -> change physical pre-surface extent + reactive surfaceOffset while still deep -> top -> deep`.
+
+It reaches the logical tail before and after the surface move, recovers item `0` at top, keeps mounted work bounded, and verifies public surface-relative geometry plus physical scroll extent. The proof passed its bounded stability executions without retry/flaky classification, so no shared production correction or cache-reset protocol is justified.
+
+The previously intermittent non-zero-`surfaceOffset` proof reads deep public/DOM geometry in one browser-side snapshot and requires a self-consistent state stable across consecutive observations.
 
 Database-specific native-table proof remains owned by `src/entities/databaseData`.
 
@@ -295,6 +299,6 @@ Database-specific native-table proof remains owned by `src/entities/databaseData
 
 Architecture/public API: **accepted**.
 
-Existing implementation/browser capability proof: **passed except for the newly required dynamic same-root `surfaceOffset` case**.
+Implementation/browser capability proof: **passed**, including the dynamic same-root `surfaceOffset` lifecycle required by PR #217.
 
-PR #217 must prove that case before applying its consumer ownership correction. If the shared proof passes, shared production code remains unchanged. If it fails, stop and revisit this boundary before adding consumer workarounds. See [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
+Shared virtualization has no active PR #217 review blocker. Database-specific integration and merge state are owned by [`docs/database-virtualization.md`](../../../../docs/database-virtualization.md).
