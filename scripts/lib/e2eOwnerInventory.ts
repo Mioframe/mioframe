@@ -1,11 +1,15 @@
 /**
- * Additional-owner annotation validation over a collected target E2E
- * inventory (see docs/testing/verify-redesign-pass-d-implementation.md's
- * "Exceptional additional owners"). This module is pure: it consumes an
- * already-collected inventory (real collection goes through
- * `scripts/lib/e2eOwnerInventoryCollector.mjs`'s Playwright list/reporter,
- * never TypeScript source parsing) so unit tests can use small fixture
- * inventories without executing Playwright.
+ * Additional-owner annotation validation, and filesystem/Playwright
+ * completeness validation, over a collected target E2E inventory (see
+ * docs/testing/verify-redesign-pass-d-implementation.md's "Exceptional
+ * additional owners" and docs/testing/verify-redesign-pass-d-correction.md's
+ * "Remaining blocker — ownership inventory completeness"). This module is
+ * pure: it consumes an already-collected inventory (real collection goes
+ * through the synchronous `scripts/lib/e2eOwnerInventoryCollector.ts`
+ * adapter, which runs Playwright's list/reporter inside the containerized
+ * `scripts/lib/e2eOwnerInventoryContainer.ts` child, never TypeScript
+ * source parsing) so unit tests can use small fixture inventories without
+ * executing Playwright.
  */
 
 import {
@@ -184,4 +188,53 @@ export function validateE2EOwnerInventory(
   }
 
   return { valid: errors.length === 0, errors, entries };
+}
+
+/** Validation result for filesystem/Playwright target E2E inventory completeness. */
+export interface E2EOwnerInventoryCompletenessValidation {
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * Validate that the collected Playwright target E2E inventory and the
+ * structurally valid filesystem target E2E tree represent the exact same
+ * spec set (see docs/testing/verify-redesign-pass-d-correction.md's
+ * "Fail-closed filesystem / Playwright inventory equality"). A filesystem
+ * target missing from the collected inventory, or a collected entry that is
+ * not a current filesystem target, is structural invalidity: an empty or
+ * partial Playwright inventory must never be accepted as complete merely
+ * because every entry it does contain is individually well-formed.
+ * @param collectedSpecPaths Spec paths from the collected (already
+ * structurally validated) Playwright target E2E inventory.
+ * @param targetPaths Every structurally valid target E2E path currently on
+ * disk, from {@link validateE2ETargetTree}'s `targetPaths`.
+ * @returns Validation result; `errors` lists every set-difference in both
+ * directions.
+ */
+export function validateE2EOwnerInventoryCompleteness(
+  collectedSpecPaths: readonly string[],
+  targetPaths: readonly string[],
+): E2EOwnerInventoryCompletenessValidation {
+  const errors: string[] = [];
+  const collectedSet = new Set(collectedSpecPaths);
+  const targetSet = new Set(targetPaths);
+
+  for (const targetPath of targetSet) {
+    if (!collectedSet.has(targetPath)) {
+      errors.push(
+        `target E2E spec ${targetPath} exists on disk but was not collected by the Playwright ownership inventory (playwright.config.ts / playwright.release.config.ts)`,
+      );
+    }
+  }
+
+  for (const collectedPath of collectedSet) {
+    if (!targetSet.has(collectedPath)) {
+      errors.push(
+        `Playwright ownership inventory collected target E2E spec ${collectedPath}, which is not part of the current filesystem target E2E tree`,
+      );
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 }

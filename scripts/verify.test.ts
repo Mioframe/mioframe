@@ -15,6 +15,15 @@ vi.mock('./lib/e2eOwnerInventoryCollector.ts', () => ({
   collectE2EOwnerInventory: vi.fn(() => []),
 }));
 
+// Kept consistent (empty) with the mocked collector above so the default
+// filesystem/Playwright completeness check trivially passes for tests that
+// do not pass their own `structuralE2EPlan` override; otherwise the real
+// current `tests/e2e/**` tree (non-empty) would never match the empty
+// mocked inventory.
+vi.mock('./lib/e2eOwnerTree.ts', () => ({
+  validateE2ETargetTree: vi.fn(() => ({ valid: true, errors: [], targetPaths: [] })),
+}));
+
 vi.mock('./lib/e2eGraph.ts', () => ({
   acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
 }));

@@ -12,7 +12,7 @@ import type { RawE2ESpecInventoryEntry } from './e2eOwnerInventory.ts';
  * boundary (see docs/testing/verify-redesign-pass-d-correction.md's
  * "Correction A — containerize Playwright ownership inventory"). This
  * synchronous adapter never invokes Playwright itself; it spawns one narrow
- * async Node child collector (`scripts/lib/e2eOwnerInventoryContainer.mjs`)
+ * async Node child collector (`scripts/lib/e2eOwnerInventoryContainer.ts`)
  * that runs Playwright's `--list` mode against both configs that own target
  * `.e2e.spec.ts` discovery — `playwright.config.ts` for ordinary target E2E
  * and `playwright.release.config.ts` for `productionArtifact/` target E2E
@@ -23,7 +23,7 @@ import type { RawE2ESpecInventoryEntry } from './e2eOwnerInventory.ts';
  * corpus.
  */
 
-const COLLECTOR_SCRIPT = 'scripts/lib/e2eOwnerInventoryContainer.mjs';
+const COLLECTOR_SCRIPT = 'scripts/lib/e2eOwnerInventoryContainer.ts';
 const TARGET_SUFFIX = '.e2e.spec.ts';
 const RESULT_FILE_ENV = 'MIOFRAME_E2E_OWNER_INVENTORY_RESULT_FILE';
 const TEMP_DIR = 'temp';

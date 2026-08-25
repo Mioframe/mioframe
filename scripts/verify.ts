@@ -225,7 +225,7 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   'managed-updates-browser-integration': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'managed-updates-e2e': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   // The generic owner-local browser-integration leaf (see
-  // scripts/browserIntegration.mjs / playwright.browserIntegration.config.ts):
+  // scripts/browserIntegration.ts / playwright.browserIntegration.config.ts):
   // a single ordinary Playwright container run, same bound as every other
   // Playwright-backed lane.
   'browser-integration-local': PLAYWRIGHT_COMMAND_TIMEOUT_MS,

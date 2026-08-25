@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateE2EOwnerInventory, type RawE2ESpecInventoryEntry } from './e2eOwnerInventory.ts';
+import {
+  validateE2EOwnerInventory,
+  validateE2EOwnerInventoryCompleteness,
+  type RawE2ESpecInventoryEntry,
+} from './e2eOwnerInventory.ts';
 
 const existingOwners = new Set(['page/HomePane', 'widget/RepositoryExplorerWidget']);
 const ownerDirectoryExists = (owner: { kind: string; name: string }) =>
@@ -157,5 +161,47 @@ describe('validateE2EOwnerInventory', () => {
     const result = validateE2EOwnerInventory(entries, { ownerDirectoryExists });
 
     expect(result.entries.every((entry) => entry.additionalOwnerIds.length === 0)).toBe(true);
+  });
+});
+
+describe('validateE2EOwnerInventoryCompleteness', () => {
+  const a = 'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts';
+  const b = 'tests/e2e/widgets/RepositoryExplorerWidget/repositoryFlows.e2e.spec.ts';
+
+  it('accepts an exactly matching filesystem/Playwright target set', () => {
+    const result = validateE2EOwnerInventoryCompleteness([a, b], [a, b]);
+
+    expect(result).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects a filesystem target missing from the Playwright inventory', () => {
+    const result = validateE2EOwnerInventoryCompleteness([a], [a, b]);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      `target E2E spec ${b} exists on disk but was not collected by the Playwright ownership inventory (playwright.config.ts / playwright.release.config.ts)`,
+    ]);
+  });
+
+  it('rejects a Playwright-collected target outside the current filesystem target inventory', () => {
+    const result = validateE2EOwnerInventoryCompleteness([a, b], [a]);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      `Playwright ownership inventory collected target E2E spec ${b}, which is not part of the current filesystem target E2E tree`,
+    ]);
+  });
+
+  it('rejects an empty Playwright inventory when filesystem targets exist', () => {
+    const result = validateE2EOwnerInventoryCompleteness([], [a]);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+  });
+
+  it('accepts two empty sets', () => {
+    const result = validateE2EOwnerInventoryCompleteness([], []);
+
+    expect(result).toEqual({ valid: true, errors: [] });
   });
 });

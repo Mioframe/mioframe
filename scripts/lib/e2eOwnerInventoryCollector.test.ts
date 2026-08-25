@@ -13,7 +13,7 @@ function okCollector(stdout = ''): (resultFile: string) => RunOwnerInventoryColl
 describe('COLLECTOR_INVOCATION', () => {
   it('launches the narrow Node child collector, never a Playwright binary', () => {
     expect(COLLECTOR_INVOCATION.command).toBe('node');
-    expect(COLLECTOR_INVOCATION.args).toEqual(['scripts/lib/e2eOwnerInventoryContainer.mjs']);
+    expect(COLLECTOR_INVOCATION.args).toEqual(['scripts/lib/e2eOwnerInventoryContainer.ts']);
     expect(COLLECTOR_INVOCATION.args.join(' ')).not.toMatch(/playwright/i);
   });
 });

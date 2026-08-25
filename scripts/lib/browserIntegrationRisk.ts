@@ -8,7 +8,7 @@
  * and `managed-updates-browser-integration` verifier leaves/orchestration
  * (`scripts/release/managedUpdatesProof.mjs`, `scripts/e2eReleaseContainer.mjs`,
  * `playwright.release.config.ts`) for the managed-update proof, and the
- * generic `playwright.browserIntegration.config.ts` / `scripts/browserIntegration.mjs`
+ * generic `playwright.browserIntegration.config.ts` / `scripts/browserIntegration.ts`
  * for every other owner-local `*.browser-integration.spec.ts`; this module
  * only decides which leaves a changed-file set makes relevant, so `--only
  * browser-integration` and ordinary default `pnpm verify` recognize a direct
@@ -171,7 +171,7 @@ export function resolveBrowserIntegrationPlan(
 // triggers the full generic inventory instead of relying on path ownership.
 const GENERIC_FULL_LANE_EXACT_FILES = new Set([
   'playwright.browserIntegration.config.ts',
-  'scripts/browserIntegration.mjs',
+  'scripts/browserIntegration.ts',
   'scripts/playwrightContainer.ts',
   'scripts/lib/browserIntegrationRisk.ts',
   'scripts/verify.ts',

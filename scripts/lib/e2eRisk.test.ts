@@ -43,6 +43,11 @@ function baseDeps(overrides: Parameters<typeof resolveStructuralE2EPlan>[1] = {}
     fileExists: () => true,
     ownerDirectoryExists,
     collectOwnerInventory: () => BASE_INVENTORY,
+    validateTargetTree: () => ({
+      valid: true,
+      errors: [],
+      targetPaths: BASE_INVENTORY.map((entry) => entry.specPath),
+    }),
     acquireGraph: () => ({ ok: true as const, graph: {} }),
     ...overrides,
   };
@@ -63,10 +68,7 @@ describe('isRelevantProductionSourcePath', () => {
 });
 
 describe('resolveStructuralE2EPlan', () => {
-  it('fails closed when the ownership inventory is invalid', () => {
-    const plan = resolveStructuralE2EPlan([], baseDeps({ collectOwnerInventory: () => [] }));
-    // Empty inventory is technically valid (no entries); force an invalid
-    // one via a malformed entry instead.
+  it('fails closed when the ownership inventory is structurally invalid', () => {
     const invalidPlan = resolveStructuralE2EPlan(
       [],
       baseDeps({
@@ -74,7 +76,6 @@ describe('resolveStructuralE2EPlan', () => {
       }),
     );
 
-    expect(plan.mode).toBe('skip');
     expect(invalidPlan.mode).toBe('invalid');
   });
 
@@ -95,6 +96,105 @@ describe('resolveStructuralE2EPlan', () => {
   it('returns skip for an empty relevant change set', () => {
     const plan = resolveStructuralE2EPlan([], baseDeps());
     expect(plan).toEqual({ mode: 'skip', reasons: ['empty e2e scope'] });
+  });
+
+  it('accepts a complete filesystem/Playwright target set as valid', () => {
+    const plan = resolveStructuralE2EPlan(
+      ['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'],
+      baseDeps(),
+    );
+
+    expect(plan.mode).toBe('focused');
+  });
+
+  it('fails closed instead of skip when the Playwright inventory is empty but filesystem targets exist', () => {
+    const plan = resolveStructuralE2EPlan([], baseDeps({ collectOwnerInventory: () => [] }));
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.mode === 'invalid' && plan.reasons[0]).toMatch(
+      /exists on disk but was not collected/,
+    );
+  });
+
+  it('fails closed when a filesystem target is missing from the Playwright inventory', () => {
+    const plan = resolveStructuralE2EPlan(
+      [],
+      baseDeps({
+        validateTargetTree: () => ({
+          valid: true,
+          errors: [],
+          targetPaths: [
+            ...BASE_INVENTORY.map((entry) => entry.specPath),
+            'tests/e2e/pages/Settings/appUpdatesEntry.e2e.spec.ts',
+          ],
+        }),
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.mode === 'invalid' && plan.reasons[0]).toMatch(
+      /exists on disk but was not collected/,
+    );
+  });
+
+  it('fails closed when Playwright collects a target outside the current filesystem target inventory', () => {
+    const plan = resolveStructuralE2EPlan(
+      [],
+      baseDeps({
+        collectOwnerInventory: () => [
+          ...BASE_INVENTORY,
+          { specPath: 'tests/e2e/pages/Settings/appUpdatesEntry.e2e.spec.ts', annotations: [] },
+        ],
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.mode === 'invalid' && plan.reasons[0]).toMatch(
+      /not part of the current filesystem target E2E tree/,
+    );
+  });
+
+  it('fails closed on a duplicate collected Playwright target', () => {
+    const plan = resolveStructuralE2EPlan(
+      [],
+      baseDeps({ collectOwnerInventory: () => [...BASE_INVENTORY, BASE_INVENTORY[0]] }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+  });
+
+  it('never silently skips a direct changed existing target when Playwright discovery is incomplete', () => {
+    const plan = resolveStructuralE2EPlan(
+      ['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'],
+      baseDeps({
+        collectOwnerInventory: () => [],
+        validateTargetTree: () => ({
+          valid: true,
+          errors: [],
+          targetPaths: ['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'],
+        }),
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+  });
+
+  it('never silently skips a direct newly-added target when Playwright discovery is incomplete', () => {
+    const plan = resolveStructuralE2EPlan(
+      ['tests/e2e/pages/Settings/appUpdatesEntry.e2e.spec.ts'],
+      baseDeps({
+        validateTargetTree: () => ({
+          valid: true,
+          errors: [],
+          targetPaths: [
+            ...BASE_INVENTORY.map((entry) => entry.specPath),
+            'tests/e2e/pages/Settings/appUpdatesEntry.e2e.spec.ts',
+          ],
+        }),
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
   });
 
   it('selects itself for a changed existing target E2E spec', () => {

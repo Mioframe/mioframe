@@ -9,9 +9,11 @@ import {
 } from './e2eOwner.ts';
 import {
   validateE2EOwnerInventory,
+  validateE2EOwnerInventoryCompleteness,
   type RawE2ESpecInventoryEntry,
   type ResolvedE2ESpecEntry,
 } from './e2eOwnerInventory.ts';
+import { validateE2ETargetTree, type E2ETargetTreeValidation } from './e2eOwnerTree.ts';
 import { traverseOwnersForChangedPath, type ReverseDependencyGraph } from './e2eOwnerTraversal.ts';
 import { acquireProductionReverseGraph } from './e2eGraph.ts';
 import { collectE2EOwnerInventory } from './e2eOwnerInventoryCollector.ts';
@@ -47,10 +49,10 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/lib/e2eOwnerInventory.ts',
   'scripts/lib/e2eOwnerTraversal.ts',
   'scripts/lib/e2eGraph.ts',
-  'scripts/lib/e2eGraphCollector.mjs',
+  'scripts/lib/e2eGraphCollector.ts',
   'scripts/lib/e2eOwnerInventoryCollector.ts',
-  'scripts/lib/e2eOwnerInventoryContainer.mjs',
-  'scripts/lib/e2eOwnerInventoryReporter.mjs',
+  'scripts/lib/e2eOwnerInventoryContainer.ts',
+  'scripts/lib/e2eOwnerInventoryReporter.ts',
   'scripts/lib/e2eProjectApplicability.ts',
   'scripts/release/managedUpdatesProof.mjs',
   'tests/e2e/helpers.ts',
@@ -140,6 +142,7 @@ export interface ResolveStructuralE2EPlanDeps {
   ownerDirectoryExists?: (owner: E2EOwnerRef) => boolean;
   acquireGraph?: () => ReturnType<typeof acquireProductionReverseGraph>;
   collectOwnerInventory?: () => RawE2ESpecInventoryEntry[];
+  validateTargetTree?: () => E2ETargetTreeValidation;
 }
 
 function selectedSpecsToPlan(
@@ -187,8 +190,9 @@ function selectedSpecsToPlan(
 
 /**
  * Resolve the structural application E2E plan for a changed-file set, in
- * priority order: invalid (a structural/ownership-inventory problem that
- * must fail closed instead of silently widening), full (infrastructure,
+ * priority order: invalid (a structural/ownership-inventory problem,
+ * including filesystem/Playwright inventory incompleteness, that must fail
+ * closed instead of silently widening), full (infrastructure,
  * runtime-relevant `package.json`, `src/app`/routes, a removed/moved spec
  * whose owner can no longer be validated, graph acquisition failure, or a
  * relevant production path with no safely reachable owner), focused (a
@@ -205,6 +209,7 @@ export function resolveStructuralE2EPlan(
     ownerDirectoryExists = defaultOwnerDirectoryExists,
     acquireGraph = acquireProductionReverseGraph,
     collectOwnerInventory = collectE2EOwnerInventory,
+    validateTargetTree = validateE2ETargetTree,
   }: ResolveStructuralE2EPlanDeps = {},
 ): StructuralE2EPlan {
   let rawInventory: RawE2ESpecInventoryEntry[];
@@ -226,6 +231,28 @@ export function resolveStructuralE2EPlan(
 
   if (!inventoryValidation.valid) {
     return { mode: 'invalid', reasons: inventoryValidation.errors };
+  }
+
+  // The filesystem target E2E tree is the independent ground truth for
+  // "what must be proven"; the Playwright-collected inventory must be
+  // proven complete against it before any selection happens, so a
+  // testMatch/testIgnore/project drift can never silently drop a direct
+  // changed/added target E2E from the plan (see
+  // docs/testing/verify-redesign-pass-d-correction.md's "Fail-closed
+  // filesystem / Playwright inventory equality").
+  const targetTreeValidation = validateTargetTree();
+
+  if (!targetTreeValidation.valid) {
+    return { mode: 'invalid', reasons: targetTreeValidation.errors };
+  }
+
+  const completenessValidation = validateE2EOwnerInventoryCompleteness(
+    inventoryValidation.entries.map((entry) => entry.specPath),
+    targetTreeValidation.targetPaths,
+  );
+
+  if (!completenessValidation.valid) {
+    return { mode: 'invalid', reasons: completenessValidation.errors };
   }
 
   const entryBySpecPath = new Map(

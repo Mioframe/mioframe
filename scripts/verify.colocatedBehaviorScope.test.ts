@@ -8,6 +8,12 @@ vi.mock('./lib/e2eOwnerInventoryCollector.ts', () => ({
   collectE2EOwnerInventory: vi.fn(() => []),
 }));
 
+// Kept consistent (empty) with the mocked collector above; see
+// scripts/verify.test.ts's identical mock for why.
+vi.mock('./lib/e2eOwnerTree.ts', () => ({
+  validateE2ETargetTree: vi.fn(() => ({ valid: true, errors: [], targetPaths: [] })),
+}));
+
 vi.mock('./lib/e2eGraph.ts', () => ({
   acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
 }));

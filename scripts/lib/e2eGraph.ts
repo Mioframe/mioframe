@@ -6,7 +6,7 @@
  * traversal logic in `scripts/lib/e2eOwnerTraversal.ts` so resolver unit
  * tests use small explicit graph fixtures and never execute
  * dependency-cruiser. The actual `cruise()` call runs in a dedicated child
- * process (`scripts/lib/e2eGraphCollector.mjs`) so this synchronous adapter
+ * process (`scripts/lib/e2eGraphCollector.ts`) so this synchronous adapter
  * never has to await a promise, matching the rest of the synchronous verify
  * planner.
  */
@@ -14,7 +14,7 @@
 import { spawnSync } from 'node:child_process';
 import type { ReverseDependencyGraph } from './e2eOwnerTraversal.ts';
 
-const COLLECTOR_SCRIPT = 'scripts/lib/e2eGraphCollector.mjs';
+const COLLECTOR_SCRIPT = 'scripts/lib/e2eGraphCollector.ts';
 
 /** Result of acquiring the production reverse-dependency graph. */
 export type AcquireProductionReverseGraphResult =

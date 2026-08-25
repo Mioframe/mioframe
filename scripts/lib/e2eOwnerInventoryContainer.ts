@@ -17,7 +17,7 @@ import { runPlaywrightInContainer } from '../playwrightContainer.ts';
  * `MIOFRAME_E2E_OWNER_INVENTORY_RESULT_FILE`.
  */
 
-const REPORTER = 'scripts/lib/e2eOwnerInventoryReporter.mjs';
+const REPORTER = 'scripts/lib/e2eOwnerInventoryReporter.ts';
 const OUTPUT_FILE_ENV = 'MIOFRAME_E2E_OWNER_INVENTORY_OUTPUT_FILE';
 const RESULT_FILE_ENV = 'MIOFRAME_E2E_OWNER_INVENTORY_RESULT_FILE';
 const CONTAINER_WORKDIR = '/work';
@@ -28,14 +28,28 @@ const CONFIGS = [
   { config: 'playwright.release.config.ts', label: 'e2e-owner-inventory-release' },
 ];
 
-function uniqueTempFile(tag) {
+function uniqueTempFile(tag: string): string {
   return path.join(
     TEMP_DIR,
     `e2e-owner-inventory-${tag}-${process.pid}-${crypto.randomBytes(6).toString('hex')}.json`,
   );
 }
 
-async function collectFromConfig({ config, label }) {
+// Reads `process.exitCode` from its own function scope so TypeScript can't
+// carry over the `undefined` narrowing from the reset assignment just before
+// each `runPlaywrightInContainer` call; the actual runtime value comes from
+// `applyProcessResult` inside that call.
+function currentExitCode(): number | string | null | undefined {
+  return process.exitCode;
+}
+
+async function collectFromConfig({
+  config,
+  label,
+}: {
+  config: string;
+  label: string;
+}): Promise<unknown[]> {
   const hostOutputFile = uniqueTempFile(path.basename(config, '.ts'));
 
   try {
@@ -58,9 +72,11 @@ async function collectFromConfig({ config, label }) {
         'Podman is required for containerized Playwright E2E ownership inventory collection, but `podman --version` failed.',
     });
 
-    if (process.exitCode !== 0) {
+    const listExitCode = currentExitCode();
+
+    if (listExitCode !== 0) {
       throw new Error(
-        `Playwright container list run failed for ${config} (exit ${process.exitCode ?? 'unset'}).`,
+        `Playwright container list run failed for ${config} (exit ${listExitCode ?? 'unset'}).`,
       );
     }
 
@@ -83,13 +99,14 @@ async function main() {
 
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 
-  const entries = [];
+  const entries: unknown[] = [];
 
   for (const target of CONFIGS) {
     // Sequential by design: each container run acquires the shared
     // expensive-command lock, and running the two list collections
     // concurrently would contend for it instead of reusing it in turn.
     // oxlint-disable-next-line no-await-in-loop -- Sequential container runs share the expensive-command lock; see comment above.
+    // eslint-disable-next-line no-await-in-loop -- Sequential container runs share the expensive-command lock; see comment above.
     entries.push(...(await collectFromConfig(target)));
   }
 
