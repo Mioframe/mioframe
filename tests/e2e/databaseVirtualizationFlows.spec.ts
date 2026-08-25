@@ -578,7 +578,13 @@ test('keeps the production Database table mounted work below its logical row-pro
 
 test('keeps real preceding Database content connected to the table-owned surface range', async ({
   page,
-}) => {
+}, testInfo) => {
+  const configuredViewport = testInfo.project.use.viewport;
+  const isMobile = testInfo.project.use.isMobile === true;
+  await page.setViewportSize({
+    width: isMobile ? (configuredViewport?.width ?? 640) : 640,
+    height: 360,
+  });
   await launchApp(page);
   await page.getByRole('button', { name: /weekly planning/i }).click();
 
@@ -588,7 +594,8 @@ test('keeps real preceding Database content connected to the table-owned surface
   await expect(root).toBeVisible();
   await expect(table).toBeVisible();
 
-  const deepRangeRows = Array.from({ length: 40 }, (_, index) =>
+  const additionalSurfaceRangeRowCount = 16;
+  const deepRangeRows = Array.from({ length: additionalSurfaceRangeRowCount }, (_, index) =>
     createUniqueName(`surface range row ${index + 1}`),
   );
   for (const task of deepRangeRows) {
@@ -639,7 +646,7 @@ test('keeps real preceding Database content connected to the table-owned surface
   });
   const initialRange = await readLogicalRange();
   expect(initialRange.rows).toBeGreaterThan(0);
-  expect(initialRange.rows).toBeLessThan(deepRangeRows.length + 5);
+  expect(initialRange.rows).toBeLessThan(initialRange.rowCount - 1);
   expect(initialRange.firstRowIndex).toBe(2);
 
   await root.evaluate((rootElement) => {
