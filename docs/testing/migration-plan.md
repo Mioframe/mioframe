@@ -66,7 +66,7 @@ Target difference for ordinary visual ownership: none.
 - `browser-integration` is a public verification type and the managed-update/artifact runtime corpus uses target `*.browser-integration.spec.ts` ownership under `src/shared/service/appUpdate/`.
 - the managed-update corpus remains executed through `playwright.release.config.ts` and `scripts/e2eReleaseContainer.mjs` because those existing execution boundaries preserve built-artifact, fresh-container, and cross-engine semantics; this is execution infrastructure, not release ownership.
 - direct moved browser-integration specs and `src/shared/service/appUpdate/**` production changes participate in ordinary type-local affected planning through `scripts/lib/browserIntegrationRisk.ts`, reusing the existing `artifact` and `managed-updates-browser-integration` leaves.
-- Pass D added the ordinary entity-owned `src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts`; the private `browser-integration-local` leaf executes ordinary owner-local browser integration through `scripts/browserIntegration.mjs` and the existing `runPlaywrightInContainer` boundary.
+- Pass D added the ordinary entity-owned `src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts`; the private `browser-integration-local` leaf executes ordinary owner-local browser integration through the existing Playwright container boundary.
 - the managed-update browser-integration leaf preserves three ordered fresh-container groups; ordinary runtime groups are Chromium, while the narrow lifecycle smoke remains Firefox/WebKit.
 - the prior WebKit cross-engine flake was traced to owner-local test synchronization across the production watchdog's expected rollback reload; the correction preserves the existing polling budget and browser/runtime contract, and Pass C re-review accepted the resulting deterministic proof.
 
@@ -80,10 +80,11 @@ Target difference for browser-integration suffix/owner placement: none. The reta
 - `scripts/lib/e2eRisk.ts` now uses structural primary owners plus one dependency-cruiser reverse graph; the manual `E2E_SCENARIO_SCOPES`, standalone exception metadata, and production source-prefix -> spec mapping have been removed;
 - `scripts/lib/e2eProjectApplicability.ts` remains the independent recursive `desktop | mobile | both` registry for target E2E paths;
 - exceptional additional ownership is represented only by validated Playwright `_mioframe-owner` annotations; the current migrated inventory requires zero such annotations;
-- `dependency-cruiser@18.2.0` is installed and locked, but the real Mioframe graph acquisition/selection proof is still required before Pass D acceptance;
-- the current Playwright ownership-inventory collector still invokes Playwright `--list` directly on the host. This violates the Pass D container/single-run amendment and is the remaining execution correction before acceptance. The correction contract is `docs/testing/verify-redesign-pass-d-correction.md` and active findings are in `scripts/REVIEW.md`.
+- `dependency-cruiser@18.2.0` is installed and locked; real `src/**` graph acquisition is proven, including `src/entities/databaseData/useDatabaseData.ts` reaching `widget/DocumentView` and `page/DocumentViewPane` without accidental full fallback;
+- ordinary and release Playwright ownership metadata collection now uses the existing containerized `runPlaywrightInContainer` boundary in browser-free `--list`/reporter mode, preserving the verifier's existing machine-lock/expensive-command coordination;
+- the remaining Pass D blocker is structural completeness validation: the union of Playwright-collected target E2E paths must be proven equal to the filesystem target E2E set so an undiscovered target spec cannot silently disappear from affected planning. The active correction contract is `docs/testing/verify-redesign-pass-d-correction.md` and the finding is in `scripts/REVIEW.md`.
 
-Target difference for E2E ownership: the structural layout, owner model, project applicability, special production-artifact routing, and manual-registry removal have landed. Pass D is not architect-accepted until ownership metadata collection is containerized through the existing Playwright boundary and the installed dependency-cruiser adapter is proven against the real repository graph.
+Target difference for E2E ownership: the target structural layout, reverse graph, containerized Playwright metadata, project applicability, production-artifact routing, and manual-registry removal have landed. Pass D is not architect-accepted until filesystem/Playwright target inventory completeness is fail-closed and proven on the current repository.
 
 ### Mutation
 
@@ -111,7 +112,7 @@ Until implementation completes, distinguish **current executable compatibility**
 | visual suffix | target owner-local `*.visual.spec.ts`; ordinary central visual spec discovery removed | `*.visual.spec.ts` |
 | browser integration | target `*.browser-integration.spec.ts` is owner-local and type-local planning is active for both managed-update and ordinary browser-storage owners; managed-update proof retains release runner/container infrastructure for execution semantics | `*.browser-integration.spec.ts` next to runtime owner |
 | E2E suffix/location | target `tests/e2e/{pages,widgets}/<Owner>/**/*.e2e.spec.ts`; no root/release assertion ownership remains | same structural target |
-| E2E impact | structural owner + dependency-cruiser planner is implemented and the manual registry is gone; Pass D review still requires real graph proof and containerized Playwright metadata collection | reverse dependency graph -> product owner with containerized validated Playwright metadata |
+| E2E impact | structural owner + real dependency-cruiser reverse graph + containerized Playwright owner inventory are implemented and the manual registry is gone; Pass D review still requires equality/completeness validation between filesystem targets and Playwright-collected targets | reverse dependency graph -> product owner with complete fail-closed containerized Playwright metadata |
 | unit impact | current planner behavior | Vitest native related/affected + safe fallback |
 | release | private release-oriented leaf labels, runner/config names, and `verify:release` alias remain transitional execution compatibility | no public release type; checks classified by proof type and `pnpm verify --full` is canonical |
 | mutation in full | complete current Stryker-configured inventory | complete validated explicit mutation target inventory |
@@ -125,7 +126,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **Pass A, Pass B, and Pass C are architect-accepted. Pass D implementation has landed but architect review is blocked on `scripts/REVIEW.md`; the active correction contract is `docs/testing/verify-redesign-pass-d-correction.md`. Pass E must not start yet.**
+Status on `architecture/verify-redesign`: **Pass A, Pass B, and Pass C are architect-accepted. Pass D implementation plus its container/real-graph correction have landed, but architect review remains blocked by the single completeness finding in `scripts/REVIEW.md`; the active correction contract is `docs/testing/verify-redesign-pass-d-correction.md`. Pass E must not start yet.**
 
 Required:
 
@@ -174,7 +175,7 @@ Implemented in Pass C:
 
 ### Phase 3 — E2E structural ownership and reverse graph
 
-Status: **implementation landed; architect review blocked on the two completion findings in `scripts/REVIEW.md`.**
+Status: **implementation and first correction landed; architect review blocked by the single completeness finding in `scripts/REVIEW.md`.**
 
 The landed Pass D state already includes:
 
@@ -182,14 +183,16 @@ The landed Pass D state already includes:
 2. filesystem primary-owner parsing and validation;
 3. validated exceptional additional-owner metadata with zero annotations required by the migrated inventory;
 4. `dependency-cruiser@18.2.0` and one concrete reverse-graph adapter;
-5. target owner-local E2E migration with preserved desktop/mobile applicability;
-6. owner-local production-artifact routing through existing release execution;
-7. removal of `E2E_SCENARIO_SCOPES`, standalone exception metadata, source-prefix mapping, and mapping-specific validation/tests.
+5. real repository graph acquisition and lower-layer -> widget/page owner proof without accidental full fallback;
+6. containerized ordinary/release Playwright `--list` ownership inventory through the existing guarded Playwright container boundary;
+7. target owner-local E2E migration with preserved desktop/mobile applicability;
+8. owner-local production-artifact routing through existing release execution;
+9. removal of `E2E_SCENARIO_SCOPES`, standalone exception metadata, source-prefix mapping, and mapping-specific validation/tests.
 
 Remaining before acceptance:
 
-1. route the ordinary/release Playwright `--list` ownership inventory through the existing `runPlaywrightInContainer`/guard boundary rather than invoking Playwright on the host;
-2. prove the installed dependency-cruiser adapter against the real Mioframe `src/**` graph and demonstrate one real lower-layer -> structural owner selection without accidental full fallback.
+1. prove equality/completeness between the filesystem target E2E set and the union of Playwright-collected target E2E inventory, treating missing/unexpected/duplicate targets as structural invalidity;
+2. correct the narrow stale collector comments and apply the repository TypeScript-first rule to new/task-touched Pass D Node tooling where the actual runtime/Playwright loader supports `.ts` without new loader infrastructure.
 
 Forbidden:
 
@@ -197,6 +200,7 @@ Forbidden:
 - adding tags to every E2E;
 - building a generic graph service/framework;
 - inferring business semantics from imports;
+- accepting incomplete Playwright discovery as valid;
 - starting Pass E while the Pass D review remains blocked.
 
 ### Phase 4 — unit, mutation, performance, and release reclassification
@@ -253,7 +257,7 @@ Each risky pass requires focused proof of the mechanism it changes. Follow the p
 - **Pass A:** parser/internal type composition, target suffix discovery/exclusions, old+new compatibility, and mixed-release split equivalence;
 - **Pass B:** canonical public type parsing, invalid combinations, type isolation/prerequisites, literal full semantics, and stale invocation handling;
 - **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, add/remove/move fail-closed behavior, and clean preservation of the managed-update browser matrix;
-- **Pass D:** E2E owner parsing, dependency traversal, fallback, inventory validation, direct/moved/removed spec behavior, additional-owner validation, project applicability preservation, containerized Playwright metadata collection, and one real repository graph-selection proof;
+- **Pass D:** E2E owner parsing, dependency traversal, fallback, inventory equality/completeness validation, direct/moved/removed spec behavior, additional-owner validation, project applicability preservation, containerized Playwright metadata collection, and one real repository graph-selection proof;
 - **Pass E:** Vitest-native related fallback, explicit mutation target validation/selection/full semantics, and performance discovery only for real durable budgets;
 - **Pass F:** workflow/public-command inventory, release gate migration, and proof that removed compatibility mechanisms have no remaining consumers.
 
