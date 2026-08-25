@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **PR #217 virtualization implementation, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. The remaining automatic merge gate is exact-head GitHub CI on the final repository head.**
+Status: **PR #217 virtualization implementation, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. One final Database widget ownership cleanup is active before the final exact-head merge gate.**
 
 This is the architecture source of truth for PR #217. Temporary implementation handoff, preflight, diagnostic, and stage-result artifacts are intentionally not retained after closure. Retained measurement evidence and deferred performance scope are documented separately.
 
@@ -83,6 +83,23 @@ The proportional moving-surface E2E uses a compact deterministic viewport and 16
 
 The corrected scenario passes on desktop Chromium and Mobile Chrome without requiring shared virtualization changes.
 
+## Database widget ownership cleanup — active
+
+The top-level Database widget remains the correct owner of the physical scroll root, root-to-surface geometry, inline-edit arbitration, and configuration arbitration. The final cleanup only removes internal composition drift:
+
+- `DatabaseViewWidget` becomes the single screen owner of the property-collection and view-selection read models;
+- `DatabaseViewLayout` and `DatabaseToolbar` consume narrow parent-provided state rather than creating duplicate screen reads;
+- property-update intent from toolbar-owned child surfaces returns upward to the widget's existing entity mutation path;
+- the already accepted root-to-surface formulas and refresh behavior move into one widget-local `useDatabaseViewSurfaceGeometry` composable without changing geometry semantics.
+
+Active implementation contract:
+
+- `docs/database-view-widget-ownership-cleanup-handoff.md`;
+- `docs/database-view-widget-ownership-cleanup-preflight.md`;
+- `src/widgets/DocumentView/Database/REVIEW.md`.
+
+No entity/shared API expansion, new geometry state/cache/observer, or product behavior change is authorized by this cleanup.
+
 ## Relation selected-view proof — resolved
 
 The historical Chromium flake in `uses default relation view inline and switches to a selected relation view` was investigated rather than treated as a production defect by assumption.
@@ -129,7 +146,7 @@ Accepted coding-agent evidence after the final relation proof correction:
 
 Operator visual inspection of the Database border/corner/sticky presentation is accepted.
 
-Exact-head GitHub CI on the final repository head remains the authoritative automatic merge gate.
+A new cumulative branch gate and exact-head GitHub CI are required after the active Database widget ownership cleanup.
 
 ## Residual Chromium jank
 
@@ -141,10 +158,12 @@ Retained evidence and the first discriminator for that work are recorded in `doc
 
 PR #217 may merge when:
 
-1. exact-head GitHub CI on the final head is green without retry/flaky classification;
-2. the final merge decision confirms no new blocker was introduced after the documentation-only closing pass.
+1. the Database widget ownership cleanup is implemented and architect-accepted;
+2. coding-agent `pnpm verify --base origin/develop` passes cleanly after that correction;
+3. exact-head GitHub CI on the final head is green without retry/flaky classification;
+4. the final merge decision confirms no new blocker was introduced.
 
-No additional production, relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
+No additional relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
 
 ## Forbidden before merge
 
