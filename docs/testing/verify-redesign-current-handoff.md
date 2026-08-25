@@ -10,7 +10,7 @@ Pass status:
 - Pass B — completed and architect-accepted;
 - Pass C — completed and architect-accepted;
 - Pass D — completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- Pass E — architecture resolved; ready for implementation;
+- Pass E — architecture resolved; coding task prepared and ready for implementation;
 - Pass F — must not start until Pass E is architect-accepted.
 
 There is no active Pass D `scripts/REVIEW.md`. The previous B1 completeness blocker and M1 stale-comment issue are closed.
@@ -31,9 +31,24 @@ Before Pass E implementation/review, read in this order:
 8. `docs/testing/verify-redesign-implementation-preflight.md`;
 9. `docs/testing/migration-plan.md`;
 10. `docs/testing/verify-redesign-pass-e-implementation.md`;
-11. current `scripts/verify.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
+11. `docs/testing/verify-redesign-pass-e-agent-task.md` for the current coding pass;
+12. current `scripts/verify.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
 
 Pass D implementation/correction records are historical accepted source for invariants and should be consulted only when Pass E touches an adjacent boundary.
+
+## Current coding task
+
+The authoritative coding task is:
+
+`docs/testing/verify-redesign-pass-e-agent-task.md`
+
+It was prepared against architect HEAD:
+
+`6a9df7aff7f61f31274b55d231622e6cbbec57e7`
+
+The repository may contain the later architect-only commit that adds this task/handoff pointer before coding starts. The coding agent must implement from the actual current branch HEAD while preserving the Pass E baseline contract; it must not reset or discard these preparation commits.
+
+No `scripts/REVIEW.md` should be created before implementation. The architect creates one only after semantic review if actionable findings exist.
 
 ## Pass E architecture summary
 
