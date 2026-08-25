@@ -67,7 +67,7 @@ Target difference for ordinary visual ownership: none.
 - the moved corpus remains executed through `playwright.release.config.ts` and `scripts/e2eReleaseContainer.mjs` because those existing execution boundaries preserve built-artifact, fresh-container, and cross-engine semantics; this is execution infrastructure, not release ownership.
 - direct moved browser-integration specs and `src/shared/service/appUpdate/**` production changes participate in ordinary type-local affected planning through `scripts/lib/browserIntegrationRisk.ts`, reusing the existing `artifact` and `managed-updates-browser-integration` leaves.
 - the managed-update browser-integration leaf preserves three ordered fresh-container groups; ordinary runtime groups are Chromium, while the narrow lifecycle smoke remains Firefox/WebKit.
-- architect review of Pass C is currently blocked by `src/shared/service/appUpdate/REVIEW.md` B1 because the required WebKit cross-engine proof was reported flaky. The target ownership/planning is executable, but Pass C is not architect-accepted until that proof is deterministic.
+- the prior WebKit cross-engine flake was traced to owner-local test synchronization across the production watchdog's expected rollback reload; the correction preserves the existing polling budget and browser/runtime contract, and Pass C re-review accepted the resulting deterministic proof.
 
 Target difference for browser-integration suffix/owner placement: none. The retained release-named runner/config/container files are internal execution mechanisms and may remain while they are required for the runtime contract.
 
@@ -127,7 +127,7 @@ The phases below describe capability transitions and compatibility dependencies;
 
 ### Phase 0 — architecture and rules
 
-Status on `architecture/verify-redesign`: **Pass A and Pass B are architect-accepted. Pass C implementation has landed, but architect review is blocked by `src/shared/service/appUpdate/REVIEW.md` B1 (required WebKit cross-engine lifecycle proof is flaky). The current implementation boundary remains Pass C correction; Pass D must not start until Pass C is re-reviewed and accepted.**
+Status on `architecture/verify-redesign`: **Pass A, Pass B, and Pass C are architect-accepted. The current implementation boundary is Pass D.**
 
 Required:
 
@@ -136,7 +136,7 @@ Required:
 - verification-facing skills and repository rules use verification types rather than durable low-level labels;
 - older verifier design documents are treated as legacy implementation records, not competing target architecture.
 
-No additional verifier runtime architecture change is required in this phase beyond closing the active Pass C correction.
+No additional verifier runtime architecture change is required in this phase.
 
 ### Phase 1 — type-level CLI and classification shell
 
@@ -161,7 +161,7 @@ Compatibility:
 
 ### Phase 2 — spec taxonomy and local owner migration
 
-Status: **implementation landed; architect acceptance blocked only by the active WebKit proof finding.**
+Status: **complete and architect-accepted.**
 
 Make independent test types machine-classifiable by suffix and placement.
 
@@ -171,11 +171,8 @@ Implemented in Pass C:
 - visual uses owner-local `*.visual.spec.ts` and colocated baselines; ordinary central visual assertion discovery is removed;
 - managed-update/artifact browser-runtime specs use owner-local `*.browser-integration.spec.ts` under `src/shared/service/appUpdate/`;
 - application/runtime TypeScript and Vitest scopes exclude non-unit Playwright/performance spec suffixes correctly;
-- direct/add/remove/move target specs participate in the relevant type-local planning/fail-closed behavior.
-
-Still required before Phase 2/Pass C acceptance:
-
-- close `src/shared/service/appUpdate/REVIEW.md` B1 by correcting the concrete WebKit flake root cause and obtaining clean deterministic cross-engine proof without weakening the preserved Firefox/WebKit contract.
+- direct/add/remove/move target specs participate in the relevant type-local planning/fail-closed behavior;
+- the required Firefox/WebKit cross-engine lifecycle proof is preserved and deterministic after correcting the owner-local navigation synchronization race.
 
 ### Phase 3 — E2E structural ownership and reverse graph
 
@@ -252,7 +249,7 @@ Each risky pass requires focused proof of the mechanism it changes. Follow the p
 
 - **Pass A:** parser/internal type composition, target suffix discovery/exclusions, old+new compatibility, and mixed-release split equivalence;
 - **Pass B:** canonical public type parsing, invalid combinations, type isolation/prerequisites, literal full semantics, and stale invocation handling;
-- **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, add/remove/move fail-closed behavior, and clean preservation of the managed-update browser matrix; the current correction specifically requires deterministic WebKit cross-engine lifecycle proof;
+- **Pass C:** owner-local behavior/visual/browser-integration discovery, classification, add/remove/move fail-closed behavior, and clean preservation of the managed-update browser matrix;
 - **Pass D:** E2E owner parsing, dependency traversal, fallback, inventory validation, direct/moved/removed spec behavior, additional-owner validation, and project applicability preservation;
 - **Pass E:** Vitest-native related fallback, explicit mutation target validation/selection/full semantics, and performance discovery only for real durable budgets;
 - **Pass F:** workflow/public-command inventory, release gate migration, and proof that removed compatibility mechanisms have no remaining consumers.
