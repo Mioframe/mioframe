@@ -42,7 +42,6 @@ import {
   getBlockingLogIssue,
   getCliFilesOverride,
   getVerifyProcessEnv,
-  getAllSiblingTestFiles,
   getExtraEnvForEntry,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
@@ -230,44 +229,6 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
       3 * singleSessionTimeoutMs,
     );
     expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates-e2e']).toBe(2 * singleSessionTimeoutMs);
-  });
-});
-
-describe('getAllSiblingTestFiles', () => {
-  it('maps scripts production .mjs files to sibling .test.mjs', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.mjs');
-
-    expect(result).toContain('scripts/agentEnvironment.test.mjs');
-  });
-
-  it('maps scripts production .ts files to sibling .test.ts', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.ts');
-
-    expect(result).toContain('scripts/lib/commandLock.test.ts');
-  });
-
-  it('returns already-test scripts .test.mjs files', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.test.mjs');
-
-    expect(result).toEqual(['scripts/agentEnvironment.test.mjs']);
-  });
-
-  it('returns already-test scripts .test.ts files', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.test.ts');
-
-    expect(result).toEqual(['scripts/lib/commandLock.test.ts']);
-  });
-
-  it('still discovers src/ sibling tests', () => {
-    const result = getAllSiblingTestFiles('src/shared/lib/cache/index.ts');
-
-    expect(result).toContain('src/shared/lib/cache/index.test.ts');
-  });
-
-  it('returns empty for non-src non-scripts files', () => {
-    const result = getAllSiblingTestFiles('config/tooling.json');
-
-    expect(result).toEqual([]);
   });
 });
 
@@ -789,9 +750,11 @@ describe('buildCommands type-check applicability', () => {
   });
 });
 
-describe('buildCommands mutation scope', () => {
-  it('still adds a scoped mutation run outside full mode when mutation scope is non-empty', () => {
-    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+describe('buildCommands mutation registry scope', () => {
+  it('selects exactly the registered target when its exact source changes', () => {
+    const commands = buildCommands(['src/shared/lib/changeObject/deepPatchJsonObject.ts'], {
+      fullMode: false,
+    });
     const mutationEntry = requireRunEntry(commands, 'mutation');
 
     expect(mutationEntry.args).toEqual([
@@ -799,14 +762,68 @@ describe('buildCommands mutation scope', () => {
       'stryker',
       'run',
       '-m',
-      'src/shared/lib/cache/index.ts',
+      'src/shared/lib/changeObject/deepPatchJsonObject.ts',
     ]);
+  });
+
+  it('selects exactly the registered target when its exact owning test changes', () => {
+    const commands = buildCommands(['src/shared/lib/migrations/defineVersion.test.ts'], {
+      fullMode: false,
+    });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      'src/shared/lib/migrations/defineVersion.ts',
+    ]);
+  });
+
+  it('does not register an unrelated production source merely because it has a sibling unit test', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+
+    requireSkippedEntry(commands, 'mutation');
   });
 
   it('skips mutation outside full mode when mutation scope is empty', () => {
     const commands = buildCommands([], { fullMode: false });
 
     requireSkippedEntry(commands, 'mutation');
+  });
+
+  it('selects the complete registered inventory for a mutation-infrastructure change', () => {
+    const commands = buildCommands(['stryker.config.mjs'], { fullMode: false });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      [
+        'src/shared/lib/changeObject/deepPatchJsonObject.ts',
+        'src/shared/lib/changeObject/deepPutJsonObject.ts',
+        'src/shared/lib/migrations/defineMigrations.ts',
+        'src/shared/lib/migrations/defineVersion.ts',
+      ].join(','),
+    ]);
+  });
+
+  it('fails closed for an invalid mutation registry state', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      mutationPlan: { mode: 'invalid', sources: [], reasons: ['registered source does not exist'] },
+    });
+
+    expect(commands.find((entry) => entry.label === 'mutation')).toEqual({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: 'invalid mutation registry state: registered source does not exist',
+      verificationType: 'mutation',
+    });
   });
 
   describe('deleted production path', () => {
@@ -1382,6 +1399,143 @@ describe('buildCommands visual lane (visualRisk integration)', () => {
   });
 });
 
+describe('buildCommands unit planning', () => {
+  it('produces native vitest --changed with the resolved diff base for a unit-relevant git-diff scope', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'src/shared/lib/cache/index.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+      '--changed',
+      'origin/develop',
+    ]);
+    expect(commands.find((entry) => entry.label === 'unit-related')).toBeUndefined();
+  });
+
+  it('widens a git-diff scope to full unit for a removed unit-relevant source path', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'deleted', path: 'src/shared/lib/cache/index.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('widens a git-diff scope to full unit for a unit-global infrastructure change', () => {
+    const commands = buildCommands(['vitest.config.ts'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'vitest.config.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('skips unit for a deterministically unit-irrelevant git-diff scope', () => {
+    const commands = buildCommands(['docs/testing/architecture.md'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'docs/testing/architecture.md' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    requireSkippedEntry(commands, 'unit-tests');
+  });
+
+  it('produces native vitest related --run for an explicit non-test source path', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+
+    const relatedEntry = requireRunEntry(commands, 'unit-related');
+
+    expect(relatedEntry.args).toEqual([
+      'exec',
+      'vitest',
+      'related',
+      '--run',
+      '--reporter=verbose',
+      'src/shared/lib/cache/index.ts',
+    ]);
+    expect(commands.find((entry) => entry.label === 'unit-tests')).toBeUndefined();
+  });
+
+  it('preserves both a direct test and a related source path as two unit leaves without full-unit widening', () => {
+    const commands = buildCommands(
+      ['src/shared/lib/cache/index.test.ts', 'src/shared/lib/changeObject/deepPatchJsonObject.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+      'src/shared/lib/cache/index.test.ts',
+    ]);
+    expect(requireRunEntry(commands, 'unit-related').args).toEqual([
+      'exec',
+      'vitest',
+      'related',
+      '--run',
+      '--reporter=verbose',
+      'src/shared/lib/changeObject/deepPatchJsonObject.ts',
+    ]);
+  });
+
+  it('widens an explicit scope to full unit for a removed/moved unit-relevant path', () => {
+    const removedPath = 'src/shared/lib/verifyUnitPlanRemovedFixture.ts';
+
+    expect(fs.existsSync(removedPath)).toBe(false);
+
+    const commands = buildCommands([removedPath], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('widens an explicit scope to full unit for a unit-global infrastructure path', () => {
+    const commands = buildCommands(['package.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+});
+
 describe('getExtraEnvForEntry', () => {
   it('does not set the skip flag for unrelated labels', () => {
     expect(getExtraEnvForEntry({ label: 'build' }, [{ label: 'build', status: 'passed' }])).toEqual(
@@ -1932,8 +2086,34 @@ describe('resolveVerifyChangedPathContext', () => {
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
+      input: null,
     });
     expect(resolveScope).not.toHaveBeenCalled();
     expect(projectChangedFiles).not.toHaveBeenCalled();
+  });
+
+  it('preserves the resolved git-diff scope input for a focused invocation', () => {
+    const gitDiffInput = {
+      kind: 'git-diff' as const,
+      changedPaths: [{ status: 'modified' as const, path: 'src/foo.ts' }],
+    };
+    const resolveScope = vi.fn(() => ({
+      input: gitDiffInput,
+      scope: 'local-changes',
+      baseRef: null,
+      packageJsonOldRef: 'HEAD',
+    }));
+    const projectChangedFiles = vi.fn(() => ['src/foo.ts']);
+    const invocation = resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' });
+
+    expect(
+      resolveVerifyChangedPathContext(invocation, { resolveScope, projectChangedFiles }),
+    ).toEqual({
+      changedFiles: ['src/foo.ts'],
+      scope: 'local-changes',
+      baseRef: null,
+      packageJsonOldRef: 'HEAD',
+      input: gitDiffInput,
+    });
   });
 });

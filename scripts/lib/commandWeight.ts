@@ -32,6 +32,7 @@ export function classifyCommandWeight({
     case 'eslint':
       return classifyFileScopedWeight(commandWeightConfig.eslint, fileCount, isFullRepo);
     case 'unit-tests':
+    case 'unit-related':
       return classifyFileScopedWeight(commandWeightConfig.vitest, fileCount, isFullRepo);
     case 'type-check':
       return 'medium';

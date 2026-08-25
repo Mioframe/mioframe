@@ -37,7 +37,13 @@ import {
   type BrowserIntegrationPlan,
   type GenericBrowserIntegrationPlan,
 } from './lib/browserIntegrationRisk.ts';
-import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
+import {
+  getChangedFileProjection,
+  resolveChangedPathsScope,
+  type ChangedPathsScopeInput,
+} from './lib/changedPaths.ts';
+import { resolveUnitPlan, type UnitPlan } from './lib/unitRisk.ts';
+import { resolveMutationPlan, type MutationPlan } from './lib/mutationTargets.ts';
 import {
   formatShellCommand,
   formatVerifyInvocationCommand,
@@ -250,6 +256,7 @@ const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationTy
   'type-check': 'static',
   'storybook-build': 'static',
   'unit-tests': 'unit',
+  'unit-related': 'unit',
   e2e: 'e2e',
   'storybook-behavior': 'behavior',
   visual: 'visual',
@@ -329,7 +336,6 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ]);
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
-const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function isFormatLintIgnored(filePath: string): boolean {
@@ -367,216 +373,6 @@ function isTypeCheckTarget(filePath: string): boolean {
     (baseName.startsWith('tsconfig') && baseName.endsWith('.json')) ||
     baseName.includes('.config.')
   );
-}
-
-/**
- * Find sibling test files for a production file path.
- *
- * For `src/` paths, maps `.ts` and `.vue` production files to colocated
- * `.test.ts` files using exact basename matching and directory scan.
- * For `scripts/` paths, maps `.mjs`/`.ts` production files to colocated
- * `.test.mjs`/`.test.ts` and `.spec.mjs` files using exact name match.
- * @param filePath Production file path relative to the repository root.
- * @returns Sorted unique list of existing sibling test file paths, or an
- * empty array when no tests are found.
- */
-export function getAllSiblingTestFiles(filePath: string): string[] {
-  if (filePath.startsWith('src/')) {
-    if (filePath.endsWith('.test.ts')) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    const extension = path.posix.extname(filePath);
-
-    if (!SOURCE_EXTENSIONS.includes(extension)) {
-      return [];
-    }
-
-    const baseName = path.posix.basename(filePath, extension);
-    const dirPath = path.posix.dirname(filePath);
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const exactMatch = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactMatch)) {
-      return [exactMatch];
-    }
-
-    const testCandidates: string[] = [];
-
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
-          continue;
-        }
-
-        const candidateBase = entry.name.slice(0, -'.test.ts'.length);
-        const parts = candidateBase.split('.');
-
-        if (parts.length < 2) {
-          continue;
-        }
-
-        if (parts[0] === baseName) {
-          testCandidates.push(path.posix.join(dirPath, entry.name));
-        }
-      }
-    } catch {
-      // Directory read failure falls through to an empty focused test scope.
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
-    if (
-      filePath.endsWith('.test.mjs') ||
-      filePath.endsWith('.spec.mjs') ||
-      filePath.endsWith('.test.ts')
-    ) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    if (!filePath.endsWith('.mjs') && !filePath.endsWith('.ts')) {
-      return [];
-    }
-
-    const extension = filePath.endsWith('.mjs') ? '.mjs' : '.ts';
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const testCandidates: string[] = [];
-
-    const exactTestMatchMjs = `${nameWithoutExt}.test.mjs`;
-
-    if (fileExists(exactTestMatchMjs)) {
-      testCandidates.push(exactTestMatchMjs);
-    }
-
-    const exactTestMatchTs = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactTestMatchTs)) {
-      testCandidates.push(exactTestMatchTs);
-    }
-
-    const exactSpecMatch = `${nameWithoutExt}.spec.mjs`;
-
-    if (fileExists(exactSpecMatch)) {
-      testCandidates.push(exactSpecMatch);
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  return [];
-}
-
-function getVitestScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
-      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
-      // colocated `.test.mjs` fixture-logic test there is valid vitest
-      // scope and falls through to the checks below like any other file.
-      continue;
-    }
-
-    if (filePath.endsWith('.behavior.spec.ts')) {
-      // Colocated behavior specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (filePath.endsWith('.visual.spec.ts')) {
-      // Colocated visual specs belong to the visual Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (
-      (filePath.endsWith('.test.ts') ||
-        filePath.endsWith('.spec.ts') ||
-        filePath.endsWith('.test.mjs') ||
-        filePath.endsWith('.spec.mjs')) &&
-      fileExists(filePath)
-    ) {
-      scope.push(filePath);
-      continue;
-    }
-
-    const testFiles = getAllSiblingTestFiles(filePath);
-
-    for (const testFile of testFiles) {
-      scope.push(testFile);
-    }
-  }
-
-  return uniqSorted(scope);
-}
-
-function isSharedUiFile(filePath: string): boolean {
-  return filePath.startsWith('src/shared/ui/');
-}
-
-function getMutationSourceCandidate(testFilePath: string): string | null {
-  const basePath = testFilePath.slice(0, -'.test.ts'.length);
-  const dirPath = path.posix.dirname(testFilePath);
-  const baseName = path.posix.basename(basePath);
-
-  for (const extension of SOURCE_EXTENSIONS) {
-    const candidate = `${basePath}${extension}`;
-
-    if (fileExists(candidate)) {
-      return candidate;
-    }
-  }
-
-  const parts = baseName.split('.');
-
-  if (parts.length >= 2) {
-    const trimmedBaseName = parts.slice(0, -1).join('.');
-    const trimmedPath = `${dirPath}/${trimmedBaseName}`;
-
-    for (const extension of SOURCE_EXTENSIONS) {
-      const candidate = `${trimmedPath}${extension}`;
-
-      if (fileExists(candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return null;
-}
-
-function getMutationScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('src/') && filePath.endsWith('.test.ts')) {
-      const candidate = getMutationSourceCandidate(filePath);
-
-      if (candidate && !isSharedUiFile(candidate)) {
-        scope.push(candidate);
-      }
-
-      continue;
-    }
-
-    if (!filePath.startsWith('src/') || isSharedUiFile(filePath)) {
-      continue;
-    }
-
-    if (!SOURCE_EXTENSIONS.includes(path.posix.extname(filePath))) {
-      continue;
-    }
-
-    const siblingTests = getAllSiblingTestFiles(filePath);
-
-    if (siblingTests.length > 0) {
-      scope.push(filePath);
-    }
-  }
-
-  return uniqSorted(scope);
 }
 
 function formatCommand(command: string, args: readonly string[]): string {
@@ -682,6 +478,11 @@ function getWarningSummary(label: string, output: string): string {
 const BLOCKING_LOG_SIGNALS: readonly { label: string; marker: string; reason: string }[] = [
   {
     label: 'unit-tests',
+    marker: '[Vue warn]',
+    reason: 'Vue runtime warnings were emitted during unit tests',
+  },
+  {
+    label: 'unit-related',
     marker: '[Vue warn]',
     reason: 'Vue runtime warnings were emitted during unit tests',
   },
@@ -1507,6 +1308,18 @@ export interface BuildCommandsOptions {
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
   /**
+   * Resolved changed-path scope input (`git-diff` with per-path add/modify/
+   * delete/rename status, or `explicit-files`) the unit planner classifies.
+   * Defaults to treating `changedFiles` as an `explicit-files` scope when
+   * omitted, matching direct `--files`/test-call usage; `main()` passes the
+   * real status-aware scope input resolved by `resolveVerifyChangedPathContext`.
+   */
+  changedPathsInput?: ChangedPathsScopeInput | null;
+  /** Resolved unit affected plan; defaults to {@link resolveUnitPlan} over `changedPathsInput`. */
+  unitPlan?: UnitPlan | null;
+  /** Resolved mutation affected plan; defaults to {@link resolveMutationPlan} over `changedFiles`. */
+  mutationPlan?: MutationPlan | null;
+  /**
    * Internal GitHub Actions duplicate-build avoidance for a focused `static`
    * type invocation only (see `.github/workflows/verify.yml`):
    * storybook-behavior and visual run as separate self-contained CI jobs
@@ -1553,6 +1366,9 @@ export function buildCommands(
     visualPlan: visualPlanOverride = null,
     storybookBuildCiFallback = false,
     repeat = currentVerifyInvocation?.repeat ?? null,
+    changedPathsInput: changedPathsInputOverride = null,
+    unitPlan: unitPlanOverride = null,
+    mutationPlan: mutationPlanOverride = null,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1565,7 +1381,16 @@ export function buildCommands(
   const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const vitestScope = getVitestScope(changedFiles);
+  const unitPlan: UnitPlan =
+    unitPlanOverride ??
+    (fullMode
+      ? { mode: 'skip', reasons: ['full mode runs the complete unit type unconditionally'] }
+      : resolveUnitPlan(
+          changedPathsInputOverride ?? { kind: 'explicit-files', files: [...changedFiles] },
+          {
+            packageJsonOldRef,
+          },
+        ));
   // Expensive structural E2E graph/Playwright-ownership acquisition only
   // runs when e2e is actually relevant to this invocation (default, or
   // `--only e2e`); see docs/testing/verify-redesign-pass-d-implementation.md's
@@ -1592,7 +1417,8 @@ export function buildCommands(
   const visualPlan: BuildCommandsVisualPlan | null =
     visualPlanOverride ??
     (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
-  const mutationScope = getMutationScope(existingChangedFiles);
+  const mutationPlan: MutationPlan =
+    mutationPlanOverride ?? resolveMutationPlan(existingChangedFiles);
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 
@@ -1714,21 +1540,66 @@ export function buildCommands(
       args: ['exec', 'vitest', 'run', '--reporter=verbose'],
       weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
     });
-  } else if (vitestScope.length > 0) {
-    commands.push({
-      kind: 'run',
-      label: 'unit-tests',
-      command: 'pnpm',
-      args: ['exec', 'vitest', 'run', '--reporter=verbose', ...vitestScope],
-      weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
-    });
-  } else {
+  } else if (unitPlan.mode === 'skip') {
     commands.push({
       kind: 'skipped',
       label: 'unit-tests',
       command: 'pnpm exec vitest run',
       reason: 'empty focused unit-test scope',
     });
+  } else if (unitPlan.mode === 'full') {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'run', '--reporter=verbose'],
+      weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
+      triggerReason: unitPlan.reasons.join('; '),
+    });
+  } else if (unitPlan.strategy === 'changed') {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'run', '--reporter=verbose', '--changed', unitPlan.baseRef],
+      weight: classifyCommandWeight({ label: 'unit-tests' }),
+      triggerReason: unitPlan.reasons.join('; '),
+    });
+  } else {
+    if (unitPlan.directTests.length > 0) {
+      commands.push({
+        kind: 'run',
+        label: 'unit-tests',
+        command: 'pnpm',
+        args: ['exec', 'vitest', 'run', '--reporter=verbose', ...unitPlan.directTests],
+        weight: classifyCommandWeight({
+          label: 'unit-tests',
+          fileCount: unitPlan.directTests.length,
+        }),
+        triggerReason: unitPlan.reasons.join('; '),
+      });
+    }
+
+    if (unitPlan.relatedPaths.length > 0) {
+      commands.push({
+        kind: 'run',
+        label: 'unit-related',
+        command: 'pnpm',
+        args: [
+          'exec',
+          'vitest',
+          'related',
+          '--run',
+          '--reporter=verbose',
+          ...unitPlan.relatedPaths,
+        ],
+        weight: classifyCommandWeight({
+          label: 'unit-related',
+          fileCount: unitPlan.relatedPaths.length,
+        }),
+        triggerReason: unitPlan.reasons.join('; '),
+      });
+    }
   }
 
   const e2eInvalidReasons = [
@@ -1960,13 +1831,14 @@ export function buildCommands(
     });
   }
 
-  // Pass B mutation transition: literal full mode now includes mutation,
-  // using the complete inventory already registered in stryker.config.mjs
-  // (no affected `-m` override). See
-  // docs/testing/verify-redesign-pass-b-implementation.md's "Mutation
-  // transition"; the explicit Pass E mutation target registry is not
-  // introduced yet, so focused/default mutation keeps the existing affected
-  // adjacency scope below.
+  // Literal full mode runs the complete registered mutation inventory
+  // already registered in stryker.config.mjs, with no affected `-m` override.
+  // Focused/default mode selects only from the explicit registry (see
+  // docs/testing/verify-redesign-pass-e-implementation.md's "Architecture
+  // decision — mutation"): a registered target's exact source or owning
+  // test changed, or a mutation registry/infrastructure change selects the
+  // complete registered inventory. Invalid registry state fails closed
+  // before any Stryker execution.
   if (fullMode) {
     commands.push({
       kind: 'run',
@@ -1976,14 +1848,21 @@ export function buildCommands(
       weight: classifyCommandWeight({ label: 'mutation' }),
       triggerReason: 'full-project release verification',
     });
-  } else if (mutationScope.length > 0) {
+  } else if (mutationPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: `invalid mutation registry state: ${mutationPlan.reasons.join('; ')}`,
+    });
+  } else if (mutationPlan.mode === 'focused' || mutationPlan.mode === 'full') {
     commands.push({
       kind: 'run',
       label: 'mutation',
       command: 'pnpm',
-      args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+      args: ['exec', 'stryker', 'run', '-m', mutationPlan.sources.join(',')],
       weight: classifyCommandWeight({ label: 'mutation' }),
-      triggerReason: `mutation scope: ${mutationScope.join(', ')}`,
+      triggerReason: mutationPlan.reasons.join('; '),
     });
   } else {
     commands.push({
@@ -2383,6 +2262,13 @@ export interface VerifyChangedPathContext {
   scope: string;
   baseRef: string | null;
   packageJsonOldRef: string | null;
+  /**
+   * Resolved changed-path scope input (`git-diff` with per-path status, or
+   * `explicit-files`), preserved for the unit planner's status-aware
+   * classification (see docs/testing/verify-redesign-pass-e-implementation.md's
+   * "Unit planner"). `null` for full mode, which needs no scope input.
+   */
+  input: ChangedPathsScopeInput | null;
 }
 
 /** Test seams for changed-path execution. */
@@ -2408,6 +2294,7 @@ export function resolveVerifyChangedPathContext(
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
+      input: null,
     };
   }
 
@@ -2422,6 +2309,7 @@ export function resolveVerifyChangedPathContext(
     scope,
     baseRef,
     packageJsonOldRef,
+    input,
   };
 }
 
@@ -2442,12 +2330,13 @@ async function main(
   const totalStartedAt = performance.now();
   const onlyType = invocation.onlyType;
   const verifyProcessEnv = getVerifyProcessEnv(process.env, invocation.profile);
-  const { changedFiles, scope, baseRef, packageJsonOldRef } =
+  const { changedFiles, scope, baseRef, packageJsonOldRef, input } =
     resolveVerifyChangedPathContext(invocation);
   const commands = selectOnlyCommands(
     buildCommands(changedFiles, {
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
+      changedPathsInput: input,
       fixMode: invocation.fixMode,
       // Internal GitHub-focused-static Storybook build fallback (see
       // `storybookBuildCiFallback` on BuildCommandsOptions): derived from the
