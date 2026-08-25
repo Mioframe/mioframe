@@ -24,6 +24,14 @@ const SNAPSHOT_DIR_SEGMENT = '/__snapshots__/';
 const UNIT_TEST_SUFFIX = '.test.ts';
 const SNAPSHOT_SUFFIX = '.snap';
 
+// Root tsconfig*.json files (tsconfig.json, tsconfig.app.json,
+// tsconfig.src.json, tsconfig.scripts.json, ...) can affect Vitest/Vite
+// TypeScript transform/resolution for every unit test, so they are global
+// unit infrastructure. One narrow root-only pattern instead of enumerating
+// every current filename (see
+// docs/testing/verify-redesign-pass-e-correction.md's "B2").
+const ROOT_TSCONFIG_PATTERN = /^tsconfig[\w.-]*\.json$/;
+
 function isExistingFile(filePath: string): boolean {
   try {
     return fs.statSync(filePath).isFile();
@@ -32,14 +40,31 @@ function isExistingFile(filePath: string): boolean {
   }
 }
 
+function isRootTsconfigPath(filePath: string): boolean {
+  return !filePath.includes('/') && ROOT_TSCONFIG_PATTERN.test(filePath);
+}
+
 /**
  * Check whether a changed path is unit-global infrastructure whose effect on
- * unit tests is not a normal module relation (see {@link UNIT_GLOBAL_INFRA_PATHS}).
+ * unit tests is not a normal module relation: a registered path (see
+ * {@link UNIT_GLOBAL_INFRA_PATHS}), or a root `tsconfig*.json` file that can
+ * affect Vitest/Vite TypeScript transform/resolution.
  * @param filePath Repository-relative changed file path.
- * @returns True when the path is registered unit-global infrastructure.
+ * @returns True when the path is unit-global infrastructure.
  */
 export function isUnitGlobalInfraPath(filePath: string): boolean {
-  return UNIT_GLOBAL_INFRA_PATHS.has(filePath);
+  return UNIT_GLOBAL_INFRA_PATHS.has(filePath) || isRootTsconfigPath(filePath);
+}
+
+/**
+ * Check whether a changed path is a standard Vitest snapshot path
+ * (`<dir>/__snapshots__/<name>.snap`), regardless of whether its owning test
+ * can be deterministically resolved.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is shaped like a standard Vitest snapshot.
+ */
+export function isStandardSnapshotPath(filePath: string): boolean {
+  return filePath.endsWith(SNAPSHOT_SUFFIX) && filePath.includes(SNAPSHOT_DIR_SEGMENT);
 }
 
 /**
@@ -190,14 +215,27 @@ export interface ResolveUnitPlanOptions {
 function resolveGitDiffUnitPlan(
   changedPaths: readonly ChangedPath[],
   packageJsonOldRef: string | null,
+  fileExists: (filePath: string) => boolean,
 ): UnitPlan {
   const fullReasons: string[] = [];
+  const snapshotOwners = new Set<string>();
+  const snapshotReasons: string[] = [];
 
   for (const change of changedPaths) {
     if (change.status === 'renamed') {
       if (isUnitGlobalInfraPath(change.oldPath) || isUnitGlobalInfraPath(change.newPath)) {
         fullReasons.push(
           `unit-global infrastructure rename ${change.oldPath} -> ${change.newPath} cannot be safely represented -> full unit`,
+        );
+        continue;
+      }
+
+      // Renamed standard snapshot: prefer the safe full fallback rather than
+      // deterministically proving the complete old/new ownership relation
+      // (see docs/testing/verify-redesign-pass-e-correction.md's "B2").
+      if (isStandardSnapshotPath(change.oldPath) || isStandardSnapshotPath(change.newPath)) {
+        fullReasons.push(
+          `renamed standard snapshot ${change.oldPath} -> ${change.newPath} cannot be safely represented -> full unit`,
         );
         continue;
       }
@@ -216,6 +254,28 @@ function resolveGitDiffUnitPlan(
       continue;
     }
 
+    if (isStandardSnapshotPath(change.path)) {
+      if (change.status === 'deleted') {
+        fullReasons.push(
+          `deleted standard snapshot ${change.path} cannot be safely represented -> full unit`,
+        );
+        continue;
+      }
+
+      const owner = getSnapshotOwningTestPath(change.path);
+
+      if (owner === null || !fileExists(owner)) {
+        fullReasons.push(
+          `standard snapshot ${change.path} has no resolvable owning test -> full unit`,
+        );
+        continue;
+      }
+
+      snapshotOwners.add(owner);
+      snapshotReasons.push(`snapshot ownership ${change.path} -> ${owner}`);
+      continue;
+    }
+
     if (change.status === 'deleted' && isUnitSourceOrSupportPath(change.path)) {
       fullReasons.push(
         `removed unit-relevant path ${change.path} cannot be safely represented -> full unit`,
@@ -227,13 +287,38 @@ function resolveGitDiffUnitPlan(
     return { mode: 'full', reasons: uniqSorted(fullReasons) };
   }
 
-  const hasUnitRelevantChange = changedPaths.some((change) =>
+  const hasOrdinaryUnitRelevantChange = changedPaths.some((change) =>
     change.status === 'renamed'
       ? isUnitSourceOrSupportPath(change.newPath)
       : isUnitSourceOrSupportPath(change.path),
   );
 
-  if (!hasUnitRelevantChange) {
+  // A snapshot-owner direct proof cannot be truthfully preserved alongside
+  // ordinary Git source/test-support impact with the existing two-strategy
+  // shape (native `--changed` xor explicit direct/related paths) without
+  // adding a third strategy; widen to full unit instead (see
+  // docs/testing/verify-redesign-pass-e-correction.md's "B2").
+  if (snapshotOwners.size > 0 && hasOrdinaryUnitRelevantChange) {
+    return {
+      mode: 'full',
+      reasons: uniqSorted([
+        ...snapshotReasons,
+        'snapshot ownership cannot be preserved alongside ordinary git-diff unit impact with the existing minimal leaf model -> full unit',
+      ]),
+    };
+  }
+
+  if (snapshotOwners.size > 0) {
+    return {
+      mode: 'focused',
+      strategy: 'explicit',
+      directTests: uniqSorted([...snapshotOwners]),
+      relatedPaths: [],
+      reasons: uniqSorted(snapshotReasons),
+    };
+  }
+
+  if (!hasOrdinaryUnitRelevantChange) {
     return { mode: 'skip', reasons: ['no unit-relevant changed paths'] };
   }
 
@@ -357,7 +442,7 @@ export function resolveUnitPlan(
   }
 
   if (input.kind === 'git-diff') {
-    return resolveGitDiffUnitPlan(input.changedPaths, packageJsonOldRef);
+    return resolveGitDiffUnitPlan(input.changedPaths, packageJsonOldRef, fileExists);
   }
 
   return resolveExplicitFilesUnitPlan(input.files, fileExists);

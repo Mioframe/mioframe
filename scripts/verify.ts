@@ -486,6 +486,21 @@ const BLOCKING_LOG_SIGNALS: readonly { label: string; marker: string; reason: st
     marker: '[Vue warn]',
     reason: 'Vue runtime warnings were emitted during unit tests',
   },
+  // Vitest's own no-test diagnostic (see printNoTestFound in the installed
+  // vitest CLI): `--changed`/`related` implicitly default passWithNoTests to
+  // true, so a unit-relevant scope with zero matching tests still exits 0.
+  // Blocking on this exact line keeps that a visible failure instead of a
+  // successful empty pass (see docs/testing/verify-redesign-pass-e-correction.md's "B1").
+  {
+    label: 'unit-tests',
+    marker: 'No test files found, exiting with code 0',
+    reason: 'Vitest found no matching unit test files for this affected scope',
+  },
+  {
+    label: 'unit-related',
+    marker: 'No test files found, exiting with code 0',
+    reason: 'Vitest found no matching unit test files for this related scope',
+  },
 ];
 
 // oxlint-disable-next-line no-control-regex -- ANSI color escapes start with the ESC control character by definition.
@@ -506,26 +521,30 @@ export interface BlockingLogIssue {
  * @returns Blocking issue with `reason` and `warningSummary`, or `null`.
  */
 export function getBlockingLogIssue(label: string, logOutput: string): BlockingLogIssue | null {
-  const signal = BLOCKING_LOG_SIGNALS.find((entry) => entry.label === label);
+  const signals = BLOCKING_LOG_SIGNALS.filter((entry) => entry.label === label);
 
-  if (!signal) {
+  if (signals.length === 0) {
     return null;
   }
 
-  const matchedLines = logOutput
-    .split('\n')
-    .map((line) => line.replace(ANSI_ESCAPE_PATTERN, ''))
-    .filter((line) => line.startsWith(signal.marker))
-    .map(trimWarningLine);
+  const lines = logOutput.split('\n').map((line) => line.replace(ANSI_ESCAPE_PATTERN, ''));
 
-  if (matchedLines.length === 0) {
-    return null;
+  for (const signal of signals) {
+    const matchedLines = lines
+      .filter((line) => line.startsWith(signal.marker))
+      .map(trimWarningLine);
+
+    if (matchedLines.length === 0) {
+      continue;
+    }
+
+    return {
+      reason: signal.reason,
+      warningSummary: uniqSorted(matchedLines).slice(0, 3).join(' | '),
+    };
   }
 
-  return {
-    reason: signal.reason,
-    warningSummary: uniqSorted(matchedLines).slice(0, 3).join(' | '),
-  };
+  return null;
 }
 
 /**
@@ -1839,7 +1858,19 @@ export function buildCommands(
   // test changed, or a mutation registry/infrastructure change selects the
   // complete registered inventory. Invalid registry state fails closed
   // before any Stryker execution.
-  if (fullMode) {
+  if (mutationPlan.mode === 'invalid') {
+    // Registry structural invalidity must fail before any Stryker child
+    // execution in every mode, including literal --full: check this before
+    // fullMode so an invalid registry can never reach the unconditional full
+    // `pnpm exec stryker run` below (see
+    // docs/testing/verify-redesign-pass-e-correction.md's "B3").
+    commands.push({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: `invalid mutation registry state: ${mutationPlan.reasons.join('; ')}`,
+    });
+  } else if (fullMode) {
     commands.push({
       kind: 'run',
       label: 'mutation',
@@ -1847,13 +1878,6 @@ export function buildCommands(
       args: ['exec', 'stryker', 'run'],
       weight: classifyCommandWeight({ label: 'mutation' }),
       triggerReason: 'full-project release verification',
-    });
-  } else if (mutationPlan.mode === 'invalid') {
-    commands.push({
-      kind: 'failed',
-      label: 'mutation',
-      command: 'pnpm exec stryker run',
-      reason: `invalid mutation registry state: ${mutationPlan.reasons.join('; ')}`,
     });
   } else if (mutationPlan.mode === 'focused' || mutationPlan.mode === 'full') {
     commands.push({

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getSnapshotOwningTestPath,
+  isStandardSnapshotPath,
   isUnitGlobalInfraPath,
   isUnitSourceOrSupportPath,
   isUnitTestPath,
@@ -61,6 +62,35 @@ describe('isUnitGlobalInfraPath', () => {
 
   it('rejects an ordinary source path', () => {
     expect(isUnitGlobalInfraPath('src/shared/lib/cache/index.ts')).toBe(false);
+  });
+
+  it('accepts root tsconfig*.json files', () => {
+    expect(isUnitGlobalInfraPath('tsconfig.json')).toBe(true);
+    expect(isUnitGlobalInfraPath('tsconfig.app.json')).toBe(true);
+    expect(isUnitGlobalInfraPath('tsconfig.src.json')).toBe(true);
+    expect(isUnitGlobalInfraPath('tsconfig.scripts.json')).toBe(true);
+  });
+
+  it('rejects a nested tsconfig-named file', () => {
+    expect(isUnitGlobalInfraPath('src/app/tsconfig.json')).toBe(false);
+  });
+});
+
+describe('isStandardSnapshotPath', () => {
+  it('accepts a standard __snapshots__ path', () => {
+    expect(isStandardSnapshotPath('src/foo/__snapshots__/bar.test.ts.snap')).toBe(true);
+  });
+
+  it('accepts a malformed snapshot-shaped path under __snapshots__', () => {
+    expect(isStandardSnapshotPath('src/foo/__snapshots__/bar.snap')).toBe(true);
+  });
+
+  it('rejects a .snap file outside __snapshots__', () => {
+    expect(isStandardSnapshotPath('src/foo/bar.snap')).toBe(false);
+  });
+
+  it('rejects a non-snapshot path', () => {
+    expect(isStandardSnapshotPath('src/foo/bar.test.ts')).toBe(false);
   });
 });
 
@@ -169,6 +199,126 @@ describe('resolveUnitPlan', () => {
       );
 
       expect(plan.mode).toBe('skip');
+    });
+
+    it('resolves a modified standard snapshot to its owning test instead of skipping', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'modified', path: 'src/foo/__snapshots__/bar.test.ts.snap' }],
+        },
+        {
+          packageJsonOldRef: 'origin/develop',
+          fileExists: (filePath) => filePath === 'src/foo/bar.test.ts',
+        },
+      );
+
+      expect(plan).toEqual<UnitPlan>({
+        mode: 'focused',
+        strategy: 'explicit',
+        directTests: ['src/foo/bar.test.ts'],
+        relatedPaths: [],
+        reasons: [
+          'snapshot ownership src/foo/__snapshots__/bar.test.ts.snap -> src/foo/bar.test.ts',
+        ],
+      });
+    });
+
+    it('resolves an added standard snapshot to its owning test instead of skipping', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'added', path: 'src/foo/__snapshots__/bar.test.ts.snap' }],
+        },
+        {
+          packageJsonOldRef: 'origin/develop',
+          fileExists: (filePath) => filePath === 'src/foo/bar.test.ts',
+        },
+      );
+
+      expect(plan.mode).toBe('focused');
+      expect(plan).toMatchObject({ directTests: ['src/foo/bar.test.ts'] });
+    });
+
+    it('widens to full unit for a deleted standard snapshot', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'deleted', path: 'src/foo/__snapshots__/bar.test.ts.snap' }],
+        },
+        { packageJsonOldRef: 'origin/develop', fileExists: () => true },
+      );
+
+      expect(plan.mode).toBe('full');
+    });
+
+    it('widens to full unit for a renamed standard snapshot', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [
+            {
+              status: 'renamed',
+              oldPath: 'src/foo/__snapshots__/bar.test.ts.snap',
+              newPath: 'src/foo/__snapshots__/baz.test.ts.snap',
+            },
+          ],
+        },
+        { packageJsonOldRef: 'origin/develop', fileExists: () => true },
+      );
+
+      expect(plan.mode).toBe('full');
+    });
+
+    it('widens to full unit for a malformed/unresolvable standard snapshot', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'modified', path: 'src/foo/__snapshots__/bar.snap' }],
+        },
+        { packageJsonOldRef: 'origin/develop', fileExists: () => true },
+      );
+
+      expect(plan.mode).toBe('full');
+    });
+
+    it('widens to full unit for a standard snapshot whose owning test does not exist', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [{ status: 'modified', path: 'src/foo/__snapshots__/bar.test.ts.snap' }],
+        },
+        { packageJsonOldRef: 'origin/develop', fileExists: () => false },
+      );
+
+      expect(plan.mode).toBe('full');
+    });
+
+    it('widens to full unit when a snapshot mixes with ordinary git-diff unit impact', () => {
+      const plan = resolveUnitPlan(
+        {
+          kind: 'git-diff',
+          changedPaths: [
+            { status: 'modified', path: 'src/foo/__snapshots__/bar.test.ts.snap' },
+            { status: 'modified', path: 'src/shared/lib/cache/index.ts' },
+          ],
+        },
+        {
+          packageJsonOldRef: 'origin/develop',
+          fileExists: (filePath) => filePath === 'src/foo/bar.test.ts',
+        },
+      );
+
+      expect(plan.mode).toBe('full');
+    });
+
+    it('widens to full unit for a representative root tsconfig*.json change', () => {
+      const plan = resolveUnitPlan(
+        { kind: 'git-diff', changedPaths: [{ status: 'modified', path: 'tsconfig.app.json' }] },
+        { packageJsonOldRef: 'origin/develop' },
+      );
+
+      expect(plan.mode).toBe('full');
     });
   });
 

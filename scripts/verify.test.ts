@@ -826,6 +826,23 @@ describe('buildCommands mutation registry scope', () => {
     });
   });
 
+  // B3 (docs/testing/verify-redesign-pass-e-correction.md): literal --full
+  // must not bypass registry structural invalidity before Stryker execution.
+  it('fails closed for an invalid mutation registry state in literal full mode, without a runnable Stryker child', () => {
+    const commands = buildCommands([], {
+      fullMode: true,
+      mutationPlan: { mode: 'invalid', sources: [], reasons: ['registered source does not exist'] },
+    });
+
+    expect(commands.find((entry) => entry.label === 'mutation')).toEqual({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: 'invalid mutation registry state: registered source does not exist',
+      verificationType: 'mutation',
+    });
+  });
+
   describe('deleted production path', () => {
     it('skips mutation instead of targeting a nonexistent production file', () => {
       const deletedProductionPath = 'src/shared/lib/verifyMutationScopeDeletedFixture.ts';
@@ -1681,6 +1698,45 @@ describe('getBlockingLogIssue', () => {
     expect(getBlockingLogIssue('e2e', vueWarnLog)).toBeNull();
     expect(getBlockingLogIssue('type-check', vueWarnLog)).toBeNull();
   });
+
+  // B1 (docs/testing/verify-redesign-pass-e-correction.md): Vitest's own
+  // --changed/related passWithNoTests-implicit-true diagnostic exits 0, so a
+  // unit-relevant scope with zero matching tests must still fail closed
+  // through this same blocking-log mechanism.
+  const noTestFilesLog = [
+    'RUN  v4.1.10 /home/mioframe',
+    '',
+    'No test files found, exiting with code 0',
+    'filter: src/app/router.ts',
+  ].join('\n');
+
+  it('flags a unit-tests log with the Vitest zero-match diagnostic', () => {
+    const issue = getBlockingLogIssue('unit-tests', noTestFilesLog);
+
+    expect(issue).toEqual({
+      reason: 'Vitest found no matching unit test files for this affected scope',
+      warningSummary: 'No test files found, exiting with code 0',
+    });
+  });
+
+  it('flags a unit-related log with the Vitest zero-match diagnostic', () => {
+    const issue = getBlockingLogIssue('unit-related', noTestFilesLog);
+
+    expect(issue).toEqual({
+      reason: 'Vitest found no matching unit test files for this related scope',
+      warningSummary: 'No test files found, exiting with code 0',
+    });
+  });
+
+  it('does not flag the zero-match diagnostic for an unrelated label', () => {
+    expect(getBlockingLogIssue('e2e', noTestFilesLog)).toBeNull();
+  });
+
+  it('ignores the zero-match marker mid-line', () => {
+    const log = 'this test asserts the message "No test files found, exiting with code 0"';
+
+    expect(getBlockingLogIssue('unit-tests', log)).toBeNull();
+  });
 });
 
 describe('resolveCommandStatus', () => {
@@ -1704,6 +1760,29 @@ describe('resolveCommandStatus', () => {
 
   it('keeps non-zero exit codes failed', () => {
     expect(resolveCommandStatus('unit-tests', 1, 'Tests  1 failed (12)').status).toBe('failed');
+  });
+
+  it('fails a zero-exit unit-tests command whose log reports no matching test files', () => {
+    const { status, blockingLogIssue } = resolveCommandStatus(
+      'unit-tests',
+      0,
+      'No test files found, exiting with code 0',
+    );
+
+    expect(status).toBe('failed');
+    expect(blockingLogIssue?.reason).toBe(
+      'Vitest found no matching unit test files for this affected scope',
+    );
+  });
+
+  it('fails a zero-exit unit-related command whose log reports no matching test files', () => {
+    const { status } = resolveCommandStatus(
+      'unit-related',
+      0,
+      'No test files found, exiting with code 0',
+    );
+
+    expect(status).toBe('failed');
   });
 });
 
