@@ -1,8 +1,16 @@
 # Verify redesign — Pass C implementation contract
 
-- **Status:** Ready for implementation
+- **Status:** Implementation landed; architect review blocked by active WebKit proof finding
 - **Scope:** Pass C only — owner-local behavior, visual, and browser-integration proof
 - **Prerequisite:** Pass B architect-accepted
+
+## Current correction boundary
+
+Pass C implementation is present on `architecture/verify-redesign`. Architect review found no active behavior/visual ownership or baseline-migration finding, but Pass C is **not accepted** while [`src/shared/service/appUpdate/REVIEW.md`](../../src/shared/service/appUpdate/REVIEW.md) B1 remains open.
+
+The only active correction is the required managed-update WebKit cross-engine lifecycle proof. The implementation feedback reported a flaky WebKit result; repository policy treats known flaky behavior as failed proof. The concrete failing assertion/root cause is not yet verified and must be established before changing behavior.
+
+Pass D must not start until B1 is corrected, the complete Pass C scope is re-reviewed, and the architect closes the review artifact. Coding agents must not edit this document, the review artifact, `AGENTS.md`, or skills while performing the correction.
 
 ## Goal
 
@@ -124,12 +132,13 @@ Do not remove release E2E infrastructure, root application E2E compatibility, `E
 9. Direct moved/add/remove target specs remain deterministically discoverable and cannot silently bypass verification.
 10. Vitest/application TypeScript still exclude the moved Playwright specs.
 11. No Pass D/E/F work is pulled forward.
+12. Required Firefox/WebKit cross-engine lifecycle proof is deterministic; a known flaky result is failed proof and blocks acceptance.
 
 ## Focused proof
 
 Tooling tests must prove target-only behavior/visual discovery after compatibility removal, direct/add/remove/move handling, moved browser-integration path recognition, unchanged managed-update grouping/order, and target suffix exclusions.
 
-Use focused verifier-managed feedback. Run representative moved `behavior`, `visual`, and browser-integration proof where needed to validate execution-path migration. Do not run `pnpm verify --full` merely for Pass C, and do not use screenshot update mode.
+Use focused verifier-managed feedback. Run representative moved `behavior`, `visual`, and browser-integration proof where needed to validate execution-path migration. For the active B1 correction, capture the concrete WebKit failure, correct its truthful root cause, and run the smallest faithful browser-integration proof that exercises the cross-engine lifecycle contract cleanly. Do not use retry-until-pass as acceptance evidence. Do not run `pnpm verify --full` merely for Pass C, and do not use screenshot update mode.
 
 ## Forbidden
 
@@ -137,9 +146,11 @@ Use focused verifier-managed feedback. Run representative moved `behavior`, `vis
 - leaving parallel old/new behavior or visual ownership after migration;
 - rebaselining screenshots because paths moved;
 - weakening/deleting/duplicating assertions;
+- accepting a flaky WebKit retry as proof without correcting the root cause;
+- weakening browser applicability, assertions, lifecycle semantics, or timing requirements to make the cross-engine proof green;
 - moving release/application E2E early;
 - adding dependency-cruiser or changing `E2E_SCENARIO_SCOPES`;
 - implementing Pass E semantics or Pass F cleanup;
 - weakening managed-update browser/runtime coverage;
-- changing product behavior, public UI APIs, locks, timeouts, or status/resume ownership;
+- changing product behavior, public UI APIs, locks, timeouts, or status/resume ownership unless the diagnosed B1 root cause is in the product/runtime contract itself and the correction is required to restore that existing contract;
 - editing `docs/**`, `AGENTS.md`, `.agents/skills/**`, or review artifacts — those are architect-owned.
