@@ -310,9 +310,75 @@ test('uses default relation view inline and switches to a selected relation view
   await expect(relationField.getByRole('button', { name: /^default view$/i })).toHaveClass(
     /md-chip_selected/,
   );
-  await expect
-    .poll(() => expectDatabaseValuesInOrder(relationField, [alphaValue, betaValue]))
-    .toBeUndefined();
+  let latestRelationReadinessSnapshot:
+    | {
+        loadingIndicatorCount: number;
+        databaseTableCount: number;
+        tableAriaRowcounts: string[];
+        rowBootstrapCount: number;
+        mountedRealTbodyRowCount: number;
+        renderedRowTexts: string[];
+        selectedRelationViewChipTexts: string[];
+      }
+    | undefined;
+
+  const captureRelationReadinessSnapshot = async () => {
+    const databaseTables = relationField.locator('.db-data-table');
+    const mountedRealTbodyRows = relationField.locator('tbody > tr:not([aria-hidden="true"])');
+
+    const [
+      loadingIndicatorCount,
+      databaseTableCount,
+      tableAriaRowcounts,
+      rowBootstrapCount,
+      mountedRealTbodyRowCount,
+      renderedRowTexts,
+      selectedRelationViewChipTexts,
+    ] = await Promise.all([
+      relationField.locator('.md-circular-progress-indicator').count(),
+      databaseTables.count(),
+      databaseTables.evaluateAll((tables) =>
+        tables.flatMap((table) => {
+          const ariaRowcount = table.getAttribute('aria-rowcount');
+          return ariaRowcount === null ? [] : [ariaRowcount];
+        }),
+      ),
+      relationField.locator('.db-data-table__row-bootstrap').count(),
+      mountedRealTbodyRows.count(),
+      mountedRealTbodyRows.allTextContents(),
+      relationField.locator('.md-chip_selected').allTextContents(),
+    ]);
+
+    return {
+      loadingIndicatorCount,
+      databaseTableCount,
+      tableAriaRowcounts,
+      rowBootstrapCount,
+      mountedRealTbodyRowCount,
+      renderedRowTexts,
+      selectedRelationViewChipTexts,
+    };
+  };
+
+  try {
+    await expect
+      .poll(() =>
+        expectDatabaseValuesInOrder(relationField, [alphaValue, betaValue]).catch(
+          async (error: unknown) => {
+            try {
+              latestRelationReadinessSnapshot = await captureRelationReadinessSnapshot();
+            } catch {
+              // Preserve the failed row-order assertion if the snapshot cannot be read.
+            }
+            throw error;
+          },
+        ),
+      )
+      .toBeUndefined();
+  } catch (error) {
+    console.log(`[relation-readiness] ${JSON.stringify(latestRelationReadinessSnapshot)}`);
+    throw error;
+  }
 
   await relationField
     .getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') })
