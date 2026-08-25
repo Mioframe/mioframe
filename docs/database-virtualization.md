@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **virtualization implementation and proportional moving-surface proof correction accepted; PR #217 is blocked by relation-table readiness flakiness, operator visual reinspection, exact-head CI, and final resulting-PR review**.
+Status: **virtualization implementation and proportional moving-surface proof accepted; PR #217 is blocked by a known relation-table readiness flake, operator visual reinspection, exact-head CI after correction, and final resulting-PR review**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -27,11 +27,14 @@ Explicitly deferred to later PRs:
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
 
-## Active diagnosis contract
+## Current relation-readiness record
 
-- `docs/database-virtualization-relation-readiness-discriminator-handoff.md`
-- `docs/database-virtualization-relation-readiness-discriminator-preflight.md`
-- `src/features/relationValueEdit/REVIEW.md`
+- `docs/database-virtualization-relation-readiness-discriminator-handoff.md`;
+- `docs/database-virtualization-relation-readiness-discriminator-preflight.md`;
+- `src/features/relationValueEdit/REVIEW.md`;
+- `src/entities/databaseData/REVIEW.md`.
+
+The first local discriminator was inconclusive because the flake did not reproduce and the local `github-actions` profile failed before Playwright startup.
 
 ## Accepted virtualization architecture
 
@@ -93,7 +96,7 @@ Exact-head GitHub Actions run #4348 on `cf2d9c246c324193bf0398327a1268edfad75426
 
 ## Active blocker — relation table initial readiness
 
-Exact-head run #4348 failed only application E2E with one Playwright flaky result:
+Exact-head run #4348 failed application E2E with one Playwright flaky result:
 
 `tests/e2e/databaseViewsAndQueryFlows.spec.ts:269` -> `uses default relation view inline and switches to a selected relation view`.
 
@@ -101,13 +104,28 @@ The first Chromium attempt failed before the explicit relation-view switch. The 
 
 The same scenario had already failed during coding-agent branch verification. It is therefore a real current proof blocker and cannot be dismissed as unrelated CI noise.
 
-Current evidence does not distinguish whether the empty state is caused by:
+The first local readiness discriminator did not reproduce the failure. Its healthy checkpoint showed:
 
-1. properties loading keeping `DatabaseDataTable` unmounted;
-2. the table being mounted while logical rows are still pending;
-3. logical rows being present while the nested virtualizer has no mounted range.
+- loading indicator absent;
+- `DatabaseDataTable` present;
+- `aria-rowcount=3`;
+- row bootstrap absent;
+- two mounted real rows;
+- default view selected.
 
-Run the active readiness discriminator before choosing a production correction.
+The authorized local `github-actions` profile failed before Playwright startup, so no failing browser-state snapshot was obtained.
+
+Exact-head run #4357 on the same production implementation later passed E2E without flaky classification. Because no production correction occurred between #4348 and #4357, that green run confirms intermittency but does not resolve the known flaky contract.
+
+Current evidence still does not distinguish whether the failing empty state occurs because:
+
+1. properties loading keeps `DatabaseDataTable` unmounted;
+2. the table is mounted while logical rows are still pending;
+3. logical rows are present while the nested virtualizer has no mounted range.
+
+The next diagnostic must carry enough test-side readiness state into exact-head GitHub CI so that a future failing attempt reports loading state, table presence, `aria-rowcount`, row-bootstrap presence, mounted real-row count, and selected view at the owned initial default-view assertion.
+
+Do not choose a production correction from the healthy local snapshot or an isolated green CI run alone.
 
 ## Relation local-root geometry — preserved
 
@@ -125,13 +143,13 @@ No shared `MDTable` correction was required.
 
 ## Verification workflow
 
-For the readiness discriminator use verifier-managed focused E2E only. If the normal profile does not reproduce, one focused `--profile github-actions` run is allowed. The discriminator is diagnostic-only; if all temporary edits are removed and no tracked implementation result remains, no branch handoff gate is required.
+The next relation-readiness diagnostic must preserve the existing test behavior and waits while enriching failure evidence in exact-head CI. It must not change product behavior or use timeout/retry/sleep workarounds.
 
-After a later production correction, the normal final gate remains:
+After a later production correction, the normal final coding-agent gate remains:
 
 `pnpm verify --base origin/develop`
 
-Do not increase timeout or accept retry/flaky classification.
+Exact-head GitHub CI remains the authoritative automatic merge gate.
 
 ## Residual Chromium jank
 
@@ -143,11 +161,12 @@ Retained evidence and future discriminators are recorded in `docs/database-chrom
 
 PR #217 may merge only when:
 
-1. relation-table initial readiness is deterministic and its owning E2E passes without flaky/retry classification;
-2. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
-3. coding-agent `pnpm verify --base origin/develop` passes cleanly after the eventual readiness correction;
-4. exact-head GitHub CI is green without retry/flaky classification;
-5. final resulting-PR review finds no blocker.
+1. the relation-table readiness flake has a confirmed cause and required correction;
+2. its owning E2E passes without flaky/retry classification after that correction;
+3. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
+4. coding-agent `pnpm verify --base origin/develop` passes cleanly after the correction;
+5. exact-head GitHub CI is green without retry/flaky classification;
+6. final resulting-PR review finds no blocker.
 
 ## Forbidden before merge
 
@@ -155,6 +174,7 @@ PR #217 may merge only when:
 - increasing E2E timeout, `test.slow()`, sleeps, or retry recovery;
 - weakening the relation-view E2E helper;
 - duplicate preload/query paths;
+- accepting an isolated green rerun as proof that a known flake is fixed;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
