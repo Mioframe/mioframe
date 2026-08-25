@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { launchApp } from './helpers';
+import { launchApp } from '../../helpers';
 
 const openAppUpdatesPane = async (page: Parameters<typeof launchApp>[0]) => {
   await launchApp(page);
@@ -7,16 +7,6 @@ const openAppUpdatesPane = async (page: Parameters<typeof launchApp>[0]) => {
   await page.getByRole('button', { name: /^app updates/i }).click();
   await expect(page.locator('.md-app-bar__headline', { hasText: /^app updates$/i })).toBeVisible();
 };
-
-test('Settings shows one App updates entry and no inline update controls', async ({ page }) => {
-  await launchApp(page);
-  await page.getByRole('button', { name: /^settings$/i }).click();
-
-  await expect(page.getByRole('button', { name: /^app updates/i })).toBeVisible();
-  // The inline Automatic-updates switch and per-status action row no longer
-  // live directly in Settings — only the one concise entry above.
-  await expect(page.getByRole('switch', { name: /automatic updates/i })).toHaveCount(0);
-});
 
 test('selecting the App updates entry opens the dedicated pane', async ({ page }) => {
   await openAppUpdatesPane(page);

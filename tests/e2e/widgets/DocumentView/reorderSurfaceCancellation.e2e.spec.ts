@@ -13,7 +13,7 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   openViewsSheet,
-} from './helpers';
+} from '../../helpers';
 
 test.describe('activation isolation', () => {
   test('pressing Escape mid-drag cancels the reorder and leaves current view and dragged state untouched', async ({

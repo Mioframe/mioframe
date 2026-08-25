@@ -1,6 +1,6 @@
 /**
  * Runs the managed-release data-compatibility browser proof
- * (`tests/e2e/release/managedReleaseDataCompatibility.spec.ts`) against a
+ * (`tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts`) against a
  * given staged retained-release work directory, in its own fresh Playwright
  * container via `scripts/e2eReleaseContainer.mjs` — the same mechanism
  * `scripts/release/managedUpdatesProof.mjs` uses for its own groups.
@@ -21,7 +21,7 @@ const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 export const MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL = 'managed-updates-data-compatibility';
 /** The single spec this proof runs. */
 export const MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC =
-  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts';
+  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts';
 
 const defaultDeps = { runLocalCommand };
 

@@ -7,14 +7,17 @@ import storybookBehaviorConfig from './playwright.storybook.config';
 import visualConfig from './playwright.visual.config';
 
 describe('Playwright lane discovery stays disjoint', () => {
-  it('gives application e2e its own physical testDir', () => {
+  it('gives application e2e its own physical testDir, scoped to the structural owner tree, excluding productionArtifact/', () => {
     expect(appConfig.testDir).toBe('./tests/e2e');
+    expect(appConfig.testMatch).toEqual(['pages/**/*.e2e.spec.ts', 'widgets/**/*.e2e.spec.ts']);
+    expect(appConfig.testIgnore).toEqual(['**/productionArtifact/**']);
   });
 
-  it('discovers the remaining release E2E specs and the moved managed-update browser-integration corpus from repo root', () => {
+  it('discovers only productionArtifact/ target E2E and the moved managed-update browser-integration corpus from repo root', () => {
     expect(releaseConfig.testDir).toBe('.');
     expect(releaseConfig.testMatch).toEqual([
-      'tests/e2e/release/*.spec.ts',
+      'tests/e2e/pages/**/productionArtifact/*.e2e.spec.ts',
+      'tests/e2e/widgets/**/productionArtifact/*.e2e.spec.ts',
       'src/shared/service/appUpdate/*.browser-integration.spec.ts',
     ]);
   });
@@ -43,16 +46,6 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(visualConfig.respectGitIgnore).toBe(true);
   });
 
-  it('makes every application e2e project ignore the storybook, visual, and release subtrees', () => {
-    expect(appConfig.projects?.length).toBeGreaterThan(0);
-
-    for (const project of appConfig.projects ?? []) {
-      expect(project.testIgnore).toEqual(
-        expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),
-      );
-    }
-  });
-
   it('does not give the storybook behavior, visual, release, or browser-integration configs a testIgnore of their own subtree', () => {
     expect(storybookBehaviorConfig.testIgnore).toBeUndefined();
     expect(visualConfig.testIgnore).toBeUndefined();
@@ -60,65 +53,70 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(browserIntegrationConfig.testIgnore).toBeUndefined();
   });
 
-  it('finds every existing spec file in exactly one of the five logical lanes', () => {
-    const applicationSpecs = listFiles('tests/e2e', '.spec.ts', { recursive: false });
+  it('does not let per-project mobile/desktop applicability filtering blanket-exclude the pages/widgets owner tree', () => {
+    expect(appConfig.projects?.length).toBeGreaterThan(0);
+
+    for (const project of appConfig.projects ?? []) {
+      expect(project.testIgnore ?? []).toEqual(
+        expect.not.arrayContaining(['pages/**', 'widgets/**']),
+      );
+    }
+  });
+
+  it('finds every existing spec file in exactly one of the four logical lanes', () => {
+    const applicationSpecs = [
+      ...listFiles('tests/e2e/pages', '.e2e.spec.ts'),
+      ...listFiles('tests/e2e/widgets', '.e2e.spec.ts'),
+    ];
     const behaviorSpecs = [
       ...listFiles('src', '.behavior.spec.ts'),
       ...listFiles('.storybook', '.behavior.spec.ts'),
     ];
     const visualSpecs = listFiles('src', '.visual.spec.ts');
-    const releaseSpecs = listFiles('tests/e2e/release', '.spec.ts');
     const browserIntegrationSpecs = listFiles('src', '.browser-integration.spec.ts');
 
     expect(applicationSpecs.length).toBeGreaterThan(0);
     expect(behaviorSpecs.length).toBeGreaterThan(0);
     expect(visualSpecs.length).toBeGreaterThan(0);
-    // Exactly the three remaining transitional release E2E specs (Pass D
-    // moves them); the managed-update browser-integration corpus moved out.
-    expect(releaseSpecs).toHaveLength(3);
-    // Exactly the eleven managed-update/artifact specs moved in this pass.
-    expect(browserIntegrationSpecs).toHaveLength(11);
+    // Exactly the twenty-three target E2E specs (see
+    // scripts/lib/e2eProjectApplicability.ts's E2E_PROJECT_APPLICABILITY),
+    // including the three productionArtifact/ specs.
+    expect(applicationSpecs).toHaveLength(23);
+    // Exactly the eleven appUpdate managed-update/artifact specs plus the one
+    // generic owner-local browser-integration spec.
+    expect(browserIntegrationSpecs).toHaveLength(12);
 
     expect(intersection(applicationSpecs, behaviorSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, visualSpecs)).toEqual([]);
-    expect(intersection(applicationSpecs, releaseSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, browserIntegrationSpecs)).toEqual([]);
     expect(intersection(behaviorSpecs, visualSpecs)).toEqual([]);
-    expect(intersection(behaviorSpecs, releaseSpecs)).toEqual([]);
     expect(intersection(behaviorSpecs, browserIntegrationSpecs)).toEqual([]);
-    expect(intersection(visualSpecs, releaseSpecs)).toEqual([]);
     expect(intersection(visualSpecs, browserIntegrationSpecs)).toEqual([]);
-    expect(intersection(releaseSpecs, browserIntegrationSpecs)).toEqual([]);
 
     const allSpecs = [
       ...applicationSpecs,
       ...behaviorSpecs,
       ...visualSpecs,
-      ...releaseSpecs,
       ...browserIntegrationSpecs,
     ];
 
     expect(new Set(allSpecs).size).toBe(allSpecs.length);
   });
-});
 
-describe('target E2E owner-path discovery is executable before root E2E migration', () => {
-  it('does not ignore a hypothetical tests/e2e/pages/<Owner> or tests/e2e/widgets/<Owner> subtree in any project', () => {
-    expect(appConfig.projects?.length).toBeGreaterThan(0);
+  it('splits target E2E into exactly three productionArtifact/ specs and the remaining ordinary specs', () => {
+    const allApplicationSpecs = [
+      ...listFiles('tests/e2e/pages', '.e2e.spec.ts'),
+      ...listFiles('tests/e2e/widgets', '.e2e.spec.ts'),
+    ];
+    const productionArtifactSpecs = allApplicationSpecs.filter((filePath) =>
+      filePath.includes('/productionArtifact/'),
+    );
+    const ordinarySpecs = allApplicationSpecs.filter(
+      (filePath) => !filePath.includes('/productionArtifact/'),
+    );
 
-    for (const project of appConfig.projects ?? []) {
-      expect(project.testIgnore).toEqual(expect.not.arrayContaining(['pages/**', 'widgets/**']));
-    }
-  });
-
-  it('matches an *.e2e.spec.ts file under the target owner directory structure by default Playwright discovery, with no explicit testMatch narrowing it away', () => {
-    // playwright.config.ts sets no testMatch of its own, so it keeps
-    // Playwright's default pattern (any `*.spec.ts` file, including
-    // `*.e2e.spec.ts`) under testDir. Confirmed here as a structural fact
-    // about the config object, not by asserting on the *.e2e.spec.ts
-    // literal string, since Playwright's default testMatch is not itself
-    // exposed as a public config property.
-    expect(appConfig.testMatch).toBeUndefined();
+    expect(ordinarySpecs.length).toBeGreaterThan(0);
+    expect(productionArtifactSpecs).toHaveLength(3);
   });
 });
 
@@ -127,8 +125,15 @@ function listFiles(
   suffix: string,
   { recursive = true }: { recursive?: boolean } = {},
 ) {
-  return fs
-    .readdirSync(dir, { withFileTypes: true, recursive })
+  let entries: fs.Dirent[];
+
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true, recursive });
+  } catch {
+    return [];
+  }
+
+  return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(suffix))
     .map((entry) => `${entry.parentPath}/${entry.name}`);
 }

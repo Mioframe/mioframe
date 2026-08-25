@@ -4,9 +4,14 @@ import {
   isAppUpdateBrowserIntegrationSpecPath,
   isAppUpdateProductionPath,
   isFullBrowserIntegrationLanePath,
+  isGenericBrowserIntegrationSpecPath,
   PRODUCTION_ARTIFACT_SMOKE_SPEC,
   resolveBrowserIntegrationPlan,
+  resolveGenericBrowserIntegrationPlan,
 } from './browserIntegrationRisk.ts';
+
+const GENERIC_SPEC =
+  'src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts';
 
 const APP_UPDATE_DIR = 'src/shared/service/appUpdate/';
 const LIFECYCLE_SPEC = `${APP_UPDATE_DIR}managedUpdatesLifecycle.browser-integration.spec.ts`;
@@ -166,5 +171,85 @@ describe('resolveBrowserIntegrationPlan', () => {
     expect(plan.mode).toBe('full');
     expect(plan.artifact).toBe(true);
     expect(plan.managedUpdates).toBe(true);
+  });
+});
+
+describe('isGenericBrowserIntegrationSpecPath', () => {
+  it('flags a generic non-appUpdate browser-integration spec', () => {
+    expect(isGenericBrowserIntegrationSpecPath(GENERIC_SPEC)).toBe(true);
+  });
+
+  it('never flags an appUpdate browser-integration spec', () => {
+    expect(isGenericBrowserIntegrationSpecPath(PRODUCTION_ARTIFACT_SMOKE_SPEC)).toBe(false);
+  });
+
+  it('does not flag production/test files', () => {
+    expect(isGenericBrowserIntegrationSpecPath('src/entities/repository/index.ts')).toBe(false);
+  });
+});
+
+describe('resolveGenericBrowserIntegrationPlan', () => {
+  it('reports skip for an unrelated changed-file set', () => {
+    const plan = resolveGenericBrowserIntegrationPlan(['src/features/documentCreate/index.ts']);
+
+    expect(plan).toEqual({
+      mode: 'skip',
+      specs: [],
+      reasons: ['empty generic browser-integration scope'],
+    });
+  });
+
+  it('selects a direct existing generic spec change', () => {
+    const plan = resolveGenericBrowserIntegrationPlan([GENERIC_SPEC], { fileExists: () => true });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([GENERIC_SPEC]);
+  });
+
+  it('widens to the complete inventory for a removed/moved generic spec', () => {
+    const plan = resolveGenericBrowserIntegrationPlan([GENERIC_SPEC], {
+      fileExists: () => false,
+      listSpecs: () => [GENERIC_SPEC],
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([GENERIC_SPEC]);
+  });
+
+  it('selects the sibling spec for a colocated production change', () => {
+    const plan = resolveGenericBrowserIntegrationPlan(
+      ['src/entities/browserStoragePersistence/useBrowserStoragePersistence.ts'],
+      {
+        listDirectoryFileNames: (dirPath) =>
+          dirPath === 'src/entities/browserStoragePersistence'
+            ? [
+                'useBrowserStoragePersistence.ts',
+                'browserStoragePersistence.browser-integration.spec.ts',
+                'index.ts',
+              ]
+            : [],
+      },
+    );
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([GENERIC_SPEC]);
+  });
+
+  it('never selects an appUpdate production change', () => {
+    const plan = resolveGenericBrowserIntegrationPlan([
+      'src/shared/service/appUpdate/workerInstall.ts',
+    ]);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('runs the complete generic inventory for generic infrastructure changes', () => {
+    const plan = resolveGenericBrowserIntegrationPlan(['playwright.browserIntegration.config.ts'], {
+      listSpecs: () => [GENERIC_SPEC],
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([GENERIC_SPEC]);
+    expect(plan.reasons[0]).toContain('generic browser-integration infrastructure path');
   });
 });

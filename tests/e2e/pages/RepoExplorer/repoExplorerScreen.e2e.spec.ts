@@ -6,7 +6,7 @@ import {
   openDirectory,
   openEntryAddSheet,
   openOpfs,
-} from './helpers';
+} from '../../helpers';
 
 const browserStorageLabel = /^browser storage$/i;
 

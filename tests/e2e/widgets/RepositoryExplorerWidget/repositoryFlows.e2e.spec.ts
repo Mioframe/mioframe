@@ -13,7 +13,7 @@ import {
   removeExplorerEntry,
   renameExplorerEntry,
   renameOpenDocument,
-} from './helpers';
+} from '../../helpers';
 
 test('creates, navigates, renames, and removes directories through the explorer UI', async ({
   page,

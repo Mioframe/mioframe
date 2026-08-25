@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../release/fixtures/managedReleaseFixture.mjs';
 import {
   addDatabaseItem,
   closeDocumentPane,
@@ -15,7 +15,7 @@ import {
   findDatabaseRow,
   openDocumentFromExplorer,
   openOpfs,
-} from '../helpers';
+} from '../../../helpers';
 
 // Proves the activation read model end to end through the real production
 // UI (see the managed pinned application updates feature, "Activation read

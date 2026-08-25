@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { launchApp } from './helpers';
+import { launchApp } from '../../helpers';
 
 const openHelpIndex = async (page: Parameters<typeof launchApp>[0]) => {
   await launchApp(page);

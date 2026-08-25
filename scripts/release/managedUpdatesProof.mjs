@@ -71,7 +71,7 @@ export const MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS = [
 // fresh Playwright container.
 export const MANAGED_UPDATES_ACTIVATION_UI_LABEL = 'managed-updates-activation-ui';
 export const MANAGED_UPDATES_ACTIVATION_UI_SPECS = [
-  'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+  'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
 ];
 
 // Group 2: the data-compatibility publication gate's own browser proof (see
@@ -79,7 +79,7 @@ export const MANAGED_UPDATES_ACTIVATION_UI_SPECS = [
 // against two releases it builds and publishes itself. Runs in a second
 // fresh Playwright container, only after group 1 passes.
 export const MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS = [
-  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
+  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
 ];
 
 export const MANAGED_UPDATES_E2E_GROUPS = [

@@ -31,8 +31,8 @@ const EXPECTED_BROWSER_INTEGRATION_CORPUS = [
 ];
 
 const EXPECTED_E2E_CORPUS = [
-  'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
-  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
+  'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
+  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
 ];
 
 function passingResult() {
@@ -53,7 +53,7 @@ describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
       'src/shared/service/appUpdate/managedUpdatesControllerArtifactIdentity.browser-integration.spec.ts',
     );
     expect(MANAGED_UPDATES_LIFECYCLE_SPECS).not.toContain(
-      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+      'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
     );
   });
 
@@ -112,10 +112,10 @@ describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
 describe('MANAGED_UPDATES_E2E_GROUPS composition', () => {
   it('exposes exactly the activation-UI and data-compatibility E2E specs, in fixed run order', () => {
     expect(MANAGED_UPDATES_ACTIVATION_UI_SPECS).toEqual([
-      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+      'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
     ]);
     expect(MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS).toEqual([
-      'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
+      'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
     ]);
     expect(MANAGED_UPDATES_E2E_GROUPS.map((group) => group.label)).toEqual([
       MANAGED_UPDATES_ACTIVATION_UI_LABEL,

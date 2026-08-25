@@ -13,8 +13,8 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   openViewsSheet,
-} from './helpers';
-import { indexOfRow } from './reorderSurface.testUtils';
+} from '../../helpers';
+import { indexOfRow } from '../../reorderSurface.testUtils';
 
 test('reordering database views by drag does not leak text selection and persists after reopen', async ({
   page,

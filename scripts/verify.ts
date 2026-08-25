@@ -17,11 +17,12 @@ import {
   type CommandWeight,
 } from './lib/commandWeight.ts';
 import { createChildSignalForwarder } from './lib/signalForward.ts';
-import { resolveAppE2EPlan, type AppE2EPlan } from './lib/e2eRisk.ts';
+import { resolveStructuralE2EPlan, type StructuralE2EPlan } from './lib/e2eRisk.ts';
 import {
   validateE2EProjectApplicability,
   type E2EProjectApplicabilityValidation,
 } from './lib/e2eProjectApplicability.ts';
+import { validateE2ETargetTree, type E2ETargetTreeValidation } from './lib/e2eOwnerTree.ts';
 import {
   resolveStorybookBehaviorPlan,
   type StorybookBehaviorPlan,
@@ -29,9 +30,12 @@ import {
 import { resolveStorybookBuildPlan, type StorybookBuildPlan } from './lib/storybookBuildRisk.ts';
 import { resolveVisualPlan, type VisualPlan } from './lib/visualRisk.ts';
 import {
+  listGenericBrowserIntegrationSpecs,
   PRODUCTION_ARTIFACT_SMOKE_SPEC,
   resolveBrowserIntegrationPlan,
+  resolveGenericBrowserIntegrationPlan,
   type BrowserIntegrationPlan,
+  type GenericBrowserIntegrationPlan,
 } from './lib/browserIntegrationRisk.ts';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
 import {
@@ -220,6 +224,11 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   // Playwright-backed lane.
   'managed-updates-browser-integration': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'managed-updates-e2e': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  // The generic owner-local browser-integration leaf (see
+  // scripts/browserIntegration.mjs / playwright.browserIntegration.config.ts):
+  // a single ordinary Playwright container run, same bound as every other
+  // Playwright-backed lane.
+  'browser-integration-local': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyType = currentVerifyInvocation?.onlyType ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
@@ -255,6 +264,7 @@ const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationTy
   'managed-updates-static': 'static',
   'managed-updates-browser-integration': 'browser-integration',
   'managed-updates-e2e': 'e2e',
+  'browser-integration-local': 'browser-integration',
 };
 
 // Pure execution prerequisites: never a proof leaf on their own, so they
@@ -1266,6 +1276,51 @@ function createStorybookBehaviorCommand(
   };
 }
 
+const RELEASE_SMOKE_SPEC =
+  'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts';
+
+/**
+ * Add the `release-smoke` and/or `managed-updates-e2e` production-artifact
+ * E2E leaves when a focused structural E2E plan selects a
+ * `productionArtifact/` target under their owner (see
+ * docs/testing/verify-redesign-pass-d-implementation.md's "Production-artifact
+ * E2E execution boundary"). Reuses the exact same leaf commands
+ * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
+ * default/`--only e2e` relevance without requiring `--full`. Never called
+ * from the `fullMode` branch of the e2e command block, so a selected
+ * productionArtifact spec is never duplicated against
+ * `addReleaseOnlyCommands`'s own unconditional `--full` leaves.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.structuralE2EPlan A focused structural E2E plan.
+ */
+function addProductionArtifactE2ECommands(
+  commands: CommandEntry[],
+  { structuralE2EPlan }: { structuralE2EPlan: Extract<StructuralE2EPlan, { mode: 'focused' }> },
+): void {
+  if (structuralE2EPlan.releaseSmokeSelected) {
+    commands.push({
+      kind: 'run',
+      label: 'release-smoke',
+      command: 'pnpm',
+      args: ['e2e:release', '--label', 'release-smoke', RELEASE_SMOKE_SPEC],
+      weight: classifyCommandWeight({ label: 'release-smoke' }),
+      triggerReason: structuralE2EPlan.reasons.join('; '),
+    });
+  }
+
+  if (structuralE2EPlan.managedUpdatesE2ESelected) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-e2e',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'e2e'],
+      weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
+      triggerReason: structuralE2EPlan.reasons.join('; '),
+    });
+  }
+}
+
 function addReleaseOnlyCommands(commands: CommandEntry[]): void {
   commands.push({
     kind: 'run',
@@ -1311,12 +1366,7 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
     kind: 'run',
     label: 'release-smoke',
     command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
-    ],
+    args: ['e2e:release', '--label', 'release-smoke', RELEASE_SMOKE_SPEC],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
   });
 
@@ -1387,6 +1437,47 @@ function addBrowserIntegrationCommands(
   }
 }
 
+/**
+ * Add the generic owner-local `browser-integration-local` leaf when relevant
+ * (see docs/testing/verify-redesign-pass-d-implementation.md's "Generic
+ * owner-local browser-integration execution"). Reuses
+ * {@link resolveGenericBrowserIntegrationPlan}'s path-based planning outside
+ * full mode; `--full` runs the complete current generic inventory
+ * unconditionally. Always passes an explicit spec list — never a bare
+ * `pnpm test:browser-integration` invocation — so this generic leaf can
+ * never accidentally sweep in the appUpdate managed-update corpus that also
+ * matches `playwright.browserIntegration.config.ts`'s broad `src/**` testMatch.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.fullMode Full-project release mode.
+ * @param options.changedFiles Sorted unique list of repository-relative changed file paths.
+ */
+function addGenericBrowserIntegrationCommands(
+  commands: CommandEntry[],
+  { fullMode, changedFiles }: { fullMode: boolean; changedFiles: readonly string[] },
+): void {
+  const plan: GenericBrowserIntegrationPlan = fullMode
+    ? {
+        mode: 'full',
+        specs: listGenericBrowserIntegrationSpecs(),
+        reasons: ['full-project release verification'],
+      }
+    : resolveGenericBrowserIntegrationPlan(changedFiles);
+
+  if (plan.mode === 'skip' || plan.specs.length === 0) {
+    return;
+  }
+
+  commands.push({
+    kind: 'run',
+    label: 'browser-integration-local',
+    command: 'pnpm',
+    args: ['test:browser-integration', ...plan.specs],
+    weight: classifyCommandWeight({ label: 'browser-integration-local' }),
+    triggerReason: plan.reasons.join('; '),
+  });
+}
+
 type BuildCommandsVisualPlan = VisualPlan | { mode: 'invalid'; specs: string[]; reasons: string[] };
 
 /** Options for {@link buildCommands}. */
@@ -1394,13 +1485,23 @@ export interface BuildCommandsOptions {
   /** Full-project release mode; defaults to the `--full` CLI flag. */
   fullMode?: boolean;
   /**
+   * Resolved `--only` verification type; defaults to the CLI-resolved value.
+   * Gates whether the expensive structural E2E graph/Playwright-ownership
+   * acquisition runs at all (see docs/testing/verify-redesign-pass-d-implementation.md's
+   * "Do not acquire the graph or Playwright E2E owner inventory for a
+   * `--only <non-e2e-type>` invocation"): only relevant when `null` (default,
+   * every type) or `'e2e'`.
+   */
+  onlyType?: VerificationType | null;
+  /**
    * Git ref to compare the current `package.json` against, for the
    * version-only visual impact refinement. Pass `null` when no reliable base
    * ref is known; that fails closed to visual-relevant.
    */
   packageJsonOldRef?: string | null;
   fixMode?: FixMode;
-  appE2EPlan?: AppE2EPlan | null;
+  structuralE2EPlan?: StructuralE2EPlan | null;
+  e2eTargetTreeValidation?: E2ETargetTreeValidation | null;
   projectApplicabilityValidation?: E2EProjectApplicabilityValidation | null;
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
@@ -1441,9 +1542,11 @@ export function buildCommands(
   changedFiles: readonly string[],
   {
     fullMode = isFullMode,
+    onlyType = cliOnlyType,
     packageJsonOldRef = null,
     fixMode = currentVerifyInvocation?.fixMode ?? 'none',
-    appE2EPlan: appE2EPlanOverride = null,
+    structuralE2EPlan: structuralE2EPlanOverride = null,
+    e2eTargetTreeValidation: e2eTargetTreeValidationOverride = null,
     projectApplicabilityValidation: projectApplicabilityValidationOverride = null,
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
@@ -1463,7 +1566,20 @@ export function buildCommands(
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
-  const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
+  // Expensive structural E2E graph/Playwright-ownership acquisition only
+  // runs when e2e is actually relevant to this invocation (default, or
+  // `--only e2e`); see docs/testing/verify-redesign-pass-d-implementation.md's
+  // "Do not acquire the graph or Playwright E2E owner inventory for a
+  // `--only <non-e2e-type>` invocation". The placeholder plan below is never
+  // observed in a final `--only <non-e2e-type>` result: selectOnlyCommands
+  // filters every `e2e`-typed entry out for any other type.
+  const needsStructuralE2EPlanning = onlyType === null || onlyType === 'e2e';
+  const structuralE2EPlan: StructuralE2EPlan =
+    structuralE2EPlanOverride ??
+    (needsStructuralE2EPlanning
+      ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
+      : { mode: 'skip', reasons: ['e2e planning not needed for this --only type'] });
+  const e2eTargetTreeValidation = e2eTargetTreeValidationOverride ?? validateE2ETargetTree();
   const projectApplicabilityValidation =
     projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
   const storybookBehaviorPlan =
@@ -1616,7 +1732,8 @@ export function buildCommands(
   }
 
   const e2eInvalidReasons = [
-    ...(appE2EPlan.mode === 'invalid' ? appE2EPlan.reasons : []),
+    ...(structuralE2EPlan.mode === 'invalid' ? structuralE2EPlan.reasons : []),
+    ...(e2eTargetTreeValidation.valid ? [] : e2eTargetTreeValidation.errors),
     ...(projectApplicabilityValidation.valid ? [] : projectApplicabilityValidation.errors),
   ];
 
@@ -1626,14 +1743,38 @@ export function buildCommands(
       kind: 'failed',
       label: 'e2e',
       command: 'pnpm e2e:container',
-      reason: `invalid app e2e scenario registry state: ${e2eInvalidReasons.join('; ')}`,
+      reason: `invalid target E2E ownership state: ${e2eInvalidReasons.join('; ')}`,
     });
   } else if (fullMode) {
     addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));
-  } else if (appE2EPlan.mode === 'full') {
-    addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
-  } else if (appE2EPlan.mode === 'focused') {
-    addE2ECommands(commands, createE2ECommand(appE2EPlan.specs, appE2EPlan.reasons.join('; ')));
+  } else if (structuralE2EPlan.mode === 'full') {
+    addE2ECommands(commands, createE2ECommand([], structuralE2EPlan.reasons.join('; ')));
+    addProductionArtifactE2ECommands(commands, {
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: [],
+        releaseSmokeSelected: true,
+        managedUpdatesE2ESelected: true,
+        reasons: structuralE2EPlan.reasons,
+      },
+    });
+  } else if (structuralE2EPlan.mode === 'focused') {
+    if (structuralE2EPlan.ordinarySpecs.length > 0) {
+      addE2ECommands(
+        commands,
+        createE2ECommand(structuralE2EPlan.ordinarySpecs, structuralE2EPlan.reasons.join('; ')),
+      );
+    } else {
+      commands.push(createE2EInstallCommand('no ordinary target E2E specs selected'));
+      commands.push({
+        kind: 'skipped',
+        label: 'e2e',
+        command: 'pnpm e2e:container',
+        reason: 'no ordinary target E2E specs selected',
+      });
+    }
+
+    addProductionArtifactE2ECommands(commands, { structuralE2EPlan });
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
@@ -1858,6 +1999,7 @@ export function buildCommands(
   }
 
   addBrowserIntegrationCommands(commands, { fullMode, changedFiles });
+  addGenericBrowserIntegrationCommands(commands, { fullMode, changedFiles });
 
   return commands.map(withVerificationType);
 }

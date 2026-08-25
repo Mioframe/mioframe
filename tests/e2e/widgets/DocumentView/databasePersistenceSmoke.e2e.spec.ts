@@ -12,7 +12,7 @@ import {
   openDirectory,
   openDocumentFromExplorer,
   openOpfs,
-} from './helpers';
+} from '../../helpers';
 
 test('persists a database document and item after a browser reload', async ({ page }) => {
   await launchApp(page);

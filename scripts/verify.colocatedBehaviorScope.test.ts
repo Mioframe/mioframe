@@ -1,4 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Structural E2E planning's real dependencies spawn Playwright/dependency-cruiser
+// child processes; this file's buildCommands() calls do not care about e2e
+// planning, so they get fast, deterministic input instead of paying that
+// real subprocess cost (see scripts/verify.test.ts's identical mocks).
+vi.mock('./lib/e2eOwnerInventoryCollector.ts', () => ({
+  collectE2EOwnerInventory: vi.fn(() => []),
+}));
+
+vi.mock('./lib/e2eGraph.ts', () => ({
+  acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
+}));
 
 import { buildCommands } from './verify.ts';
 

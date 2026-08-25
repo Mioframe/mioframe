@@ -11,7 +11,7 @@ import {
   openDocumentFromExplorer,
   openEntryAddSheet,
   openOpfs,
-} from './helpers';
+} from '../../helpers';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

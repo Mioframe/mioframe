@@ -13,12 +13,12 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   openViewsSheet,
-} from './helpers';
+} from '../../helpers';
 import {
   assertScrollTopHoldsAtBaseline,
   sampleScrollTop,
   waitForStableScrollTop,
-} from './reorderSurface.testUtils';
+} from '../../reorderSurface.testUtils';
 
 test.describe('scoped autoscroll', () => {
   test('a fully visible list does not scroll its bottom sheet while holding near either edge', async ({

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../release/fixtures/managedReleaseFixture.mjs';
 import {
   closeDocumentPane,
   createDatabaseDocument,
@@ -15,7 +15,7 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   addDatabaseItem,
-} from '../helpers';
+} from '../../../helpers';
 
 /**
  * Proves the managed pinned application updates feature's data-compatibility

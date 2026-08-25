@@ -7,6 +7,18 @@ vi.mock('./lib/packageJsonImpact.ts', () => ({
   isPackageJsonRuntimeRelevantChange: vi.fn(),
 }));
 
+// Structural E2E planning's real dependencies spawn Playwright/dependency-cruiser
+// child processes; every buildCommands() call in this file that does not pass
+// its own `structuralE2EPlan` override must still get fast, deterministic
+// input instead of paying that real subprocess cost per test.
+vi.mock('./lib/e2eOwnerInventoryCollector.ts', () => ({
+  collectE2EOwnerInventory: vi.fn(() => []),
+}));
+
+vi.mock('./lib/e2eGraph.ts', () => ({
+  acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
+}));
+
 import {
   isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport,
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
@@ -356,7 +368,7 @@ describe('buildCommands full mode', () => {
       'e2e:release',
       '--label',
       'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+      'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts',
     ]);
     expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
       'scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs',
@@ -373,6 +385,13 @@ describe('buildCommands full mode', () => {
       '--kind',
       'e2e',
     ]);
+  });
+
+  it('runs each production-artifact E2E leaf exactly once in full mode (no duplication with structural focused routing)', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(commands.filter((entry) => entry.label === 'release-smoke')).toHaveLength(1);
+    expect(commands.filter((entry) => entry.label === 'managed-updates-e2e')).toHaveLength(1);
   });
 
   it('runs both split managed-updates leaves through the proof runner, not a direct Playwright command', () => {
@@ -578,6 +597,7 @@ describe('selectOnlyCommands', () => {
     expect(selected.map((entry) => entry.label)).toEqual([
       'artifact',
       'managed-updates-browser-integration',
+      'browser-integration-local',
     ]);
   });
 
@@ -654,7 +674,7 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       command: 'pnpm e2e:container',
       reason:
-        'invalid app e2e scenario registry state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
+        'invalid target E2E ownership state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
       verificationType: 'e2e',
     });
   });
@@ -662,7 +682,7 @@ describe('buildCommands e2e project applicability', () => {
   it('combines an invalid app e2e scenario registry and an invalid project applicability registry', () => {
     const commands = buildCommands([], {
       fullMode: false,
-      appE2EPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
+      structuralE2EPlan: { mode: 'invalid', reasons: ['broken scenario registry'] },
       projectApplicabilityValidation: {
         valid: false,
         errors: ['broken applicability registry'],
@@ -674,7 +694,7 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       command: 'pnpm e2e:container',
       reason:
-        'invalid app e2e scenario registry state: broken scenario registry; broken applicability registry',
+        'invalid target E2E ownership state: broken scenario registry; broken applicability registry',
       verificationType: 'e2e',
     });
   });
@@ -682,7 +702,7 @@ describe('buildCommands e2e project applicability', () => {
   it('runs e2e normally when the project applicability registry is valid', () => {
     const commands = buildCommands([], {
       fullMode: false,
-      appE2EPlan: { mode: 'skip', specs: [], reasons: ['empty e2e scope'] },
+      structuralE2EPlan: { mode: 'skip', reasons: ['empty e2e scope'] },
       projectApplicabilityValidation: { valid: true, errors: [] },
     });
 
@@ -691,6 +711,58 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       reason: 'empty e2e scope',
     });
+  });
+});
+
+describe('buildCommands structural production-artifact E2E routing', () => {
+  it('routes a focused productionArtifact selection through its special leaf, without running the ordinary e2e leaf', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: [],
+        releaseSmokeSelected: true,
+        managedUpdatesE2ESelected: false,
+        reasons: ['selected'],
+      },
+    });
+
+    expect(requireSkippedEntry(commands, 'e2e').reason).toBe(
+      'no ordinary target E2E specs selected',
+    );
+    expect(requireRunEntry(commands, 'release-smoke')).toBeTruthy();
+    expect(commands.find((entry) => entry.label === 'managed-updates-e2e')).toBeUndefined();
+  });
+
+  it('routes both ordinary and productionArtifact selections together in one focused plan', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: ['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'],
+        releaseSmokeSelected: false,
+        managedUpdatesE2ESelected: true,
+        reasons: ['selected'],
+      },
+    });
+
+    expect(requireRunEntry(commands, 'e2e').args).toEqual([
+      'e2e:container',
+      'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-e2e')).toBeTruthy();
+    expect(commands.find((entry) => entry.label === 'release-smoke')).toBeUndefined();
+  });
+
+  it('widens a structural full-E2E fallback to include both production-artifact leaves exactly once', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: { mode: 'full', reasons: ['relevant change with no safe owner'] },
+    });
+
+    expect(requireRunEntry(commands, 'e2e').args).toEqual(['e2e:container']);
+    expect(commands.filter((entry) => entry.label === 'release-smoke')).toHaveLength(1);
+    expect(commands.filter((entry) => entry.label === 'managed-updates-e2e')).toHaveLength(1);
   });
 });
 
@@ -835,18 +907,19 @@ describe('buildCommands package.json app e2e relevance', () => {
     const e2eEntry = requireRunEntry(commands, 'e2e');
 
     expect(e2eEntry.triggerReason).toContain(
-      'unmapped application-E2E-relevant path src/shared/service/serviceWorker.ts',
+      'relevant production change src/shared/service/serviceWorker.ts has no safely established E2E product owner',
     );
   });
 });
 
 describe('buildCommands removed/renamed spec safety', () => {
-  it('runs full app e2e for a deleted app e2e spec without passing it as a command argument', () => {
-    const commands = buildCommands(['tests/e2e/removedFlow.spec.ts'], { fullMode: false });
+  it('runs full app e2e for a deleted target E2E spec whose owner no longer exists, without passing it as a command argument', () => {
+    const removedSpec = 'tests/e2e/pages/GoneOwner/removedFlow.e2e.spec.ts';
+    const commands = buildCommands([removedSpec], { fullMode: false });
     const e2eEntry = requireRunEntry(commands, 'e2e');
 
-    expect(e2eEntry.triggerReason).toContain('removed or renamed app e2e spec');
-    expect(e2eEntry.args).not.toContain('tests/e2e/removedFlow.spec.ts');
+    expect(e2eEntry.triggerReason).toContain('removed/moved target E2E spec');
+    expect(e2eEntry.args).not.toContain(removedSpec);
   });
 
   it('runs the full storybook-behavior lane for a deleted behavior spec without passing it as a command argument', () => {

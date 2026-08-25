@@ -1,14 +1,14 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
-const APP_E2E_SPEC_DIR = 'tests/e2e';
-const APP_E2E_SPEC_PREFIX = `${APP_E2E_SPEC_DIR}/`;
+const E2E_TARGET_ROOTS = ['tests/e2e/pages', 'tests/e2e/widgets'];
+const E2E_DIR_PREFIX = 'tests/e2e/';
+const TARGET_SUFFIX = '.e2e.spec.ts';
 
 /** Playwright project names this module resolves ignore lists for. */
 export const DESKTOP_PROJECT_NAME = 'chromium';
 export const MOBILE_PROJECT_NAME = 'Mobile Chrome';
 
-/** Which Playwright project(s) an app e2e spec must run in. */
+/** Which Playwright project(s) a target E2E spec must run in. */
 export type E2EProjectApplicability = 'desktop' | 'mobile' | 'both';
 
 /** One explicit spec -> project-applicability entry. */
@@ -20,30 +20,93 @@ export interface E2EProjectApplicabilityEntry {
 const VALID_APPLICABILITY_VALUES = new Set<E2EProjectApplicability>(['desktop', 'mobile', 'both']);
 
 /**
- * Explicit project applicability for every current root application e2e
- * spec. Separate from {@link E2E_SCENARIO_SCOPES} in `e2eRisk.ts`: this
+ * Explicit project applicability for every current target E2E spec (see
+ * docs/testing/verify-redesign-pass-d-implementation.md's "Project
+ * applicability"). Separate from primary/additional E2E ownership: this
  * registry owns which Playwright project(s) a spec runs in, never which
- * specs a source change selects. Every `tests/e2e/*.spec.ts` file must have
- * exactly one entry here, or {@link validateE2EProjectApplicability} fails.
+ * specs a source change selects. Every `tests/e2e/pages/<Owner>/**` /
+ * `tests/e2e/widgets/<Owner>/**` `*.e2e.spec.ts` file, including
+ * `productionArtifact/` specs, must have exactly one entry here, or
+ * {@link validateE2EProjectApplicability} fails.
  */
 export const E2E_PROJECT_APPLICABILITY: readonly E2EProjectApplicabilityEntry[] = [
-  { spec: 'tests/e2e/appSmoke.spec.ts', applicability: 'both' },
-  { spec: 'tests/e2e/reorderSurfaceBottomSheet.spec.ts', applicability: 'both' },
-  { spec: 'tests/e2e/reorderSurfaceTouch.spec.ts', applicability: 'mobile' },
-  { spec: 'tests/e2e/appUpdatesNavigation.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/browserStoragePersistenceSmoke.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/databasePersistenceSmoke.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/databaseItemFlows.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/databasePropertyFlows.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/databaseViewsAndQueryFlows.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/exportDocumentBrowserStorage.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/helpNavigation.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/reorderSurfaceCancellation.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/reorderSurfaceMouse.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/reorderSurfacePersistence.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/repoExplorerScreen.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/repositoryFlows.spec.ts', applicability: 'desktop' },
-  { spec: 'tests/e2e/zipActionFlows.spec.ts', applicability: 'desktop' },
+  { spec: 'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts', applicability: 'both' },
+  { spec: 'tests/e2e/pages/Settings/settingsToggles.e2e.spec.ts', applicability: 'both' },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/reorderSurfaceBottomSheet.e2e.spec.ts',
+    applicability: 'both',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/reorderSurfaceTouch.e2e.spec.ts',
+    applicability: 'mobile',
+  },
+  {
+    spec: 'tests/e2e/pages/HomePane/browserStoragePersistence.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  { spec: 'tests/e2e/pages/Settings/appUpdatesEntry.e2e.spec.ts', applicability: 'desktop' },
+  {
+    spec: 'tests/e2e/pages/Settings/browserStoragePersistence.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/pages/AppUpdatesPane/appUpdatesNavigation.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  { spec: 'tests/e2e/pages/Help/helpNavigation.e2e.spec.ts', applicability: 'desktop' },
+  { spec: 'tests/e2e/pages/RepoExplorer/repoExplorerScreen.e2e.spec.ts', applicability: 'desktop' },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/databasePersistenceSmoke.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/databaseItemFlows.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/databasePropertyFlows.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/databaseViewsAndQueryFlows.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/reorderSurfaceCancellation.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/reorderSurfaceMouse.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/reorderSurfacePersistence.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/RepositoryExplorerWidget/exportDocumentBrowserStorage.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/RepositoryExplorerWidget/repositoryFlows.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/RepositoryExplorerWidget/zipActionFlows.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
+    applicability: 'desktop',
+  },
+  {
+    spec: 'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
+    applicability: 'desktop',
+  },
 ];
 
 function uniqSorted(values: readonly string[]): string[] {
@@ -58,39 +121,63 @@ function isExistingFile(filePath: string): boolean {
   }
 }
 
-/**
- * Check whether a path is a root-level application e2e spec: directly under
- * `tests/e2e/`, not in a nested lane directory (`visual/`, `release/`,
- * `storybook/`, or any other subdirectory).
- * @param filePath Repository-relative path.
- * @returns True when the path is a root app e2e spec file path shape.
- */
-function isRootAppE2ESpecPath(filePath: string): boolean {
-  if (!filePath.startsWith(APP_E2E_SPEC_PREFIX) || !filePath.endsWith('.spec.ts')) {
-    return false;
-  }
-
-  return !filePath.slice(APP_E2E_SPEC_PREFIX.length).includes('/');
+function isTargetE2ESpecPath(filePath: string): boolean {
+  return (
+    filePath.startsWith(E2E_DIR_PREFIX) &&
+    filePath.endsWith(TARGET_SUFFIX) &&
+    E2E_TARGET_ROOTS.some((root) => filePath.startsWith(`${root}/`))
+  );
 }
 
-function findRootAppE2ESpecFiles(specDir: string): string[] {
+function listFilesRecursively(root: string): string[] {
+  const results: string[] = [];
+
+  const walk = (dir: string): void => {
+    let entries: fs.Dirent[];
+
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = `${dir}/${entry.name}`;
+
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        results.push(fullPath);
+      }
+    }
+  };
+
+  walk(root);
+
+  return results;
+}
+
+function findTargetE2ESpecFiles(): string[] {
   return uniqSorted(
-    fs
-      .readdirSync(specDir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.spec.ts'))
-      .map((entry) => `${specDir}/${entry.name}`),
+    E2E_TARGET_ROOTS.flatMap((root) =>
+      listFilesRecursively(root).filter((filePath) => filePath.endsWith(TARGET_SUFFIX)),
+    ),
   );
 }
 
 /**
- * Resolve the basename-glob patterns a Playwright project must add to its
- * `testIgnore` to exclude specs not applicable to it. Only entries for the
- * opposite platform are ignored, so a spec with no registry entry is never
- * added to either list and runs in both projects by default (fail-safe for
- * direct/raw Playwright collection).
+ * Resolve the path-safe, testDir-relative ignore patterns a Playwright
+ * project must add to its `testIgnore` to exclude specs not applicable to
+ * it. Returns the spec path relative to `playwright.config.ts`'s
+ * `tests/e2e` testDir (e.g. `pages/HomePane/appSmoke.e2e.spec.ts`), not a
+ * bare basename: a nested target path is not guaranteed to have a unique
+ * basename, so basename-only matching is not a durable contract. Only
+ * entries for the opposite platform are ignored, so a spec with no registry
+ * entry is never added to either list and runs in both projects by default
+ * (fail-safe for direct/raw Playwright collection).
  * @param projectName Target Playwright project name.
  * @param [entries] Applicability registry to resolve against.
- * @returns Sorted unique basename patterns to ignore for the given project.
+ * @returns Sorted unique testDir-relative path patterns to ignore for the given project.
  */
 export function getProjectIgnoredSpecs(
   projectName: typeof DESKTOP_PROJECT_NAME | typeof MOBILE_PROJECT_NAME,
@@ -102,11 +189,11 @@ export function getProjectIgnoredSpecs(
   return uniqSorted(
     entries
       .filter((entry) => entry.applicability === excludedApplicability)
-      .map((entry) => path.posix.basename(entry.spec)),
+      .map((entry) => entry.spec.slice(E2E_DIR_PREFIX.length)),
   );
 }
 
-/** Validation result for the app e2e project applicability registry. */
+/** Validation result for the target E2E project applicability registry. */
 export interface E2EProjectApplicabilityValidation {
   valid: boolean;
   errors: string[];
@@ -115,16 +202,18 @@ export interface E2EProjectApplicabilityValidation {
 /** Test-only overrides for {@link validateE2EProjectApplicability}. */
 export interface ValidateE2EProjectApplicabilityOverrides {
   entries?: readonly E2EProjectApplicabilityEntry[];
-  specDir?: string;
+  findTargetSpecFiles?: () => string[];
 }
 
 /**
  * Validate the project applicability registry as a verification contract:
- * every entry must reference an existing root app e2e spec with a valid
- * applicability value, entries must not duplicate a spec, and every root app
- * e2e spec on disk must have an entry. A broken registry must fail
- * verification rather than silently run a reduced or wrong project matrix.
- * @param [overrides] Test-only overrides for the registry and spec directory.
+ * every entry must reference an existing target E2E spec with a valid
+ * applicability value, entries must not duplicate a spec, and every target
+ * E2E spec on disk (recursively under `tests/e2e/pages/**` and
+ * `tests/e2e/widgets/**`, including `productionArtifact/` specs) must have
+ * an entry. A broken registry must fail verification rather than silently
+ * run a reduced or wrong project matrix.
+ * @param [overrides] Test-only overrides for the registry and spec discovery.
  * Production callers should omit this so the real registry and workspace
  * state are validated.
  * @returns Validation result with `valid` and human-readable `errors`.
@@ -133,7 +222,7 @@ export function validateE2EProjectApplicability(
   overrides: ValidateE2EProjectApplicabilityOverrides = {},
 ): E2EProjectApplicabilityValidation {
   const entries = overrides.entries ?? E2E_PROJECT_APPLICABILITY;
-  const specDir = overrides.specDir ?? APP_E2E_SPEC_DIR;
+  const findTargetSpecFiles = overrides.findTargetSpecFiles ?? findTargetE2ESpecFiles;
   const errors: string[] = [];
   const seenSpecs = new Set<string>();
 
@@ -151,7 +240,7 @@ export function validateE2EProjectApplicability(
       continue;
     }
 
-    if (!isRootAppE2ESpecPath(entry.spec)) {
+    if (!isTargetE2ESpecPath(entry.spec)) {
       errors.push(`project applicability entry references non-app-e2e spec ${entry.spec}`);
       continue;
     }
@@ -161,18 +250,7 @@ export function validateE2EProjectApplicability(
     }
   }
 
-  let specFiles: string[];
-
-  try {
-    specFiles = findRootAppE2ESpecFiles(specDir);
-  } catch (error) {
-    errors.push(
-      `unable to list ${specDir}/*.spec.ts: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    specFiles = [];
-  }
-
-  for (const spec of specFiles) {
+  for (const spec of findTargetSpecFiles()) {
     if (!seenSpecs.has(spec)) {
       errors.push(
         `app e2e spec ${spec} has no project applicability entry in scripts/lib/e2eProjectApplicability.ts`,

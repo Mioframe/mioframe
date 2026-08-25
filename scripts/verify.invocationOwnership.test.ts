@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
 import { buildCommands, runVerifyCli } from './verify.ts';
-import type { AppE2EPlan } from './lib/e2eRisk.ts';
+import type { StructuralE2EPlan } from './lib/e2eRisk.ts';
 import type { StorybookBehaviorPlan } from './lib/storybookBehaviorRisk.ts';
 import type { CommandLockHelpers, CommandLockInput } from './lib/commandLock.ts';
 
@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('full verification registry validation', () => {
-  const validAppE2ESkipPlan: AppE2EPlan = { mode: 'skip', specs: [], reasons: ['not relevant'] };
+  const validAppE2ESkipPlan: StructuralE2EPlan = { mode: 'skip', reasons: ['not relevant'] };
   const validStorybookBehaviorNonePlan: StorybookBehaviorPlan = {
     mode: 'none',
     specs: [],
@@ -22,7 +22,7 @@ describe('full verification registry validation', () => {
   it('keeps an invalid app E2E registry blocking in full mode', () => {
     const commands = buildCommands([], {
       fullMode: true,
-      appE2EPlan: { mode: 'invalid', specs: [], reasons: ['broken app registry'] },
+      structuralE2EPlan: { mode: 'invalid', reasons: ['broken app registry'] },
       storybookBehaviorPlan: validStorybookBehaviorNonePlan,
     });
     const e2e = commands.find((entry) => entry.label === 'e2e');
@@ -36,7 +36,7 @@ describe('full verification registry validation', () => {
   it('runs full browser lanes when both registries are valid', () => {
     const commands = buildCommands([], {
       fullMode: true,
-      appE2EPlan: validAppE2ESkipPlan,
+      structuralE2EPlan: validAppE2ESkipPlan,
       storybookBehaviorPlan: validStorybookBehaviorNonePlan,
     });
 

@@ -6,7 +6,10 @@ import {
   MOBILE_PROJECT_NAME,
 } from './scripts/lib/e2eProjectApplicability.ts';
 
-const SHARED_TEST_IGNORE = ['storybook/**', 'visual/**', 'release/**'];
+// A project-level `testIgnore` replaces (does not merge with) this config's
+// own top-level `testIgnore`, so this exclusion must also be repeated in
+// every project's own `testIgnore` array below to actually take effect.
+const PRODUCTION_ARTIFACT_TEST_IGNORE = '**/productionArtifact/**';
 
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.appPreview.port;
@@ -19,6 +22,15 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Structural E2E ownership (see
+  // docs/testing/verify-redesign-pass-d-implementation.md): ordinary target
+  // E2E lives only under tests/e2e/pages/<Owner>/**/*.e2e.spec.ts or
+  // tests/e2e/widgets/<Owner>/**/*.e2e.spec.ts. productionArtifact/ specs
+  // are structurally the same target E2E, but require production/managed-
+  // release execution (see playwright.release.config.ts), so this ordinary
+  // dev-app config must never collect them.
+  testMatch: ['pages/**/*.e2e.spec.ts', 'widgets/**/*.e2e.spec.ts'],
+  testIgnore: [PRODUCTION_ARTIFACT_TEST_IGNORE],
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -54,7 +66,10 @@ export default defineConfig({
   projects: [
     {
       name: DESKTOP_PROJECT_NAME,
-      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME)],
+      testIgnore: [
+        PRODUCTION_ARTIFACT_TEST_IGNORE,
+        ...getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME),
+      ],
       use: {
         ...devices['Desktop Chrome'],
         channel: 'chromium',
@@ -62,7 +77,7 @@ export default defineConfig({
     },
     {
       name: MOBILE_PROJECT_NAME,
-      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(MOBILE_PROJECT_NAME)],
+      testIgnore: [PRODUCTION_ARTIFACT_TEST_IGNORE, ...getProjectIgnoredSpecs(MOBILE_PROJECT_NAME)],
       use: {
         ...devices['Pixel 5'],
         channel: 'chromium',

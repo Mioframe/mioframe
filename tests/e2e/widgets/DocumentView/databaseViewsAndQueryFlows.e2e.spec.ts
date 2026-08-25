@@ -30,7 +30,7 @@ import {
   renameView,
   selectView,
   toggleSortingDirection,
-} from './helpers';
+} from '../../helpers';
 
 test('creates, renames, selects, and removes views through the view settings sheet', async ({
   page,

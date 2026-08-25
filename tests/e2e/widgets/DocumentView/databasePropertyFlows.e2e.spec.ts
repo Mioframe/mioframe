@@ -12,7 +12,7 @@ import {
   openOpfs,
   removeProperty,
   renameProperty,
-} from './helpers';
+} from '../../helpers';
 
 test('adds, edits, and removes properties through the properties sheet', async ({ page }) => {
   await launchApp(page);

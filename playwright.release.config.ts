@@ -16,8 +16,9 @@ process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = releaseBaseURL;
 // Set by scripts/release/runManagedReleaseDataCompatibilityProof.mjs for the
 // managed-release publication preflight's staged compatibility run (see
 // scripts/pages/lib/managedCompatibilityPreflight.mjs). That run serves its
-// own staged Pages tree directly (managedReleaseDataCompatibility.spec.ts's
-// startManagedArtifactServer) and must never trigger this config's own
+// own staged Pages tree directly
+// (managedReleaseDataCompatibility.e2e.spec.ts's startManagedArtifactServer)
+// and must never trigger this config's own
 // webServer, which runs a real `vite build` into the repository's real
 // `dist/` — the candidate artifact this preflight exists to leave
 // byte-for-byte unchanged. Every other release Playwright run (no
@@ -27,14 +28,18 @@ const isManagedCompatibilityRun = process.env.MANAGED_COMPAT_WORK_DIR !== undefi
 
 export default defineConfig({
   testDir: '.',
-  // Remaining transitional release E2E specs stay at their current location
-  // (Pass D moves them); the managed-update browser-integration corpus moved
-  // to its truthful owner under src/shared/service/appUpdate (see
-  // docs/testing/verify-redesign-pass-c-implementation.md). Both trees still
-  // run through this same fresh-container Playwright config/execution
+  // Target productionArtifact/ E2E (see
+  // docs/testing/verify-redesign-pass-d-implementation.md): structurally the
+  // same pages/<Owner>/widgets/<Owner> target E2E as playwright.config.ts,
+  // but requiring production/managed-release execution, so they stay
+  // discovered here instead. The managed-update browser-integration corpus
+  // lives at its truthful owner under src/shared/service/appUpdate (see
+  // docs/testing/verify-redesign-pass-c-implementation.md). Both trees run
+  // through this same fresh-container Playwright config/execution
   // infrastructure, which needs their built-artifact/cross-engine semantics.
   testMatch: [
-    'tests/e2e/release/*.spec.ts',
+    'tests/e2e/pages/**/productionArtifact/*.e2e.spec.ts',
+    'tests/e2e/widgets/**/productionArtifact/*.e2e.spec.ts',
     'src/shared/service/appUpdate/*.browser-integration.spec.ts',
   ],
   // Release specs build a fresh production artifact and share its origin-bound

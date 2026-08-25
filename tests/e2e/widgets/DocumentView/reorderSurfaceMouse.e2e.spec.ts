@@ -13,8 +13,8 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   openViewsSheet,
-} from './helpers';
-import { indexOfRow } from './reorderSurface.testUtils';
+} from '../../helpers';
+import { indexOfRow } from '../../reorderSurface.testUtils';
 
 test('clicking a database view row selects it without starting a drag', async ({ page }) => {
   await launchApp(page);

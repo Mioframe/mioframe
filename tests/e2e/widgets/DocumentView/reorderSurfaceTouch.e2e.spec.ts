@@ -12,8 +12,8 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   openViewsSheet,
-} from './helpers';
-import { center, dispatchTouch, indexOfRow } from './reorderSurface.testUtils';
+} from '../../helpers';
+import { center, dispatchTouch, indexOfRow } from '../../reorderSurface.testUtils';
 
 test.describe('touch activation', () => {
   test.use({ hasTouch: true });

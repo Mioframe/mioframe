@@ -46,6 +46,7 @@ export function classifyCommandWeight({
     case 'release-smoke':
     case 'managed-updates-browser-integration':
     case 'managed-updates-e2e':
+    case 'browser-integration-local':
     // Two real `vite build` invocations (see
     // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs);
     // must route through the same expensive-command lock boundary the

@@ -22,7 +22,7 @@ import {
   openOpfs,
   removeDatabaseItem,
   setInlineDatabaseValue,
-} from './helpers';
+} from '../../helpers';
 
 test('shows the empty database state, creates the first property, and manages item lifecycle', async ({
   page,

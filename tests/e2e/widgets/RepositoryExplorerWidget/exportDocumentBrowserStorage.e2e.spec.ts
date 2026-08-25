@@ -9,7 +9,7 @@ import {
   openDocumentFromExplorer,
   openOpfs,
   renameOpenDocument,
-} from './helpers';
+} from '../../helpers';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const savedExportsKey = 'savedJsonExportsForTest';

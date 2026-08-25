@@ -9,7 +9,7 @@ import {
   openDirectory,
   openDocumentFromExplorer,
   openOpfs,
-} from '../helpers';
+} from '../../../helpers';
 
 const noCriticalSaveError = /error reading|corrupt|lost changes|failed to open|save failed/i;
 

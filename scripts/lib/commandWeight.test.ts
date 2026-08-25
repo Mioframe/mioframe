@@ -22,6 +22,10 @@ describe('classifyCommandWeight', () => {
     expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
   });
 
+  it('treats the generic owner-local browser-integration leaf as expensive', () => {
+    expect(classifyCommandWeight({ label: 'browser-integration-local' })).toBe('expensive');
+  });
+
   it('treats every managed-update leaf, including the static controller-identity build, as expensive', () => {
     expect(classifyCommandWeight({ label: 'managed-updates-browser-integration' })).toBe(
       'expensive',
