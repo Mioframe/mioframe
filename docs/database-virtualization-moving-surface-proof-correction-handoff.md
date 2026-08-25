@@ -1,6 +1,6 @@
 # Database virtualization moving-surface proof correction handoff
 
-Status: **ready for implementation**.
+Status: **implemented; exact-head CI pending**.
 
 ## Goal
 
@@ -16,15 +16,15 @@ Owning scenario:
 
 Desktop Chromium exhausted the normal 30-second test timeout on the initial attempt and both retries, at different phases. Mobile Chrome passed.
 
-The scenario currently:
+The previous scenario:
 
-1. creates the real Weekly Plan starter example;
-2. keeps the real `Example created` card before the Database table;
-3. starts with the five real starter rows;
-4. performs 40 sequential full Add Item dialog flows;
-5. only then performs the moving-surface geometry/range lifecycle.
+1. created the real Weekly Plan starter example;
+2. kept the real `Example created` card before the Database table;
+3. started with the five real starter rows;
+4. performed 40 sequential full Add Item dialog flows;
+5. only then performed the moving-surface geometry/range lifecycle.
 
-The repeated setup dominates the test budget and is not part of the contract being proved.
+The repeated setup dominated the test budget and was not part of the contract being proved.
 
 Independent evidence already accepted:
 
@@ -32,9 +32,27 @@ Independent evidence already accepted:
 - top-level numeric diagnosis found widget-supplied offsets equal to physical root-to-layout offsets at all required checkpoints;
 - production geometry/shared virtualization therefore must not be changed from this CI failure alone.
 
+## Implemented correction
+
+Only `tests/e2e/databaseVirtualizationFlows.spec.ts` changed.
+
+The moving-surface scenario now:
+
+- uses `640 x 360` on desktop;
+- preserves the Mobile Chrome project width (`393px` in the current project) and uses height `360px`;
+- keeps the five real Weekly Plan starter rows;
+- adds exactly 16 additional Task rows through the existing public Add Item flow;
+- therefore exercises 21 real data rows (`aria-rowcount=22` including the header);
+- preserves the real `Example created` / `Got it` lifecycle;
+- preserves physical surface movement proof;
+- proves mounted rows are fewer than logical data rows at top/deep states;
+- reaches logical tail `22/22` before and after the surface moves.
+
+No production code changed.
+
 ## Contract owned by this E2E
 
-The product proof must retain the complete real lifecycle:
+The product proof retains the complete real lifecycle:
 
 1. real Weekly Plan starter creation;
 2. real success card visibly precedes the Database surface;
@@ -48,60 +66,31 @@ The product proof must retain the complete real lifecycle:
 
 Large-dataset stress is not owned here. Separate virtualization proofs already own 160-row deep ranges and the 30,000 x 300 bounded-scale contract.
 
-## Architecture decision
+## Verification correction
 
-This is a **test-only proof correction**.
+The earlier handoff incorrectly required:
 
-Production code is unchanged.
+`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
 
-### Viewport
+That command is not supported by the current verifier. Repository verification policy defines `--repeat` as a bounded **Storybook-behavior-only** diagnostic requiring `--only storybook-behavior` and explicit files. It is not an E2E option.
 
-Before launching the app, set a compact viewport height of `360px` for this scenario.
+Therefore the unsupported repeat command is removed from acceptance criteria.
 
-- Desktop Chromium: use `640 x 360`.
-- Mobile Chrome: preserve the project's existing mobile viewport width and set only the height to `360px`.
+Required evidence for this E2E correction is:
 
-Do not change persistent project applicability. The scenario remains eligible for both projects.
+1. focused verifier-managed E2E:
+   `pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`;
+2. normal branch-diff handoff gate:
+   `pnpm verify --base origin/develop`;
+3. exact-head GitHub CI as the authoritative controlled-environment merge gate.
 
-The compact height is part of deterministic test setup: it guarantees the small dataset still exercises a true virtualized range.
+The coding agent reported the focused moving-surface proof clean in multiple independent executions. Its branch gate stopped on a different existing `databaseViewsAndQueryFlows.spec.ts` relation-view failure, as required by repository rules for a failure assessed as outside the assigned correction. Exact-head CI must determine the published-head merge state.
 
-### Rows
-
-Keep the five real Weekly Plan starter rows and add exactly **16** additional Task rows through the existing public Add Item flow.
-
-Total data rows after setup: 21.
-
-This is intentionally small enough to avoid the 40-dialog setup cost while still exceeding the compact viewport's mounted range under the current Database row virtualization (`48px` estimate, overscan `4`). The existing bounded assertions remain the authoritative proof that the collection is actually virtualized; do not replace them with assumptions from those constants.
-
-Use one named constant in the test, e.g. `additionalSurfaceRangeRowCount = 16`, rather than a magic number repeated across assertions.
-
-## Required assertions retained
-
-Do not remove or weaken:
-
-- non-zero initial horizontal surface offset;
-- non-zero initial vertical surface offset;
-- top range has mounted rows and starts at logical row index `2`;
-- top mounted range is smaller than the logical data-row count;
-- first deep phase reaches `lastRowIndex === rowCount`;
-- first deep mounted range remains bounded;
-- real success card is dismissed through `Got it`;
-- dismissed physical vertical surface offset is smaller than the original offset;
-- moved top range starts at logical row index `2` and remains bounded;
-- second deep phase reaches `lastRowIndex === rowCount`;
-- second deep mounted range remains bounded.
-
-Update any setup-size-specific arithmetic so it derives from the real total data-row count (`5 + additionalSurfaceRangeRowCount`) rather than the old 40-row array length.
-
-Prefer `rowCount`/existing observable table contracts where they already express the same requirement.
+A retry-pass/flaky classification of the **moving-surface scenario itself** remains unacceptable.
 
 ## Stop condition
 
-After the proportional setup is implemented, run the focused proof.
-
-If the test now fails because the logical tail is not reached, surface movement is incorrect, or another owned geometry/range assertion fails **without first consuming the global 30-second setup budget**, STOP and report the exact browser-observable state.
-
-That result reopens production architecture.
+If the proportional moving-surface proof itself fails to reach logical tail, loses boundedness, or reports incorrect surface movement with meaningful test budget remaining, production architecture must be reopened from that concrete evidence.
 
 Do not respond by:
 
@@ -113,7 +102,7 @@ Do not respond by:
 - calling `virtualizer.measure()`;
 - adding observers/remounts/cache resets.
 
-If the fixed 16-row setup unexpectedly does not produce a bounded virtualized range in one project, STOP and report mounted/logical row counts rather than silently increasing dataset size or changing project applicability.
+If the fixed 16-row setup does not produce a bounded virtualized range in one project, report mounted/logical row counts rather than silently increasing dataset size or changing project applicability.
 
 ## Expected changed file
 
@@ -123,58 +112,10 @@ Only:
 
 No production file is expected to change.
 
-## Verification
+## Remaining PR gates
 
-Focused feedback:
+- exact-head CI confirms the proportional moving-surface scenario without retry/flaky classification;
+- operator visual reinspection;
+- final resulting-PR review.
 
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`
-
-Then bounded stability proof:
-
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
-
-If the normal profile passes, do not force the GitHub-Actions profile merely to create another environment.
-
-If the normal profile does not reproduce the GitHub-specific execution pressure and the task needs confirmation before handoff, one focused run with `--profile github-actions` is authorized:
-
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --profile github-actions`
-
-Final cumulative branch gate:
-
-`pnpm verify --base origin/develop`
-
-The final branch gate uses the normal local profile and must not add `--profile github-actions`.
-
-## Acceptance criteria
-
-- only the moving-surface E2E proof changes;
-- desktop viewport is `640 x 360`;
-- mobile project width is preserved while its height is `360px`;
-- exactly 16 additional rows are created;
-- success-card lifecycle remains real;
-- both deep phases reach logical tail;
-- both top/deep phases prove bounded mounted work;
-- physical surface movement remains asserted;
-- focused proof passes without retry/flaky classification;
-- `--repeat 3` passes cleanly;
-- `pnpm verify --base origin/develop` passes;
-- no timeout/sleep/retry/production recovery is introduced.
-
-## Forbidden
-
-- production code changes;
-- shared virtualization or TanStack changes;
-- Database geometry changes;
-- changing relation or sticky corrections;
-- changing E2E project applicability;
-- increasing the per-test timeout;
-- `test.slow()` or equivalent timeout multiplication;
-- sleeps;
-- retry-as-success;
-- force actions;
-- recovery loops;
-- direct Playwright/Vite/browser commands;
-- raw/mutating Git workflow;
-- `pnpm verify --full` as handoff gate;
-- editing architect-owned review/architecture documents;
-- unrelated cleanup.
+Any unrelated repository flake is handled by its truthful owner and must not be patched inside this proof correction.
