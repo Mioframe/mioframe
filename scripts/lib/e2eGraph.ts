@@ -48,8 +48,33 @@ function defaultRunCollector(): RunGraphCollectorResult {
 }
 
 interface DependencyCruiserDependency {
+  module?: string;
   resolved?: string;
   couldNotResolve?: boolean;
+}
+
+// Extensions dependency-cruiser resolves as ordinary code modules for
+// production reachability purposes. An unresolved dependency whose
+// specifier clearly names a non-code asset (e.g. a stray `.css` import) can
+// never itself be — or lead further to — a widget/page owner, so it cannot
+// hide a real code reachability edge. An unresolved dependency with no
+// recognizable extension is ambiguous (most extensionless imports in this
+// codebase are code modules) and must still fail acquisition closed.
+const CODE_MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.vue', '.js', '.jsx', '.mjs', '.cjs']);
+
+function isUnresolvedNonCodeAsset(moduleSpecifier: string | undefined): boolean {
+  if (!moduleSpecifier) {
+    return false;
+  }
+
+  const lastSegment = moduleSpecifier.split('/').pop() ?? moduleSpecifier;
+  const dotIndex = lastSegment.lastIndexOf('.');
+
+  if (dotIndex <= 0) {
+    return false;
+  }
+
+  return !CODE_MODULE_EXTENSIONS.has(lastSegment.slice(dotIndex));
 }
 
 interface DependencyCruiserModule {
@@ -63,12 +88,15 @@ interface DependencyCruiserOutput {
 
 /**
  * Acquire the production `src/**` reverse-dependency graph once, via one
- * dependency-cruiser invocation in a dedicated child process. Any single
- * unresolved dependency anywhere in the graph fails the whole acquisition
- * closed: an incomplete graph cannot safely prove any changed path's
- * reachability, and uncertainty must widen E2E rather than silently narrow
- * it (see the contract's "unresolved/dynamic/global dependency that
- * prevents safe owner reachability").
+ * dependency-cruiser invocation in a dedicated child process. An unresolved
+ * dependency that could be a code module (see
+ * {@link isUnresolvedNonCodeAsset}) fails the whole acquisition closed: an
+ * incomplete graph cannot safely prove any changed path's reachability, and
+ * uncertainty must widen E2E rather than silently narrow it (see the
+ * contract's "unresolved/dynamic/global dependency that prevents safe owner
+ * reachability"). An unresolved non-code asset dependency (e.g. a stray
+ * `.css` import) is dropped instead: it can never be, or lead to, a
+ * widget/page owner, so it cannot hide a real reachability edge.
  * @param [deps] Test-only dependencies.
  * @returns The reverse-dependency graph, or a fail-closed error.
  */
@@ -104,6 +132,10 @@ export function acquireProductionReverseGraph({
   for (const moduleEntry of parsed.modules) {
     for (const dependency of moduleEntry.dependencies) {
       if (dependency.couldNotResolve || !dependency.resolved) {
+        if (isUnresolvedNonCodeAsset(dependency.module)) {
+          continue;
+        }
+
         return {
           ok: false,
           error: `dependency-cruiser could not resolve a dependency of ${moduleEntry.source}; the production reverse-dependency graph is untrustworthy`,

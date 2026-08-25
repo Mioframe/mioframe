@@ -27,6 +27,16 @@ async function main() {
       combinedDependencies: false,
       progress: { type: 'none' },
       validate: false,
+      // Without this, dependency-cruiser's resolver ignores npm packages'
+      // package.json "exports" maps entirely, so real deep-subpath runtime
+      // imports (e.g. `@vueuse/integrations/useIDBKeyval`) and types-only
+      // packages that only expose a "types" export condition (e.g.
+      // `type-fest`) both come back unresolved even though they resolve
+      // correctly for the project's actual TypeScript/bundler resolution.
+      enhancedResolveOptions: {
+        exportsFields: ['exports'],
+        conditionNames: ['import', 'require', 'node', 'types', 'default'],
+      },
     },
     {},
   );

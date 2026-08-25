@@ -49,6 +49,7 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/lib/e2eGraph.ts',
   'scripts/lib/e2eGraphCollector.mjs',
   'scripts/lib/e2eOwnerInventoryCollector.ts',
+  'scripts/lib/e2eOwnerInventoryContainer.mjs',
   'scripts/lib/e2eOwnerInventoryReporter.mjs',
   'scripts/lib/e2eProjectApplicability.ts',
   'scripts/release/managedUpdatesProof.mjs',

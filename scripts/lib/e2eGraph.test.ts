@@ -54,7 +54,7 @@ describe('acquireProductionReverseGraph', () => {
     expect(!result.ok && result.error).toMatch(/could not be parsed/);
   });
 
-  it('fails closed on any unresolved dependency', () => {
+  it('fails closed on an unresolved dependency with no recognizable extension', () => {
     const result = acquireProductionReverseGraph({
       runCollector: stdoutOf({
         modules: [
@@ -68,5 +68,51 @@ describe('acquireProductionReverseGraph', () => {
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.error).toMatch(/could not resolve/);
+  });
+
+  it('fails closed on an unresolved dependency with a code-module extension', () => {
+    const result = acquireProductionReverseGraph({
+      runCollector: stdoutOf({
+        modules: [
+          {
+            source: 'src/widgets/DocumentView/DocumentView.vue',
+            dependencies: [{ module: './missing.ts', resolved: undefined, couldNotResolve: true }],
+          },
+        ],
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toMatch(/could not resolve/);
+  });
+
+  it('drops an unresolved non-code asset dependency instead of failing closed', () => {
+    const result = acquireProductionReverseGraph({
+      runCollector: stdoutOf({
+        modules: [
+          {
+            source: 'src/shared/lib/md/stateHelper.ts',
+            dependencies: [
+              {
+                module: './container-with-states.css',
+                resolved: undefined,
+                couldNotResolve: true,
+              },
+              {
+                resolved: 'src/entities/localSettings/index.ts',
+                couldNotResolve: false,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      graph: {
+        'src/entities/localSettings/index.ts': ['src/shared/lib/md/stateHelper.ts'],
+      },
+    });
   });
 });
