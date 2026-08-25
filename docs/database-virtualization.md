@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **virtualization implementation accepted; PR #217 is blocked by one moving-surface E2E proof-design correction, operator visual reinspection, exact-head CI, and final resulting-PR review**.
+Status: **virtualization implementation and proportional moving-surface proof correction accepted; PR #217 remains pending exact-head CI, operator visual reinspection, and final resulting-PR review**.
 
 This is the architecture source of truth for PR #217. Older profiling/result documents are historical where they conflict with this file.
 
@@ -27,13 +27,13 @@ Explicitly deferred to later PRs:
 
 Those performance investigations remain owned by `docs/database-chrome-jank-follow-up.md` and are not #217 merge criteria.
 
-## Active correction contract
+## Current correction record
 
-- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`
-- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`
-- `src/entities/databaseData/REVIEW.md`
+- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`;
+- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`;
+- `src/entities/databaseData/REVIEW.md`.
 
-The previous consolidated completion pass is complete for production implementation and is historical for this final proof-design correction.
+The production completion pass is complete. The moving-surface proof correction is implemented and now awaits exact-head CI.
 
 ## Accepted virtualization architecture
 
@@ -73,7 +73,7 @@ on the same root/list. Both deep phases reach the logical tail, top recovery rea
 
 `useVirtualCollection.ts` remains unchanged. No shared/TanStack production correction, `virtualizer.measure()`, cache-reset protocol, or virtualizer exposure is justified.
 
-## Top-level numeric diagnosis — production geometry mismatch not confirmed
+## Top-level numeric diagnosis — no production geometry mismatch confirmed
 
 The completion pass compared widget-supplied surface offsets with current DOM-derived root-to-`DatabaseViewLayout` offsets throughout the real product lifecycle. Reported values matched at every checkpoint:
 
@@ -85,57 +85,52 @@ The completion pass compared widget-supplied surface offsets with current DOM-de
 
 Both deep phases reached logical row `46` during the diagnostic run. Temporary instrumentation was removed.
 
-Together with the accepted shared deep-state proof, current evidence does not justify another production geometry/cache/lifecycle correction. Do not add timers, extra observers, remounts, cache resets, or shared changes without new evidence that survives a proportional product proof.
+Together with the accepted shared deep-state proof, current evidence does not justify another production geometry/cache/lifecycle correction. Do not add timers, extra observers, remounts, cache resets, or shared changes without new evidence from a proportional product proof.
 
-## Active proof blocker — moving-surface E2E exceeds its budget
+## Moving-surface product proof — corrected
 
-Exact-head GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only `verification-browser (e2e)`. Static, visual, Storybook behavior, and release-version lanes passed.
+Exact-head GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only application E2E. The old moving-surface scenario used the real five-row Weekly Plan starter example plus 40 sequential Add Item dialog flows, and desktop Chromium exhausted the 30-second test budget at different phases across initial attempt and retries. Mobile Chrome passed.
 
-Owning scenario:
+The correction is test-only. `tests/e2e/databaseVirtualizationFlows.spec.ts` now uses:
 
-`tests/e2e/databaseVirtualizationFlows.spec.ts` -> `keeps real preceding Database content connected to the table-owned surface range`.
+- desktop viewport `640 x 360`;
+- Mobile Chrome project width `393` with height `360`;
+- five real starter rows;
+- exactly 16 additional Task rows through the existing public Add Item flow;
+- 21 logical data rows, exposed as `aria-rowcount=22` including the header.
 
-Desktop Chromium exhausted the 30-second per-test timeout on all three attempts, but at different phases. Mobile Chrome passed the same scenario.
+The corrected proof preserves:
 
-The scenario currently creates the real five-row Weekly Plan starter example, performs **40 sequential full Add Item UI flows**, then runs the surface movement/deep-range contract. This setup is disproportionate to the owned contract and consumes the same global timeout intended for geometry proof.
+- real starter success card before the table;
+- non-zero initial vertical/horizontal surface offsets;
+- bounded initial top range beginning at logical row index `2`;
+- first deep logical tail `22/22` with bounded mounted work;
+- real `Got it` dismissal;
+- decreased physical vertical surface offset after dismissal;
+- bounded moved top range beginning at logical row index `2`;
+- second deep logical tail `22/22` with bounded mounted work.
 
-### Required proof correction
+No production code changed.
 
-This correction is test-only.
+The coding agent reports the focused moving-surface proof clean in multiple independent executions. Its branch-diff gate later stopped on a different `databaseViewsAndQueryFlows.spec.ts` relation-view flake rather than this corrected scenario. Under repository verification rules an unrelated or differently owned branch-gate failure is reported rather than patched inside this proof correction.
 
-Before `launchApp`:
+Any exact-head retry/flaky classification of the moving-surface scenario itself reopens this finding.
 
-- set compact viewport height `360px`;
-- Desktop Chromium uses `640 x 360`;
-- Mobile Chrome preserves its project viewport width and uses height `360`;
-- do not change persistent E2E project applicability.
+## Verification correction
 
-Dataset:
+The architect-authored proof handoff originally required:
 
-- keep the five real Weekly Plan starter rows;
-- create exactly `16` additional Task rows through the existing public Add Item flow;
-- total real data rows: `21`.
+`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
 
-The smaller dataset is sufficient to exercise a bounded virtualized range at the compact viewport while removing 24 unnecessary modal setup flows. Current production row virtualization uses a `48px` estimate and overscan `4`, but the E2E's observable bounded-range assertions—not duplicated constants—remain the proof that virtualization actually occurs.
+That requirement was invalid. Current `.agents/skills/verification/SKILL.md` defines `--repeat` as a bounded Storybook-behavior-only diagnostic. E2E does not support it.
 
-Retain the complete owned lifecycle and assertions:
+The supported verification contract is:
 
-- real success card precedes the table;
-- initial vertical and horizontal surface offsets are non-zero;
-- initial top range starts at logical row index `2` and is bounded;
-- first deep phase reaches `aria-rowcount` and remains bounded;
-- real `Got it` dismisses the success card;
-- physical vertical surface offset decreases;
-- moved top range starts at logical row index `2` and remains bounded;
-- second deep phase reaches `aria-rowcount` and remains bounded.
+- focused E2E: `pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`;
+- required coding-agent branch gate: `pnpm verify --base origin/develop`, with stop/report if a failure is unrelated or requires another owner;
+- exact-head GitHub CI as the authoritative automatic merge gate.
 
-Do not increase timeout, use `test.slow()`, add sleeps/retries/recovery, alter production geometry, or change project applicability.
-
-If 21 rows at the compact viewport do not form a bounded virtualized range in either project, stop and report mounted/logical counts rather than silently changing the dataset.
-
-If the proportional proof reaches its owned geometry/range assertions with meaningful budget remaining but still cannot reach logical tail, reopen production architecture from that concrete evidence.
-
-Large-data stress remains owned by separate virtualization proofs, including the 160-row real deep-range scenario and 30,000 × 300 bounded-scale contract.
+Do not increase timeout or accept retry/flaky classification.
 
 ## Sticky action/header stacking — resolved
 
@@ -144,24 +139,6 @@ Large-data stress remains owned by separate virtualization proofs, including the
 The existing sticky native-table application E2E performs `document.elementFromPoint()` hit-testing after simultaneous vertical + horizontal scrolling and proves body-right, top-right header/action intersection, and ordinary header-band ownership.
 
 No shared `MDTable` correction was required.
-
-## Verification workflow
-
-Focused correction proof:
-
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts`
-
-Required stability run:
-
-`pnpm verify --only e2e --files tests/e2e/databaseVirtualizationFlows.spec.ts --repeat 3`
-
-One focused `--profile github-actions` run is allowed only when useful to validate the CI-specific pressure after normal focused proof. Do not use that profile for the normal final branch gate.
-
-Final cumulative branch gate:
-
-`pnpm verify --base origin/develop`
-
-Do not increase the test timeout or accept retry/flaky classification.
 
 ## Residual Chromium jank
 
@@ -173,17 +150,14 @@ Retained evidence and future discriminators are recorded in `docs/database-chrom
 
 PR #217 may merge only when:
 
-1. the moving-surface product proof is proportional and stable within the normal test budget;
+1. exact-head GitHub CI is green without retry/flaky classification for the virtualization proofs;
 2. operator inspection confirms Database border/corner/sticky presentation, including combined vertical + horizontal sticky behavior;
-3. coding-agent `pnpm verify --base origin/develop` passes cleanly on the final code/proof;
-4. exact-head GitHub CI is green without retry/flaky classification;
-5. final resulting-PR review finds no blocker.
+3. final resulting-PR review finds no blocker.
 
 ## Forbidden before merge
 
 - expanding #217 into unrelated residual performance optimization;
-- speculative production moving-surface recovery while the current proof is over-budget;
-- production changes in the active proof-correction pass;
+- speculative production moving-surface recovery without new failing evidence;
 - increasing E2E timeout, `test.slow()`, sleeps, or retry recovery;
 - changing application-E2E project applicability;
 - restoring entity-owned ancestor/sibling geometry discovery;
