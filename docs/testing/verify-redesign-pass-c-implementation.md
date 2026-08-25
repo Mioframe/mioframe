@@ -1,16 +1,16 @@
 # Verify redesign — Pass C implementation contract
 
-- **Status:** Implementation landed; architect review blocked by active WebKit proof finding
+- **Status:** Completed and architect-accepted
 - **Scope:** Pass C only — owner-local behavior, visual, and browser-integration proof
 - **Prerequisite:** Pass B architect-accepted
 
-## Current correction boundary
+## Acceptance state
 
-Pass C implementation is present on `architecture/verify-redesign`. Architect review found no active behavior/visual ownership or baseline-migration finding, but Pass C is **not accepted** while [`src/shared/service/appUpdate/REVIEW.md`](../../src/shared/service/appUpdate/REVIEW.md) B1 remains open.
+Pass C is complete on `architecture/verify-redesign` and has been architect-accepted after full re-review.
 
-The only active correction is the required managed-update WebKit cross-engine lifecycle proof. The implementation feedback reported a flaky WebKit result; repository policy treats known flaky behavior as failed proof. The concrete failing assertion/root cause is not yet verified and must be established before changing behavior.
+The only correction finding from the first review was the required managed-update WebKit cross-engine lifecycle proof. Its root cause was confirmed in the owner-local test synchronization: the production boot watchdog performs an expected `location.reload()` after durable rollback, which could destroy the execution context of the spec's in-flight IndexedDB `page.evaluate()` poll. The correction tolerates only that transient navigation-context destruction inside the existing polling budget while preserving all other failures, assertions, browser applicability, lifecycle semantics, and runner/orchestration behavior.
 
-Pass D must not start until B1 is corrected, the complete Pass C scope is re-reviewed, and the architect closes the review artifact. Coding agents must not edit this document, the review artifact, `AGENTS.md`, or skills while performing the correction.
+The focused `browser-integration` proof was reported clean across the existing Chromium groups and Firefox/WebKit cross-engine lifecycle after the correction. No active Pass C review finding remains. Pass D is the next implementation boundary; exact-head GitHub CI remains an architect-owned repository gate separate from this semantic acceptance.
 
 ## Goal
 
@@ -138,7 +138,7 @@ Do not remove release E2E infrastructure, root application E2E compatibility, `E
 
 Tooling tests must prove target-only behavior/visual discovery after compatibility removal, direct/add/remove/move handling, moved browser-integration path recognition, unchanged managed-update grouping/order, and target suffix exclusions.
 
-Use focused verifier-managed feedback. Run representative moved `behavior`, `visual`, and browser-integration proof where needed to validate execution-path migration. For the active B1 correction, capture the concrete WebKit failure, correct its truthful root cause, and run the smallest faithful browser-integration proof that exercises the cross-engine lifecycle contract cleanly. Do not use retry-until-pass as acceptance evidence. Do not run `pnpm verify --full` merely for Pass C, and do not use screenshot update mode.
+Use focused verifier-managed feedback. Run representative moved `behavior`, `visual`, and browser-integration proof where needed to validate execution-path migration. A known flaky cross-engine result must be diagnosed at its truthful owner and corrected before acceptance; retry-until-pass is not acceptance evidence. Do not run `pnpm verify --full` merely for Pass C, and do not use screenshot update mode.
 
 ## Forbidden
 
@@ -152,5 +152,5 @@ Use focused verifier-managed feedback. Run representative moved `behavior`, `vis
 - adding dependency-cruiser or changing `E2E_SCENARIO_SCOPES`;
 - implementing Pass E semantics or Pass F cleanup;
 - weakening managed-update browser/runtime coverage;
-- changing product behavior, public UI APIs, locks, timeouts, or status/resume ownership unless the diagnosed B1 root cause is in the product/runtime contract itself and the correction is required to restore that existing contract;
+- changing product behavior, public UI APIs, locks, timeouts, or status/resume ownership;
 - editing `docs/**`, `AGENTS.md`, `.agents/skills/**`, or review artifacts — those are architect-owned.
