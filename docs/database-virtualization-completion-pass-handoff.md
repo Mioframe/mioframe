@@ -4,6 +4,11 @@ Status: **implementation pass completed; follow-up proof correction required**.
 
 This document records the consolidated PR #217 virtualization completion pass.
 
+Active follow-up contract:
+
+- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`
+- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`
+
 ## Completed implementation
 
 ### Pass A — top-level moving-surface diagnosis
@@ -38,14 +43,15 @@ No shared `MDTable` change was required.
 
 GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a` failed only the moving-surface application E2E on desktop Chromium. All three attempts exhausted the normal 30-second per-test timeout, but at different phases; Mobile Chrome passed.
 
-The scenario creates the real five-row Weekly Plan starter example and then performs forty sequential full add-item dialog flows before its geometry assertions. The failure is therefore classified as an over-budget proof design until a proportional setup disproves that classification.
+The scenario creates the real five-row Weekly Plan starter example and then performs forty sequential full add-item dialog flows before its geometry assertions. The failure is therefore classified as an over-budget proof design until the active proportional setup disproves that classification.
 
-Required next correction is test-only and is defined in `docs/database-virtualization.md` and `src/entities/databaseData/REVIEW.md`:
+The active correction is test-only:
 
-- keep the real success-card lifecycle;
-- use a compact deterministic desktop viewport;
-- create only enough extra rows to guarantee a virtualized deep range before and after dismiss;
-- preserve bounded-range, physical-movement, top, and logical-tail assertions;
+- desktop viewport `640 x 360`;
+- Mobile Chrome keeps its project width and uses height `360`;
+- keep the five real starter rows;
+- create exactly 16 additional rows;
+- preserve the real success-card lifecycle, bounded-range assertions, physical-movement assertion, and both logical-tail assertions;
 - do not increase timeout or change production geometry.
 
 If that proportional proof still fails with meaningful budget remaining, production architecture must be reopened from the new evidence.
