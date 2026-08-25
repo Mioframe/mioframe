@@ -1,6 +1,11 @@
 # Review
 
-Verdict: implementation corrections accepted; merge is blocked by an over-budget moving-surface E2E proof, operator visual reinspection, exact-head CI, and final resulting-PR review.
+Verdict: production implementation corrections accepted; merge is blocked by one moving-surface E2E proof-design correction, operator visual reinspection, exact-head CI, and final resulting-PR review.
+
+Active correction contract:
+
+- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`
+- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`
 
 ## Scope reviewed
 
@@ -47,33 +52,40 @@ Desktop Chromium exhausted the same 30-second per-test timeout on the initial at
 
 Mobile Chrome passed the same scenario.
 
-The scenario currently creates the real five-row Weekly Plan starter example and then performs **40 sequential full UI add-item dialog flows** before the geometry proof. The test therefore couples the surface-offset contract to expensive repetitive product setup and can consume nearly all of the global test budget before the assertions it owns.
+The scenario creates the real five-row Weekly Plan starter example and then performs **40 sequential full UI Add Item dialog flows** before the geometry proof. The proof therefore couples moving-surface correctness to expensive repetitive setup that is owned elsewhere.
 
-This is now classified as a proof-design blocker, not evidence for another production geometry correction.
+This remains classified as a proof-design blocker, not evidence for another production geometry correction.
 
 ### Required correction
 
-Keep the real starter success card and the same product lifecycle, but make the proof setup proportional to the contract:
+Follow the active proof-correction handoff exactly:
 
-1. use an explicit compact desktop viewport for this scenario;
-2. create only a small fixed number of additional rows sufficient to guarantee vertical overflow and a virtualized deep range both before and after the success card is removed;
-3. retain assertions that the mounted range is bounded and that both deep phases reach `aria-rowcount`;
-4. retain the real success-card dismiss and physical surface movement assertion;
-5. do not raise the test timeout and do not add sleeps/retries/recovery.
+- set the scenario viewport before `launchApp`;
+- desktop uses `640 x 360`;
+- Mobile Chrome preserves its project width and uses height `360`;
+- keep the five real starter rows;
+- add exactly `16` additional Task rows through the existing public Add Item flow;
+- retain the real success card and `Got it` dismissal;
+- retain initial/moved top-range boundedness;
+- retain both deep logical-tail assertions against `aria-rowcount`;
+- retain physical surface movement proof;
+- do not change production code, timeout, retries, project applicability, or geometry ownership.
 
-Large-dataset stress does not belong in this scenario; it is already owned by separate Database virtualization proofs.
+The resulting 21-row dataset is setup for this moving-surface contract only. Large-dataset stress remains owned by separate Database virtualization proofs.
 
-If the corrected proportional proof still reproduces the same logical-tail failure with meaningful timeout budget remaining, reopen production architecture from that evidence.
+If 21 rows at the compact viewport do not produce a bounded virtualized range in either project, stop and report mounted/logical counts rather than silently changing the dataset or applicability.
+
+If the proportional proof reaches its owned geometry/range assertions with meaningful budget remaining but still fails logical-tail correctness, reopen production architecture from that concrete evidence.
 
 ## Resolved — relation-value local-root invariant
 
-`RelationValueFieldData` now renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit relation `0/0` offsets are truthful whenever the table is mounted. Owner-local proof and relevant E2E are reported green.
+`RelationValueFieldData` renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit relation `0/0` offsets are truthful whenever the table is mounted. Owner-local proof and relevant E2E are reported green.
 
 Owner review: `src/features/relationValueEdit/REVIEW.md`.
 
 ## Resolved — sticky body action cells covering the header
 
-`DatabaseDataTable` now keeps body action cells sticky/right at local `z-index: 0`, below the shared sticky `thead` plane (`z-index: 1`). The header action cell remains locally elevated inside the header plane.
+`DatabaseDataTable` keeps body action cells sticky/right at local `z-index: 0`, below the shared sticky `thead` plane (`z-index: 1`). The header action cell remains locally elevated inside the header plane.
 
 The product E2E uses actual `document.elementFromPoint()` hit-testing after combined vertical + horizontal scrolling and proves body-right, top-right header/action intersection, and ordinary header-band ownership.
 
@@ -93,7 +105,7 @@ The removed entity ancestor/sibling geometry-discovery path must not return.
 ## Remaining gates
 
 1. correct the over-budget moving-surface E2E setup without weakening its product contract;
-2. coding-agent `pnpm verify --base origin/develop` passes cleanly on the corrected proof;
+2. coding-agent focused proof + repeat stability + `pnpm verify --base origin/develop` pass cleanly;
 3. operator reinspection of the real Database table, especially borders/corners and combined sticky header/action behavior;
 4. exact-head GitHub CI green with no retry/flaky classification;
 5. final full resulting-PR review.
