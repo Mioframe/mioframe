@@ -10,7 +10,7 @@ Pass status:
 - Pass B — completed and architect-accepted;
 - Pass C — completed and architect-accepted;
 - Pass D — completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- Pass E — implementation landed at `82395eebe75484157e30cb92dc8165c368a92496`; architect review is blocked by the active findings in `scripts/REVIEW.md`;
+- Pass E — implementation landed at `82395eebe75484157e30cb92dc8165c368a92496`; architect review is blocked by the active findings in `scripts/REVIEW.md`; one consolidated correction task is prepared in `docs/testing/verify-redesign-pass-e-correction.md`;
 - Pass F — must not start until Pass E is architect-accepted.
 
 The previous Pass D B1 completeness blocker and M1 stale-comment issue remain closed and must not be reopened without new repository evidence.
@@ -33,7 +33,8 @@ Before Pass E correction/re-review, read in this order:
 10. `docs/testing/verify-redesign-pass-e-implementation.md`;
 11. `docs/testing/verify-redesign-pass-e-agent-task.md` for the accepted Pass E implementation boundary;
 12. active `scripts/REVIEW.md`;
-13. current `scripts/verify.ts`, `scripts/lib/unitRisk.ts`, `scripts/lib/mutationTargets.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
+13. `docs/testing/verify-redesign-pass-e-correction.md` for the current correction pass;
+14. current `scripts/verify.ts`, `scripts/lib/unitRisk.ts`, `scripts/lib/mutationTargets.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
 
 Pass D implementation/correction records are historical accepted source for invariants and should be consulted only when Pass E touches an adjacent boundary.
 
@@ -57,7 +58,13 @@ Current blockers are consolidated there:
 2. default Git unit classification can silently skip standard snapshots and root TypeScript transform configuration;
 3. literal `--full` bypasses mutation registry structural invalidity before Stryker execution.
 
+The authoritative correction task is:
+
+`docs/testing/verify-redesign-pass-e-correction.md`
+
 These are local corrections to the accepted Pass E architecture. They do not require a new dependency graph, new public type, generic planner framework, mutation ownership redesign, or Pass F work.
+
+The coding agent must not edit `docs/**`, `AGENTS.md`, `.agents/skills/**`, or `scripts/REVIEW.md`; architect-owned review and workflow state is updated only after re-review.
 
 ## Pass E architecture summary
 
@@ -71,7 +78,7 @@ These are local corrections to the accepted Pass E architecture. They do not req
 - Deterministic snapshot ownership must not disappear from default Git scope.
 - Removed/moved/global unit relations that cannot be represented safely widen to full unit.
 - Relevant root TypeScript transform configuration is global unit impact.
-- Zero related/affected tests is visible fail-closed evidence, never a successful unit pass.
+- Zero related/affected tests is visible fail-closed evidence, never a successful unit pass; use the existing narrow verifier result-classification boundary, not a new dependency mechanism.
 - Do not add dependency-cruiser or another unit graph.
 
 ### Mutation
@@ -106,8 +113,9 @@ Do not reopen without new repository evidence:
 
 ## Next workflow
 
-1. Correct the active `scripts/REVIEW.md` blockers only; do not start Pass F.
-2. Re-review the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the new implementation HEAD, not only the correction patch.
-3. Remove `scripts/REVIEW.md` only when every active finding is resolved.
+1. Coding agent implements only `docs/testing/verify-redesign-pass-e-correction.md`; Pass F remains closed.
+2. Architect re-reviews the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the new implementation HEAD, not only the correction patch.
+3. Remove `scripts/REVIEW.md` only when every active finding is resolved and no new blocker/major issue appears.
 4. If clean, mark Pass E architect-accepted and then resolve/execute Pass F.
-5. Do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
+5. If this correction still reveals ownership drift, mixed responsibility, or growing workaround logic, stop local patching and revisit Pass E architecture instead of starting another correction loop.
+6. Do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
