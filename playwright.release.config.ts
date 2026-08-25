@@ -26,7 +26,17 @@ process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = releaseBaseURL;
 const isManagedCompatibilityRun = process.env.MANAGED_COMPAT_WORK_DIR !== undefined;
 
 export default defineConfig({
-  testDir: './tests/e2e/release',
+  testDir: '.',
+  // Remaining transitional release E2E specs stay at their current location
+  // (Pass D moves them); the managed-update browser-integration corpus moved
+  // to its truthful owner under src/shared/service/appUpdate (see
+  // docs/testing/verify-redesign-pass-c-implementation.md). Both trees still
+  // run through this same fresh-container Playwright config/execution
+  // infrastructure, which needs their built-artifact/cross-engine semantics.
+  testMatch: [
+    'tests/e2e/release/*.spec.ts',
+    'src/shared/service/appUpdate/*.browser-integration.spec.ts',
+  ],
   // Release specs build a fresh production artifact and share its origin-bound
   // storage, so file-level parallelism is intentionally disabled (see playwright.config.ts).
   fullyParallel: false,
@@ -70,7 +80,7 @@ export default defineConfig({
       // The complete managed-update corpus is Chromium's authoritative
       // proof; the cross-engine spec below is Firefox/WebKit-only narrow
       // smoke and must not duplicate onto Chromium too.
-      testIgnore: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+      testIgnore: /managedUpdatesCrossEngineLifecycle\.browser-integration\.spec\.ts/,
     },
     // Narrow cross-engine lifecycle smoke only: these two projects are
     // scoped to a single spec so the complete managed-update corpus stays
@@ -78,12 +88,12 @@ export default defineConfig({
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+      testMatch: /managedUpdatesCrossEngineLifecycle\.browser-integration\.spec\.ts/,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+      testMatch: /managedUpdatesCrossEngineLifecycle\.browser-integration\.spec\.ts/,
     },
   ],
 });

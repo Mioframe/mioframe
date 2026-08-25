@@ -7,7 +7,7 @@ import RouterHarnessRegressionStory from './RouterHarnessRegressionStory.vue';
  * (docs/testing/storybook.md "Vue Router inside stories"): a story-declared deterministic
  * initial location with path/query/hash/params, `RouterLink`, `useRoute`, `useRouter`,
  * push/back/forward, and isolation from other stories. Behavior proof lives at
- * tests/e2e/storybook/routerHarness.spec.ts (this is Storybook-wide routing infrastructure
+ * .storybook/router/routerHarness.behavior.spec.ts (this is Storybook-wide routing infrastructure
  * with no single FSD/Material owner, matching the existing overlay/reorder infra fixtures).
  */
 const routerParameters: StorybookRouterParameters = {

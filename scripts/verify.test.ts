@@ -350,7 +350,7 @@ describe('buildCommands full mode', () => {
       'e2e:release',
       '--label',
       'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
+      'src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts',
     ]);
     expect(requireRunEntry(commands, 'release-smoke').args).toEqual([
       'e2e:release',
@@ -383,7 +383,9 @@ describe('buildCommands full mode', () => {
     for (const entry of [browserIntegration, e2e]) {
       expect(entry.command).not.toBe('pnpm');
       expect(entry.args).not.toContain('e2e:release');
-      expect(entry.args).not.toContain('tests/e2e/release/managedUpdatesLifecycle.spec.ts');
+      expect(entry.args).not.toContain(
+        'src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts',
+      );
     }
   });
 
@@ -428,6 +430,66 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('managed-updates-static');
     expect(labels).not.toContain('managed-updates-browser-integration');
     expect(labels).not.toContain('managed-updates-e2e');
+  });
+});
+
+describe('buildCommands browser-integration lane (browserIntegrationRisk integration)', () => {
+  it('selects only the artifact leaf outside full mode for a direct productionArtifactSmoke spec change', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'artifact').args).toEqual([
+      'e2e:release',
+      '--label',
+      'artifact',
+      'src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts',
+    ]);
+    expect(commands.map((entry) => entry.label)).not.toContain(
+      'managed-updates-browser-integration',
+    );
+  });
+
+  it('selects only the managed-updates-browser-integration leaf outside full mode for a direct managed-update spec change', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
+      'scripts/release/managedUpdatesProof.mjs',
+      '--kind',
+      'browser-integration',
+    ]);
+    expect(commands.map((entry) => entry.label)).not.toContain('artifact');
+  });
+
+  it('selects both leaves outside full mode for an appUpdate production source change', () => {
+    const commands = buildCommands(['src/shared/service/appUpdate/workerInstall.ts'], {
+      fullMode: false,
+    });
+
+    expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+  });
+
+  it('leaves both labels entirely absent outside full mode for an unrelated change', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('artifact');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+  });
+
+  it('makes --only browser-integration select the relevant leaf without requiring --full', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+    const selected = selectOnlyCommands(commands, 'browser-integration');
+
+    expect(selected.map((entry) => entry.label)).toEqual(['managed-updates-browser-integration']);
   });
 });
 
@@ -788,13 +850,14 @@ describe('buildCommands removed/renamed spec safety', () => {
   });
 
   it('runs the full storybook-behavior lane for a deleted behavior spec without passing it as a command argument', () => {
-    const commands = buildCommands(['tests/e2e/storybook/removedFlow.spec.ts'], {
+    const removedSpec = 'src/shared/ui/Snackbar/RemovedFlow.behavior.spec.ts';
+    const commands = buildCommands([removedSpec], {
       fullMode: false,
     });
     const behaviorEntry = requireRunEntry(commands, 'storybook-behavior');
 
-    expect(behaviorEntry.triggerReason).toContain('removed or renamed Storybook behavior spec');
-    expect(behaviorEntry.args).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
+    expect(behaviorEntry.triggerReason).toContain('removed or renamed colocated behavior spec');
+    expect(behaviorEntry.args).not.toContain(removedSpec);
   });
 });
 
@@ -831,15 +894,15 @@ describe('buildCommands storybook-behavior lane', () => {
     requireRunEntry(commands, 'storybook-behavior');
   });
 
-  it('runs a focused lane for a changed existing central behavior spec', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+  it('runs a focused lane for a changed existing owner-local behavior spec', () => {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
     });
     const entry = requireRunEntry(commands, 'storybook-behavior');
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
     ]);
   });
 
@@ -868,7 +931,7 @@ describe('buildCommands storybook-behavior lane', () => {
 
 describe('buildCommands storybook-behavior repeat', () => {
   it('appends exactly one Playwright repeat argument to a focused storybook-behavior command', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
       repeat: 10,
     });
@@ -876,14 +939,14 @@ describe('buildCommands storybook-behavior repeat', () => {
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
       '--repeat-each',
       '10',
     ]);
   });
 
   it('leaves an ordinary storybook-behavior command without a repeat argument', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
       repeat: null,
     });
@@ -891,7 +954,7 @@ describe('buildCommands storybook-behavior repeat', () => {
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
     ]);
   });
 
@@ -1017,17 +1080,6 @@ describe('buildCommands storybook-build lane', () => {
     const entry = requireRunEntry(commands, 'storybook-build');
 
     expect(entry.triggerReason).toContain('visual lane requires a Storybook static build');
-  });
-
-  it('does not select storybook-build merely because storybook-behavior is invalid', () => {
-    const commands = buildCommands([], {
-      fullMode: false,
-      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
-      storybookBehaviorPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
-      visualPlan: { mode: 'skip', specs: [], reasons: ['empty visual scope'] },
-    });
-
-    requireSkippedEntry(commands, 'storybook-build');
   });
 
   it('does not select storybook-build merely because visual is invalid', () => {
@@ -1221,8 +1273,8 @@ describe('buildCommands visual lane (visualRisk integration)', () => {
     ]);
   });
 
-  it('produces the full test:visual command for a legacy central visual change', () => {
-    const commands = buildCommands(['tests/e2e/visual/shared-ui/md-button.spec.ts'], {
+  it('produces the full test:visual command for the cross-owner visual helper change', () => {
+    const commands = buildCommands(['tests/e2e/visual/storybook.ts'], {
       fullMode: false,
     });
     const entry = requireRunEntry(commands, 'visual');

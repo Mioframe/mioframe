@@ -5,14 +5,14 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 import {
   closeDocumentPane,
   createDatabaseDocument,
   createUniqueName,
   openDocumentFromExplorer,
   openOpfs,
-} from '../helpers';
+} from '../../../../tests/e2e/helpers';
 
 // Proves the worker-owned recovery architecture end to end (see
 // docs/managed-pinned-updates.md, "Recovery when controller state is lost"

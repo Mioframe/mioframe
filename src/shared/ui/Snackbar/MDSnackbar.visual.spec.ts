@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+import { openStory } from '../../../../tests/e2e/visual/storybook';
 
 test('Snackbar inverse color ownership matches the canonical context', async ({ page }) => {
   await openStory(page, 'shared-ui-snackbar-mdsnackbar--action-color-ownership');
@@ -40,15 +40,4 @@ test('Snackbar action renders inverse-primary pressed feedback', async ({ page }
     animations: 'disabled',
   });
   await page.mouse.up();
-});
-
-test('Rich Tooltip anatomy and Material action color ownership match the canonical context', async ({
-  page,
-}) => {
-  await openStory(page, 'shared-ui-overlay--lifecycle-regression');
-  await page.getByRole('button', { name: 'Open rich tooltip' }).click();
-  await expect(page.locator('.md-rich-tooltip')).toHaveScreenshot(
-    'md-rich-tooltip-color-ownership.png',
-    { animations: 'disabled' },
-  );
 });

@@ -32,7 +32,9 @@ const DATABASE_VIEWS_AND_QUERY_SPECS = [
 
 describe('isReleaseE2ESpecPath', () => {
   it('flags specs under tests/e2e/release/', () => {
-    expect(isReleaseE2ESpecPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(true);
+    expect(isReleaseE2ESpecPath('tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts')).toBe(
+      true,
+    );
   });
 
   it('does not flag regular app e2e specs', () => {
@@ -42,11 +44,15 @@ describe('isReleaseE2ESpecPath', () => {
 
 describe('isAppE2ESpecPath and isAppE2ESupportPath exclude release specs', () => {
   it('does not classify a release spec as an app e2e spec', () => {
-    expect(isAppE2ESpecPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(false);
+    expect(isAppE2ESpecPath('tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts')).toBe(
+      false,
+    );
   });
 
   it('does not classify a release spec as app e2e support', () => {
-    expect(isAppE2ESupportPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(false);
+    expect(isAppE2ESupportPath('tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts')).toBe(
+      false,
+    );
   });
 });
 
@@ -60,9 +66,9 @@ describe('isStorybookBehaviorPath', () => {
   it('does not flag app, visual, or release paths', () => {
     expect(isStorybookBehaviorPath('tests/e2e/appSmoke.spec.ts')).toBe(false);
     expect(isStorybookBehaviorPath('tests/e2e/visual/shared-ui.spec.ts')).toBe(false);
-    expect(isStorybookBehaviorPath('tests/e2e/release/productionArtifactSmoke.spec.ts')).toBe(
-      false,
-    );
+    expect(
+      isStorybookBehaviorPath('tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts'),
+    ).toBe(false);
   });
 });
 
@@ -318,7 +324,7 @@ describe('resolveAppE2EPlan', () => {
   });
 
   it('does not trigger focused app e2e for release-only spec changes', () => {
-    const plan = resolveAppE2EPlan(['tests/e2e/release/productionArtifactSmoke.spec.ts']);
+    const plan = resolveAppE2EPlan(['tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts']);
 
     expect(plan.mode).toBe('skip');
   });

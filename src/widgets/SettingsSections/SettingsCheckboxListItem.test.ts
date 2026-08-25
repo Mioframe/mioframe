@@ -137,7 +137,7 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.querySelectorAll('button')).toHaveLength(0);
 
     // MDCheckbox's own renderer-mapping/tabindex mechanics are the family's own
-    // proof (MDCheckbox.test.ts / MDCheckbox.browser.spec.ts); this widget test
+    // proof (MDCheckbox.test.ts / MDCheckbox.behavior.spec.ts); this widget test
     // covers only its own composition contract: presentation is always forwarded
     // true, and checked/disabled reflect the given props.
     const visualCheckbox = row?.querySelector<HTMLElement>('.md-checkbox');

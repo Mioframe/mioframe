@@ -6,7 +6,7 @@ import {
   buildAndPublishManagedRelease,
   mutateControllerWorkerBytes,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Proof that controller-code (worker script) updates and application-release
 // updates are independent: the browser owns `sw.js` byte-diff versioning

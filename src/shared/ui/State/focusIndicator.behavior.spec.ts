@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
 // Small rendering tolerance for direct geometry comparisons below: the indicator's box is set
 // from the host's `getBoundingClientRect()` via a reactive watcher, so it can differ from the

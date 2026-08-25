@@ -22,23 +22,23 @@ const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 // container.
 export const MANAGED_UPDATES_LIFECYCLE_LABEL = 'managed-updates-lifecycle';
 export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
-  'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
-  'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
-  'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
-  'tests/e2e/release/managedUpdatesRecovery.spec.ts',
-  'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
-  'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesAutomaticCheck.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesUncontrolledWindow.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesRecovery.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesVueBootFailure.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesRollbackDiagnostics.browser-integration.spec.ts',
 ];
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).
 // Runs in a second fresh Playwright container, only after group 1 passes.
-// managedUpdatesControllerUpgrade.spec.ts runs first within this fresh
-// Chromium container, before the longer migration suites.
+// managedUpdatesControllerUpgrade.browser-integration.spec.ts runs first
+// within this fresh Chromium container, before the longer migration suites.
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL = 'managed-updates-migration-isolation';
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
-  'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-  'tests/e2e/release/managedUpdatesDevelop.spec.ts',
-  'tests/e2e/release/managedUpdatesMigration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesControllerUpgrade.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesDevelop.browser-integration.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts',
 ];
 
 // Group 3: the narrow cross-engine lifecycle smoke, run on Firefox and
@@ -47,7 +47,7 @@ export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
 // container, only after group 2 passes.
 export const MANAGED_UPDATES_CROSS_ENGINE_LABEL = 'managed-updates-cross-engine';
 export const MANAGED_UPDATES_CROSS_ENGINE_SPECS = [
-  'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
+  'src/shared/service/appUpdate/managedUpdatesCrossEngineLifecycle.browser-integration.spec.ts',
 ];
 
 // Fixed run order for the browser-integration proof leaf: each group must

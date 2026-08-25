@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Proves that an unhandled failure inside real Vue setup/render during the
 // initial managed boot window is treated as a genuine boot failure by the

@@ -37,7 +37,7 @@ test('MDCheckbox renders visible renderer-owned focus feedback on real keyboard 
   const surface = page.getByTestId('visual-md-checkbox-real-interaction');
 
   // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
-  // (`MDCheckbox.browser.spec.ts`). This visual spec only establishes focus state and captures
+  // (`MDCheckbox.behavior.spec.ts`). This visual spec only establishes focus state and captures
   // the settled screenshot.
   await page.keyboard.press('Tab');
 

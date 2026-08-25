@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+import { openStory } from '../../../../tests/e2e/visual/storybook';
 
 // Pixel-diff snapshots only. Behavioral, DOM/ARIA, geometry, and computed-style/token
-// proof for Lists lives at its correct owner instead of here (see
-// docs/testing/v3c-visual-proof-ownership.md, V3C-A):
+// proof for Lists lives at its correct owner instead of here:
 // - Vue/native/ARIA/component contracts: src/shared/ui/Lists/*.test.ts
 // - reusable real-browser behavior (keyboard, pointer, focus indicator, StateLayer,
-//   Material Expressive geometry/token contract): src/shared/ui/Lists/MDList.browser.spec.ts
+//   Material Expressive geometry/token contract): src/shared/ui/Lists/MDList.behavior.spec.ts
 //
 // Baseline audit (V3C-A correction): every surviving baseline below protects one distinct
 // accepted visible invariant not already covered by another surviving baseline. Three
@@ -15,7 +14,7 @@ import { openStory } from '../storybook';
 //   Material-parity "surface context segmented" screenshot, just a different background
 //   color to narrate the same already-tested transparent-gap fact — the transparency
 //   contract itself is proven precisely by a computed-style check in
-//   MDList.browser.spec.ts, not by this pixel);
+//   MDList.behavior.spec.ts, not by this pixel);
 // - the "Repository Explorer" reproduction (a standard contiguous list of single/multi-action
 //   rows with a leading icon — the same visible pattern already captured by the "Repository:
 //   File and directory rows" section inside the consumer-patterns screenshot below, plus the
@@ -24,7 +23,7 @@ import { openStory } from '../storybook';
 //   rows with a leading icon — the same row pattern already shown in the standalone basic
 //   gallery's "Single-action with leading icon" section; the row-stacking/overflow contract
 //   for this exact fixture stays proven by dedicated geometry checks in
-//   MDList.browser.spec.ts, which do not need a screenshot to justify their existence).
+//   MDList.behavior.spec.ts, which do not need a screenshot to justify their existence).
 test.describe('MDList / technical and consumer visual regression snapshots', () => {
   // Technical interaction/state-gallery regression — forced data-state fixtures, not a
   // Material doc-comparable example (see Material reference 'states' for that).

@@ -6,12 +6,19 @@ export const normalizeColorString = (rawColor: string) => {
   const hexMatch = rawColor.match(/^#(?<hex>[0-9a-f]{6})$/i);
   if (hexMatch?.groups) {
     const { hex } = hexMatch.groups;
-    return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16)).join(' ');
+    if (hex) {
+      return [0, 2, 4]
+        .map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16))
+        .join(' ');
+    }
   }
 
   const rgbMatch = rawColor.match(/^rgb\(([^)]+)\)$/);
   if (rgbMatch) {
-    return rgbMatch[1].replaceAll(',', '').replace(/\s+/g, ' ').trim();
+    const rgbContent = rgbMatch[1];
+    if (rgbContent) {
+      return rgbContent.replaceAll(',', '').replace(/\s+/g, ' ').trim();
+    }
   }
 
   // Chromium may serialize relative-color results (`rgb(from ... / <alpha>)`) as
@@ -22,8 +29,10 @@ export const normalizeColorString = (rawColor: string) => {
   );
   if (srgbAlphaMatch?.groups) {
     const { r, g, b, alpha } = srgbAlphaMatch.groups;
-    const channels = [r, g, b].map((channel) => Math.round(Number(channel) * 255)).join(' ');
-    return `${channels} / ${alpha.trim()}`;
+    if (r && g && b && alpha) {
+      const channels = [r, g, b].map((channel) => Math.round(Number(channel) * 255)).join(' ');
+      return `${channels} / ${alpha.trim()}`;
+    }
   }
 
   const srgbMatch = rawColor.match(/^color\(srgb (?<r>[^ ]+) (?<g>[^ ]+) (?<b>[^ )]+)\)$/);

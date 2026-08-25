@@ -28,6 +28,11 @@ import {
 } from './lib/storybookBehaviorRisk.ts';
 import { resolveStorybookBuildPlan, type StorybookBuildPlan } from './lib/storybookBuildRisk.ts';
 import { resolveVisualPlan, type VisualPlan } from './lib/visualRisk.ts';
+import {
+  PRODUCTION_ARTIFACT_SMOKE_SPEC,
+  resolveBrowserIntegrationPlan,
+  type BrowserIntegrationPlan,
+} from './lib/browserIntegrationRisk.ts';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
 import {
   formatShellCommand,
@@ -466,8 +471,8 @@ function getVitestScope(changedFiles: readonly string[]): string[] {
       continue;
     }
 
-    if (filePath.endsWith('.browser.spec.ts')) {
-      // Colocated browser specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
+    if (filePath.endsWith('.behavior.spec.ts')) {
+      // Colocated behavior specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
       continue;
     }
 
@@ -1304,19 +1309,6 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 
   commands.push({
     kind: 'run',
-    label: 'artifact',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
-    ],
-    weight: classifyCommandWeight({ label: 'artifact' }),
-  });
-
-  commands.push({
-    kind: 'run',
     label: 'release-smoke',
     command: 'pnpm',
     args: [
@@ -1338,19 +1330,61 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 
   commands.push({
     kind: 'run',
-    label: 'managed-updates-browser-integration',
-    command: 'node',
-    args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'browser-integration'],
-    weight: classifyCommandWeight({ label: 'managed-updates-browser-integration' }),
-  });
-
-  commands.push({
-    kind: 'run',
     label: 'managed-updates-e2e',
     command: 'node',
     args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'e2e'],
     weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
   });
+}
+
+/**
+ * Add the two browser-integration managed-update leaves (`artifact`,
+ * `managed-updates-browser-integration`) when they are relevant, using
+ * {@link resolveBrowserIntegrationPlan}'s owner-local path-based planning
+ * outside full mode (see docs/testing/verify-redesign-pass-c-implementation.md's
+ * "Browser-integration type-local planning"). Reuses the exact existing leaf
+ * commands/orchestration `addReleaseOnlyCommands` used to gate purely behind
+ * `--full`; this only adds default/`--only browser-integration` relevance
+ * without requiring `--full` or the old release-directory path.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.fullMode Full-project release mode.
+ * @param options.changedFiles Sorted unique list of repository-relative changed file paths.
+ */
+function addBrowserIntegrationCommands(
+  commands: CommandEntry[],
+  { fullMode, changedFiles }: { fullMode: boolean; changedFiles: readonly string[] },
+): void {
+  const plan: BrowserIntegrationPlan = fullMode
+    ? {
+        mode: 'full',
+        artifact: true,
+        managedUpdates: true,
+        reasons: ['full-project release verification'],
+      }
+    : resolveBrowserIntegrationPlan(changedFiles);
+
+  if (plan.artifact) {
+    commands.push({
+      kind: 'run',
+      label: 'artifact',
+      command: 'pnpm',
+      args: ['e2e:release', '--label', 'artifact', PRODUCTION_ARTIFACT_SMOKE_SPEC],
+      weight: classifyCommandWeight({ label: 'artifact' }),
+      triggerReason: plan.reasons.join('; '),
+    });
+  }
+
+  if (plan.managedUpdates) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-browser-integration',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'browser-integration'],
+      weight: classifyCommandWeight({ label: 'managed-updates-browser-integration' }),
+      triggerReason: plan.reasons.join('; '),
+    });
+  }
 }
 
 type BuildCommandsVisualPlan = VisualPlan | { mode: 'invalid'; specs: string[]; reasons: string[] };
@@ -1698,14 +1732,7 @@ export function buildCommands(
 
   let storybookBehaviorEntry: CommandEntry;
 
-  if (storybookBehaviorPlan.mode === 'invalid') {
-    storybookBehaviorEntry = {
-      kind: 'failed',
-      label: 'storybook-behavior',
-      command: 'pnpm test:storybook-behavior',
-      reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
-    };
-  } else if (fullMode) {
+  if (fullMode) {
     storybookBehaviorEntry = createStorybookBehaviorCommand(
       [],
       'full-project release verification',
@@ -1829,6 +1856,8 @@ export function buildCommands(
   if (fullMode) {
     addReleaseOnlyCommands(commands);
   }
+
+  addBrowserIntegrationCommands(commands, { fullMode, changedFiles });
 
   return commands.map(withVerificationType);
 }

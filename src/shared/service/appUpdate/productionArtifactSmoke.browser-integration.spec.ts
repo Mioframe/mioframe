@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { launchApp, openOpfs } from '../helpers';
-import { buildAndServeOrdinaryBranchArtifact } from './fixtures/ordinaryBranchArtifactFixture.mjs';
+import { launchApp, openOpfs } from '../../../../tests/e2e/helpers';
+import { buildAndServeOrdinaryBranchArtifact } from '../../../../tests/e2e/release/fixtures/ordinaryBranchArtifactFixture.mjs';
 
 declare global {
   interface Window {

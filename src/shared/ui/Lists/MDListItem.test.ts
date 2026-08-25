@@ -737,7 +737,7 @@ describe('MDListItem', () => {
   // Structural DOM composition (which interactive surface, if any, owns the shared
   // MDStateLayer child) is a narrow foundation-wiring contract that does not need a real
   // browser: happy-dom renders MDStateLayer's own DOM structure faithfully even though it
-  // cannot resolve its computed appearance (see MDList.browser.spec.ts for the real
+  // cannot resolve its computed appearance (see MDList.behavior.spec.ts for the real
   // rendered-overlay proof).
   describe('MDStateLayer mounting', () => {
     it('does not mount a shared state layer for a static row', () => {

@@ -81,8 +81,8 @@ test.describe('managed pinned application updates: data compatibility (A/B/A)', 
   // publishes two real releases in beforeAll — each a real cold `vite
   // build` when this spec runs alone in its own fresh container with no
   // warm template cache, comfortably exceeding Playwright's 30s default
-  // hook timeout. Matches managedUpdatesCrossEngineLifecycle.spec.ts's own
-  // describe-level timeout override for the same class of slow beforeAll.
+  // hook timeout. Matches managedUpdatesCrossEngineLifecycle.browser-integration.spec.ts's
+  // own describe-level timeout override for the same class of slow beforeAll.
   test.describe.configure({ mode: 'serial', timeout: 300_000 });
 
   let workDir = '';
@@ -95,7 +95,7 @@ test.describe('managed pinned application updates: data compatibility (A/B/A)', 
     // `describe.configure({ timeout })` only extends each test's own
     // timeout; `beforeAll`/`afterAll` hooks keep a separate, fixed 30s
     // default unless a hook explicitly calls `test.setTimeout` itself (see
-    // `managedUpdatesCrossEngineLifecycle.spec.ts`'s own beforeAll). The
+    // `managedUpdatesCrossEngineLifecycle.browser-integration.spec.ts`'s own beforeAll). The
     // hermetic fallback path runs two real production `vite build`s here,
     // which do not reliably finish inside that default.
     test.setTimeout(300_000);
@@ -133,7 +133,7 @@ test.describe('managed pinned application updates: data compatibility (A/B/A)', 
 
     // Reproduces real GitHub Pages hosting: one origin serves the complete
     // multi-channel work root at `/` (matching every other managed-updates
-    // spec's own server, see `managedUpdatesDevelop.spec.ts`) — `stable` and
+    // spec's own server, see `managedUpdatesDevelop.browser-integration.spec.ts`) — `stable` and
     // `develop` are reached through their own real URL path (`/` vs
     // `/branch/develop/`), never through a dedicated per-channel server.
     server = await startManagedArtifactServer({ workDir, basePath: '/' });

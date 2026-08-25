@@ -9,7 +9,7 @@ import {
   readPublishedReleaseFile,
   restorePublishedReleaseFile,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Full managed pinned application updates lifecycle for the stable channel:
 // first install, Manual install-on-next-launch clean-launch activation,

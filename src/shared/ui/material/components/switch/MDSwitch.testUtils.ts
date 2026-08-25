@@ -5,7 +5,7 @@
  * synchronously during construction, which otherwise throws whenever a component-contract test
  * mounts it. This provides just enough surface for those mixins to run without throwing; it
  * intentionally does not reimplement real browser form participation, validity UI,
- * accessibility-tree behavior, or focus emulation — those remain real-browser (`MDSwitch.browser.spec.ts`)
+ * accessibility-tree behavior, or focus emulation — those remain real-browser (`MDSwitch.behavior.spec.ts`)
  * responsibilities.
  *
  * Installed/restored only around Switch's own tests (see `MDSwitch.test.ts`), not globally in

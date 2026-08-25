@@ -6,7 +6,7 @@ import {
   buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Develop channel isolation for the managed pinned application updates
 // feature: independent scope, persisted state, and Cache Storage namespace

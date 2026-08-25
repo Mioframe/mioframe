@@ -7,32 +7,35 @@ import storybookBehaviorConfig from './playwright.storybook.config';
 import visualConfig from './playwright.visual.config';
 
 describe('Playwright lane discovery stays disjoint', () => {
-  it('gives application e2e and release lanes their own physical testDir', () => {
+  it('gives application e2e its own physical testDir', () => {
     expect(appConfig.testDir).toBe('./tests/e2e');
-    expect(releaseConfig.testDir).toBe('./tests/e2e/release');
   });
 
-  it('discovers storybook behavior specs from repo root via mixed legacy, colocated, and target testMatch', () => {
-    expect(storybookBehaviorConfig.testDir).toBe('.');
-    expect(storybookBehaviorConfig.testMatch).toEqual([
-      'tests/e2e/storybook/**/*.spec.ts',
-      'src/**/*.browser.spec.ts',
-      'src/**/*.behavior.spec.ts',
+  it('discovers the remaining release E2E specs and the moved managed-update browser-integration corpus from repo root', () => {
+    expect(releaseConfig.testDir).toBe('.');
+    expect(releaseConfig.testMatch).toEqual([
+      'tests/e2e/release/*.spec.ts',
+      'src/shared/service/appUpdate/*.browser-integration.spec.ts',
     ]);
   });
 
-  it('discovers the target browser-integration suffix from repo root, with no matches required yet', () => {
+  it('discovers owner-local storybook behavior specs from repo root via target testMatch', () => {
+    expect(storybookBehaviorConfig.testDir).toBe('.');
+    expect(storybookBehaviorConfig.testMatch).toEqual([
+      'src/**/*.behavior.spec.ts',
+      '.storybook/**/*.behavior.spec.ts',
+    ]);
+  });
+
+  it('discovers the target browser-integration suffix from repo root', () => {
     expect(browserIntegrationConfig.testDir).toBe('.');
     expect(browserIntegrationConfig.testMatch).toEqual(['src/**/*.browser-integration.spec.ts']);
     expect(browserIntegrationConfig.respectGitIgnore).toBe(true);
   });
 
-  it('discovers visual specs from repo root via mixed legacy and colocated testMatch', () => {
+  it('discovers owner-local visual specs from repo root via target testMatch', () => {
     expect(visualConfig.testDir).toBe('.');
-    expect(visualConfig.testMatch).toEqual([
-      'tests/e2e/visual/**/*.spec.ts',
-      'src/**/*.visual.spec.ts',
-    ]);
+    expect(visualConfig.testMatch).toEqual(['src/**/*.visual.spec.ts']);
   });
 
   it('keeps root-scanning lanes from collecting tests out of ignored nested/local workspaces', () => {
@@ -57,52 +60,39 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(browserIntegrationConfig.testIgnore).toBeUndefined();
   });
 
-  it('finds every existing spec file in exactly one of the four logical lanes, plus the still-empty target browser-integration suffix', () => {
+  it('finds every existing spec file in exactly one of the five logical lanes', () => {
     const applicationSpecs = listFiles('tests/e2e', '.spec.ts', { recursive: false });
-    const storybookLegacySpecs = listFiles('tests/e2e/storybook', '.spec.ts');
-    const storybookColocatedSpecs = listFiles('src', '.browser.spec.ts');
-    const behaviorColocatedSpecs = listFiles('src', '.behavior.spec.ts');
-    const visualLegacySpecs = listFiles('tests/e2e/visual', '.spec.ts');
-    const visualColocatedSpecs = listFiles('src', '.visual.spec.ts');
+    const behaviorSpecs = [
+      ...listFiles('src', '.behavior.spec.ts'),
+      ...listFiles('.storybook', '.behavior.spec.ts'),
+    ];
+    const visualSpecs = listFiles('src', '.visual.spec.ts');
     const releaseSpecs = listFiles('tests/e2e/release', '.spec.ts');
     const browserIntegrationSpecs = listFiles('src', '.browser-integration.spec.ts');
 
     expect(applicationSpecs.length).toBeGreaterThan(0);
-    expect(storybookLegacySpecs.length).toBeGreaterThan(0);
-    expect(storybookColocatedSpecs.length).toBeGreaterThan(0);
-    expect(visualLegacySpecs.length).toBeGreaterThan(0);
-    expect(visualColocatedSpecs.length).toBeGreaterThan(0);
-    expect(releaseSpecs.length).toBeGreaterThan(0);
-    // No file has migrated to either target-only suffix yet (Pass A only
-    // adds discovery; Pass C moves specs).
-    expect(browserIntegrationSpecs).toEqual([]);
+    expect(behaviorSpecs.length).toBeGreaterThan(0);
+    expect(visualSpecs.length).toBeGreaterThan(0);
+    // Exactly the three remaining transitional release E2E specs (Pass D
+    // moves them); the managed-update browser-integration corpus moved out.
+    expect(releaseSpecs).toHaveLength(3);
+    // Exactly the eleven managed-update/artifact specs moved in this pass.
+    expect(browserIntegrationSpecs).toHaveLength(11);
 
-    // Both storybook groups are the same logical lane: legacy-central specs
-    // under tests/e2e/storybook and owner-local specs colocated under src,
-    // under either the legacy or the target behavior suffix.
-    const storybookSpecs = [
-      ...storybookLegacySpecs,
-      ...storybookColocatedSpecs,
-      ...behaviorColocatedSpecs,
-    ];
-    // Both visual groups are the same logical lane: legacy-central specs
-    // under tests/e2e/visual and owner-local specs colocated under src.
-    const visualSpecs = [...visualLegacySpecs, ...visualColocatedSpecs];
-
-    expect(intersection(applicationSpecs, storybookSpecs)).toEqual([]);
+    expect(intersection(applicationSpecs, behaviorSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, visualSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, releaseSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, browserIntegrationSpecs)).toEqual([]);
-    expect(intersection(storybookSpecs, visualSpecs)).toEqual([]);
-    expect(intersection(storybookSpecs, releaseSpecs)).toEqual([]);
-    expect(intersection(storybookSpecs, browserIntegrationSpecs)).toEqual([]);
+    expect(intersection(behaviorSpecs, visualSpecs)).toEqual([]);
+    expect(intersection(behaviorSpecs, releaseSpecs)).toEqual([]);
+    expect(intersection(behaviorSpecs, browserIntegrationSpecs)).toEqual([]);
     expect(intersection(visualSpecs, releaseSpecs)).toEqual([]);
     expect(intersection(visualSpecs, browserIntegrationSpecs)).toEqual([]);
     expect(intersection(releaseSpecs, browserIntegrationSpecs)).toEqual([]);
 
     const allSpecs = [
       ...applicationSpecs,
-      ...storybookSpecs,
+      ...behaviorSpecs,
       ...visualSpecs,
       ...releaseSpecs,
       ...browserIntegrationSpecs,

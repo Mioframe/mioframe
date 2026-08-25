@@ -8,7 +8,6 @@
     "src/**/*.stories.jsx",
     "src/**/*.stories.mjs",
     "src/**/*.stories.vue",
-    "src/**/*.browser.spec.ts",
     "src/**/*.visual.spec.ts",
     "src/**/*.behavior.spec.ts",
     "src/**/*.browser-integration.spec.ts",

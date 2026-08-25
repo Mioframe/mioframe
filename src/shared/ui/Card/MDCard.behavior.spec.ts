@@ -1,21 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from './storybook';
-
-test('MDCard visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdcard--visual-states');
-
-  const surface = page.getByTestId('visual-md-card-states');
-
-  await expect(surface).toHaveScreenshot('md-card-states.png');
-});
-
-test('MDCard interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdcard--visual-interaction-states');
-
-  const surface = page.getByTestId('visual-md-card-interaction-states');
-
-  await expect(surface).toHaveScreenshot('md-card-interaction-states.png');
-});
+// Reuses the visual lane's `openStory` (not the plain Storybook behavior
+// helper): these assertions ran under its animation-freeze/networkidle
+// stabilization before this spec was split out of the central visual suite,
+// and this split preserves that exact runtime behavior.
+import { openStory } from '../../../../tests/e2e/visual/storybook';
 
 test('MDCard static card has no role, tabindex, or actionable affordance', async ({ page }) => {
   await openStory(page, 'shared-ui-mdcard--static-with-internal-actions');
@@ -124,20 +112,4 @@ test('MDCard root establishes the Material surface context for descendants', asy
   expect(surfaceContext.contentColor).not.toBe('');
   expect(surfaceContext.currentContainerColor).toBe(surfaceContext.containerColor);
   expect(surfaceContext.currentContentColor).toBe(surfaceContext.contentColor);
-});
-
-test('MDStateLayer visual states match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdstatelayer--visual-states');
-
-  const surface = page.getByTestId('visual-md-state-layer');
-
-  await expect(surface).toHaveScreenshot('md-state-layer-states.png');
-});
-
-test('MDStateLayer host integrations match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdstatelayer--visual-host-integration');
-
-  const surface = page.getByTestId('visual-md-state-layer-hosts');
-
-  await expect(surface).toHaveScreenshot('md-state-layer-hosts.png');
 });

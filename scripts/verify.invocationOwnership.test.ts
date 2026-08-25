@@ -33,24 +33,6 @@ describe('full verification registry validation', () => {
     });
   });
 
-  it('keeps an invalid Storybook behavior registry blocking in full mode', () => {
-    const commands = buildCommands([], {
-      fullMode: true,
-      appE2EPlan: validAppE2ESkipPlan,
-      storybookBehaviorPlan: {
-        mode: 'invalid',
-        specs: [],
-        reasons: ['broken Storybook registry'],
-      },
-    });
-    const behavior = commands.find((entry) => entry.label === 'storybook-behavior');
-
-    expect(behavior).toMatchObject({
-      kind: 'failed',
-      reason: expect.stringContaining('broken Storybook registry'),
-    });
-  });
-
   it('runs full browser lanes when both registries are valid', () => {
     const commands = buildCommands([], {
       fullMode: true,

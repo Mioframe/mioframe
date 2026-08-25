@@ -6,7 +6,7 @@ import {
   buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Proves the managed pinned application updates feature's rollback
 // diagnostics reporting end to end, as a real browser regression (see the

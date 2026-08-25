@@ -10,7 +10,7 @@ import {
   readPublishedReleaseFile,
   restorePublishedReleaseFile,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 const BASE_PATH = '/';
 const CONTROLLER_STATE_DB_NAME = 'mioframe-update-controller-stable';

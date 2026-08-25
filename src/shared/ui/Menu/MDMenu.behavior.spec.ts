@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+// Reuses the visual lane's `openStory` (not the plain Storybook behavior
+// helper): its animation-freeze/networkidle stabilization keeps this focus
+// lifecycle proof deterministic, and this spec's own assertions are
+// unchanged from when it lived under tests/e2e/visual/.
+import { openStory } from '../../../../tests/e2e/visual/storybook';
 
 test('MDMenu renders the surface, leading icon, label, and submenu trailing icon', async ({
   page,

@@ -14,11 +14,11 @@
     "src/**/*.stories.vue"
   ],
   "exclude": [
-    "src/**/*.browser.spec.ts",
     "src/**/*.visual.spec.ts",
     "src/**/*.behavior.spec.ts",
     "src/**/*.browser-integration.spec.ts",
-    "src/**/*.performance.spec.ts"
+    "src/**/*.performance.spec.ts",
+    ".storybook/**/*.behavior.spec.ts"
   ],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.storybook.tsbuildinfo",

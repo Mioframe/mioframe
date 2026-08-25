@@ -10,15 +10,18 @@ const previewURLPattern = new RegExp(
   String.raw`Local:\s+https://${escapedHost}:(?<playwright_preview_port>\d+)/`,
 );
 
-// Target browser-integration discovery (see
-// docs/testing/verify-redesign-implementation-preflight.md's "Target suffix
-// migration"): colocated `src/**/*.browser-integration.spec.ts` verifies an
-// isolated browser/runtime contract of a concrete module against a real
-// running application build, without exercising a complete product flow.
-// No spec currently uses this suffix; Pass C migrates the managed-update
-// runtime specs here from their current tests/e2e/release compatibility
-// location (see playwright.release.config.ts), where they keep running
-// unchanged until that move.
+// Target browser-integration discovery: colocated
+// `src/**/*.browser-integration.spec.ts` verifies an isolated browser/runtime
+// contract of a concrete module against a real running application build,
+// without exercising a complete product flow. This is a generic
+// Chromium-only execution path for a future non-managed-update
+// browser-integration spec. The managed-update/artifact corpus already lives
+// at this suffix/location (matched here too), but keeps running through
+// playwright.release.config.ts's fresh-container, built-artifact, and
+// cross-engine execution instead of this config, since that execution
+// infrastructure is required to preserve its current proof semantics (see
+// docs/testing/verify-redesign-pass-c-implementation.md's "Managed-update
+// execution semantics").
 export default defineConfig({
   testDir: '.',
   testMatch: ['src/**/*.browser-integration.spec.ts'],

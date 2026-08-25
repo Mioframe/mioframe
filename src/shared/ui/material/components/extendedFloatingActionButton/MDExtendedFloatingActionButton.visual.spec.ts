@@ -60,7 +60,7 @@ test('MDExtendedFloatingActionButton renders visible renderer-owned focus feedba
   const surface = page.getByTestId('visual-md-extended-fab-real-interaction');
 
   // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
-  // (MDExtendedFloatingActionButton.browser.spec.ts). This visual spec only establishes focus
+  // (MDExtendedFloatingActionButton.behavior.spec.ts). This visual spec only establishes focus
   // state and captures the settled screenshot.
   await page.keyboard.press('Tab');
 
@@ -84,7 +84,7 @@ test('MDExtendedFloatingActionButton renders a visible plain-color focus indicat
   const surface = page.getByTestId('visual-md-extended-fab-plain-color-real-interaction');
 
   // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
-  // (MDExtendedFloatingActionButton.browser.spec.ts). This visual spec only establishes focus
+  // (MDExtendedFloatingActionButton.behavior.spec.ts). This visual spec only establishes focus
   // state and captures the settled screenshot.
   await page.keyboard.press('Tab');
 

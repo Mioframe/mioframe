@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // An intentionally uncontrolled same-channel window (the managed worker
 // never calls `clients.claim()`, so a fresh install's first page stays

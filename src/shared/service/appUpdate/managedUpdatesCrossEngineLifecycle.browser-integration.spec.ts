@@ -6,7 +6,7 @@ import {
   buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Narrow cross-engine lifecycle smoke: proves the portable clean-launch
 // contract — activation starts on a navigation only when the worker can

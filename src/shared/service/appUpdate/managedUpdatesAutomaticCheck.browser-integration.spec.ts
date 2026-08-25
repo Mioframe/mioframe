@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import {
   buildAndPublishManagedRelease,
   startManagedArtifactServer,
-} from './fixtures/managedReleaseFixture.mjs';
+} from '../../../../tests/e2e/release/fixtures/managedReleaseFixture.mjs';
 
 // Automatic mode must check for updates on its own, triggered only by
 // ordinary application navigation — never because a test (or any other

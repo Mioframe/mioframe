@@ -9,7 +9,11 @@ const viteBin = './node_modules/.bin/vite';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['tests/e2e/visual/**/*.spec.ts', 'src/**/*.visual.spec.ts'],
+  // Owner-local visual discovery (see docs/testing/architecture.md):
+  // `*.visual.spec.ts` is colocated with its truthful UI owner under `src/`.
+  // The central `tests/e2e/visual/**` spec location has no remaining
+  // consumer.
+  testMatch: ['src/**/*.visual.spec.ts'],
   respectGitIgnore: true,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

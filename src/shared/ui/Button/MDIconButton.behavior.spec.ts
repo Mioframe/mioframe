@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+// Reuses the visual lane's `openStory` (not the plain Storybook behavior
+// helper): its animation-freeze/networkidle stabilization keeps these
+// computed-style/geometry reads deterministic, matching how these
+// assertions ran before this spec was split out of the central visual
+// suite.
+import { openStory } from '../../../../tests/e2e/visual/storybook';
 import {
   normalizeColorString,
   readButtonVisuals,
@@ -11,7 +16,7 @@ import {
   readElementColor,
   assertLoadingContract,
   readButtonLocatorVisuals,
-} from './md-button-family.testUtils';
+} from './MDIconButton.testUtils';
 
 test('MDIconButton loading color and enabled geometry contract', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdiconbutton--loading-color-routing');
@@ -19,30 +24,6 @@ test('MDIconButton loading color and enabled geometry contract', async ({ page }
     await readElementColor(page, 'icon-button-loading-color', '.md-icon-button__icon'),
   );
   await assertLoadingContract(page, 'icon-button-resting-color', 'icon-button-loading-color');
-});
-
-test('MDIconButton visual states match baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-states');
-
-  const surface = page.getByTestId('visual-md-icon-button-states');
-
-  await expect(surface).toHaveScreenshot('md-icon-button-states.png');
-});
-
-test('MDIconButton interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--visual-interaction-states');
-
-  const surface = page.getByTestId('visual-md-icon-button-interaction-states');
-
-  await expect(surface).toHaveScreenshot('md-icon-button-interaction-states.png');
-});
-
-test('MDIconButton compact toolbar layout matches baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--compact-toolbar-layout');
-
-  const surface = page.getByTestId('visual-md-icon-button-toolbar-layout');
-
-  await expect(surface).toHaveScreenshot('md-icon-button-toolbar-layout.png');
 });
 
 test('MDIconButton compact toolbar buttons keep the develop-sized layout footprint', async ({
@@ -941,22 +922,6 @@ test('MDIconButton pressed shape takes precedence over selected shape', async ({
 
   expect(selectedPressed).toBeCloseTo(pressedOnly, 5);
   expect(selectedPressed).not.toBeCloseTo(selectedOnly, 5);
-});
-
-test('MDIconButton geometry matches baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--geometry');
-
-  const surface = page.getByTestId('visual-md-icon-button-geometry');
-
-  await expect(surface).toHaveScreenshot('md-icon-button-geometry.png');
-});
-
-test('MDIconButton toggle interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdiconbutton--toggle-interaction-states');
-
-  const surface = page.getByTestId('visual-md-icon-button-toggle-interaction-states');
-
-  await expect(surface).toHaveScreenshot('md-icon-button-toggle-interaction-states.png');
 });
 
 test('MDIconButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({

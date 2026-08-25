@@ -1,5 +1,5 @@
 /**
- * Test-only helper for `productionArtifactSmoke.spec.ts`'s managed-controller
+ * Test-only helper for `productionArtifactSmoke.browser-integration.spec.ts`'s managed-controller
  * capability proof (Correction 3): builds one real production artifact for
  * an ordinary, non-develop branch channel — which never gets a managed
  * controller worker, only the ordinary generated (`generateSW`) Workbox

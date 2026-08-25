@@ -9,92 +9,61 @@ vi.mock('./packageJsonImpact.ts', () => ({
 
 import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
 import {
-  findColocatedBrowserSpecFiles,
-  findStorybookBehaviorSpecFiles,
-  isColocatedBrowserSpecPath,
+  findColocatedBehaviorSpecFiles,
+  isColocatedBehaviorSpecPath,
   isFullStorybookBehaviorLanePath,
-  isStorybookBehaviorSpecPath,
-  isStorybookBehaviorSupportPath,
   resolveStorybookBehaviorPlan,
-  STORYBOOK_BEHAVIOR_SCENARIO_SCOPES,
-  STORYBOOK_BEHAVIOR_STANDALONE_SPECS,
-  validateStorybookBehaviorScenarioRegistry,
 } from './storybookBehaviorRisk.ts';
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 
 const LOADING_INDICATOR_OWNER_DIR = 'src/shared/ui/material/components/loadingIndicator';
-const LOADING_INDICATOR_BROWSER_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.browser.spec.ts`;
+const LOADING_INDICATOR_BEHAVIOR_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.behavior.spec.ts`;
 
-describe('isStorybookBehaviorSpecPath', () => {
-  it('flags specs under tests/e2e/storybook/', () => {
-    expect(isStorybookBehaviorSpecPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(true);
+describe('isColocatedBehaviorSpecPath', () => {
+  it('flags owner-local behavior specs under src/', () => {
+    expect(isColocatedBehaviorSpecPath(LOADING_INDICATOR_BEHAVIOR_SPEC)).toBe(true);
   });
 
-  it('does not flag visual or app e2e specs', () => {
-    expect(isStorybookBehaviorSpecPath('tests/e2e/visual/shared-ui.spec.ts')).toBe(false);
-    expect(isStorybookBehaviorSpecPath('tests/e2e/appSmoke.spec.ts')).toBe(false);
+  it('does not flag non-behavior src files or paths outside src/', () => {
+    expect(
+      isColocatedBehaviorSpecPath(`${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`),
+    ).toBe(false);
+    expect(
+      isColocatedBehaviorSpecPath(
+        `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.visual.spec.ts`,
+      ),
+    ).toBe(false);
+    expect(isColocatedBehaviorSpecPath('.storybook/router/routerHarness.behavior.spec.ts')).toBe(
+      false,
+    );
   });
 });
 
-describe('isColocatedBrowserSpecPath', () => {
-  it('flags owner-local browser specs under src/', () => {
-    expect(isColocatedBrowserSpecPath(LOADING_INDICATOR_BROWSER_SPEC)).toBe(true);
-  });
-
-  it('does not flag legacy centralized specs or non-browser src files', () => {
-    expect(isColocatedBrowserSpecPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(false);
-    expect(
-      isColocatedBrowserSpecPath(
-        'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue',
-      ),
-    ).toBe(false);
-    expect(
-      isColocatedBrowserSpecPath(
-        'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts',
-      ),
-    ).toBe(false);
-  });
-});
-
-describe('findColocatedBrowserSpecFiles', () => {
+describe('findColocatedBehaviorSpecFiles', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'colocated-browser-spec-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'colocated-behavior-spec-'));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('recursively discovers nested *.browser.spec.ts files and ignores other files', () => {
+  it('recursively discovers nested *.behavior.spec.ts files and ignores other files', () => {
     fs.mkdirSync(path.join(tmpDir, 'owner'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'owner', 'Owner.browser.spec.ts'), '');
+    fs.writeFileSync(path.join(tmpDir, 'owner', 'Owner.behavior.spec.ts'), '');
     fs.writeFileSync(path.join(tmpDir, 'owner', 'Owner.vue'), '');
     fs.writeFileSync(path.join(tmpDir, 'owner', 'Owner.visual.spec.ts'), '');
 
-    expect(findColocatedBrowserSpecFiles(tmpDir)).toEqual([
-      path.posix.join(tmpDir, 'owner/Owner.browser.spec.ts'),
+    expect(findColocatedBehaviorSpecFiles(tmpDir)).toEqual([
+      path.posix.join(tmpDir, 'owner/Owner.behavior.spec.ts'),
     ]);
   });
 
-  it('discovers the real colocated Loading Indicator browser spec under src/', () => {
-    expect(findColocatedBrowserSpecFiles()).toContain(LOADING_INDICATOR_BROWSER_SPEC);
-  });
-});
-
-describe('isStorybookBehaviorSupportPath', () => {
-  it('flags non-spec .ts helpers under tests/e2e/storybook/', () => {
-    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(true);
-  });
-
-  it('does not flag the spec files themselves', () => {
-    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(false);
-  });
-
-  it('does not flag files outside tests/e2e/storybook/', () => {
-    expect(isStorybookBehaviorSupportPath('tests/e2e/visual/storybook.ts')).toBe(false);
+  it('discovers the real colocated Loading Indicator behavior spec under src/', () => {
+    expect(findColocatedBehaviorSpecFiles()).toContain(LOADING_INDICATOR_BEHAVIOR_SPEC);
   });
 });
 
@@ -111,9 +80,22 @@ describe('isFullStorybookBehaviorLanePath', () => {
     expect(isFullStorybookBehaviorLanePath('scripts/verify.ts')).toBe(true);
   });
 
-  it('flags any path under .storybook/', () => {
+  it('flags the remaining cross-owner Storybook test helper', () => {
+    expect(isFullStorybookBehaviorLanePath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(
+      true,
+    );
+  });
+
+  it('flags the visual lane openStory helper reused by FabContainer/MDMenu behavior proof', () => {
+    expect(isFullStorybookBehaviorLanePath('tests/e2e/visual/storybook.ts')).toBe(true);
+  });
+
+  it('flags any path under .storybook/, including its own colocated behavior spec', () => {
     expect(isFullStorybookBehaviorLanePath('.storybook/main.ts')).toBe(true);
     expect(isFullStorybookBehaviorLanePath('.storybook/vite.preview.config.ts')).toBe(true);
+    expect(
+      isFullStorybookBehaviorLanePath('.storybook/router/routerHarness.behavior.spec.ts'),
+    ).toBe(true);
   });
 
   it('does not flag unrelated source paths', () => {
@@ -143,355 +125,7 @@ describe('isFullStorybookBehaviorLanePath', () => {
   });
 });
 
-describe('validateStorybookBehaviorScenarioRegistry', () => {
-  it('passes for the current registry and standalone exception list', () => {
-    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
-  });
-
-  it('covers every existing storybook behavior spec via the registry or the standalone list', () => {
-    const registrySpecs = new Set(
-      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.flatMap((scenario) => scenario.specs),
-    );
-    const coveredSpecs = new Set([...registrySpecs, ...STORYBOOK_BEHAVIOR_STANDALONE_SPECS]);
-
-    expect(coveredSpecs.has('tests/e2e/storybook/colorOwnership.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/overlayLifecycle.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/focusIndicator.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/routerHarness.spec.ts')).toBe(true);
-  });
-
-  it('keeps other existing central scenario mappings truthful after the S2-D Button decomposition', () => {
-    const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
-
-    expect(scenarioNames).not.toContain('loading indicator standalone accessibility');
-    expect(scenarioNames).not.toContain('navigation path button geometry and overflow');
-    expect(scenarioNames).not.toContain('checkbox controlled args round-trip');
-    expect(scenarioNames).not.toContain('bottom sheet keyboard focus wrap visibility');
-    expect(scenarioNames).not.toContain('reorder self-scrollable container autoscroll');
-    expect(scenarioNames).not.toContain('reorder generic layout support');
-    expect(scenarioNames).not.toContain('storybook behavior infrastructure smoke');
-    expect(scenarioNames).not.toContain('button family behavior');
-    expect(scenarioNames).toEqual(
-      expect.arrayContaining([
-        'shared color ownership',
-        'shared overlay outside-interaction lifecycle',
-        'shared focus-indicator integration',
-        'Storybook router harness demonstration',
-      ]),
-    );
-  });
-
-  it('removes the transitional DialogForm central scenario after S2-E', () => {
-    const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
-
-    expect(scenarioNames).not.toContain('dialog form fallback focus');
-  });
-
-  it('contains exactly the S2-final justified central ownership relations', () => {
-    const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name).sort(
-      (left, right) => left.localeCompare(right),
-    );
-
-    expect(scenarioNames).toEqual(
-      [
-        'Storybook router harness demonstration',
-        'shared color ownership',
-        'shared focus-indicator integration',
-        'shared overlay outside-interaction lifecycle',
-      ].sort((left, right) => left.localeCompare(right)),
-    );
-  });
-
-  it('leaves exactly the four justified central behavior specs plus the helper on disk', () => {
-    expect(findStorybookBehaviorSpecFiles('tests/e2e/storybook')).toEqual([
-      'tests/e2e/storybook/colorOwnership.spec.ts',
-      'tests/e2e/storybook/focusIndicator.spec.ts',
-      'tests/e2e/storybook/overlayLifecycle.spec.ts',
-      'tests/e2e/storybook/routerHarness.spec.ts',
-    ]);
-  });
-
-  it('no longer maps the stale src/shared/ui/LoadingButton/ prefix', () => {
-    const allSourcePrefixes = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.flatMap(
-      (scenario) => scenario.sourcePrefixes,
-    );
-
-    expect(allSourcePrefixes).not.toContain('src/shared/ui/LoadingButton/');
-  });
-
-  it('fails when a scenario references a spec missing from disk', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [
-        {
-          name: 'stale scenario',
-          sourcePrefixes: [],
-          specs: ['tests/e2e/storybook/doesNotExist.spec.ts'],
-        },
-      ],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('missing spec tests/e2e/storybook/doesNotExist.spec.ts'),
-      ),
-    ).toBe(true);
-  });
-
-  it('fails when an existing spec is not covered by the registry or standalone list', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: [],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('tests/e2e/storybook/colorOwnership.spec.ts is not covered'),
-      ),
-    ).toBe(true);
-  });
-
-  it('fails when a scenario references an application e2e spec', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [
-        {
-          name: 'bad scenario',
-          sourcePrefixes: [],
-          specs: ['tests/e2e/appSmoke.spec.ts'],
-        },
-      ],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('must only reference specs under tests/e2e/storybook/'),
-      ),
-    ).toBe(true);
-  });
-
-  it('fails when a scenario references a visual spec', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [
-        {
-          name: 'bad scenario',
-          sourcePrefixes: [],
-          specs: ['tests/e2e/visual/shared-ui.spec.ts'],
-        },
-      ],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('must only reference specs under tests/e2e/storybook/'),
-      ),
-    ).toBe(true);
-  });
-
-  it('fails when a scenario references a release spec', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [
-        {
-          name: 'bad scenario',
-          sourcePrefixes: [],
-          specs: ['tests/e2e/release/productionArtifactSmoke.spec.ts'],
-        },
-      ],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('must only reference specs under tests/e2e/storybook/'),
-      ),
-    ).toBe(true);
-  });
-
-  it('fails when a standalone entry references a non-.spec.ts file inside the lane', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: ['tests/e2e/storybook/storybook.testUtils.ts'],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes(
-          'STORYBOOK_BEHAVIOR_STANDALONE_SPECS must only reference specs under tests/e2e/storybook/',
-        ),
-      ),
-    ).toBe(true);
-  });
-
-  it('passes for the real registry with the existing colocated Loading Indicator spec unregistered', () => {
-    expect(
-      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
-        scenario.specs.includes(LOADING_INDICATOR_BROWSER_SPEC),
-      ),
-    ).toBe(false);
-    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(LOADING_INDICATOR_BROWSER_SPEC);
-    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
-  });
-
-  it('passes for the real registry with the new colocated Button-family browser specs unregistered', () => {
-    const buttonBrowserSpec = 'src/shared/ui/material/components/button/MDButton.browser.spec.ts';
-    const legacyButtonBrowserSpec = 'src/shared/ui/Button/LegacyButton.browser.spec.ts';
-
-    expect(
-      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
-        scenario.specs.includes(buttonBrowserSpec),
-      ),
-    ).toBe(false);
-    expect(
-      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
-        scenario.specs.includes(legacyButtonBrowserSpec),
-      ),
-    ).toBe(false);
-    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(buttonBrowserSpec);
-    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(legacyButtonBrowserSpec);
-    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
-  });
-
-  it('passes for the real registry with the new colocated DialogForm browser spec unregistered', () => {
-    const dialogFormBrowserSpec = 'src/shared/ui/Dialog/DialogForm.browser.spec.ts';
-
-    expect(
-      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
-        scenario.specs.includes(dialogFormBrowserSpec),
-      ),
-    ).toBe(false);
-    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(dialogFormBrowserSpec);
-    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
-  });
-
-  it('rejects a scenario entry that tries to duplicate a colocated local relation', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [
-        {
-          name: 'duplicated colocated relation',
-          sourcePrefixes: [],
-          specs: [LOADING_INDICATOR_BROWSER_SPEC],
-        },
-      ],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes('must only reference specs under tests/e2e/storybook/'),
-      ),
-    ).toBe(true);
-  });
-
-  it('rejects a standalone entry that tries to duplicate a colocated local relation', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: [LOADING_INDICATOR_BROWSER_SPEC],
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes(
-          'STORYBOOK_BEHAVIOR_STANDALONE_SPECS must only reference specs under tests/e2e/storybook/',
-        ),
-      ),
-    ).toBe(true);
-  });
-});
-
-describe('findStorybookBehaviorSpecFiles', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'storybook-behavior-risk-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it('recursively discovers nested .spec.ts files under an OS temporary directory', () => {
-    fs.mkdirSync(path.join(tmpDir, 'nested'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'nested', 'example.spec.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'nested', 'example.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'top.spec.ts'), '');
-
-    const specFiles = findStorybookBehaviorSpecFiles(tmpDir);
-
-    expect(specFiles).toEqual(
-      [
-        path.posix.join(tmpDir, 'nested/example.spec.ts'),
-        path.posix.join(tmpDir, 'top.spec.ts'),
-      ].sort((left, right) => left.localeCompare(right)),
-    );
-  });
-});
-
-describe('validateStorybookBehaviorScenarioRegistry deterministic spec injection', () => {
-  const nestedSpecPath = 'tests/e2e/storybook/reorder/reorder.spec.ts';
-
-  it('detects a nested discovered spec that is not registered or standalone as invalid', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: [],
-      specFiles: [nestedSpecPath],
-      fileExists: () => true,
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) => error.includes(`${nestedSpecPath} is not covered`)),
-    ).toBe(true);
-  });
-
-  it('accepts the same nested spec when registered via a scenario', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [{ name: 'reorder', sourcePrefixes: [], specs: [nestedSpecPath] }],
-      standaloneSpecs: [],
-      specFiles: [nestedSpecPath],
-      fileExists: () => true,
-    });
-
-    expect(validation).toEqual({ valid: true, errors: [] });
-  });
-
-  it('accepts the same nested spec when registered as standalone', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [],
-      standaloneSpecs: [nestedSpecPath],
-      specFiles: [nestedSpecPath],
-      fileExists: () => true,
-    });
-
-    expect(validation).toEqual({ valid: true, errors: [] });
-  });
-
-  it('detects a scenario that references a missing nested spec as invalid', () => {
-    const validation = validateStorybookBehaviorScenarioRegistry({
-      scenarios: [{ name: 'reorder', sourcePrefixes: [], specs: [nestedSpecPath] }],
-      standaloneSpecs: [],
-      specFiles: [],
-      fileExists: () => false,
-    });
-
-    expect(validation.valid).toBe(false);
-    expect(
-      validation.errors.some((error) =>
-        error.includes(`scenario registry references missing spec ${nestedSpecPath}`),
-      ),
-    ).toBe(true);
-  });
-});
-
 describe('resolveStorybookBehaviorPlan', () => {
-  it('never uses behavior spec paths as scenario source prefixes', () => {
-    for (const scenario of STORYBOOK_BEHAVIOR_SCENARIO_SCOPES) {
-      expect(scenario.sourcePrefixes.some((prefix) => prefix.endsWith('.spec.ts'))).toBe(false);
-    }
-  });
   it('runs the full lane for the behavior Playwright config', () => {
     const plan = resolveStorybookBehaviorPlan(['playwright.storybook.config.ts']);
 
@@ -512,64 +146,18 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.mode).toBe('none');
   });
 
-  it('runs the full lane for any .storybook/ path change', () => {
-    const plan = resolveStorybookBehaviorPlan(['.storybook/main.ts']);
-
-    expect(plan.mode).toBe('full');
+  it('runs the full lane for any .storybook/ path change, including its own colocated spec', () => {
+    expect(resolveStorybookBehaviorPlan(['.storybook/main.ts']).mode).toBe('full');
+    expect(
+      resolveStorybookBehaviorPlan(['.storybook/router/routerHarness.behavior.spec.ts']).mode,
+    ).toBe('full');
   });
 
-  it('runs the full lane for a behavior support file change', () => {
+  it('runs the full lane for a change to the remaining cross-owner Storybook test helper', () => {
     const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.testUtils.ts']);
 
     expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('behavior support file');
-  });
-
-  it('runs the changed behavior spec directly', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/colorOwnership.spec.ts']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/colorOwnership.spec.ts']);
-  });
-
-  it('selects every colocated Reorder browser spec for a reorderAutoscrollEnvironment change, via generic owner-local ownership', () => {
-    const plan = resolveStorybookBehaviorPlan([
-      'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
-    ]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
-      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
-      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
-      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
-    ]);
-  });
-
-  it('selects every colocated Reorder browser spec for a getReorderContainer.ts change, via generic owner-local ownership', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/getReorderContainer.ts']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
-      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
-      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
-      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
-    ]);
-  });
-
-  it('selects every colocated Reorder browser spec for a wrap-layout fixture source change, via conservative owner-directory selection', () => {
-    const plan = resolveStorybookBehaviorPlan([
-      'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
-    ]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
-      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
-      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
-      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
-    ]);
+    expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path');
   });
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {
@@ -592,111 +180,10 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path scripts/verify.ts');
   });
 
-  const MD_BUTTON_BROWSER_SPEC =
-    'src/shared/ui/material/components/button/MDButton.browser.spec.ts';
-  const LEGACY_BUTTON_BROWSER_SPEC = 'src/shared/ui/Button/LegacyButton.browser.spec.ts';
-  const FOCUS_INDICATOR_SPEC = 'tests/e2e/storybook/focusIndicator.spec.ts';
-
-  it('selects the local MDButton spec and the central focus-indicator spec for an MDButton story change', () => {
-    const plan = resolveStorybookBehaviorPlan([
-      'src/shared/ui/material/components/button/MDButton.stories.ts',
-    ]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('selects the local MDButton spec and the central focus-indicator spec for an MDButton component change', () => {
-    const plan = resolveStorybookBehaviorPlan([
-      'src/shared/ui/material/components/button/MDButton.vue',
-    ]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDIconButton component or story change', () => {
-    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.vue']).specs).toEqual([
-      LEGACY_BUTTON_BROWSER_SPEC,
-      FOCUS_INDICATOR_SPEC,
-    ]);
-    expect(
-      resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.stories.ts']).specs,
-    ).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDFab component or story change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.vue']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.stories.ts']).specs).toEqual([
-      LEGACY_BUTTON_BROWSER_SPEC,
-      FOCUS_INDICATOR_SPEC,
-    ]);
-  });
-
-  it('selects the local MDButton spec and the central focus-indicator spec for a colocated Button story fixture change', () => {
-    const plan = resolveStorybookBehaviorPlan([
-      'src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue',
-    ]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('focuses only the central focus-indicator spec for a useFocusIndicator change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/useFocusIndicator.ts']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('focuses only the central focus-indicator spec for a focus-indicator component/style change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/md-focus-indicator.css']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('runs the changed central focus-indicator behavior spec directly', () => {
-    const plan = resolveStorybookBehaviorPlan([FOCUS_INDICATOR_SPEC]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('selects itself for a changed local MDButton browser spec, with no central mapping', () => {
-    const plan = resolveStorybookBehaviorPlan([MD_BUTTON_BROWSER_SPEC]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
-  it('selects itself for a changed local LegacyButton browser spec, with no central mapping', () => {
-    const plan = resolveStorybookBehaviorPlan([LEGACY_BUTTON_BROWSER_SPEC]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
   it('does not run the full lane for an unrelated src/shared/ui change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Chips/MDChipBase.vue']);
 
     expect(plan.mode).toBe('none');
-  });
-
-  it('does not select the button family spec for an unrelated shared State module', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/MDStateLayer.vue']);
-
-    expect(plan.mode).toBe('none');
-  });
-
-  it('runs the full lane for a change to a Storybook behavior Playwright test helper', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/example.testUtils.ts']);
-
-    expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('behavior support file');
   });
 
   it('reports none for an empty changed-file scope', () => {
@@ -706,12 +193,12 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 });
 
-describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => {
-  it('selects itself when the colocated Loading Indicator browser spec changes', () => {
-    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BROWSER_SPEC]);
+describe('resolveStorybookBehaviorPlan colocated behavior spec ownership', () => {
+  it('selects itself when the colocated Loading Indicator behavior spec changes', () => {
+    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BEHAVIOR_SPEC]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LOADING_INDICATOR_BROWSER_SPEC]);
+    expect(plan.specs).toEqual([LOADING_INDICATOR_BEHAVIOR_SPEC]);
   });
 
   it('selects the colocated spec for a Loading Indicator component change', () => {
@@ -720,7 +207,7 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LOADING_INDICATOR_BROWSER_SPEC]);
+    expect(plan.specs).toEqual([LOADING_INDICATOR_BEHAVIOR_SPEC]);
   });
 
   it('selects the colocated spec for a Loading Indicator story change', () => {
@@ -729,14 +216,14 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LOADING_INDICATOR_BROWSER_SPEC]);
+    expect(plan.specs).toEqual([LOADING_INDICATOR_BEHAVIOR_SPEC]);
   });
 
   it('selects the colocated spec for another file under the Loading Indicator owner directory', () => {
     const plan = resolveStorybookBehaviorPlan([`${LOADING_INDICATOR_OWNER_DIR}/tokens.css`]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([LOADING_INDICATOR_BROWSER_SPEC]);
+    expect(plan.specs).toEqual([LOADING_INDICATOR_BEHAVIOR_SPEC]);
   });
 
   it('does not select the colocated spec for an unrelated src change', () => {
@@ -745,39 +232,39 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     expect(plan.mode).toBe('none');
   });
 
-  it('runs the full lane for a removed colocated browser spec', () => {
-    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BROWSER_SPEC], {
+  it('runs the full lane for a removed colocated behavior spec', () => {
+    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BEHAVIOR_SPEC], {
       fileExists: () => false,
     });
 
     expect(plan.mode).toBe('full');
     expect(plan.specs).toEqual([]);
     expect(plan.reasons[0]).toContain(
-      `removed or renamed colocated browser spec ${LOADING_INDICATOR_BROWSER_SPEC}`,
+      `removed or renamed colocated behavior spec ${LOADING_INDICATOR_BEHAVIOR_SPEC}`,
     );
   });
 
   it('runs the full lane for a rename-like input where the old colocated spec no longer exists', () => {
-    const oldSpecPath = `${LOADING_INDICATOR_OWNER_DIR}/OldLoadingIndicator.browser.spec.ts`;
-    const plan = resolveStorybookBehaviorPlan([oldSpecPath, LOADING_INDICATOR_BROWSER_SPEC], {
+    const oldSpecPath = `${LOADING_INDICATOR_OWNER_DIR}/OldLoadingIndicator.behavior.spec.ts`;
+    const plan = resolveStorybookBehaviorPlan([oldSpecPath, LOADING_INDICATOR_BEHAVIOR_SPEC], {
       fileExists: (filePath) => filePath !== oldSpecPath,
     });
 
     expect(plan.mode).toBe('full');
     expect(plan.specs).toEqual([]);
-    expect(plan.reasons[0]).toContain(`removed or renamed colocated browser spec ${oldSpecPath}`);
+    expect(plan.reasons[0]).toContain(`removed or renamed colocated behavior spec ${oldSpecPath}`);
   });
 
   it('never returns a missing colocated spec in focused specs', () => {
-    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BROWSER_SPEC], {
+    const plan = resolveStorybookBehaviorPlan([LOADING_INDICATOR_BEHAVIOR_SPEC], {
       fileExists: () => false,
     });
 
-    expect(plan.specs).not.toContain(LOADING_INDICATOR_BROWSER_SPEC);
+    expect(plan.specs).not.toContain(LOADING_INDICATOR_BEHAVIOR_SPEC);
   });
 
   it('resolves colocated ownership from an injected colocatedSpecFiles override rather than only the real filesystem', () => {
-    const ownerSpec = 'src/shared/ui/Example/Example.browser.spec.ts';
+    const ownerSpec = 'src/shared/ui/Example/Example.behavior.spec.ts';
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Example/Example.vue'], {
       colocatedSpecFiles: [ownerSpec],
     });
@@ -786,9 +273,9 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     expect(plan.specs).toEqual([ownerSpec]);
   });
 
-  it('selects every colocated browser spec in the same owner directory for an owner-source change', () => {
-    const firstSpec = 'src/shared/ui/Example/First.browser.spec.ts';
-    const secondSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+  it('selects every colocated behavior spec in the same owner directory for an owner-source change', () => {
+    const firstSpec = 'src/shared/ui/Example/First.behavior.spec.ts';
+    const secondSpec = 'src/shared/ui/Example/Second.behavior.spec.ts';
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Example/Example.vue'], {
       colocatedSpecFiles: [firstSpec, secondSpec],
     });
@@ -798,8 +285,8 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
   });
 
   it('includes the directly changed spec in the focused selection regardless of discovered-spec ordering, alongside its owner-directory sibling', () => {
-    const firstSpec = 'src/shared/ui/Example/First.browser.spec.ts';
-    const secondSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+    const firstSpec = 'src/shared/ui/Example/First.behavior.spec.ts';
+    const secondSpec = 'src/shared/ui/Example/Second.behavior.spec.ts';
 
     const inDiscoveryOrder = resolveStorybookBehaviorPlan([secondSpec], {
       colocatedSpecFiles: [firstSpec, secondSpec],
@@ -816,9 +303,9 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     expect(inReverseDiscoveryOrder.specs).toEqual([firstSpec, secondSpec]);
   });
 
-  it('includes a newly added second browser spec injected via colocatedSpecFiles when that new spec changes', () => {
-    const existingSpec = 'src/shared/ui/Example/First.browser.spec.ts';
-    const newSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+  it('includes a newly added second behavior spec injected via colocatedSpecFiles when that new spec changes', () => {
+    const existingSpec = 'src/shared/ui/Example/First.behavior.spec.ts';
+    const newSpec = 'src/shared/ui/Example/Second.behavior.spec.ts';
     const plan = resolveStorybookBehaviorPlan([newSpec], {
       colocatedSpecFiles: [existingSpec, newSpec],
       fileExists: () => true,
@@ -830,8 +317,8 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
   });
 
   it('selects every applicable owner-local spec for nested parent/nested owner directories', () => {
-    const parentSpec = 'src/shared/ui/Example/Parent.browser.spec.ts';
-    const nestedSpec = 'src/shared/ui/Example/nested/Nested.browser.spec.ts';
+    const parentSpec = 'src/shared/ui/Example/Parent.behavior.spec.ts';
+    const nestedSpec = 'src/shared/ui/Example/nested/Nested.behavior.spec.ts';
     const changedNestedSource = 'src/shared/ui/Example/nested/NestedHelper.ts';
 
     const plan = resolveStorybookBehaviorPlan([changedNestedSource], {
@@ -843,8 +330,8 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
   });
 
   it('produces the same nested-ownership result regardless of injected spec order', () => {
-    const parentSpec = 'src/shared/ui/Example/Parent.browser.spec.ts';
-    const nestedSpec = 'src/shared/ui/Example/nested/Nested.browser.spec.ts';
+    const parentSpec = 'src/shared/ui/Example/Parent.behavior.spec.ts';
+    const nestedSpec = 'src/shared/ui/Example/nested/Nested.behavior.spec.ts';
     const changedNestedSource = 'src/shared/ui/Example/nested/NestedHelper.ts';
 
     const inDiscoveryOrder = resolveStorybookBehaviorPlan([changedNestedSource], {
@@ -856,94 +343,6 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
 
     expect(inDiscoveryOrder.specs).toEqual([nestedSpec, parentSpec]);
     expect(inReverseDiscoveryOrder.specs).toEqual(inDiscoveryOrder.specs);
-  });
-});
-
-describe('resolveStorybookBehaviorPlan DialogForm owner-local ownership (S2-E)', () => {
-  const DIALOG_FORM_BROWSER_SPEC = 'src/shared/ui/Dialog/DialogForm.browser.spec.ts';
-
-  it('discovers the real colocated DialogForm browser spec under src/', () => {
-    expect(findColocatedBrowserSpecFiles()).toContain(DIALOG_FORM_BROWSER_SPEC);
-  });
-
-  it('selects the local DialogForm spec, with no central mapping, for a DialogForm.vue change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Dialog/DialogForm.vue']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
-  });
-
-  it('selects the local DialogForm spec, with no central mapping, for a DialogForm.stories.ts change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Dialog/DialogForm.stories.ts']);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
-  });
-
-  it('selects itself for a changed local DialogForm browser spec, with no central mapping', () => {
-    const plan = resolveStorybookBehaviorPlan([DIALOG_FORM_BROWSER_SPEC]);
-
-    expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
-  });
-
-  it('runs the full lane for a removed DialogForm colocated browser spec', () => {
-    const plan = resolveStorybookBehaviorPlan([DIALOG_FORM_BROWSER_SPEC], {
-      fileExists: () => false,
-    });
-
-    expect(plan.mode).toBe('full');
-    expect(plan.specs).toEqual([]);
-    expect(plan.reasons[0]).toContain(
-      `removed or renamed colocated browser spec ${DIALOG_FORM_BROWSER_SPEC}`,
-    );
-  });
-});
-
-describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {
-  it('runs the full lane for a nonexistent directly changed behavior spec', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/removedFlow.spec.ts'], {
-      fileExists: () => false,
-    });
-
-    expect(plan.mode).toBe('full');
-    expect(plan.specs).toEqual([]);
-    expect(plan.reasons[0]).toContain(
-      'removed or renamed Storybook behavior spec tests/e2e/storybook/removedFlow.spec.ts',
-    );
-  });
-
-  it('runs the full lane for a rename-like input where the old spec no longer exists', () => {
-    const plan = resolveStorybookBehaviorPlan(
-      ['tests/e2e/storybook/oldFlow.spec.ts', 'tests/e2e/storybook/routerHarness.spec.ts'],
-      { fileExists: (filePath) => filePath !== 'tests/e2e/storybook/oldFlow.spec.ts' },
-    );
-
-    expect(plan.mode).toBe('full');
-    expect(plan.specs).toEqual([]);
-    expect(plan.reasons[0]).toContain(
-      'removed or renamed Storybook behavior spec tests/e2e/storybook/oldFlow.spec.ts',
-    );
-  });
-
-  it('never returns a missing spec in focused specs', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/removedFlow.spec.ts'], {
-      fileExists: () => false,
-    });
-
-    expect(plan.specs).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
-  });
-
-  it('keeps an existing directly changed behavior spec focused', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/colorOwnership.spec.ts']);
-
-    expect(plan).toEqual({
-      mode: 'focused',
-      specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
-      reasons: [
-        'changed behavior spec tests/e2e/storybook/colorOwnership.spec.ts -> tests/e2e/storybook/colorOwnership.spec.ts',
-      ],
-    });
   });
 });
 

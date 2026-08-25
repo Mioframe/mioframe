@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../tests/e2e/storybook/storybook.testUtils';
 
 const STORY_ID = 'shared-lib-router-routerharnessregression--default';
 

@@ -1,7 +1,7 @@
 /**
  * Static production-artifact proof: the deterministic emitted-file/manifest/
  * generated-artifact assertions split out of the historical
- * `productionArtifactSmoke.spec.ts` Playwright suite (see
+ * `productionArtifactSmoke.browser-integration.spec.ts` Playwright suite (see
  * docs/testing/verify-redesign-implementation-preflight.md's "Production
  * artifact split"). These never load a page or a browser, so they run as
  * plain Node tooling proof against the built `dist/` directory instead of
@@ -37,7 +37,7 @@ function collectJsFiles(dir) {
  * Validates the deterministic generated PWA manifest (`dist/manifest.webmanifest`)
  * against the configured release base path. Preserves the manifest-content
  * meaning historically asserted in the browser-integration
- * `productionArtifactSmoke.spec.ts` suite (see
+ * `productionArtifactSmoke.browser-integration.spec.ts` suite (see
  * docs/testing/verify-redesign-implementation-preflight.md's "Release-suite
  * reclassification"): the manifest is valid JSON, `name` is a string, and
  * `start_url` or `scope` is scoped to the configured base path. Browser
