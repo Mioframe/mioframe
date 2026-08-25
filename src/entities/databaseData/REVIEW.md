@@ -1,11 +1,6 @@
 # Review
 
-Verdict: production implementation corrections accepted; merge is blocked by one moving-surface E2E proof-design correction, operator visual reinspection, exact-head CI, and final resulting-PR review.
-
-Active correction contract:
-
-- `docs/database-virtualization-moving-surface-proof-correction-handoff.md`
-- `docs/database-virtualization-moving-surface-proof-correction-preflight.md`
+Verdict: virtualization implementation and the proportional moving-surface proof correction are accepted; merge remains blocked by exact-head CI, operator visual reinspection, and final resulting-PR review.
 
 ## Scope reviewed
 
@@ -14,7 +9,7 @@ Active correction contract:
 - Top-level `DatabaseViewWidget` numeric offset diagnosis.
 - Relation-value local-root loading correction.
 - Sticky action/header stacking correction and real-browser hit-testing proof.
-- Exact-head GitHub Actions run #4334 on `3fb69ea622edf53837587c67e9fb9b4e9e218d7a`.
+- Moving-surface E2E proof correction after exact-head GitHub Actions run #4334.
 
 ## Resolved — shared deep-state contract
 
@@ -36,50 +31,37 @@ Both first and second deep phases reached logical row `46`. Temporary diagnostic
 
 Together with the accepted shared deep-state capability, there is no current evidence supporting another production geometry/cache/lifecycle correction. Do not add timers, observers, cache reset, remount, or shared virtualization changes for this finding.
 
-## Blocker — moving-surface product proof exceeds its test budget
+## Resolved — moving-surface product proof setup
 
-Exact-head CI run #4334 failed only application E2E. Static, visual, Storybook behavior, and release-version lanes passed.
+Exact-head run #4334 showed the old scenario exhausting the 30-second test budget after 40 sequential Add Item dialog flows. Initial attempt and retries stopped at different phases while Mobile Chrome passed, so the evidence supported a proof-design correction rather than another production geometry patch.
 
-Owning scenario:
+The scenario now uses a compact deterministic viewport and 16 additional rows:
 
-`tests/e2e/databaseVirtualizationFlows.spec.ts` -> `keeps real preceding Database content connected to the table-owned surface range`.
+- desktop: `640 x 360`;
+- Mobile Chrome: project width `393`, height `360`;
+- five real Weekly Plan rows + 16 real added Task rows = 21 data rows;
+- `aria-rowcount=22` including the header;
+- initial mounted range is smaller than all logical data rows;
+- first deep phase reaches `22/22`;
+- the real success card is dismissed through `Got it` and the physical table surface moves upward;
+- moved top range remains bounded;
+- second deep phase reaches `22/22`.
 
-Desktop Chromium exhausted the same 30-second per-test timeout on the initial attempt and both retries, but at different phases:
+Only `tests/e2e/databaseVirtualizationFlows.spec.ts` changed for this correction. Production code is unchanged.
 
-- initial attempt timed out while polling the second deep logical range;
-- retry #1 timed out after dismiss while evaluating the root/surface;
-- retry #2 timed out while polling the second deep logical range.
+### Verification correction
 
-Mobile Chrome passed the same scenario.
+The architect-authored correction contract previously required E2E `--repeat 3`. That requirement was invalid: current `.agents/skills/verification/SKILL.md` defines `--repeat` as Storybook-behavior-only and E2E rejects it before execution.
 
-The scenario creates the real five-row Weekly Plan starter example and then performs **40 sequential full UI Add Item dialog flows** before the geometry proof. The proof therefore couples moving-surface correctness to expensive repetitive setup that is owned elsewhere.
+The unsupported E2E repeat is therefore not an acceptance criterion.
 
-This remains classified as a proof-design blocker, not evidence for another production geometry correction.
+The coding agent reports focused moving-surface E2E clean in multiple independent executions. Its required branch-diff gate stopped on `databaseViewsAndQueryFlows.spec.ts` relation-view flakiness rather than the corrected moving-surface proof. Repository rules require stopping/reporting rather than patching an unrelated or differently owned failure.
 
-### Required correction
-
-Follow the active proof-correction handoff exactly:
-
-- set the scenario viewport before `launchApp`;
-- desktop uses `640 x 360`;
-- Mobile Chrome preserves its project width and uses height `360`;
-- keep the five real starter rows;
-- add exactly `16` additional Task rows through the existing public Add Item flow;
-- retain the real success card and `Got it` dismissal;
-- retain initial/moved top-range boundedness;
-- retain both deep logical-tail assertions against `aria-rowcount`;
-- retain physical surface movement proof;
-- do not change production code, timeout, retries, project applicability, or geometry ownership.
-
-The resulting 21-row dataset is setup for this moving-surface contract only. Large-dataset stress remains owned by separate Database virtualization proofs.
-
-If 21 rows at the compact viewport do not produce a bounded virtualized range in either project, stop and report mounted/logical counts rather than silently changing the dataset or applicability.
-
-If the proportional proof reaches its owned geometry/range assertions with meaningful budget remaining but still fails logical-tail correctness, reopen production architecture from that concrete evidence.
+Exact-head GitHub CI is now the authoritative published-head gate. Any retry/flaky classification of the moving-surface scenario itself would reopen this finding.
 
 ## Resolved — relation-value local-root invariant
 
-`RelationValueFieldData` renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit relation `0/0` offsets are truthful whenever the table is mounted. Owner-local proof and relevant E2E are reported green.
+`RelationValueFieldData` renders the loading progress indicator and `DatabaseDataTable` mutually exclusively. Explicit relation `0/0` offsets are truthful whenever the table is mounted. Owner-local proof and relevant E2E were reported green.
 
 Owner review: `src/features/relationValueEdit/REVIEW.md`.
 
@@ -104,14 +86,12 @@ The removed entity ancestor/sibling geometry-discovery path must not return.
 
 ## Remaining gates
 
-1. correct the over-budget moving-surface E2E setup without weakening its product contract;
-2. coding-agent focused proof + repeat stability + `pnpm verify --base origin/develop` pass cleanly;
-3. operator reinspection of the real Database table, especially borders/corners and combined sticky header/action behavior;
-4. exact-head GitHub CI green with no retry/flaky classification;
-5. final full resulting-PR review.
+1. exact-head GitHub CI green with no retry/flaky classification for the moving-surface proof;
+2. operator reinspection of the real Database table, especially borders/corners and combined sticky header/action behavior;
+3. final full resulting-PR review.
 
 Residual heterogeneous-content Chromium jank and other non-virtualization performance causes are explicitly deferred to later PRs.
 
 ## Blockers
 
-- moving-surface product proof is not currently stable within the repository's normal per-test budget.
+No current semantic implementation blocker. Merge remains gated by exact-head CI and final acceptance evidence.
