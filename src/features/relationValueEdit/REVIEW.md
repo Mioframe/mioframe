@@ -13,15 +13,15 @@ Exact-head CI run #4348 failed `tests/e2e/databaseViewsAndQueryFlows.spec.ts:269
 
 The same scenario also failed during local branch verification.
 
-The previous `0/0` geometry invariant remains valid: whenever `DatabaseDataTable` participates in layout it is first unpadded content of `.relation-value-field__data`.
+The relation `verticalSurfaceOffset=0` / `horizontalSurfaceOffset=0` invariant remains required whenever `DatabaseDataTable` participates in layout.
 
 ## Active finding
 
-Current evidence does not yet distinguish whether the empty initial relation table is caused by:
+Current evidence does not distinguish whether:
 
-1. properties loading keeping `DatabaseDataTable` unmounted, which also delays its row query;
-2. the table being mounted while logical rows are still pending;
-3. logical rows being present while the nested virtualizer has no mounted row range.
+1. properties loading keeps `DatabaseDataTable` unmounted;
+2. the table is mounted while logical rows are still pending;
+3. logical rows are present while the nested virtualizer has no mounted row range.
 
 Run the active readiness discriminator before choosing a production correction.
 
