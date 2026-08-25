@@ -10,16 +10,16 @@ Pass status:
 - Pass B — completed and architect-accepted;
 - Pass C — completed and architect-accepted;
 - Pass D — completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- Pass E — architecture resolved; coding task prepared and ready for implementation;
+- Pass E — implementation landed at `82395eebe75484157e30cb92dc8165c368a92496`; architect review is blocked by the active findings in `scripts/REVIEW.md`;
 - Pass F — must not start until Pass E is architect-accepted.
 
-There is no active Pass D `scripts/REVIEW.md`. The previous B1 completeness blocker and M1 stale-comment issue are closed.
+The previous Pass D B1 completeness blocker and M1 stale-comment issue remain closed and must not be reopened without new repository evidence.
 
-Exact-head GitHub CI remains an architect-owned gate separate from semantic pass acceptance. At the time Pass D was accepted, no exact-head workflow run/status existed for `c0aa686235d291089d413b77c4b5fe176acc07b3`, so that SHA was not a merge-ready verdict.
+Exact-head GitHub CI remains an architect-owned gate separate from semantic pass acceptance.
 
 ## Read order
 
-Before Pass E implementation/review, read in this order:
+Before Pass E correction/re-review, read in this order:
 
 1. root `AGENTS.md`;
 2. `.agents/skills/verification/SKILL.md`;
@@ -31,45 +31,57 @@ Before Pass E implementation/review, read in this order:
 8. `docs/testing/verify-redesign-implementation-preflight.md`;
 9. `docs/testing/migration-plan.md`;
 10. `docs/testing/verify-redesign-pass-e-implementation.md`;
-11. `docs/testing/verify-redesign-pass-e-agent-task.md` for the current coding pass;
-12. current `scripts/verify.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
+11. `docs/testing/verify-redesign-pass-e-agent-task.md` for the accepted Pass E implementation boundary;
+12. active `scripts/REVIEW.md`;
+13. current `scripts/verify.ts`, `scripts/lib/unitRisk.ts`, `scripts/lib/mutationTargets.ts`, `scripts/lib/changedPaths.ts`, `stryker.config.mjs`, `vitest.config.ts`, and their focused tests.
 
 Pass D implementation/correction records are historical accepted source for invariants and should be consulted only when Pass E touches an adjacent boundary.
 
-## Current coding task
+## Active Pass E review
 
-The authoritative coding task is:
+The complete Pass E implementation was reviewed from baseline:
 
-`docs/testing/verify-redesign-pass-e-agent-task.md`
+`75277c067cca6aba30f2e0698056e4f84f48fb69`
 
-It was prepared against architect HEAD:
+to implementation HEAD:
 
-`6a9df7aff7f61f31274b55d231622e6cbbec57e7`
+`82395eebe75484157e30cb92dc8165c368a92496`
 
-The repository may contain the later architect-only commit that adds this task/handoff pointer before coding starts. The coding agent must implement from the actual current branch HEAD while preserving the Pass E baseline contract; it must not reset or discard these preparation commits.
+The durable review source is:
 
-No `scripts/REVIEW.md` should be created before implementation. The architect creates one only after semantic review if actionable findings exist.
+`scripts/REVIEW.md`
+
+Current blockers are consolidated there:
+
+1. native Vitest zero-match output can exit 0 and is still accepted by verifier result classification;
+2. default Git unit classification can silently skip standard snapshots and root TypeScript transform configuration;
+3. literal `--full` bypasses mutation registry structural invalidity before Stryker execution.
+
+These are local corrections to the accepted Pass E architecture. They do not require a new dependency graph, new public type, generic planner framework, mutation ownership redesign, or Pass F work.
 
 ## Pass E architecture summary
 
 ### Unit
 
 - Vitest remains the only unit dependency/affected engine.
-- Normal git scopes use native `vitest --changed <existing resolved diff base>`.
+- Normal git scopes use native `vitest --changed <existing resolved diff base>` for ordinary source/test-support impact.
 - Explicit source/support files use native `vitest related --run`.
 - Direct unit tests run directly.
 - Explicit mixed direct-test + source scopes may use two private unit leaves instead of widening to full or adding a wrapper.
+- Deterministic snapshot ownership must not disappear from default Git scope.
 - Removed/moved/global unit relations that cannot be represented safely widen to full unit.
-- Zero related tests is visible fail-closed evidence, never a successful skip.
+- Relevant root TypeScript transform configuration is global unit impact.
+- Zero related/affected tests is visible fail-closed evidence, never a successful unit pass.
 - Do not add dependency-cruiser or another unit graph.
 
 ### Mutation
 
-- Replace both current adjacency sources of truth with one explicit `MutationTarget` registry.
-- Initial accepted registry contains exactly the four confirmed deterministic high-risk owners in `verify-redesign-pass-e-implementation.md`.
+- One explicit `MutationTarget` registry is the only durable mutation ownership source.
+- The accepted registry contains exactly the four confirmed deterministic high-risk owners in `verify-redesign-pass-e-implementation.md`.
 - Focused/default mutation selects only exact registered source/test relations; mutation infrastructure changes select all registered targets.
 - `stryker.config.mjs` derives its complete mutate inventory from the same registry.
-- `--full` executes every registered target.
+- Structural registry invalidity must fail before Stryker in focused/default and literal full mode.
+- `--full` executes every registered target with no affected narrowing only after registry validity is established.
 
 ### Performance
 
@@ -90,15 +102,12 @@ Do not reopen without new repository evidence:
 - container-only Playwright execution;
 - current Playwright project applicability and production-artifact routing;
 - top-level verify and expensive-command lock ownership;
-- current status/resume/logging/timeout behavior.
+- current status/resume/logging/timeout behavior except the narrow required unit no-test blocking classification.
 
 ## Next workflow
 
-The next implementation boundary is Pass E only.
-
-After implementation lands:
-
-1. review the complete Pass E result, not only the latest patch;
-2. create `scripts/REVIEW.md` only if actionable findings exist;
-3. if clean, mark Pass E architect-accepted and then resolve/execute Pass F;
-4. do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
+1. Correct the active `scripts/REVIEW.md` blockers only; do not start Pass F.
+2. Re-review the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the new implementation HEAD, not only the correction patch.
+3. Remove `scripts/REVIEW.md` only when every active finding is resolved.
+4. If clean, mark Pass E architect-accepted and then resolve/execute Pass F.
+5. Do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
