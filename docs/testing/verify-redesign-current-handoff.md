@@ -14,7 +14,7 @@ The first scripts-owned correction was implemented by the coding agent at:
 
 - `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`.
 
-Architect re-review found that this correction resolves several findings but does **not** yet satisfy the complete scripts acceptance boundary. Current durable findings are in:
+Architect re-review found that this correction resolves several findings but does **not** satisfy the complete scripts acceptance boundary. Current durable findings are in:
 
 - `scripts/REVIEW.md` — 3 blockers, 2 major issues;
 - `.github/workflows/REVIEW.md` — downstream CI blocker, intentionally not started until the scripts review is clean.
@@ -23,28 +23,34 @@ Current correction architecture remains:
 
 - `docs/testing/verify-redesign-final-review-correction.md`.
 
-The previous coding-agent task records the first correction requirements:
+Current coding-agent task is the consolidated second scripts correction:
+
+- `docs/testing/verify-redesign-final-review-correction-02-agent-task.md`.
+
+The previous first-correction assignment remains historical context only:
 
 - `docs/testing/verify-redesign-final-review-agent-task.md`.
 
 ## Scripts correction re-review
 
-Resolved by `ab4efa5...`:
+Resolved by `ab4efa5...` and not to be reopened without new evidence:
 
 - generic `playwright.browserIntegration.config.ts` is structurally disjoint from the appUpdate special corpus;
 - runtime-relevant `package.json` and `pnpm-lock.yaml` mutation impact is represented for existing changed paths;
 - expensive Playwright E2E inventory/dependency-cruiser acquisition is gated behind cheap E2E relevance;
 - `productionArtifactStaticProof`, `managedUpdatesControllerArtifactIdentityProof`, and `managedUpdatesProof` are native TypeScript;
 - the stale browser-integration-before-E2E cross-type ordering claim was removed;
-- one explicit exceptional release-proof inventory now exists and both planners/runners consume its group arrays.
+- one explicit exceptional release-proof inventory exists and planners/runners consume its group arrays.
 
-Still unresolved in `scripts/REVIEW.md`:
+The second scripts correction must resolve all remaining `scripts/REVIEW.md` findings together:
 
-1. release-static affected ownership is too narrow for real production Vite/artifact inputs;
-2. browser-integration special inventory validation is bypassed by literal `--full` and direct special execution, and exceptional membership is not yet fully centralized;
-3. shared special-runner support ownership omits the common command/guard/result/signal execution boundary;
-4. `--fix-only` still resolves non-static planners before its early return;
-5. mutation planning receives only existing paths, so deleted/renamed-away mutation infrastructure can be erased before impact classification.
+1. broaden release-static production-artifact capability so ordinary Vite production inputs select `build` + `artifact-static`, with appUpdate/controller inputs additionally selecting `managed-updates-static`;
+2. make `releaseProofInventory.ts` the sole owner of all exceptional membership, including managed data compatibility, and validate that inventory in focused, literal-full, and direct special-runner execution;
+3. include the common command/lock/result/signal execution-support boundary in affected ownership for special browser-integration/E2E proof;
+4. make `--fix-only` return its fixer plan before any proof planner/validator is resolved;
+5. preserve deleted/renamed-away mutation-infrastructure identity through mutation impact classification.
+
+This is the second correction round under the current architecture. If re-review still reveals ownership drift, mixed responsibilities, or workaround growth, stop patching and return to the architecture decision instead of issuing another incremental scripts patch.
 
 Do not start the downstream workflow correction while these scripts findings remain.
 
@@ -99,8 +105,8 @@ Coding-agent and architect review/documentation commits after that head require 
 
 ## Next order of work
 
-1. correct all remaining `scripts/REVIEW.md` findings together;
-2. architect re-reviews the complete scripts-owned affected scope;
+1. coding agent implements only `docs/testing/verify-redesign-final-review-correction-02-agent-task.md`;
+2. architect re-reviews the complete scripts-owned affected scope against the full current `scripts/REVIEW.md`;
 3. only if scripts review is clean, remove `scripts/REVIEW.md` and correct `.github/workflows/REVIEW.md` by adding public `browser-integration` to develop CI and aggregate `verification`;
 4. re-review the complete resulting PR;
 5. synchronize migration/handoff/PR status;
