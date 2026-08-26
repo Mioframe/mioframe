@@ -55,7 +55,7 @@ pnpm verify --fix-only --base <parent-ref>
 
 Inspect resulting changes. Raw Vitest, Playwright, lint, format, mutation, or other child commands are diagnostic interfaces only unless an applicable skill explicitly allows them; accepted proof returns through `pnpm verify`.
 
-A coding agent does **not** need to run a broad local `pnpm verify --base ...` or `pnpm verify:release` merely to declare its implementation task complete. Required task-specific proof must still exist and focused checks must cover the changed contracts and risks.
+A coding agent does **not** need to run a broad local `pnpm verify --base ...` or `pnpm verify --full` merely to declare its implementation task complete. Required task-specific proof must still exist and focused checks must cover the changed contracts and risks.
 
 ### Pull-request gate
 
@@ -84,10 +84,10 @@ Broad commands remain available when they materially help diagnosis or confidenc
 
 ```bash
 pnpm verify --base origin/develop
-pnpm verify:release
+pnpm verify --full
 ```
 
-Use the actual parent branch for stacked work. `pnpm verify:release` is the full release-verification command for build/release, routing/base-path, manifest/PWA/service-worker/channel, release-script, artifact-assembly, and other release-sensitive work. These commands are not unconditional coding-agent completion gates.
+Use the actual parent branch for stacked work. `pnpm verify --full` is the full release-verification command for build/release, routing/base-path, manifest/PWA/service-worker/channel, release-script, artifact-assembly, and other release-sensitive work. These commands are not unconditional coding-agent completion gates.
 
 `pnpm verify` is summary-first. Failed checks print the verifier label and relevant output; rerun through the verifier boundary rather than copying a raw child command.
 

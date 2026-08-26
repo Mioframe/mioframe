@@ -114,7 +114,7 @@ For Material-specific worker roles, source authority, resume/correction routing,
 ## Verification ownership
 
 - Coding agents own code and the proof they need to implement or diagnose that code. They may run focused verifier-managed checks such as `pnpm verify --only <type> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
-- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, or a manually reconstructed full checklist solely because code is ready to hand back. Any legacy `verify:release` alias is migration compatibility, not a separate completion gate or target public type.
+- Coding agents do **not** own a repository-wide or automatic final handoff gate. Do not require them to run `pnpm verify`, `pnpm verify --full`, or a manually reconstructed full checklist solely because code is ready to hand back.
 - GitHub CI on the exact PR head is the authoritative automatic repository verification gate. The architect owns PR creation/update, CI inspection, semantic review, roadmap status, and merge readiness.
 - A coding agent must not be asked to rerun checks that CI will perform automatically unless a concrete failing contract needs local diagnosis or a task-specific risk cannot be represented by the normal CI gate.
 - Required contract proof must still exist in code before handoff. CI does not replace missing tests, architecture review, browser/visual evidence, or a narrow implementation-specific proof explicitly required by the task.

@@ -1,7 +1,7 @@
 name: release
 
 # Release gate for the stable public branch: full-project verification
-# (pnpm verify:release) for every PR into main and every push to main. Stable
+# (pnpm verify --full) for every PR into main and every push to main. Stable
 # deploy only ever runs after a green release gate on a push to main.
 # vX.Y.Z tag pushes do not rerun this full gate — see the separate, lightweight
 # `release-tag` workflow (.github/workflows/release-tag.yml). See docs/release.md.
@@ -49,12 +49,12 @@ jobs:
 
       # VITE_GOOGLE_CLIENT_ID, VITE_SENTRY_DSN, and SENTRY_AUTH_TOKEN are
       # deliberately not set here: they are optional integrations, not
-      # required by pnpm verify:release, and passing them as secrets would
+      # required by pnpm verify --full, and passing them as secrets would
       # expand to empty strings when unconfigured (see docs/release.md#release-config-validation).
       # They are still passed to the deploy-stable build step below, which
       # does use them when configured.
       - name: Full release verification
-        run: pnpm verify:release --verbose
+        run: pnpm verify --full --verbose
 
       - name: Upload release verification logs
         if: ${{ failure() || cancelled() }}

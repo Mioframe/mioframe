@@ -635,9 +635,7 @@ function printHelp(): void {
   console.log(
     '                      no affected-test narrowing. Cannot be combined with --only, --files,',
   );
-  console.log(
-    '                      --base, --repeat, or --fix-only. Equivalent to `pnpm verify:release`.',
-  );
+  console.log('                      --base, --repeat, or --fix-only.');
   console.log('');
   console.log('Types for --only:');
 
@@ -659,7 +657,6 @@ function printHelp(): void {
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
-  console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
   console.log('  - In GitHub Actions, focused verify scope is based on GITHUB_BASE_REF.');

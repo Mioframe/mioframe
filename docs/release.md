@@ -320,7 +320,7 @@ focused and the full gate, and tag pushes never rerun the full gate:
 
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
-  (`pnpm verify:release`, full-project scope, see below), which includes
+  (`pnpm verify --full`, full-project scope, see below), which includes
   version/build metadata and release-config validation. Stable deploy
   (`deploy-stable`, `/`) runs only after this gate passes on a push to
   `main`.
@@ -361,14 +361,16 @@ focused and the full gate, and tag pushes never rerun the full gate:
 `pnpm verify` remains the normal development command: it scopes checks to
 changed files and is meant for fast PR feedback on `develop`.
 
-`pnpm verify:release` (= `node scripts/verify.ts --full`) is the release
-gate. It ignores changed-file scope and always runs, for the whole project:
+`pnpm verify --full` is the release gate. It ignores changed-file scope and
+always runs, for the whole project:
 
 - format check (`oxfmt`) across the full supported file set;
 - `oxlint` across the full project;
 - `eslint` across the full project;
 - full TypeScript type-check;
 - the full `vitest run` unit/component suite;
+- the complete registered mutation inventory (`mutation` type, no affected
+  narrowing);
 - full app Playwright E2E smoke coverage;
 - full approved visual regression coverage;
 - managed pinned-update lifecycle proof across publisher, worker, client,
@@ -380,17 +382,11 @@ gate. It ignores changed-file scope and always runs, for the whole project:
   `docs/release.md#release-config-validation`).
 
 Full mode never reports a check as skipped because there were no changed
-files. Use `pnpm verify --full --only <label>` to focus on a single release
-check while keeping the release-scope framing. For managed-update changes,
-run `pnpm verify --full --only managed-updates` without flaky classification
-before the final `pnpm verify:release` gate.
-
-Mutation testing (`pnpm test:mutate`, or scoped mutation inside ordinary
-`pnpm verify`) remains available for test design and PR-quality work, but it
-is not part of the release gate: it is slow, and it validates test
-robustness rather than the published artifact. `pnpm verify --full` and
-`pnpm verify:release` do not run it, and `pnpm verify --full --only
-mutation` is not a valid release check.
+files. `--full` is incompatible with `--only`/`--files`; it always runs the
+complete inventory above as one gate. For managed-update changes, use the
+focused `browser-integration`/`e2e` types (for example
+`pnpm verify --only browser-integration --files ...`) during implementation,
+without flaky classification, before the final `pnpm verify --full` gate.
 
 ## Organization Pages deployment model
 
@@ -704,16 +700,17 @@ The `build` check (`scripts/release/buildArtifact.mjs`) always builds a
 fresh production artifact and fails fast before the more expensive `artifact`
 and `release-smoke` Playwright checks run. Those checks each spin up their
 own Playwright webServer, which normally builds its own artifact too — so
-without deduplication, one `pnpm verify:release` run would build the same
+without deduplication, one `pnpm verify --full` run would build the same
 production artifact three times.
 
 `scripts/verify.ts` avoids this: once `build` has passed in the same run,
 it sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact` and
 `release-smoke` checks (forwarded through `scripts/e2eReleaseContainer.mjs`
 into the Podman container), and `buildArtifact.mjs` reuses the existing
-`dist/` instead of rebuilding. Standalone invocations
-(`pnpm e2e:release`, `pnpm verify --full --only artifact`) never set this
-flag, so they remain self-sufficient and always build their own artifact.
+`dist/` instead of rebuilding. Standalone invocations (`pnpm e2e:release`,
+or the internal `artifact` proof leaf run outside a full pass) never set
+this flag, so they remain self-sufficient and always build their own
+artifact.
 
 ## Release config validation
 
@@ -748,7 +745,7 @@ presence/absence and mode consistency.
 
 The `Full release verification` step in `.github/workflows/release.yml`
 (`release-gate` job) does not pass `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`,
-or `SENTRY_AUTH_TOKEN` at all, since `pnpm verify:release` does not require
+or `SENTRY_AUTH_TOKEN` at all, since `pnpm verify --full` does not require
 them — so in practice these keys are simply absent from that step's
 environment, not empty. The GitHub Actions empty-value notice above exists
 as a safety net for any other invocation (e.g. `deploy-stable`'s build step,
@@ -770,7 +767,7 @@ tolerates), fails the job before it can produce a managed artifact.
 runtime error reporting. This exists because the managed Service Worker must remain
 capable of reporting activation/rollback diagnostics (see
 `docs/managed-pinned-updates.md`), which requires runtime Sentry configuration to
-actually be built in. Every other invocation of this check (`pnpm verify:release`'s
+actually be built in. Every other invocation of this check (`pnpm verify --full`'s
 `release-config` check, local development, PR previews, unmanaged branch deploys,
 and hermetic compatibility-test builds) keeps the default, fully-optional behavior
 described above.
@@ -810,9 +807,9 @@ apply these manually in the GitHub UI):
 
 ## What blocks a release
 
-- Any failing check inside `pnpm verify:release` (format, lint, type-check,
-  unit, e2e, visual, managed updates, build, artifact, release smoke,
-  version metadata, release config).
+- Any failing check inside `pnpm verify --full` (format, lint, type-check,
+  unit, mutation, e2e, visual, managed updates, build, artifact, release
+  smoke, version metadata, release config).
 - A flaky classification in the focused managed-update gate for a release
   containing managed-update changes.
 - A missing or non-monotonic version bump.

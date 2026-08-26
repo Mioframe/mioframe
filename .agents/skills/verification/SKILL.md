@@ -54,7 +54,7 @@ There is no public `release` verification type. Release-sensitive proof is class
 
 ## Migration-aware execution
 
-During implementation of the verify redesign, the current repository may still accept legacy low-level labels, `*.browser.spec.ts`, root application E2E specs, manual E2E mappings, or the `verify:release` alias.
+During implementation of the verify redesign, the current repository may still accept legacy low-level labels, `*.browser.spec.ts`, root application E2E specs, or manual E2E mappings.
 
 Treat those only as current executable compatibility described by `docs/testing/migration-plan.md`.
 
@@ -169,8 +169,6 @@ The target release-grade command is:
 ```bash
 pnpm verify --full
 ```
-
-Legacy `pnpm verify:release` may exist during migration only as compatibility. Do not make new workflows depend on it.
 
 ## Flaky behavior
 

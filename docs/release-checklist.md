@@ -31,9 +31,9 @@ full policy this checklist enforces.
 - [ ] Merge method is `merge commit` for `develop` -> `main` promotion PRs and
       `squash` for direct hotfix or pre-tag repair PRs.
 - [ ] The `release` workflow run is green:
-  - [ ] `pnpm verify:release` full-project gate passed (format, lint,
-        type-check, unit tests, full app e2e, full visual regression, managed
-        update lifecycle proof).
+  - [ ] `pnpm verify --full` full-project gate passed (format, lint,
+        type-check, unit tests, mutation, full app e2e, full visual
+        regression, managed update lifecycle proof).
   - [ ] production build and artifact validation passed.
   - [ ] release smoke coverage (first-user and returning-user flows)
         passed.
@@ -48,8 +48,9 @@ full policy this checklist enforces.
         PR-preview base path, or an explicitly empty optional value outside
         GitHub Actions) does.
 - [ ] For a release containing managed-update changes, the focused
-      `pnpm verify --full --only managed-updates` gate passed without flaky
-      classification before the final `pnpm verify:release` run.
+      managed-update proof (its owning `static`, `browser-integration`, and
+      `e2e` types) passed without flaky classification before the final
+      `pnpm verify --full` run.
 - [ ] Operator UI/accessibility acceptance covers update settings,
       notifications, clean-launch activation, rollback, controller-state-loss
       recovery, known-active-release recovery, and the rest of the promoted

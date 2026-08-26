@@ -57,10 +57,10 @@ export function resolveArtifactDistDir(argv = process.argv.slice(2)) {
  * `dist/index.html` instead of rebuilding. `scripts/verify.ts` sets this for
  * the `artifact`/`release-smoke` release-only checks only when the earlier
  * `build` check already produced a fresh artifact in the same run, so a
- * single `pnpm verify:release` run does not build the production artifact
+ * single `pnpm verify --full` run does not build the production artifact
  * three times (once per check that needs it). Standalone invocations (e.g.
- * `pnpm e2e:release`, `pnpm verify --full --only artifact`) never set this
- * flag and always build their own artifact.
+ * `pnpm e2e:release`, the internal `artifact` proof leaf run outside a full
+ * pass) never set this flag and always build their own artifact.
  * @param [argv] Raw CLI arguments.
  * @param [deps] Test seams for guarded execution and result handling.
  * @param [env] Process environment, for the reuse-if-prebuilt test seam.

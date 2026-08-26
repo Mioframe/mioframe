@@ -18,7 +18,6 @@
     "prepare": "node .husky/install.mjs",
     "setup:git-hooks": "node .husky/install.mjs",
     "verify": "node scripts/verify.ts",
-    "verify:release": "node scripts/verify.ts --full",
     "verify:status": "node scripts/verifyStatus.ts",
     "verify:resume": "node scripts/verifyResume.ts",
     "ci:autofix": "node scripts/ciAutofix.ts",
