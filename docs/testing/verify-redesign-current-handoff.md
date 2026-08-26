@@ -6,41 +6,47 @@ Branch: `architecture/verify-redesign`
 
 PR: #218 — `refactor(testing): redesign verification ownership` (base `develop`).
 
-PR #218 is **draft and blocked** after a new complete resulting-PR semantic review of implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
+PR #218 remains **draft and blocked**.
 
-The review reopened implementation acceptance without changing the canonical eight-type architecture. Prior Pass A-F acceptance remains historical evidence for the work reviewed at those pass boundaries, but it does not override newly discovered current-repository defects.
+A complete resulting-PR review reopened implementation acceptance after the previously green implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`. The canonical eight-type architecture remains unchanged.
 
-Active review state:
+The first scripts-owned correction was implemented by the coding agent at:
 
-- `scripts/REVIEW.md` — first correction owner;
-- `.github/workflows/REVIEW.md` — downstream CI owner after the scripts correction is accepted.
+- `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`.
 
-Current correction architecture:
+Architect re-review found that this correction resolves several findings but does **not** yet satisfy the complete scripts acceptance boundary. Current durable findings are in:
+
+- `scripts/REVIEW.md` — 3 blockers, 2 major issues;
+- `.github/workflows/REVIEW.md` — downstream CI blocker, intentionally not started until the scripts review is clean.
+
+Current correction architecture remains:
 
 - `docs/testing/verify-redesign-final-review-correction.md`.
 
-Current coding-agent task:
+The previous coding-agent task records the first correction requirements:
 
 - `docs/testing/verify-redesign-final-review-agent-task.md`.
 
-## Findings reopened by the complete PR review
+## Scripts correction re-review
 
-The scripts-owned correction must resolve all current `scripts/REVIEW.md` findings together:
+Resolved by `ab4efa5...`:
 
-- release-sensitive static proof is incorrectly full-only instead of participating in normal affected `static` ownership;
-- exceptional managed-update/browser and `productionArtifact/` E2E execution membership is not structurally complete against the real filesystem inventory;
-- shared release fixture/publisher/artifact/build support can change while the dependent browser-integration/E2E proof skips;
-- the generic browser-integration Playwright config overlaps the managed-update special corpus;
-- mutation planning does not treat lockfile/runtime-relevant mutation toolchain changes as mutation infrastructure;
-- expensive Playwright E2E owner inventory is acquired before E2E relevance is established, including paths where it is unnecessary;
-- new/task-touched verifier proof entry points still violate the TypeScript-first tooling rule without a loader/runtime exception;
-- one managed-update comment claims a cross-type ordering invariant that is not part of the accepted architecture.
+- generic `playwright.browserIntegration.config.ts` is structurally disjoint from the appUpdate special corpus;
+- runtime-relevant `package.json` and `pnpm-lock.yaml` mutation impact is represented for existing changed paths;
+- expensive Playwright E2E inventory/dependency-cruiser acquisition is gated behind cheap E2E relevance;
+- `productionArtifactStaticProof`, `managedUpdatesControllerArtifactIdentityProof`, and `managedUpdatesProof` are native TypeScript;
+- the stale browser-integration-before-E2E cross-type ordering claim was removed;
+- one explicit exceptional release-proof inventory now exists and both planners/runners consume its group arrays.
 
-The downstream workflow blocker is separate:
+Still unresolved in `scripts/REVIEW.md`:
 
-- `.github/workflows/verify.yml` does not run public `browser-integration` in the develop verification gate, and aggregate `verification` therefore does not require it.
+1. release-static affected ownership is too narrow for real production Vite/artifact inputs;
+2. browser-integration special inventory validation is bypassed by literal `--full` and direct special execution, and exceptional membership is not yet fully centralized;
+3. shared special-runner support ownership omits the common command/guard/result/signal execution boundary;
+4. `--fix-only` still resolves non-static planners before its early return;
+5. mutation planning receives only existing paths, so deleted/renamed-away mutation infrastructure can be erased before impact classification.
 
-Do not fix the workflow blocker in the first scripts-owned correction pass. Re-review the scripts correction first, then correct the workflow against the accepted planner semantics.
+Do not start the downstream workflow correction while these scripts findings remain.
 
 ## Canonical architecture that remains unchanged
 
@@ -81,26 +87,24 @@ Preserved decisions/invariants:
 - Playwright project applicability remains separate from ownership;
 - persistent performance inventory remains intentionally empty;
 - every verifier-managed Playwright CLI invocation remains containerized;
-- top-level verify lock, expensive-command lock, status/resume/logging/timeouts/profile/base/fix behavior remain preserved.
-
-Previously closed Pass D evidence such as host-Playwright removal and real dependency-cruiser proof must not be reopened without new repository evidence.
+- top-level verify lock, expensive-command lock, status/resume/logging/timeouts/profile/base/fix semantics remain preserved.
 
 ## CI evidence
 
-GitHub Actions run `32991717215` / run number `4419` passed on exact implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
+GitHub Actions run `32991717215` / run number `4419` passed on the older implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
 
-That green run is **not merge proof** for the current review because the complete semantic review found missing affected/execution coverage, and the current develop workflow does not include the `browser-integration` type at all.
+That run is not merge proof: semantic blockers were found afterwards and the current develop workflow still does not run the public `browser-integration` type.
 
-Review/control documentation commits after `f592714...` intentionally move the PR head and do not claim executable verification success.
+Coding-agent and architect review/documentation commits after that head require their own exact-head CI only after the implementation and workflow review state is clean enough to reach the final repository gate.
 
 ## Next order of work
 
-1. coding agent implements only `docs/testing/verify-redesign-final-review-agent-task.md`;
-2. architect re-reviews the complete scripts-owned affected scope against `scripts/REVIEW.md`;
-3. if scripts review is clean, remove `scripts/REVIEW.md` and correct the downstream `.github/workflows/REVIEW.md` blocker;
-4. re-review the complete resulting PR, not only the final patch;
-5. synchronize architect-owned migration/handoff/PR description with the accepted result;
-6. require green GitHub CI on the exact final head, including the corrected browser-integration lane;
+1. correct all remaining `scripts/REVIEW.md` findings together;
+2. architect re-reviews the complete scripts-owned affected scope;
+3. only if scripts review is clean, remove `scripts/REVIEW.md` and correct `.github/workflows/REVIEW.md` by adding public `browser-integration` to develop CI and aggregate `verification`;
+4. re-review the complete resulting PR;
+5. synchronize migration/handoff/PR status;
+6. require green GitHub CI on the exact final head, including browser-integration;
 7. move PR out of draft only after semantic review and exact-head CI are both clean;
 8. merge into `develop` with squash merge.
 
