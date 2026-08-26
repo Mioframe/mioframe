@@ -4,136 +4,108 @@
 
 Branch: `architecture/verify-redesign`
 
+PR: #218 — `refactor(testing): redesign verification ownership` (draft, base `develop`).
+
 Pass status:
 
-- Pass A — completed and architect-accepted;
-- Pass B — completed and architect-accepted;
-- Pass C — completed and architect-accepted;
-- Pass D — completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- Pass E — implementation plus first correction landed; the final proof-ownership correction was applied directly outside the read-only coding sandbox at `a2b9a1ebdfcbce5c40cd158f553d0876cbce2a71`; semantic acceptance is pending the required focused proof and full architect re-review;
-- Pass F — must not start until Pass E is architect-accepted.
+- **Pass A:** completed and architect-accepted;
+- **Pass B:** completed and architect-accepted;
+- **Pass C:** completed and architect-accepted;
+- **Pass D:** completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
+- **Pass E:** completed and architect-accepted on exact reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
+- **Pass F:** ready and is the only remaining redesign pass.
 
-The first Pass E correction closed:
+Pass E was reviewed as the complete result from baseline `75277c067cca6aba30f2e0698056e4f84f48fb69` through exact PR head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`, not only the final correction patch.
 
-1. native Vitest zero-match success classification;
-2. Git-scope snapshot/root-tsconfig unit classification holes;
-3. literal `--full` mutation-registry validation bypass.
+Final Pass E review result:
 
-Do not reopen those findings without new repository evidence.
+- blockers: 0;
+- major issues: 0;
+- minor issues: 0;
+- accepted risks: 0.
 
-The final Pass E correction architecture is recorded in:
+The former `config/REVIEW.md` finding is resolved and the review file has been removed. The correction deleted the redundant `config/strykerConfig.test.ts` without replacement; no TypeScript project boundary was widened.
 
-`docs/testing/verify-redesign-pass-e-proof-correction.md`
+Exact-head GitHub Actions run `32957373587` for `60a097a077cb834e4cab28f5a2a8fad616ff77fd` completed successfully. Its `verification-static` job passed `static`, `unit`, and real `mutation` verifier steps; E2E, behavior, visual, aggregate verification, release-version, final verify, and preview deployment also passed.
 
-The coding sandbox exposed `config/` as read-only, so the architect applied the already-resolved deletion of `config/strykerConfig.test.ts` through GitHub rather than introducing a mount workaround. The commit contains only that deletion.
+Architect-only acceptance/documentation commits after that implementation head will naturally produce a newer PR head and another CI run. They do not reopen Pass E semantics unless they change implementation or expose new evidence.
 
-Exact-head GitHub CI remains an architect-owned gate separate from semantic pass acceptance.
-
-## Read order
-
-Before the remaining Pass E proof/re-review, read in this order:
-
-1. root `AGENTS.md`;
-2. `.agents/skills/verification/SKILL.md`;
-3. `.agents/skills/unit-testing/SKILL.md`;
-4. `.agents/skills/mutation-testing/SKILL.md`;
-5. `.agents/skills/project-review/SKILL.md` when reviewing;
-6. `docs/testing/architecture.md`;
-7. `docs/testing/verify-redesign-implementation-preflight.md`;
-8. `docs/testing/migration-plan.md`;
-9. `docs/testing/verify-redesign-pass-e-implementation.md`;
-10. `docs/testing/verify-redesign-pass-e-agent-task.md` for the original Pass E implementation boundary;
-11. `docs/testing/verify-redesign-pass-e-correction.md` for the closed first correction boundary;
-12. active `config/REVIEW.md`;
-13. `docs/testing/verify-redesign-pass-e-proof-correction.md` for the final proof-ownership correction;
-14. current `stryker.config.mjs`, `scripts/lib/mutationTargets.ts`, `scripts/lib/mutationTargets.test.ts`, `vitest.config.ts`, `tsconfig.node.json`, `tsconfig.storybook.json`, `tsconfig.scripts.json`, and `scripts/typeCheck.mjs`.
-
-Pass D implementation/correction records are historical accepted source for invariants and should be consulted only when Pass E touches an adjacent boundary.
-
-## Active Pass E review
-
-The complete Pass E result was previously re-reviewed from baseline:
-
-`75277c067cca6aba30f2e0698056e4f84f48fb69`
-
-through first-correction HEAD:
-
-`b633937801e78f45bf8fa6d577530dc1c26f025a`
-
-The previous `scripts/REVIEW.md` findings are resolved and that review document has been removed.
-
-The durable active review source remains:
-
-`config/REVIEW.md`
-
-Its required implementation is now present at:
-
-`a2b9a1ebdfcbce5c40cd158f553d0876cbce2a71`
-
-The commit deletes only the redundant `config/strykerConfig.test.ts` proof. No TypeScript project, registry, Stryker config, production code, or verifier implementation was changed.
-
-The remaining work is proof, not implementation:
-
-- `scripts/lib/mutationTargets.test.ts` must remain green as the durable deterministic mutation-registry proof;
-- one real verifier-managed Stryker/config-load execution must prove that `stryker.config.mjs` still consumes the TypeScript registry and runs the exact four-source inventory;
-- focused static verification must show repository type-check green with the previous project-file-list/declaration failure gone.
-
-If a fresh sandbox still presents the deleted file because its read-only mount is stale, do not work around the mount. Recreate/resync the environment from the current branch HEAD so the mounted tree reflects the committed deletion.
-
-This is the second and final local correction opportunity for Pass E. If the next full re-review exposes ownership drift, mixed responsibility, or workaround growth, stop correction loops and revisit Pass E architecture.
-
-## Pass E architecture summary
+## Accepted Pass E state
 
 ### Unit
 
-- Vitest remains the only unit dependency/affected engine.
-- Normal git scopes use native `vitest --changed <existing resolved diff base>` for ordinary source/test-support impact.
-- Explicit source/support files use native `vitest related --run`.
-- Direct unit tests run directly.
-- Explicit mixed direct-test + source scopes may use two private unit leaves instead of widening to full or adding a wrapper.
-- Deterministic snapshot ownership is preserved in default Git scope; removed/renamed/unresolvable snapshot relations widen safely.
-- Relevant root TypeScript transform configuration is global unit impact.
-- Zero related/affected tests is visible fail-closed evidence through the existing narrow verifier result-classification boundary.
-- Do not add dependency-cruiser or another unit graph.
+- Vitest is the only unit affected/dependency engine.
+- Normal Git source/test-support impact uses native `vitest --changed` with the already-resolved diff base.
+- Explicit source/test-support impact uses native `vitest related --run`.
+- Direct tests run directly; mixed explicit direct + related input may use private `unit-tests` and `unit-related` leaves, both owned by public `unit`.
+- Deterministic standard snapshot ownership is supported; removed, renamed, unresolved, and global-impact cases widen safely to full unit.
+- Relevant root `tsconfig*.json` is global unit impact.
+- Native zero-test output is fail-closed through the narrow verifier result-classification boundary; `[Vue warn]` remains blocking for both unit leaves.
+- No unit dependency graph, import parser, dependency-cruiser use, or `passWithNoTests` workaround exists.
 
 ### Mutation
 
-- One explicit `MutationTarget` registry is the only durable mutation ownership source.
-- The accepted registry contains exactly the four confirmed deterministic high-risk owners in `verify-redesign-pass-e-implementation.md`.
-- Focused/default mutation selects only exact registered source/test relations; mutation infrastructure changes select all registered targets.
-- `stryker.config.mjs` derives its complete mutate inventory from the same TypeScript registry.
-- Structural registry invalidity fails before Stryker in focused/default and literal full mode.
-- `--full` executes every registered target with no affected narrowing only after registry validity is established.
-- `scripts/lib/mutationTargets.test.ts` owns durable deterministic registry proof; real Stryker execution owns native config-load integration proof.
-- No separate `config/strykerConfig.test.ts` proof exists or is required.
+- `scripts/lib/mutationTargets.ts` is the single durable mutation ownership source.
+- The registry contains exactly the four accepted deterministic high-risk targets from `verify-redesign-pass-e-implementation.md`.
+- Focused/default selection uses only exact registered source/test relations; mutation infrastructure changes select the full registered inventory.
+- Registry invalidity fails before Stryker in focused/default and literal full mode.
+- `stryker.config.mjs` imports the TypeScript registry directly and derives its complete `mutate` inventory from it.
+- Literal `--full` uses bare Stryker only after registry validation; focused execution narrows only to selected registered sources.
+- `scripts/lib/mutationTargets.test.ts` owns deterministic registry/selection proof; real Stryker execution owns native config-load integration proof.
+- No adjacency fallback, duplicate registry, loader/transpilation layer, declaration shim, or extra config unit test exists.
 
 ### Performance
 
-- There is currently no durable `*.performance.spec.ts` budget owner.
-- Keep the public `performance` type valid but empty.
-- Do not invent a runner/registry/threshold in Pass E.
+- `performance` remains one of the eight valid public verification types.
+- The persistent performance inventory is intentionally empty because no durable measurable budget currently exists.
+- No placeholder runner, registry, or threshold was introduced.
 
-## Frozen earlier-pass boundaries
+## Frozen accepted boundaries
 
 Do not reopen without new repository evidence:
 
-- canonical eight public verification types;
-- literal `--full` semantics;
+- exactly eight public verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`;
+- literal `--full` semantics and invalid `--full --only` / `--full --files` combinations;
 - owner-local behavior/visual/browser-integration taxonomy;
-- structural E2E owner model;
-- filesystem/Playwright E2E inventory equality;
-- dependency-cruiser as the only E2E production graph;
-- container-only Playwright execution;
-- current Playwright project applicability and production-artifact routing;
+- structural page/widget E2E ownership and filesystem/Playwright inventory equality;
+- dependency-cruiser as the only E2E production reachability graph;
+- container-only Playwright execution and current project applicability;
+- production-artifact routing and existing release/fresh-container semantics;
 - top-level verify and expensive-command lock ownership;
-- current status/resume/logging/timeout behavior;
-- corrected Pass E unit zero-match, snapshot/tsconfig classification, and mutation-validation behavior.
+- existing status/resume/logging/timeout behavior;
+- Pass E unit changed/related, zero-match, snapshot/global fallback, mutation registry/validation, and empty performance semantics.
+
+## Pass F boundary
+
+Pass F is CI/public-compatibility cleanup only. The architecture is already resolved by `docs/testing/verify-redesign-implementation-preflight.md` and `docs/testing/migration-plan.md`.
+
+Required final state:
+
+- repository workflows invoke public verification types rather than removed/private compatibility labels;
+- `develop -> main` release verification uses canonical literal `pnpm verify --full`;
+- remove `pnpm verify:release` only after repository consumer search proves it has no remaining required consumer;
+- remove stale compatibility docs/comments that describe already-migrated mechanisms as current;
+- retain internal release-named runners/files where they still own real built-artifact, service-worker, fresh-container, or cross-engine execution constraints;
+- do not rename internals for aesthetics and do not change product/test behavior.
+
+Pass F proof must include repository consumer search for removed compatibility surfaces, workflow/public-command inspection, verifier CLI contract proof, and exact-head GitHub CI after publication.
+
+## Read order for Pass F
+
+1. root `AGENTS.md`;
+2. `.agents/skills/verification/SKILL.md`;
+3. `.agents/skills/implementation-preflight/SKILL.md` when implementation edits are non-trivial;
+4. `.agents/skills/project-review/SKILL.md` when reviewing;
+5. `docs/testing/architecture.md`;
+6. `docs/testing/verify-redesign-implementation-preflight.md`;
+7. `docs/testing/migration-plan.md`;
+8. this handoff;
+9. current `.github/workflows/verify.yml`, `.github/workflows/release.yml`, `package.json`, `scripts/verify.ts`, and repository references to `verify:release` or removed low-level `--only` labels.
 
 ## Next workflow
 
-1. Start/resync the coding environment from the current branch HEAD; do not attempt to rewrite the read-only `config/` mount.
-2. Run only the remaining focused proof required by `docs/testing/verify-redesign-pass-e-proof-correction.md`; no further code change is expected.
-3. Architect re-reviews the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the final implementation HEAD, not only the deletion commit.
-4. Remove `config/REVIEW.md` only when the active finding is proven resolved and no new blocker/major issue appears.
-5. If clean, mark Pass E architect-accepted and then resolve/execute Pass F.
-6. Do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
+1. Resolve the exact Pass F implementation delta from current repository consumers; choose the minimum complete cleanup.
+2. Prepare a coding-agent task only after that current consumer inventory is inspected and the final state is explicit.
+3. Review the complete resulting PR, not only the Pass F patch.
+4. Keep PR #218 draft until Pass F is complete and full semantic review is clean.
+5. Final merge readiness requires exact-head GitHub CI green on the final resulting PR head; ordinary merge into `develop` is squash merge.
