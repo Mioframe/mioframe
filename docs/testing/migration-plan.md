@@ -13,18 +13,23 @@ Historical pass status remains:
 - **Pass C:** architect-accepted;
 - **Pass D:** architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
 - **Pass E:** architect-accepted on reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
-- **Pass F:** previously accepted on the bounded Pass F scope.
+- **Pass F:** previously accepted on its bounded public-compatibility scope.
 
-A later complete resulting-PR review of head `f5927142e724b7eb3787f751448cf5a5b2717e5c` found current implementation gaps that supersede the earlier final-completion claim.
+A later complete resulting-PR review of head `f5927142e724b7eb3787f751448cf5a5b2717e5c` found affected/execution ownership gaps that supersede the earlier final-completion claim.
+
+The first scripts-owned correction was implemented at `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`. Architect re-review accepted several individual fixes but did **not** accept the scripts correction as complete.
 
 Active review state:
 
-- `scripts/REVIEW.md` — active scripts-owned blockers/issues;
-- `.github/workflows/REVIEW.md` — active downstream browser-integration CI blocker.
+- `scripts/REVIEW.md` — 3 blockers and 2 major issues remain;
+- `.github/workflows/REVIEW.md` — downstream browser-integration CI blocker, intentionally deferred until the scripts review is clean.
 
-Active correction architecture and coding task:
+Active correction architecture:
 
-- `docs/testing/verify-redesign-final-review-correction.md`;
+- `docs/testing/verify-redesign-final-review-correction.md`.
+
+The first correction assignment is recorded in:
+
 - `docs/testing/verify-redesign-final-review-agent-task.md`.
 
 ## Current executable public contract
@@ -59,17 +64,17 @@ pnpm verify --fix-only
 
 The migration is complete only when all of the following are true in the current repository:
 
-- **Static:** deterministic release/build/config leaves participate in normal affected `static` ownership when relevant; they are not reachable only through `--full`.
+- **Static:** deterministic release/build/config leaves participate in normal affected `static` ownership for every production/build input they can actually prove, not only a narrow subset and not only `--full`.
 - **Unit:** Vitest remains the only affected/dependency engine, with the already accepted safe fallback and zero-match behavior.
 - **Behavior:** owner-local `*.behavior.spec.ts` remains the isolated UI interaction proof.
 - **Visual:** owner-local `*.visual.spec.ts` and owner-local baselines remain the visual proof.
-- **Browser integration:** generic owner-local proof and exceptional managed-update/artifact proof have disjoint truthful runners, complete affected support ownership, and fail-closed special execution inventory.
+- **Browser integration:** generic owner-local proof and exceptional managed-update/artifact proof have disjoint truthful runners, complete affected support ownership, and fail-closed special execution inventory in focused, full, and direct special-runner execution.
 - **Performance:** the public type remains valid with an intentionally empty persistent inventory.
-- **Mutation:** the explicit four-target registry remains unchanged, and mutation toolchain/lockfile impact selects the complete registry when relevant.
+- **Mutation:** the explicit four-target registry remains unchanged; package/lock/config impact, including removed/renamed infrastructure identity, cannot silently disappear before mutation planning.
 - **E2E:** ordinary page/widget ownership remains structural; productionArtifact special execution membership is complete/fail-closed; shared release support cannot silently skip dependent proof.
-- **Planning cost:** expensive E2E Playwright inventory/dependency-graph acquisition occurs only after cheap relevance proves it is needed, except literal `--full` complete validation.
-- **Tooling:** new/task-touched verifier Node entry points follow the repository TypeScript-first rule unless a concrete runtime exception exists.
-- **CI:** develop verification runs public `browser-integration` and aggregate `verification` requires its success.
+- **Planning cost:** `--fix-only` finishes its static fixer plan without resolving non-static planners, while default E2E Playwright/dependency-graph acquisition happens only after cheap relevance proves it is needed except for literal `--full` validation.
+- **Tooling:** the three task-touched verifier entry points remain native TypeScript; unrelated legacy `.mjs` tooling is not mass-converted.
+- **CI:** after scripts semantics are accepted, develop verification runs public `browser-integration` and aggregate `verification` requires its success.
 
 ## Compatibility already removed and not to be restored
 
@@ -94,7 +99,7 @@ The correction must preserve:
 - top-level single-run verify locking and expensive-command locking;
 - container-only Playwright execution for verifier-managed browser proof;
 - E2E project applicability and release/fresh-container semantics;
-- status/resume/logging/timeout/profile/base/fix behavior unless the active correction explicitly requires a planning-order change without changing those semantics;
+- status/resume/logging/timeout/profile/base/fix behavior, except the explicitly required planner-order cleanup that leaves fixer semantics unchanged;
 - fail-closed structural validation and safe widening under uncertain affected ownership;
 - known flaky behavior as failed proof, not accepted evidence.
 
@@ -102,7 +107,7 @@ The correction must preserve:
 
 The migration may be marked complete again only after:
 
-1. the scripts-owned correction task is implemented and `scripts/REVIEW.md` is clean;
+1. every current `scripts/REVIEW.md` blocker/major is fixed and architect re-review is clean;
 2. the downstream `.github/workflows/REVIEW.md` browser-integration CI blocker is fixed;
 3. the architect re-reviews the complete resulting PR against `docs/testing/architecture.md`;
 4. active review artifacts are removed only after their findings are actually resolved;
