@@ -105,16 +105,16 @@ Mutation ownership is complete and accepted:
 
 ## Remaining public-contract difference
 
-| Concern | Current executable state | Durable target / remaining pass |
-| --- | --- | --- |
-| public types | canonical eight types | complete |
-| behavior/visual/browser-integration taxonomy | target suffixes/owners | complete |
-| E2E ownership/impact | structural owners + containerized metadata + reverse graph | complete |
-| unit impact | native Vitest changed/related + safe fallback | complete |
-| mutation ownership | explicit validated four-target registry | complete |
-| performance | valid type, empty persistent inventory | complete for current repository state |
-| release compatibility | compatibility alias/comments/internal release-named execution may remain | Pass F remove only obsolete public compatibility |
-| CI consumers | verify/release workflows may still contain transitional commands | Pass F canonical public-command cleanup |
+| Concern                                      | Current executable state                                                 | Durable target / remaining pass                  |
+| -------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------ |
+| public types                                 | canonical eight types                                                    | complete                                         |
+| behavior/visual/browser-integration taxonomy | target suffixes/owners                                                   | complete                                         |
+| E2E ownership/impact                         | structural owners + containerized metadata + reverse graph               | complete                                         |
+| unit impact                                  | native Vitest changed/related + safe fallback                            | complete                                         |
+| mutation ownership                           | explicit validated four-target registry                                  | complete                                         |
+| performance                                  | valid type, empty persistent inventory                                   | complete for current repository state            |
+| release compatibility                        | compatibility alias/comments/internal release-named execution may remain | Pass F remove only obsolete public compatibility |
+| CI consumers                                 | verify/release workflows may still contain transitional commands         | Pass F canonical public-command cleanup          |
 
 ## Pass F — CI and compatibility removal
 
