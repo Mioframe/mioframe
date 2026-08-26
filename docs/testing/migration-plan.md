@@ -28,7 +28,11 @@ Active correction architecture:
 
 - `docs/testing/verify-redesign-final-review-correction.md`.
 
-The first correction assignment is recorded in:
+Current coding-agent assignment:
+
+- `docs/testing/verify-redesign-final-review-correction-02-agent-task.md`.
+
+The prior first-correction assignment remains historical context:
 
 - `docs/testing/verify-redesign-final-review-agent-task.md`.
 
@@ -64,15 +68,15 @@ pnpm verify --fix-only
 
 The migration is complete only when all of the following are true in the current repository:
 
-- **Static:** deterministic release/build/config leaves participate in normal affected `static` ownership for every production/build input they can actually prove, not only a narrow subset and not only `--full`.
+- **Static:** deterministic release/build/config leaves participate in normal affected `static` ownership for every production/build input they can actually prove; ordinary Vite production/artifact inputs select `build` + `artifact-static`, and controller/appUpdate production impact additionally selects `managed-updates-static`.
 - **Unit:** Vitest remains the only affected/dependency engine, with the already accepted safe fallback and zero-match behavior.
 - **Behavior:** owner-local `*.behavior.spec.ts` remains the isolated UI interaction proof.
 - **Visual:** owner-local `*.visual.spec.ts` and owner-local baselines remain the visual proof.
-- **Browser integration:** generic owner-local proof and exceptional managed-update/artifact proof have disjoint truthful runners, complete affected support ownership, and fail-closed special execution inventory in focused, full, and direct special-runner execution.
+- **Browser integration:** generic owner-local proof and exceptional managed-update/artifact proof have disjoint truthful runners, complete affected support ownership, one central exceptional membership source, and fail-closed special execution inventory in focused, full, and direct special-runner execution.
 - **Performance:** the public type remains valid with an intentionally empty persistent inventory.
 - **Mutation:** the explicit four-target registry remains unchanged; package/lock/config impact, including removed/renamed infrastructure identity, cannot silently disappear before mutation planning.
-- **E2E:** ordinary page/widget ownership remains structural; productionArtifact special execution membership is complete/fail-closed; shared release support cannot silently skip dependent proof.
-- **Planning cost:** `--fix-only` finishes its static fixer plan without resolving non-static planners, while default E2E Playwright/dependency-graph acquisition happens only after cheap relevance proves it is needed except for literal `--full` validation.
+- **E2E:** ordinary page/widget ownership remains structural; productionArtifact special execution membership is complete/fail-closed; shared release execution support cannot silently skip dependent proof.
+- **Planning cost:** `--fix-only` returns its fixer plan before any proof planner/validator resolves, while default E2E Playwright/dependency-graph acquisition happens only after cheap relevance proves it is needed except for literal `--full` validation.
 - **Tooling:** the three task-touched verifier entry points remain native TypeScript; unrelated legacy `.mjs` tooling is not mass-converted.
 - **CI:** after scripts semantics are accepted, develop verification runs public `browser-integration` and aggregate `verification` requires its success.
 
@@ -103,11 +107,13 @@ The correction must preserve:
 - fail-closed structural validation and safe widening under uncertain affected ownership;
 - known flaky behavior as failed proof, not accepted evidence.
 
+This is the second scripts correction round under the current architecture. If architect re-review still finds ownership drift, mixed responsibilities, unresolved scenarios, or growing workaround logic, return to the architecture decision instead of issuing another incremental scripts patch.
+
 ## Completion gate
 
 The migration may be marked complete again only after:
 
-1. every current `scripts/REVIEW.md` blocker/major is fixed and architect re-review is clean;
+1. the current second scripts correction task is implemented and every `scripts/REVIEW.md` blocker/major is resolved in architect re-review;
 2. the downstream `.github/workflows/REVIEW.md` browser-integration CI blocker is fixed;
 3. the architect re-reviews the complete resulting PR against `docs/testing/architecture.md`;
 4. active review artifacts are removed only after their findings are actually resolved;
