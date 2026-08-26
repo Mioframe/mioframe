@@ -235,16 +235,17 @@ describe('EditableInlineValue', () => {
     expect(wrapper.emitted('cancelEdit')).toHaveLength(1);
   });
 
-  it('commits an active editor on unmount unless cancellation was requested', async () => {
-    const committed = mountEditor();
-    committed.unmount();
-    expect(committed.emitted('commitEdit')).toEqual([[]]);
+  it('does not resolve an active editor on unmount', async () => {
+    const unmounted = mountEditor();
+    unmounted.unmount();
+    expect(unmounted.emitted('commitEdit')).toBeUndefined();
+    expect(unmounted.emitted('cancelEdit')).toBeUndefined();
 
-    const cancelled = mountEditor();
-    cancelled.findComponent({ name: 'MDOverlayTooltip' }).vm.$emit('update:show', false);
-    await cancelled.vm.$nextTick();
-    cancelled.unmount();
-    expect(cancelled.emitted('commitEdit')).toBeUndefined();
+    const closed = mountEditor();
+    await closed.find('[data-testid="tooltip-close"]').trigger('click');
+    expect(closed.emitted('cancelEdit')).toEqual([[]]);
+    closed.unmount();
+    expect(closed.emitted('commitEdit')).toBeUndefined();
   });
 
   it('uses the stored-value boolean path with checkbox semantics', async () => {

@@ -1192,7 +1192,11 @@ test('preserves an escaped draft across vertical and horizontal virtual eviction
   await root.evaluate((rootElement) => {
     rootElement.scrollTop = 0;
   });
-  await expect(firstRow).toContainText(verticalDraft);
+  await expect(labelField).toBeVisible();
+  await expect(labelField).toHaveValue(verticalDraft);
+  await labelField.press('Escape');
+  await expect(labelField).toHaveCount(0);
+  await expect(firstRow).toContainText(fixture.firstLabel);
 
   const horizontalDraft = createUniqueName('horizontal eviction draft');
   await labelButton().click();
@@ -1209,7 +1213,11 @@ test('preserves an escaped draft across vertical and horizontal virtual eviction
   await expect(
     table.getByRole('columnheader', { name: fixture.labelPropertyName, exact: true }),
   ).toBeVisible();
-  await expect(firstRow).toContainText(horizontalDraft);
+  await expect(labelField).toBeVisible();
+  await expect(labelField).toHaveValue(horizontalDraft);
+  await labelField.press('Escape');
+  await expect(labelField).toHaveCount(0);
+  await expect(firstRow).toContainText(fixture.firstLabel);
 });
 
 test('resolves an edit before another-cell activation and explicit view switching', async ({

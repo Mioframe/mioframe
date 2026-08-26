@@ -15,7 +15,7 @@ import { zodIs } from '@shared/lib/validateZodScheme';
 import { zodStringProperty } from '@entity/databaseString';
 import { isUndefined } from 'es-toolkit';
 import { useElementSize } from '@vueuse/core';
-import { computed, onBeforeUnmount, ref, toRefs, useTemplateRef } from 'vue';
+import { computed, toRefs, useTemplateRef } from 'vue';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import ValueInline from './ValueInline.vue';
 
@@ -50,7 +50,6 @@ const isEditorOpen = computed(
   () => props.editSession !== undefined && !props.editSession.resolving,
 );
 const isInteractionEnabled = computed(() => !props.editSession?.resolving);
-const isCancellationRequested = ref(false);
 
 const editorValue = computed<unknown>({
   get: () => props.editSession?.draft ?? value.value,
@@ -85,7 +84,6 @@ const triggerBooleanToggle = async () => {
 
 const requestEditor = () => {
   if (isInteractionEnabled.value && !isEditorOpen.value) {
-    isCancellationRequested.value = false;
     emit('requestEdit', value.value);
   }
 };
@@ -107,7 +105,6 @@ const commitEditor = () => {
 
 const cancelEditor = () => {
   if (isEditorOpen.value) {
-    isCancellationRequested.value = true;
     emit('cancelEdit');
   }
 };
@@ -134,15 +131,6 @@ const onRootKeydown = async (event: KeyboardEvent) => {
   event.preventDefault();
   await activateInlineValue();
 };
-
-onBeforeUnmount(() => {
-  // A virtual range update can unmount this cell without a component-level close event. The
-  // feature-owned session already holds its draft, so resolving here uses the same normal commit
-  // path instead of silently discarding it.
-  if (!isCancellationRequested.value && isEditorOpen.value) {
-    commitEditor();
-  }
-});
 
 const inlineEl = useTemplateRef<HTMLElement>('inlineEl');
 const { width: inlineWidth } = useElementSize(inlineEl);
