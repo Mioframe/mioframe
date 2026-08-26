@@ -1,6 +1,6 @@
 # Database virtualization
 
-Status: **PR #217 virtualization implementation, Database widget ownership cleanup, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. The remaining automatic merge gate is exact-head GitHub CI on the final repository head.**
+Status: **PR #217 virtualization implementation, Database widget ownership cleanup, inline-edit virtual-eviction lifecycle, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. The remaining automatic merge gate is exact-head GitHub CI on the final repository head.**
 
 This is the architecture source of truth for PR #217. Temporary implementation handoff, preflight, diagnostic, review, and stage-result artifacts are intentionally not retained after closure. Retained measurement evidence and deferred performance scope are documented separately.
 
@@ -96,6 +96,19 @@ Accepted composition contract:
 - root-to-surface measurement lifecycle and the accepted formulas live in the widget-local `useDatabaseViewSurfaceGeometry` composable;
 - no entity/shared API expansion, second geometry state/cache/observer, or virtualization redesign is part of this contract.
 
+## Inline-edit virtual eviction — accepted
+
+`databaseInlineValueEdit` owns one lifted inline-edit session and draft across virtual remounts. A mounted `EditableInlineValue` is only an interaction surface; generic or virtual child unmount is not a persistence or cancellation boundary and emits neither `commitEdit` nor `cancelEdit`.
+
+Accepted resolution boundaries remain explicit:
+
+- Enter and outside interaction commit through the existing feature-owned resolution path;
+- Escape and normal editor close cancel;
+- another-cell activation, explicit view changes, and configuration transitions resolve through the existing widget/feature arbitration;
+- no teardown flag, unmount discriminator, virtualizer hook, cache, or second lifecycle owner exists.
+
+The product virtualization scenario proves both vertical and horizontal eviction by remounting the editor with the exact lifted draft still active, then cancelling and observing the original persisted value. This distinguishes real lifted-session survival from eviction-triggered persistence.
+
 ## Relation selected-view proof — resolved
 
 The historical Chromium flake in `uses default relation view inline and switches to a selected relation view` was investigated rather than treated as a production defect by assumption.
@@ -134,12 +147,14 @@ No additional shared `MDTable` correction is required.
 
 ## Verification state
 
-Accepted coding-agent evidence after the final Database widget correction:
+Accepted coding-agent evidence after the final Database corrections:
 
-- focused Database application E2E: 23/23 passed without retries;
-- cumulative branch gate `pnpm verify --base origin/develop`: passed all selected checks, including 83 application E2E tests;
-- focused format, Oxlint, ESLint, and type-check feedback for the final async-forwarding correction: passed;
-- final async-forwarding correction changed only `DatabaseViewWidget.vue` and preserves the existing property-mutation Promise chain.
+- focused Database application E2E: 23/23 passed without retries for the earlier ownership pass;
+- cumulative branch gate `pnpm verify --base origin/develop`: passed all selected checks, including 83 application E2E tests, after the earlier ownership pass;
+- focused format, Oxlint, ESLint, and type-check feedback for the async-forwarding correction: passed;
+- final async-forwarding correction changed only `DatabaseViewWidget.vue` and preserves the existing property-mutation Promise chain;
+- relation-selection boundary focused unit/E2E feedback and cumulative branch gate: passed;
+- inline-edit eviction focused unit verification, focused mapped E2E, and cumulative branch gate: passed with no reported retry/flaky classification.
 
 Operator visual inspection of the Database border/corner/sticky presentation is accepted.
 
@@ -158,7 +173,7 @@ PR #217 may merge when:
 1. exact-head GitHub CI on the final head is green without retry/flaky classification;
 2. the final merge decision confirms no new blocker was introduced after the architect-owned closing documentation cleanup.
 
-No additional Database ownership, relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
+No additional Database ownership, inline-edit eviction, relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
 
 ## Forbidden before merge
 
@@ -168,6 +183,7 @@ No additional Database ownership, relation-readiness, visual-reinspection, or pe
 - changing expected relation row values/order;
 - duplicate preload/query paths;
 - restoring duplicate top-level Database property/view read ownership;
+- restoring generic/virtual inline-cell unmount as a commit or cancel trigger;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
