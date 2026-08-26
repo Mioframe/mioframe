@@ -1,35 +1,27 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` is the durable target. This file is intentionally operational: it records the current executable migration state, constraints, and remaining capability transition. Detailed older states remain in Git history. The resolved overall pass order and implementation constraints are owned by `docs/testing/verify-redesign-implementation-preflight.md`.
+`docs/testing/architecture.md` is the durable testing and verification contract. This file records only the current executable migration state; detailed intermediate pass history remains in the `verify-redesign-*` records and Git history.
 
-## Migration constraints
+## Status
 
-- Every intermediate state remains safe; do not delete an old mechanism before its replacement is executable and proven in the same resulting tree.
-- Preserve or strengthen proof before narrowing execution.
-- Unknown relevant impact widens the owning verification type; structural invalidity fails verification.
-- `verify` must not depend on agent prose, `TEST IMPACT`, uncommitted reports, or business-semantics inference.
-- Do not create parallel durable ownership models. Compatibility is temporary and removed only after consumer inventory is empty.
-- Preserve top-level verify locking, expensive-command locking, Playwright container boundaries, timeouts, logging, status/resume, profile/base handling, and fix semantics unless an accepted contract explicitly changes them.
-- Do not start a risky implementation pass while its architecture or active review findings are unresolved.
+On `architecture/verify-redesign` / PR #218, the verify redesign is implementation-complete and architect-accepted through all passes:
 
-## Current branch state
+- **Pass A:** architect-accepted;
+- **Pass B:** architect-accepted;
+- **Pass C:** architect-accepted;
+- **Pass D:** architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
+- **Pass E:** architect-accepted on reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
+- **Pass F:** architect-accepted after full Pass F re-review and complete resulting-PR review on semantic head `853d3f8f370b781b9f74071fd383cee588f18e55`.
 
-On `architecture/verify-redesign` / draft PR #218:
+The first Pass F review found one documentation-only blocker in `docs/release.md`; the architect corrected it before final acceptance. There is no active `REVIEW.md` for this redesign.
 
-- **Pass A:** completed and architect-accepted;
-- **Pass B:** completed and architect-accepted;
-- **Pass C:** completed and architect-accepted;
-- **Pass D:** completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- **Pass E:** completed and architect-accepted on reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
-- **Pass F:** ready and is the only remaining redesign pass.
+GitHub Actions run `32970768337` / run number `4413` completed successfully on exact semantic head `853d3f8f370b781b9f74071fd383cee588f18e55`, including `static`, `unit`, real `mutation`, application E2E, behavior, visual, aggregate verification, release-version, final `verify`, and preview deployment.
 
-Pass E exact-head GitHub Actions run `32957373587` completed successfully, including verifier-managed `static`, `unit`, and real `mutation` steps plus browser/E2E lanes and aggregate gates. Pass-level semantic acceptance and final PR exact-head CI remain separate gates: architect-only documentation commits after the reviewed implementation head will trigger a newer run.
+Architect-only completion documentation after that reviewed semantic head does not reopen the implementation; the final resulting documentation head still requires its own exact-head CI before merge.
 
-There is currently no active owner-local `REVIEW.md` for Pass A-E.
+## Current executable public contract
 
-## Current executable verification types
-
-Public `--only` exposes exactly:
+The public verification types are exactly:
 
 - `static`;
 - `unit`;
@@ -40,134 +32,66 @@ Public `--only` exposes exactly:
 - `mutation`;
 - `e2e`.
 
-Private leaf labels remain implementation details for planning, execution, locks, logs, weights, timeouts, and diagnostics.
+Supported public entry points include:
 
-## Accepted target state through Pass E
+```text
+pnpm verify
+pnpm verify --only <type>
+pnpm verify --files <paths...>
+pnpm verify --only <type> --files <paths...>
+pnpm verify --full
+pnpm verify:status
+pnpm verify:resume
+pnpm verify --fix-only
+```
 
-### Static
+`--only` accepts verification types, never private planner leaves. `--full` runs every current type inventory with no affected narrowing and rejects narrowing combinations such as `--full --only` and `--full --files`.
 
-Static proof is classified under public `static`. Storybook buildability remains static proof; release/version/build/artifact invariants that are static remain internal static leaves.
+The former public `verify:release` compatibility alias is removed. The `develop -> main` release workflow uses literal `pnpm verify --full --verbose`.
 
-### Unit
+## Final ownership state
 
-Unit affected ownership is complete and accepted:
+- **Static:** formatting, linting, type-checking, Storybook buildability, release/version/config/build invariants, and other deterministic static proof remain internal leaves owned by public `static`.
+- **Unit:** Vitest is the only affected/dependency engine; changed/related selection uses native Vitest behavior with deterministic snapshot handling and safe full-unit fallback. Zero-match affected/related execution fails visibly.
+- **Behavior:** ordinary isolated browser interaction proof uses truthful owner-local `*.behavior.spec.ts`.
+- **Visual:** persistent visual proof uses owner-local `*.visual.spec.ts` plus owner-local baselines.
+- **Browser integration:** owner-local `*.browser-integration.spec.ts` covers browser/runtime boundaries. Managed-update and production-artifact runners retain their release/container infrastructure where required by real runtime semantics.
+- **Performance:** the public type is valid; the persistent inventory is intentionally empty until a real measurable budget exists.
+- **Mutation:** `scripts/lib/mutationTargets.ts` is the single explicit validated registry for the four accepted targets; `stryker.config.mjs` derives its complete mutate inventory directly from it.
+- **E2E:** application E2E assertions live under structural page/widget owners; production source impact uses the dependency-cruiser reverse graph; filesystem target inventory must equal Playwright-collected target inventory before selection.
 
-- direct changed unit tests select themselves;
-- deterministic standard snapshot ownership selects the owning unit test where applicable;
-- normal Git source/test-support impact delegates to native Vitest `--changed` using the already-resolved diff base;
-- explicit source/test-support impact delegates to native `vitest related --run`;
-- removed/moved/global/unresolvable relations widen safely to full unit;
-- zero-match related/affected execution is visible fail-closed evidence;
-- no second unit dependency graph exists.
+## Compatibility removed
 
-### Behavior
-
-Complete and target-owned. Ordinary isolated browser behavior uses truthful owner-local `*.behavior.spec.ts`; legacy `*.browser.spec.ts` discovery and ordinary central Storybook assertion ownership are removed.
-
-### Visual
-
-Complete and target-owned. Persistent visual proof uses owner-local `*.visual.spec.ts` plus owner-local baselines. Ordinary central visual assertion discovery is removed. Shared Storybook visual support remains support only.
-
-### Browser integration
-
-Complete and target-owned. `*.browser-integration.spec.ts` is owner-local. Managed-update/artifact runtime proof retains release-named Playwright/container execution infrastructure only where it preserves required built-artifact, fresh-container, service-worker, or cross-engine semantics. Generic browser integration uses the same container boundary through its private leaf.
-
-### Application E2E
-
-Complete and accepted:
-
-- target assertions exist only under `tests/e2e/pages/<Owner>/**/*.e2e.spec.ts` and `tests/e2e/widgets/<Owner>/**/*.e2e.spec.ts`;
-- primary owner is path-derived and validated against current production owner directories;
-- additional ownership is exceptional Playwright `_mioframe-owner` annotation metadata; the accepted current inventory requires zero such annotations;
-- changed production source uses one dependency-cruiser reverse graph to reach widget/page owners;
-- project applicability remains an independent `desktop | mobile | both` registry;
-- ordinary E2E excludes `productionArtifact/`; the three production-artifact scenarios retain their required release/fresh-container execution;
-- the structurally valid filesystem target E2E set must equal the union of Playwright-collected target paths before selection;
-- missing, unexpected, duplicate, malformed, or stale inventory/owner state fails structurally;
-- `E2E_SCENARIO_SCOPES` and production source-prefix -> spec mappings are removed.
-
-### Mutation
-
-Mutation ownership is complete and accepted:
-
-- `scripts/lib/mutationTargets.ts` is the single explicit validated ownership registry;
-- the registry contains exactly the four deterministic high-risk source/test pairs recorded in `docs/testing/verify-redesign-pass-e-implementation.md`;
-- default/focused mutation uses exact registered source/test relations only;
-- mutation-infrastructure changes select all registered targets;
-- registry invalidity fails before Stryker in focused/default and literal full mode;
-- `stryker.config.mjs` imports the TypeScript registry directly and derives its complete `mutate` list from it;
-- literal `--full` executes all registered targets without affected narrowing;
-- adjacency-derived mutation ownership, duplicate registries, and loader/transpilation compatibility layers are absent.
-
-### Performance
-
-`performance` is a valid public type, but there is no persistent `*.performance.spec.ts` target with an exact durable budget. The persistent inventory is intentionally empty. No placeholder runner, registry, or threshold exists.
-
-## Remaining public-contract difference
-
-| Concern                                      | Current executable state                                                 | Durable target / remaining pass                  |
-| -------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------ |
-| public types                                 | canonical eight types                                                    | complete                                         |
-| behavior/visual/browser-integration taxonomy | target suffixes/owners                                                   | complete                                         |
-| E2E ownership/impact                         | structural owners + containerized metadata + reverse graph               | complete                                         |
-| unit impact                                  | native Vitest changed/related + safe fallback                            | complete                                         |
-| mutation ownership                           | explicit validated four-target registry                                  | complete                                         |
-| performance                                  | valid type, empty persistent inventory                                   | complete for current repository state            |
-| release compatibility                        | compatibility alias/comments/internal release-named execution may remain | Pass F remove only obsolete public compatibility |
-| CI consumers                                 | verify/release workflows may still contain transitional commands         | Pass F canonical public-command cleanup          |
-
-## Pass F — CI and compatibility removal
-
-Status: **ready; implementation not yet started.**
-
-Before editing, inspect the current repository consumer inventory. Then apply only the cleanup proven necessary by that inventory.
-
-Required final state:
-
-- repository workflows invoke public verification types rather than removed/private low-level labels;
-- the `develop -> main` release gate uses canonical literal `pnpm verify --full`;
-- `pnpm verify:release` is removed only after repository search proves there is no remaining required consumer;
-- stale compatibility docs/comments that describe migrated mechanisms as current are removed or corrected;
-- internal release-named files/runners remain when they still own real built-artifact, service-worker, fresh-container, or cross-engine execution constraints;
-- no internal filename/runner is renamed merely for aesthetics;
-- no product behavior, test meaning, accepted ownership boundary, lock, container boundary, timeout, logging, or status/resume behavior changes.
-
-Pass F proof must include:
-
-- repository search showing no public use of removed low-level `--only` labels;
-- repository search showing no required `verify:release` consumer before alias removal;
-- workflow inspection proving type-level public commands and literal full release verification;
-- verifier CLI tests for canonical public type/full semantics where touched;
-- exact-head GitHub CI on the final resulting PR head.
-
-## Removed compatibility that must not return
+The completed migration removed the obsolete public/ownership mechanisms that the redesign replaced:
 
 - public low-level `--only` labels;
-- legacy `*.browser.spec.ts` discovery;
+- the `verify:release` public alias;
+- legacy ordinary `*.browser.spec.ts` discovery;
 - ordinary central behavior/visual assertion ownership;
 - root/release application E2E assertion ownership;
-- `E2E_SCENARIO_SCOPES` and equivalent production-path -> E2E-spec registries;
-- host Playwright ownership metadata execution;
-- a second E2E graph engine;
-- unit adjacency or a custom unit dependency graph;
-- mutation adjacency or a second mutation registry.
+- `E2E_SCENARIO_SCOPES` and production-path -> E2E-spec mappings;
+- host Playwright ownership-metadata execution;
+- unit adjacency/custom dependency-graph selection;
+- mutation adjacency and duplicate mutation registries.
 
-## Final completion criteria
+Internal release-named commands/files remain where they own real built-artifact, service-worker, fresh-container, cross-engine, logging, timeout, lock, or deployment constraints. They are not public verification types.
 
-The redesign is complete when:
+## Preserved invariants
 
-- `pnpm verify` is the normal project verification entry point;
-- public `--only` exposes only the canonical eight verification types;
-- every persistent spec type has deterministic target naming/ownership;
-- unit uses Vitest native affected/related selection with safe fallback;
-- mutation uses only validated explicit registered targets and participates in `--full`;
-- persistent performance proof exists only for real measurable budgets;
-- E2E ownership and affected selection remain structural/fail-closed;
-- uncertainty widens only the owning type unless uncertainty is genuinely cross-type;
-- structural invalidity fails verification;
-- compatibility aliases/mappings have no repository consumers before removal;
-- repository workflows use canonical public type commands and the release gate uses literal `pnpm verify --full`;
-- `pnpm verify --full` runs every current type inventory, every target spec, every registered mutation target, and every registered persistent performance target without affected narrowing;
-- exact-head GitHub CI is green on the final resulting PR head.
+The redesign preserves:
 
-Known flaky behavior is failed proof; retry-pass classification is not acceptance.
+- top-level single-run verify locking and expensive-command locking;
+- container-only Playwright execution for verifier-managed browser proof;
+- project applicability and release/fresh-container semantics;
+- status/resume/logging/timeout/profile/base/fix behavior unless explicitly changed by the accepted contracts;
+- fail-closed structural validation and safe widening under uncertain affected ownership;
+- known flaky behavior as failed proof, not accepted evidence.
+
+## Completion gate
+
+The redesign is semantically complete. Merge readiness requires only repository-level finalization:
+
+1. final architect-owned documentation/PR state is committed;
+2. GitHub CI is green on that exact final PR head;
+3. PR #218 is moved out of draft;
+4. ordinary merge into `develop` uses squash merge.
