@@ -6,7 +6,7 @@
  * leaf (see docs/testing/verify-redesign-pass-d-implementation.md's "Generic
  * owner-local browser-integration execution"). Reuses the existing `artifact`
  * and `managed-updates-browser-integration` verifier leaves/orchestration
- * (`scripts/release/managedUpdatesProof.mjs`, `scripts/e2eReleaseContainer.mjs`,
+ * (`scripts/release/managedUpdatesProof.ts`, `scripts/e2eReleaseContainer.mjs`,
  * `playwright.release.config.ts`) for the managed-update proof, and the
  * generic `playwright.browserIntegration.config.ts` / `scripts/browserIntegration.ts`
  * for every other owner-local `*.browser-integration.spec.ts`; this module
@@ -18,19 +18,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import {
+  MANAGED_UPDATES_BROWSER_INTEGRATION_SPEC_SET,
+  PRODUCTION_ARTIFACT_SMOKE_SPEC,
+  validateBrowserIntegrationMembership,
+} from './releaseProofInventory.ts';
+
 const APP_UPDATE_DIR = 'src/shared/service/appUpdate/';
 const BROWSER_INTEGRATION_SUFFIX = '.browser-integration.spec.ts';
 const GENERIC_BROWSER_INTEGRATION_ROOT = 'src';
+const PACKAGE_JSON_PATH = 'package.json';
 
-/**
- * The single browser-integration spec owned by the `artifact` leaf; every
- * other colocated `*.browser-integration.spec.ts` under
- * `src/shared/service/appUpdate/` belongs to the `managed-updates-browser-integration`
- * leaf (see `scripts/release/managedUpdatesProof.mjs`'s fixed group lists).
- */
-export const PRODUCTION_ARTIFACT_SMOKE_SPEC = `${APP_UPDATE_DIR}productionArtifactSmoke${BROWSER_INTEGRATION_SUFFIX}`;
+export { PRODUCTION_ARTIFACT_SMOKE_SPEC };
 
 // Broad blast-radius paths: the release Playwright config/container runner,
+// the shared managed-release fixture/publisher/artifact build support the
+// managed-update corpus exercises (see
+// docs/testing/verify-redesign-final-review-correction.md's "Decision 3"),
 // the managed-update group/orchestration definition, this resolver's own
 // module, and the verifier planner entry point. A change here can affect
 // every browser-integration spec, so it always triggers both leaves instead
@@ -38,13 +43,17 @@ export const PRODUCTION_ARTIFACT_SMOKE_SPEC = `${APP_UPDATE_DIR}productionArtifa
 const FULL_LANE_EXACT_FILES = new Set([
   'config/tooling.json',
   'pnpm-lock.yaml',
+  'vite.config.ts',
   'playwright.release.config.ts',
   'scripts/e2eReleaseContainer.mjs',
   'scripts/playwrightContainer.ts',
-  'scripts/release/managedUpdatesProof.mjs',
+  'scripts/release/artifactServer.mjs',
+  'scripts/release/managedUpdatesProof.ts',
   'scripts/lib/browserIntegrationRisk.ts',
+  'scripts/lib/releaseProofInventory.ts',
   'scripts/verify.ts',
 ]);
+const FULL_LANE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
 /**
  * Check whether a changed file is a colocated `*.browser-integration.spec.ts`
@@ -86,7 +95,10 @@ export function isAppUpdateProductionPath(filePath: string): boolean {
  * @returns True when the path is browser-integration infrastructure risk.
  */
 export function isFullBrowserIntegrationLanePath(filePath: string): boolean {
-  return FULL_LANE_EXACT_FILES.has(filePath);
+  return (
+    FULL_LANE_EXACT_FILES.has(filePath) ||
+    FULL_LANE_PREFIXES.some((prefix) => filePath.startsWith(prefix))
+  );
 }
 
 function uniqSorted(values: readonly string[]): string[] {
@@ -95,7 +107,7 @@ function uniqSorted(values: readonly string[]): string[] {
 
 /** Resolved managed-update browser-integration plan. */
 export interface BrowserIntegrationPlan {
-  mode: 'skip' | 'focused' | 'full';
+  mode: 'invalid' | 'skip' | 'focused' | 'full';
   /** Whether the `artifact` leaf (productionArtifactSmoke) is relevant. */
   artifact: boolean;
   /** Whether the `managed-updates-browser-integration` leaf is relevant. */
@@ -103,18 +115,49 @@ export interface BrowserIntegrationPlan {
   reasons: string[];
 }
 
+/** Resolution options for {@link resolveBrowserIntegrationPlan}. */
+export interface ResolveBrowserIntegrationPlanOptions {
+  /**
+   * Git ref to compare the current `package.json` against, for the
+   * version-only refinement. `null` fails closed to runtime-relevant.
+   */
+  packageJsonOldRef?: string | null;
+  /** Test-only override for the exceptional-inventory membership check. */
+  validateMembership?: typeof validateBrowserIntegrationMembership;
+}
+
 /**
  * Resolve which managed-update browser-integration leaves a changed-file set
- * makes relevant, in priority order: full (broad infrastructure risk, both
- * leaves), focused (a direct appUpdate browser-integration spec change
- * and/or an unresolvable appUpdate production change, either or both
- * leaves), or skip (no relevant changes).
+ * makes relevant, in priority order: invalid (the current appUpdate
+ * browser-integration filesystem inventory does not exactly equal the
+ * registered exceptional inventory in `scripts/lib/releaseProofInventory.ts`
+ * — a structural problem that must fail closed instead of silently
+ * widening/narrowing), full (broad infrastructure/shared-support risk or a
+ * runtime-relevant `package.json` change, both leaves), focused (a direct
+ * appUpdate browser-integration spec change and/or an unresolvable appUpdate
+ * production change, either or both leaves), or skip (no relevant changes).
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Resolution options.
  * @returns Plan with `mode`, per-leaf relevance, and human-readable `reasons`.
  */
 export function resolveBrowserIntegrationPlan(
   changedFiles: readonly string[],
+  {
+    packageJsonOldRef = null,
+    validateMembership = validateBrowserIntegrationMembership,
+  }: ResolveBrowserIntegrationPlanOptions = {},
 ): BrowserIntegrationPlan {
+  const membershipValidation = validateMembership();
+
+  if (!membershipValidation.valid) {
+    return {
+      mode: 'invalid',
+      artifact: false,
+      managedUpdates: false,
+      reasons: membershipValidation.errors,
+    };
+  }
+
   const fullLaneHit = changedFiles.find(isFullBrowserIntegrationLanePath);
 
   if (fullLaneHit) {
@@ -125,6 +168,18 @@ export function resolveBrowserIntegrationPlan(
       reasons: [
         `browser-integration infrastructure path ${fullLaneHit} -> full browser-integration lane`,
       ],
+    };
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    return {
+      mode: 'full',
+      artifact: true,
+      managedUpdates: true,
+      reasons: ['runtime-relevant package.json change -> full browser-integration lane'],
     };
   }
 
@@ -139,7 +194,7 @@ export function resolveBrowserIntegrationPlan(
       continue;
     }
 
-    if (isAppUpdateBrowserIntegrationSpecPath(filePath)) {
+    if (MANAGED_UPDATES_BROWSER_INTEGRATION_SPEC_SET.has(filePath)) {
       managedUpdates = true;
       reasons.push(
         `changed browser-integration spec ${filePath} -> managed-updates-browser-integration`,

@@ -16,7 +16,7 @@ declare global {
 // The deterministic emitted-file/manifest/generated-artifact assertions that
 // used to live in this file (forbidden-pattern chunk scan, managed
 // controller worker skipWaiting()/clients.claim() check) are static tooling
-// proof now: see scripts/release/productionArtifactStaticProof.mjs (see
+// proof now: see scripts/release/productionArtifactStaticProof.ts (see
 // docs/testing/verify-redesign-implementation-preflight.md's "Production
 // artifact split"). Everything remaining below is browser-integration proof.
 
@@ -39,7 +39,7 @@ test('opens under the configured GitHub Pages base path with no broken critical 
 
 // Deterministic manifest content/scope validation (JSON validity, `name`,
 // `start_url`/`scope` base-path scoping) is static tooling proof now: see
-// scripts/release/productionArtifactStaticProof.mjs's
+// scripts/release/productionArtifactStaticProof.ts's
 // validateProductionArtifactManifest (see
 // docs/testing/verify-redesign-implementation-preflight.md's "Release-suite
 // reclassification"). This spec proves only the truthful browser/runtime

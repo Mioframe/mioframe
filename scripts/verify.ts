@@ -17,7 +17,13 @@ import {
   type CommandWeight,
 } from './lib/commandWeight.ts';
 import { createChildSignalForwarder } from './lib/signalForward.ts';
-import { resolveStructuralE2EPlan, type StructuralE2EPlan } from './lib/e2eRisk.ts';
+import {
+  canChangedPathsAffectE2E,
+  resolveStructuralE2EPlan,
+  type StructuralE2EPlan,
+} from './lib/e2eRisk.ts';
+import { resolveReleaseStaticPlan, type ReleaseStaticPlan } from './lib/releaseStaticRisk.ts';
+import { RELEASE_SMOKE_SPEC } from './lib/releaseProofInventory.ts';
 import {
   validateE2EProjectApplicability,
   type E2EProjectApplicabilityValidation,
@@ -215,8 +221,8 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   // Two real `vite build` invocations; no Playwright container involved
-  // (see scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs
-  // and productionArtifactStaticProof.mjs).
+  // (see scripts/release/managedUpdatesControllerArtifactIdentityProof.ts
+  // and productionArtifactStaticProof.ts).
   'artifact-static': 10 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'managed-updates-static': 8 * 60 * 1000,
@@ -1093,9 +1099,6 @@ function createStorybookBehaviorCommand(
   };
 }
 
-const RELEASE_SMOKE_SPEC =
-  'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts';
-
 /**
  * Add the `release-smoke` and/or `managed-updates-e2e` production-artifact
  * E2E leaves when a focused structural E2E plan selects a
@@ -1131,7 +1134,7 @@ function addProductionArtifactE2ECommands(
       kind: 'run',
       label: 'managed-updates-e2e',
       command: 'node',
-      args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'e2e'],
+      args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'e2e'],
       weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
       triggerReason: structuralE2EPlan.reasons.join('; '),
     });
@@ -1175,7 +1178,7 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
     kind: 'run',
     label: 'artifact-static',
     command: 'node',
-    args: ['scripts/release/productionArtifactStaticProof.mjs'],
+    args: ['scripts/release/productionArtifactStaticProof.ts'],
     weight: classifyCommandWeight({ label: 'artifact-static' }),
   });
 
@@ -1191,7 +1194,7 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
     kind: 'run',
     label: 'managed-updates-static',
     command: 'node',
-    args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs'],
+    args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.ts'],
     weight: classifyCommandWeight({ label: 'managed-updates-static' }),
   });
 
@@ -1199,9 +1202,94 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
     kind: 'run',
     label: 'managed-updates-e2e',
     command: 'node',
-    args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'e2e'],
+    args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'e2e'],
     weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
   });
+}
+
+/**
+ * Add the release-sensitive `static` leaves (`release-version`,
+ * `release-config`, `build`, `publisher-node-import`, `artifact-static`,
+ * `managed-updates-static`) that are relevant outside literal `--full`,
+ * using {@link resolveReleaseStaticPlan}'s explicit file capability/
+ * configuration ownership (see
+ * docs/testing/verify-redesign-final-review-correction.md's "Decision 1").
+ * Reuses the exact same leaf commands `addReleaseOnlyCommands` uses purely
+ * behind `--full`; this only adds default/`--only static` relevance without
+ * requiring `--full`. Never called from the `fullMode` branch, so a leaf is
+ * never duplicated against `addReleaseOnlyCommands`'s own unconditional
+ * `--full` leaves.
+ * @param commands Command list to push into.
+ * @param plan Resolved release-sensitive static plan.
+ */
+function addReleaseStaticCommands(commands: CommandEntry[], plan: ReleaseStaticPlan): void {
+  const triggerReason = plan.reasons.join('; ');
+
+  if (plan.releaseVersion) {
+    commands.push({
+      kind: 'run',
+      label: 'release-version',
+      command: 'node',
+      args: ['scripts/release/validateVersion.mjs'],
+      weight: classifyCommandWeight({ label: 'release-version' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.releaseConfig) {
+    commands.push({
+      kind: 'run',
+      label: 'release-config',
+      command: 'node',
+      args: ['scripts/release/validateReleaseConfig.mjs'],
+      weight: classifyCommandWeight({ label: 'release-config' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.build) {
+    commands.push({
+      kind: 'run',
+      label: 'build',
+      command: 'node',
+      args: ['scripts/release/buildArtifact.mjs'],
+      weight: classifyCommandWeight({ label: 'build' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.publisherNodeImport) {
+    commands.push({
+      kind: 'run',
+      label: 'publisher-node-import',
+      command: 'node',
+      args: ['scripts/release/publisherWireContractImportProof.mjs'],
+      weight: classifyCommandWeight({ label: 'publisher-node-import' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.artifactStatic) {
+    commands.push({
+      kind: 'run',
+      label: 'artifact-static',
+      command: 'node',
+      args: ['scripts/release/productionArtifactStaticProof.ts'],
+      weight: classifyCommandWeight({ label: 'artifact-static' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.managedUpdatesStatic) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-static',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.ts'],
+      weight: classifyCommandWeight({ label: 'managed-updates-static' }),
+      triggerReason,
+    });
+  }
 }
 
 /**
@@ -1220,7 +1308,11 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
  */
 function addBrowserIntegrationCommands(
   commands: CommandEntry[],
-  { fullMode, changedFiles }: { fullMode: boolean; changedFiles: readonly string[] },
+  {
+    fullMode,
+    changedFiles,
+    packageJsonOldRef,
+  }: { fullMode: boolean; changedFiles: readonly string[]; packageJsonOldRef: string | null },
 ): void {
   const plan: BrowserIntegrationPlan = fullMode
     ? {
@@ -1229,7 +1321,23 @@ function addBrowserIntegrationCommands(
         managedUpdates: true,
         reasons: ['full-project release verification'],
       }
-    : resolveBrowserIntegrationPlan(changedFiles);
+    : resolveBrowserIntegrationPlan(changedFiles, { packageJsonOldRef });
+
+  if (plan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'artifact',
+      command: 'pnpm e2e:release',
+      reason: `invalid appUpdate browser-integration exceptional inventory state: ${plan.reasons.join('; ')}`,
+    });
+    commands.push({
+      kind: 'failed',
+      label: 'managed-updates-browser-integration',
+      command: 'node scripts/release/managedUpdatesProof.ts --kind browser-integration',
+      reason: `invalid appUpdate browser-integration exceptional inventory state: ${plan.reasons.join('; ')}`,
+    });
+    return;
+  }
 
   if (plan.artifact) {
     commands.push({
@@ -1247,7 +1355,7 @@ function addBrowserIntegrationCommands(
       kind: 'run',
       label: 'managed-updates-browser-integration',
       command: 'node',
-      args: ['scripts/release/managedUpdatesProof.mjs', '--kind', 'browser-integration'],
+      args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'browser-integration'],
       weight: classifyCommandWeight({ label: 'managed-updates-browser-integration' }),
       triggerReason: plan.reasons.join('; '),
     });
@@ -1414,12 +1522,26 @@ export function buildCommands(
   // `--only <non-e2e-type>` invocation". The placeholder plan below is never
   // observed in a final `--only <non-e2e-type>` result: selectOnlyCommands
   // filters every `e2e`-typed entry out for any other type.
-  const needsStructuralE2EPlanning = onlyType === null || onlyType === 'e2e';
+  //
+  // A second, cheap gate applies even when e2e IS the relevant type for this
+  // invocation (default or `--only e2e`): `--fix-only` never needs E2E
+  // acquisition at all, and a changed-path set that
+  // {@link canChangedPathsAffectE2E} can cheaply prove E2E-irrelevant skips
+  // acquisition too (see
+  // docs/testing/verify-redesign-final-review-correction.md's "Decision 6").
+  // The classifier is conservative (false positives acquire; false
+  // negatives never happen), and literal `--full` always acquires
+  // unconditionally regardless of the classifier, since it must still
+  // perform complete structural validation.
+  const needsStructuralE2EPlanning =
+    !fixOnlyMode &&
+    (onlyType === null || onlyType === 'e2e') &&
+    (fullMode || canChangedPathsAffectE2E(changedFiles, { packageJsonOldRef }));
   const structuralE2EPlan: StructuralE2EPlan =
     structuralE2EPlanOverride ??
     (needsStructuralE2EPlanning
       ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
-      : { mode: 'skip', reasons: ['e2e planning not needed for this --only type'] });
+      : { mode: 'skip', reasons: ['e2e planning not needed for this invocation'] });
   const e2eTargetTreeValidation = e2eTargetTreeValidationOverride ?? validateE2ETargetTree();
   const projectApplicabilityValidation =
     projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
@@ -1434,7 +1556,19 @@ export function buildCommands(
     visualPlanOverride ??
     (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
   const mutationPlan: MutationPlan =
-    mutationPlanOverride ?? resolveMutationPlan(existingChangedFiles);
+    mutationPlanOverride ?? resolveMutationPlan(existingChangedFiles, { packageJsonOldRef });
+  const releaseStaticPlan: ReleaseStaticPlan = fullMode
+    ? {
+        mode: 'skip',
+        releaseVersion: false,
+        releaseConfig: false,
+        build: false,
+        publisherNodeImport: false,
+        artifactStatic: false,
+        managedUpdatesStatic: false,
+        reasons: ['full mode runs the complete static type unconditionally'],
+      }
+    : resolveReleaseStaticPlan(changedFiles, { packageJsonOldRef });
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 
@@ -1896,9 +2030,11 @@ export function buildCommands(
 
   if (fullMode) {
     addReleaseOnlyCommands(commands);
+  } else {
+    addReleaseStaticCommands(commands, releaseStaticPlan);
   }
 
-  addBrowserIntegrationCommands(commands, { fullMode, changedFiles });
+  addBrowserIntegrationCommands(commands, { fullMode, changedFiles, packageJsonOldRef });
   addGenericBrowserIntegrationCommands(commands, { fullMode, changedFiles });
 
   return commands.map(withVerificationType);
@@ -2187,7 +2323,7 @@ const ARTIFACT_REUSE_LABELS = new Set(['artifact-static', 'artifact', 'release-s
 
 // Labels whose successful completion proves a fresh production artifact
 // already exists on disk: the dedicated `build` check, and `artifact-static`
-// (see scripts/release/productionArtifactStaticProof.mjs), which also builds
+// (see scripts/release/productionArtifactStaticProof.ts), which also builds
 // the artifact itself before validating it.
 const ARTIFACT_BUILD_SOURCE_LABELS = new Set(['build', 'artifact-static']);
 

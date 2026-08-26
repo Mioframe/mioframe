@@ -49,7 +49,7 @@ export function classifyCommandWeight({
     case 'managed-updates-e2e':
     case 'browser-integration-local':
     // Two real `vite build` invocations (see
-    // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs);
+    // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts);
     // must route through the same expensive-command lock boundary the
     // historical `managed-updates` aggregate used.
     case 'managed-updates-static':

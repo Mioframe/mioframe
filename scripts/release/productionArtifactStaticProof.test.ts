@@ -7,9 +7,9 @@ import {
   runProductionArtifactStaticProof,
   validateProductionArtifactManifest,
   validateProductionArtifactStatic,
-} from './productionArtifactStaticProof.mjs';
+} from './productionArtifactStaticProof.ts';
 
-function writeValidManifest(distDir, basePath = '/') {
+function writeValidManifest(distDir: string, basePath = '/'): void {
   writeFileSync(
     join(distDir, 'manifest.webmanifest'),
     JSON.stringify({ name: 'App', start_url: basePath, scope: basePath }),
@@ -17,7 +17,7 @@ function writeValidManifest(distDir, basePath = '/') {
 }
 
 describe('validateProductionArtifactStatic', () => {
-  let distDir;
+  let distDir: string;
 
   beforeEach(() => {
     distDir = mkdtempSync(join(tmpdir(), 'artifact-static-'));
@@ -79,7 +79,7 @@ describe('validateProductionArtifactStatic', () => {
 });
 
 describe('validateProductionArtifactManifest', () => {
-  let distDir;
+  let distDir: string;
 
   beforeEach(() => {
     distDir = mkdtempSync(join(tmpdir(), 'artifact-static-manifest-'));

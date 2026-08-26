@@ -12,7 +12,7 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
 import { resolveArtifactBasePath } from './buildArtifact.mjs';
@@ -25,7 +25,7 @@ const FORBIDDEN_JS_PATTERNS = [
   '__RELEASE_SEQUENCE__',
 ];
 
-function collectJsFiles(dir) {
+function collectJsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return collectJsFiles(full);
@@ -42,18 +42,18 @@ function collectJsFiles(dir) {
  * reclassification"): the manifest is valid JSON, `name` is a string, and
  * `start_url` or `scope` is scoped to the configured base path. Browser
  * proof (page manifest link + fetchability) remains in that Playwright spec.
- * @param distDir Built artifact directory to validate.
- * @param basePath Configured release base path (e.g. `/`).
+ * @param distDir - Built artifact directory to validate.
+ * @param basePath - Configured release base path (e.g. `/`).
  * @returns Validation errors; empty when the manifest passes.
  */
-export function validateProductionArtifactManifest(distDir, basePath) {
+export function validateProductionArtifactManifest(distDir: string, basePath: string): string[] {
   const manifestPath = join(distDir, 'manifest.webmanifest');
 
   if (!existsSync(manifestPath)) {
     return [`Generated PWA manifest not found at ${manifestPath}.`];
   }
 
-  let manifest;
+  let manifest: Record<string, unknown>;
 
   try {
     manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -63,13 +63,18 @@ export function validateProductionArtifactManifest(distDir, basePath) {
     ];
   }
 
-  const errors = [];
+  const errors: string[] = [];
 
   if (typeof manifest.name !== 'string') {
     errors.push(`${manifestPath} "name" must be a string.`);
   }
 
-  const scopedUrl = String(manifest.start_url ?? manifest.scope ?? '');
+  const scopedUrl =
+    typeof manifest.start_url === 'string'
+      ? manifest.start_url
+      : typeof manifest.scope === 'string'
+        ? manifest.scope
+        : '';
 
   if (!scopedUrl.includes(basePath)) {
     errors.push(
@@ -96,15 +101,15 @@ export function validateProductionArtifactManifest(distDir, basePath) {
  *   code's lifecycle;
  * - the generated PWA manifest is scoped to the configured release base
  *   path (see {@link validateProductionArtifactManifest}).
- * @param [distDir] Built artifact directory to validate.
- * @param [basePath] Configured release base path used for the build.
+ * @param distDir - Built artifact directory to validate.
+ * @param basePath - Configured release base path used for the build.
  * @returns Validation errors; empty when the artifact passes.
  */
 export function validateProductionArtifactStatic(
-  distDir = DIST_DIR,
-  basePath = resolveArtifactBasePath(),
-) {
-  const errors = [];
+  distDir: string = DIST_DIR,
+  basePath: string = resolveArtifactBasePath(),
+): string[] {
+  const errors: string[] = [];
 
   if (!existsSync(distDir)) {
     return [`Production artifact directory not found at ${distDir}.`];
@@ -146,17 +151,26 @@ export function validateProductionArtifactStatic(
   return errors;
 }
 
-const defaultDeps = { runLocalCommand };
+/** Test-only dependencies for {@link runProductionArtifactStaticProof}. */
+export interface RunProductionArtifactStaticProofDeps {
+  /** Test seam for child-process execution. */
+  runLocalCommand?: typeof runLocalCommand;
+}
+
+const defaultDeps: Required<RunProductionArtifactStaticProofDeps> = { runLocalCommand };
 
 /**
  * Runs the static production-artifact proof: builds the production artifact
  * (reusing `RELEASE_ARTIFACT_SKIP_BUILD=1` the same way every other
  * artifact-consuming release check does), then validates it with
  * {@link validateProductionArtifactStatic}.
- * @param [deps] Test seam for child-process execution.
+ * @param deps - Test seam for child-process execution.
  */
-export async function runProductionArtifactStaticProof(deps = defaultDeps) {
-  const buildResult = await deps.runLocalCommand({
+export async function runProductionArtifactStaticProof(
+  deps: RunProductionArtifactStaticProofDeps = defaultDeps,
+): Promise<void> {
+  const runCommand = deps.runLocalCommand ?? defaultDeps.runLocalCommand;
+  const buildResult = await runCommand({
     command: 'node',
     args: ['scripts/release/buildArtifact.mjs'],
     env: process.env,
@@ -182,7 +196,7 @@ export async function runProductionArtifactStaticProof(deps = defaultDeps) {
   console.log('[artifact-static] passed');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     await runProductionArtifactStaticProof();
   } catch (error) {

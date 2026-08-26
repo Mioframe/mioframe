@@ -17,6 +17,12 @@ import { validateE2ETargetTree, type E2ETargetTreeValidation } from './e2eOwnerT
 import { traverseOwnersForChangedPath, type ReverseDependencyGraph } from './e2eOwnerTraversal.ts';
 import { acquireProductionReverseGraph } from './e2eGraph.ts';
 import { collectE2EOwnerInventory } from './e2eOwnerInventoryCollector.ts';
+import {
+  MANAGED_UPDATES_E2E_SPEC_SET,
+  RELEASE_SMOKE_SPEC,
+  validateProductionArtifactE2EMembership,
+  type ReleaseProofInventoryValidation,
+} from './releaseProofInventory.ts';
 
 /**
  * Structural, dependency-graph-driven application E2E planner (see
@@ -34,7 +40,12 @@ const NON_PRODUCTION_PATH_PATTERN = /\.(test|spec|stories|testUtils)\.(ts|tsx|vu
 
 // Full-lane E2E infrastructure/config/tooling: a change here can affect
 // every target E2E spec's discovery, ownership resolution, or execution,
-// regardless of graph/inventory-derived scope.
+// regardless of graph/inventory-derived scope. Also carries the shared
+// managed-release fixture/publisher/artifact build support the special
+// productionArtifact leaves exercise (see
+// docs/testing/verify-redesign-final-review-correction.md's "Decision 3");
+// widening the complete E2E type is a safe superset of widening only the
+// two special leaves.
 const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
   'playwright.release.config.ts',
@@ -54,31 +65,23 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/lib/e2eOwnerInventoryContainer.ts',
   'scripts/lib/e2eOwnerInventoryReporter.ts',
   'scripts/lib/e2eProjectApplicability.ts',
-  'scripts/release/managedUpdatesProof.mjs',
+  'scripts/lib/releaseProofInventory.ts',
+  'scripts/release/managedUpdatesProof.ts',
+  'scripts/release/artifactServer.mjs',
   'tests/e2e/helpers.ts',
   'tests/e2e/reorderSurface.testUtils.ts',
   'vite.config.ts',
   'pnpm-lock.yaml',
   'tsconfig.src.json',
 ]);
-
-/**
- * The three exact `productionArtifact/` target E2E owners and the special
- * execution leaf each one routes through (see the contract's "Production
- * artifact E2E execution boundary"). Primary ownership stays path-derived;
- * this table only decides which existing special leaf a selected
- * `productionArtifact/` spec's owner uses.
- */
-const PRODUCTION_ARTIFACT_LEAF_BY_OWNER: Readonly<
-  Partial<Record<string, 'release-smoke' | 'managed-updates-e2e'>>
-> = {
-  'page/HomePane': 'release-smoke',
-  'page/AppUpdatesPane': 'managed-updates-e2e',
-  'widget/DocumentView': 'managed-updates-e2e',
-};
+const FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
 function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
   if (FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)) {
+    return true;
+  }
+
+  if (FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES.some((prefix) => filePath.startsWith(prefix))) {
     return true;
   }
 
@@ -143,6 +146,7 @@ export interface ResolveStructuralE2EPlanDeps {
   acquireGraph?: () => ReturnType<typeof acquireProductionReverseGraph>;
   collectOwnerInventory?: () => RawE2ESpecInventoryEntry[];
   validateTargetTree?: () => E2ETargetTreeValidation;
+  validateProductionArtifactMembership?: () => ReleaseProofInventoryValidation;
 }
 
 function selectedSpecsToPlan(
@@ -166,11 +170,15 @@ function selectedSpecsToPlan(
       continue;
     }
 
-    const leaf = PRODUCTION_ARTIFACT_LEAF_BY_OWNER[entry.primaryOwnerId];
-
-    if (leaf === 'release-smoke') {
+    // Routed by exact registered spec membership (see
+    // scripts/lib/releaseProofInventory.ts), not an owner-name heuristic:
+    // resolveStructuralE2EPlan already validated, before reaching this
+    // point, that the current filesystem productionArtifact inventory
+    // equals exactly {RELEASE_SMOKE_SPEC} ∪ MANAGED_UPDATES_E2E_SPEC_SET, so
+    // every `isProductionArtifact` entry here is necessarily one of the two.
+    if (specPath === RELEASE_SMOKE_SPEC) {
       releaseSmokeSelected = true;
-    } else if (leaf === 'managed-updates-e2e') {
+    } else if (MANAGED_UPDATES_E2E_SPEC_SET.has(specPath)) {
       managedUpdatesE2ESelected = true;
     }
   }
@@ -210,6 +218,7 @@ export function resolveStructuralE2EPlan(
     acquireGraph = acquireProductionReverseGraph,
     collectOwnerInventory = collectE2EOwnerInventory,
     validateTargetTree = validateE2ETargetTree,
+    validateProductionArtifactMembership = validateProductionArtifactE2EMembership,
   }: ResolveStructuralE2EPlanDeps = {},
 ): StructuralE2EPlan {
   let rawInventory: RawE2ESpecInventoryEntry[];
@@ -253,6 +262,19 @@ export function resolveStructuralE2EPlan(
 
   if (!completenessValidation.valid) {
     return { mode: 'invalid', reasons: completenessValidation.errors };
+  }
+
+  // The registered exceptional productionArtifact E2E inventory (see
+  // scripts/lib/releaseProofInventory.ts) must equal, exactly, the current
+  // filesystem productionArtifact/ target set before any spec is routed to
+  // the `release-smoke`/`managed-updates-e2e` leaves below: an unregistered
+  // productionArtifact target is structural invalidity, never a silent skip
+  // (see docs/testing/verify-redesign-final-review-correction.md's
+  // "Decision 2").
+  const productionArtifactMembershipValidation = validateProductionArtifactMembership();
+
+  if (!productionArtifactMembershipValidation.valid) {
+    return { mode: 'invalid', reasons: productionArtifactMembershipValidation.errors };
   }
 
   const entryBySpecPath = new Map(
@@ -371,6 +393,58 @@ export function resolveStructuralE2EPlan(
   }
 
   return selectedSpecsToPlan(entryBySpecPath, selectedSpecPaths, reasons.length > 0 ? reasons : []);
+}
+
+/** Resolution options for {@link canChangedPathsAffectE2E}. */
+export interface CanChangedPathsAffectE2EOptions {
+  packageJsonOldRef?: string | null;
+}
+
+/**
+ * Cheaply classify whether a changed-file set can plausibly affect E2E,
+ * without acquiring the expensive containerized Playwright ownership
+ * inventory or the dependency-cruiser reverse-dependency graph (see
+ * docs/testing/verify-redesign-final-review-correction.md's "Decision 6"):
+ * relevance is resolved before {@link resolveStructuralE2EPlan}'s expensive
+ * acquisition, not merely inside it. Conservative by design: any path this
+ * classifier cannot cheaply rule out returns `true` (acquire), so a false
+ * positive is acceptable but a false negative is not.
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Resolution options.
+ * @returns `true` when {@link resolveStructuralE2EPlan}'s expensive
+ * acquisition may still be needed; `false` only when every changed path is
+ * cheaply provable E2E-irrelevant.
+ */
+export function canChangedPathsAffectE2E(
+  changedFiles: readonly string[],
+  { packageJsonOldRef = null }: CanChangedPathsAffectE2EOptions = {},
+): boolean {
+  if (changedFiles.length === 0) {
+    return false;
+  }
+
+  if (changedFiles.some(isFullLaneE2EInfrastructurePath)) {
+    return true;
+  }
+
+  if (changedFiles.some(isAppBootstrapPath)) {
+    return true;
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    return true;
+  }
+
+  if (changedFiles.some((filePath) => parseE2ETargetPath(filePath) !== null)) {
+    return true;
+  }
+
+  return changedFiles.some(
+    (filePath) => isRelevantProductionSourcePath(filePath) && !isAppBootstrapPath(filePath),
+  );
 }
 
 export type { ReverseDependencyGraph };

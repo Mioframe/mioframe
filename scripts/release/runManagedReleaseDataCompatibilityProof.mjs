@@ -3,7 +3,7 @@
  * (`tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts`) against a
  * given staged retained-release work directory, in its own fresh Playwright
  * container via `scripts/e2eReleaseContainer.mjs` — the same mechanism
- * `scripts/release/managedUpdatesProof.mjs` uses for its own groups.
+ * `scripts/release/managedUpdatesProof.ts` uses for its own groups.
  *
  * The single seam `scripts/pages/lib/managedCompatibilityPreflight.mjs`
  * calls to actually execute the browser proof, kept separate from the

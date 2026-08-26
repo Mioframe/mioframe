@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { isRelevantProductionSourcePath, resolveStructuralE2EPlan } from './e2eRisk.ts';
+vi.mock('./packageJsonImpact.ts', () => ({
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
+}));
+
+import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
+import {
+  canChangedPathsAffectE2E,
+  isRelevantProductionSourcePath,
+  resolveStructuralE2EPlan,
+} from './e2eRisk.ts';
 import type { RawE2ESpecInventoryEntry } from './e2eOwnerInventory.ts';
+
+const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 
 const existingOwners = new Set([
   'page/HomePane',
@@ -49,6 +60,7 @@ function baseDeps(overrides: Parameters<typeof resolveStructuralE2EPlan>[1] = {}
       targetPaths: BASE_INVENTORY.map((entry) => entry.specPath),
     }),
     acquireGraph: () => ({ ok: true as const, graph: {} }),
+    validateProductionArtifactMembership: () => ({ valid: true, errors: [] }),
     ...overrides,
   };
 }
@@ -323,5 +335,82 @@ describe('resolveStructuralE2EPlan', () => {
     expect(plan.mode === 'focused' && plan.releaseSmokeSelected).toBe(true);
     expect(plan.mode === 'focused' && plan.managedUpdatesE2ESelected).toBe(true);
     expect(plan.mode === 'focused' && plan.ordinarySpecs).toEqual([]);
+  });
+
+  it('fails closed when the productionArtifact exceptional inventory does not match the registered inventory', () => {
+    const plan = resolveStructuralE2EPlan(
+      [],
+      baseDeps({
+        validateProductionArtifactMembership: () => ({
+          valid: false,
+          errors: ['productionArtifact E2E spec X exists on disk but is not registered'],
+        }),
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.mode === 'invalid' && plan.reasons).toEqual([
+      'productionArtifact E2E spec X exists on disk but is not registered',
+    ]);
+  });
+
+  it('never silently drops an unregistered productionArtifact target as skip', () => {
+    // Even when the unregistered target itself is directly changed, the
+    // registered-membership check runs before any spec routing/selection,
+    // so this fails closed rather than silently omitting the target.
+    const plan = resolveStructuralE2EPlan(
+      ['tests/e2e/pages/HomePane/productionArtifact/newUnregisteredScenario.e2e.spec.ts'],
+      baseDeps({
+        validateProductionArtifactMembership: () => ({
+          valid: false,
+          errors: [
+            'productionArtifact E2E spec tests/e2e/pages/HomePane/productionArtifact/newUnregisteredScenario.e2e.spec.ts exists on disk but is not registered',
+          ],
+        }),
+      }),
+    );
+
+    expect(plan.mode).toBe('invalid');
+  });
+});
+
+describe('canChangedPathsAffectE2E', () => {
+  it('returns false for an empty changed-file set', () => {
+    expect(canChangedPathsAffectE2E([])).toBe(false);
+  });
+
+  it('returns false for docs-only changes', () => {
+    expect(canChangedPathsAffectE2E(['docs/testing/architecture.md'])).toBe(false);
+  });
+
+  it('returns false for an unrelated non-production change', () => {
+    expect(canChangedPathsAffectE2E(['src/entities/repository/index.test.ts'])).toBe(false);
+  });
+
+  it('returns true for a direct target E2E spec change', () => {
+    expect(canChangedPathsAffectE2E(['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'])).toBe(true);
+  });
+
+  it('returns true for full-lane E2E infrastructure', () => {
+    expect(canChangedPathsAffectE2E(['playwright.config.ts'])).toBe(true);
+  });
+
+  it('returns true for app bootstrap/routing changes', () => {
+    expect(canChangedPathsAffectE2E(['src/app/App.vue'])).toBe(true);
+    expect(canChangedPathsAffectE2E(['src/pages/routes.ts'])).toBe(true);
+  });
+
+  it('returns true for relevant production source', () => {
+    expect(canChangedPathsAffectE2E(['src/entities/repository/index.ts'])).toBe(true);
+  });
+
+  it('returns true for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+    expect(canChangedPathsAffectE2E(['package.json'])).toBe(true);
+  });
+
+  it('returns false for a version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    expect(canChangedPathsAffectE2E(['package.json'])).toBe(false);
   });
 });

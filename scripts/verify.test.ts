@@ -32,6 +32,8 @@ import {
   isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport,
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
 } from './lib/packageJsonImpact.ts';
+import { collectE2EOwnerInventory as collectE2EOwnerInventoryImport } from './lib/e2eOwnerInventoryCollector.ts';
+import { acquireProductionReverseGraph as acquireProductionReverseGraphImport } from './lib/e2eGraph.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
 import {
   buildCommandEnv,
@@ -66,6 +68,8 @@ import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 const isVisualRelevantPackageJsonChange = vi.mocked(isVisualRelevantPackageJsonChangeImport);
+const collectE2EOwnerInventory = vi.mocked(collectE2EOwnerInventoryImport);
+const acquireProductionReverseGraph = vi.mocked(acquireProductionReverseGraphImport);
 
 function requireRunEntry(commands: readonly CommandEntry[], label: string): RunCommandEntry {
   const entry = commands.find((item) => item.label === label);
@@ -326,7 +330,7 @@ describe('buildCommands full mode', () => {
     ]);
     expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
     expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
-      'scripts/release/productionArtifactStaticProof.mjs',
+      'scripts/release/productionArtifactStaticProof.ts',
     ]);
     expect(requireRunEntry(commands, 'artifact').args).toEqual([
       'e2e:release',
@@ -341,17 +345,17 @@ describe('buildCommands full mode', () => {
       'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts',
     ]);
     expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
-      'scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs',
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
     ]);
     expect(requireRunEntry(commands, 'managed-updates-browser-integration').command).toBe('node');
     expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
-      'scripts/release/managedUpdatesProof.mjs',
+      'scripts/release/managedUpdatesProof.ts',
       '--kind',
       'browser-integration',
     ]);
     expect(requireRunEntry(commands, 'managed-updates-e2e').command).toBe('node');
     expect(requireRunEntry(commands, 'managed-updates-e2e').args).toEqual([
-      'scripts/release/managedUpdatesProof.mjs',
+      'scripts/release/managedUpdatesProof.ts',
       '--kind',
       'e2e',
     ]);
@@ -397,7 +401,7 @@ describe('buildCommands full mode', () => {
 
   it('routes managed-updates-static through the existing expensive-command lock boundary', () => {
     // Two real `vite build` invocations (see
-    // scripts/release/managedUpdatesControllerArtifactIdentityProof.mjs)
+    // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts)
     // must use the same expensive-command coordination the historical
     // `managed-updates` aggregate used, not a weaker `medium` weight that
     // bypasses withExpensiveCommandLock in scripts/verify.ts.
@@ -406,7 +410,7 @@ describe('buildCommands full mode', () => {
     expect(requireRunEntry(commands, 'managed-updates-static').weight).toBe('expensive');
   });
 
-  it('does not add release-only checks outside full mode', () => {
+  it('does not add release-sensitive static/browser-integration/E2E leaves for an empty changed-file set outside full mode', () => {
     const commands = buildCommands([], { fullMode: false });
     const labels = commands.map((entry) => entry.label);
 
@@ -419,6 +423,88 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('managed-updates-static');
     expect(labels).not.toContain('managed-updates-browser-integration');
     expect(labels).not.toContain('managed-updates-e2e');
+  });
+});
+
+describe('buildCommands release-sensitive static lane (releaseStaticRisk integration)', () => {
+  it('selects release-version outside full mode for a package.json change, without requiring --full', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const commands = buildCommands(['package.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'release-version').args).toEqual([
+      'scripts/release/validateVersion.mjs',
+    ]);
+    expect(commands.map((entry) => entry.label)).not.toContain('build');
+  });
+
+  it('selects release-config outside full mode for a config/tooling.json change', () => {
+    const commands = buildCommands(['config/tooling.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'release-config').args).toEqual([
+      'scripts/release/validateReleaseConfig.mjs',
+    ]);
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+  });
+
+  it('selects publisher-node-import outside full mode for a publisher implementation change', () => {
+    const commands = buildCommands(['scripts/pages/lib/releasePublish.mjs'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'publisher-node-import').args).toEqual([
+      'scripts/release/publisherWireContractImportProof.mjs',
+    ]);
+  });
+
+  it('selects build, artifact-static, and managed-updates-static outside full mode for a src/sw.ts change', () => {
+    const commands = buildCommands(['src/sw.ts'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
+    ]);
+  });
+
+  it('does not select any release-sensitive static leaf outside full mode for an unrelated change', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('release-version');
+    expect(labels).not.toContain('release-config');
+    expect(labels).not.toContain('build');
+    expect(labels).not.toContain('artifact-static');
+    expect(labels).not.toContain('managed-updates-static');
+    expect(labels).not.toContain('publisher-node-import');
+  });
+
+  it('stamps every selected release-sensitive static leaf with the static verification type', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const commands = buildCommands(['src/sw.ts', 'package.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'release-version').verificationType).toBe('static');
+  });
+
+  it('still runs the complete static leaf set unconditionally in literal --full mode', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'release-version').kind).toBe('run');
+    expect(requireRunEntry(commands, 'release-config').kind).toBe('run');
+    expect(requireRunEntry(commands, 'build').kind).toBe('run');
+    expect(requireRunEntry(commands, 'publisher-node-import').kind).toBe('run');
+    expect(requireRunEntry(commands, 'artifact-static').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-static').kind).toBe('run');
+  });
+
+  it('lets --only static select a release-sensitive leaf without requiring --full', () => {
+    const commands = buildCommands(['src/sw.ts'], { fullMode: false });
+    const selected = selectOnlyCommands(commands, 'static');
+
+    expect(selected.some((entry) => entry.label === 'artifact-static')).toBe(true);
+    expect(selected.every((entry) => entry.verificationType === 'static')).toBe(true);
   });
 });
 
@@ -447,7 +533,7 @@ describe('buildCommands browser-integration lane (browserIntegrationRisk integra
     );
 
     expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
-      'scripts/release/managedUpdatesProof.mjs',
+      'scripts/release/managedUpdatesProof.ts',
       '--kind',
       'browser-integration',
     ]);
@@ -733,6 +819,74 @@ describe('buildCommands structural production-artifact E2E routing', () => {
     expect(requireRunEntry(commands, 'e2e').args).toEqual(['e2e:container']);
     expect(commands.filter((entry) => entry.label === 'release-smoke')).toHaveLength(1);
     expect(commands.filter((entry) => entry.label === 'managed-updates-e2e')).toHaveLength(1);
+  });
+});
+
+describe('buildCommands E2E acquisition seams (cheap classifier gates expensive acquisition)', () => {
+  beforeEach(() => {
+    collectE2EOwnerInventory.mockClear();
+    acquireProductionReverseGraph.mockClear();
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('acquires neither the Playwright owner inventory nor the dependency-cruiser graph for a docs-only default invocation', () => {
+    buildCommands(['docs/testing/architecture.md']);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for an empty changed-file set', () => {
+    buildCommands([]);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for --fix-only with no --only, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { fixMode: 'fix-only' });
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for --only <non-e2e>, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { onlyType: 'unit' });
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('acquires the Playwright owner inventory for a default invocation with relevant production source', () => {
+    buildCommands(['src/entities/repository/index.ts']);
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('acquires the Playwright owner inventory for --only e2e with a direct target E2E spec change', () => {
+    buildCommands(['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'], { onlyType: 'e2e' });
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('acquires for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    buildCommands(['package.json']);
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not acquire for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    buildCommands(['package.json']);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('always acquires in literal --full mode regardless of the cheap classifier', () => {
+    buildCommands(['docs/testing/architecture.md'], { fullMode: true });
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1825,7 +1979,7 @@ describe('getActionRequired', () => {
       [
         makeExecutedResult({
           label: 'artifact-static',
-          command: 'node scripts/release/productionArtifactStaticProof.mjs',
+          command: 'node scripts/release/productionArtifactStaticProof.ts',
           status: 'failed',
           exitCode: 1,
         }),
@@ -1850,7 +2004,7 @@ describe('getActionRequired', () => {
         [
           makeExecutedResult({
             label,
-            command: 'node scripts/release/managedUpdatesProof.mjs',
+            command: 'node scripts/release/managedUpdatesProof.ts',
             status: 'failed',
             exitCode: 1,
           }),

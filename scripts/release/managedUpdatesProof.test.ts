@@ -1,85 +1,43 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  MANAGED_UPDATES_ACTIVATION_UI_LABEL,
+  MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+  MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
   MANAGED_UPDATES_ACTIVATION_UI_SPECS,
-  MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS,
-  MANAGED_UPDATES_CROSS_ENGINE_LABEL,
   MANAGED_UPDATES_CROSS_ENGINE_SPECS,
-  MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
-  MANAGED_UPDATES_E2E_GROUPS,
   MANAGED_UPDATES_LIFECYCLE_LABEL,
   MANAGED_UPDATES_LIFECYCLE_SPECS,
   MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
   MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
+  REGISTERED_BROWSER_INTEGRATION_SPECS,
+  REGISTERED_PRODUCTION_ARTIFACT_E2E_SPECS,
+} from '../lib/releaseProofInventory.ts';
+import {
+  MANAGED_UPDATES_ACTIVATION_UI_LABEL,
+  MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS,
+  MANAGED_UPDATES_CROSS_ENGINE_LABEL,
+  MANAGED_UPDATES_E2E_GROUPS,
   runManagedUpdatesBrowserIntegrationProof,
   runManagedUpdatesE2EProof,
-} from './managedUpdatesProof.mjs';
-import { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL } from './runManagedReleaseDataCompatibilityProof.mjs';
-
-const EXPECTED_BROWSER_INTEGRATION_CORPUS = [
-  'src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesDevelop.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesAutomaticCheck.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesControllerUpgrade.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesUncontrolledWindow.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesCrossEngineLifecycle.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesRecovery.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesVueBootFailure.browser-integration.spec.ts',
-  'src/shared/service/appUpdate/managedUpdatesRollbackDiagnostics.browser-integration.spec.ts',
-];
-
-const EXPECTED_E2E_CORPUS = [
-  'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
-  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
-];
+} from './managedUpdatesProof.ts';
 
 function passingResult() {
   return { status: 0, signal: null };
 }
 
-describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
-  it('group 1 contains exactly its six expected specs, with controller artifact identity and activation-UI removed', () => {
-    expect(MANAGED_UPDATES_LIFECYCLE_SPECS).toEqual([
-      'src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesAutomaticCheck.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesUncontrolledWindow.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesRecovery.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesVueBootFailure.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesRollbackDiagnostics.browser-integration.spec.ts',
-    ]);
-    expect(MANAGED_UPDATES_LIFECYCLE_SPECS).not.toContain(
-      'src/shared/service/appUpdate/managedUpdatesControllerArtifactIdentity.browser-integration.spec.ts',
+describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition (via scripts/lib/releaseProofInventory.ts)', () => {
+  it('the union across the three groups equals scripts/lib/releaseProofInventory.ts REGISTERED_BROWSER_INTEGRATION_SPECS minus the artifact spec', () => {
+    const union = MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS.flatMap((group) => group.specs);
+    const expected = REGISTERED_BROWSER_INTEGRATION_SPECS.filter(
+      (spec) => !spec.includes('productionArtifactSmoke'),
     );
-    expect(MANAGED_UPDATES_LIFECYCLE_SPECS).not.toContain(
-      'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
-    );
-  });
 
-  it('group 2 contains exactly its three expected specs, controller-upgrade first, with controller artifact identity removed', () => {
-    expect(MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS).toEqual([
-      'src/shared/service/appUpdate/managedUpdatesControllerUpgrade.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesDevelop.browser-integration.spec.ts',
-      'src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts',
-    ]);
-    expect(MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS).not.toContain(
-      'src/shared/service/appUpdate/managedUpdatesControllerArtifactIdentity.browser-integration.spec.ts',
-    );
-  });
-
-  it('group 3 contains exactly the cross-engine spec', () => {
-    expect(MANAGED_UPDATES_CROSS_ENGINE_SPECS).toEqual([
-      'src/shared/service/appUpdate/managedUpdatesCrossEngineLifecycle.browser-integration.spec.ts',
-    ]);
+    expect(new Set(union)).toEqual(new Set(expected));
+    expect(union).toHaveLength(expected.length);
   });
 
   it('has no spec duplicated across the three groups', () => {
-    const allGroupSpecs = [
-      MANAGED_UPDATES_LIFECYCLE_SPECS,
-      MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
-      MANAGED_UPDATES_CROSS_ENGINE_SPECS,
-    ];
+    const allGroupSpecs = MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS.map((group) => group.specs);
 
     for (let i = 0; i < allGroupSpecs.length; i += 1) {
       for (let j = i + 1; j < allGroupSpecs.length; j += 1) {
@@ -87,17 +45,6 @@ describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
         expect(overlap).toEqual([]);
       }
     }
-  });
-
-  it('the union is exactly the ten-spec browser-integration corpus', () => {
-    const union = [
-      ...MANAGED_UPDATES_LIFECYCLE_SPECS,
-      ...MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
-      ...MANAGED_UPDATES_CROSS_ENGINE_SPECS,
-    ];
-
-    expect(new Set(union)).toEqual(new Set(EXPECTED_BROWSER_INTEGRATION_CORPUS));
-    expect(union).toHaveLength(EXPECTED_BROWSER_INTEGRATION_CORPUS.length);
   });
 
   it('exposes the groups in fixed run order: lifecycle, then migration/isolation, then cross-engine', () => {
@@ -109,47 +56,22 @@ describe('MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS composition', () => {
   });
 });
 
-describe('MANAGED_UPDATES_E2E_GROUPS composition', () => {
-  it('exposes exactly the activation-UI and data-compatibility E2E specs, in fixed run order', () => {
-    expect(MANAGED_UPDATES_ACTIVATION_UI_SPECS).toEqual([
-      'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
-    ]);
-    expect(MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS).toEqual([
-      'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
-    ]);
+describe('MANAGED_UPDATES_E2E_GROUPS composition (via scripts/lib/releaseProofInventory.ts)', () => {
+  it('the union across the two groups equals scripts/lib/releaseProofInventory.ts REGISTERED_PRODUCTION_ARTIFACT_E2E_SPECS minus release-smoke', () => {
+    const union = MANAGED_UPDATES_E2E_GROUPS.flatMap((group) => group.specs);
+    const expected = REGISTERED_PRODUCTION_ARTIFACT_E2E_SPECS.filter(
+      (spec) => !spec.includes('firstUserAndReturningUserSmoke'),
+    );
+
+    expect(new Set(union)).toEqual(new Set(expected));
+    expect(union).toHaveLength(expected.length);
+  });
+
+  it('exposes the activation-UI and data-compatibility groups in fixed run order', () => {
     expect(MANAGED_UPDATES_E2E_GROUPS.map((group) => group.label)).toEqual([
       MANAGED_UPDATES_ACTIVATION_UI_LABEL,
       MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
     ]);
-  });
-
-  it('the union is exactly the two-spec E2E corpus', () => {
-    const union = [
-      ...MANAGED_UPDATES_ACTIVATION_UI_SPECS,
-      ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
-    ];
-
-    expect(new Set(union)).toEqual(new Set(EXPECTED_E2E_CORPUS));
-    expect(union).toHaveLength(EXPECTED_E2E_CORPUS.length);
-  });
-});
-
-describe('the browser-integration and E2E corpora do not overlap and together equal the historical managed-updates corpus', () => {
-  it('has no spec shared between the two proof leaves', () => {
-    const overlap = EXPECTED_BROWSER_INTEGRATION_CORPUS.filter((spec) =>
-      EXPECTED_E2E_CORPUS.includes(spec),
-    );
-
-    expect(overlap).toEqual([]);
-  });
-
-  it('is exactly the historical thirteen-spec managed-update corpus, plus the now-static controller-identity spec removed from Playwright entirely', () => {
-    const union = new Set([...EXPECTED_BROWSER_INTEGRATION_CORPUS, ...EXPECTED_E2E_CORPUS]);
-
-    expect(union.size).toBe(12);
-    expect(union.has('tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts')).toBe(
-      false,
-    );
   });
 });
 
@@ -201,10 +123,10 @@ describe('runManagedUpdatesBrowserIntegrationProof ordering and propagation', ()
   });
 
   it('runs group 2 only after group 1 succeeds, and group 3 only after group 2 succeeds', async () => {
-    const callOrder = [];
-    const runLocalCommand = vi.fn(async ({ args }) => {
+    const callOrder: unknown[] = [];
+    const runLocalCommand = vi.fn(({ args }: { args: readonly string[] }) => {
       callOrder.push(args[2]);
-      return passingResult();
+      return Promise.resolve(passingResult());
     });
 
     await runManagedUpdatesBrowserIntegrationProof({ env: {} }, { runLocalCommand });
@@ -298,7 +220,7 @@ describe('runManagedUpdatesE2EProof ordering and propagation', () => {
         'scripts/e2eReleaseContainer.mjs',
         '--label',
         MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
-        ...MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
+        MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
       ],
     });
   });

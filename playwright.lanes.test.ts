@@ -30,10 +30,33 @@ describe('Playwright lane discovery stays disjoint', () => {
     ]);
   });
 
-  it('discovers the target browser-integration suffix from repo root', () => {
+  it('discovers the target browser-integration suffix from repo root, excluding the appUpdate special corpus', () => {
     expect(browserIntegrationConfig.testDir).toBe('.');
     expect(browserIntegrationConfig.testMatch).toEqual(['src/**/*.browser-integration.spec.ts']);
+    expect(browserIntegrationConfig.testIgnore).toEqual([
+      'src/shared/service/appUpdate/*.browser-integration.spec.ts',
+    ]);
     expect(browserIntegrationConfig.respectGitIgnore).toBe(true);
+  });
+
+  it('cannot collect any appUpdate managed-update browser-integration spec', () => {
+    const appUpdateSpecs = listFiles(
+      'src/shared/service/appUpdate',
+      '.browser-integration.spec.ts',
+    );
+    const testIgnore = browserIntegrationConfig.testIgnore;
+    const testIgnorePattern = Array.isArray(testIgnore) ? testIgnore[0] : testIgnore;
+
+    expect(appUpdateSpecs.length).toBeGreaterThan(0);
+    expect(testIgnorePattern).toBe('src/shared/service/appUpdate/*.browser-integration.spec.ts');
+
+    // The `*` in the registered testIgnore pattern matches a single path
+    // segment, so it excludes every direct appUpdate browser-integration
+    // spec (there are no nested subdirectories in this owner tree).
+    for (const specPath of appUpdateSpecs) {
+      const relativeToAppUpdate = specPath.replace('src/shared/service/appUpdate/', '');
+      expect(relativeToAppUpdate.includes('/')).toBe(false);
+    }
   });
 
   it('discovers owner-local visual specs from repo root via target testMatch', () => {
@@ -46,11 +69,10 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(visualConfig.respectGitIgnore).toBe(true);
   });
 
-  it('does not give the storybook behavior, visual, release, or browser-integration configs a testIgnore of their own subtree', () => {
+  it('does not give the storybook behavior, visual, or release configs a testIgnore of their own subtree', () => {
     expect(storybookBehaviorConfig.testIgnore).toBeUndefined();
     expect(visualConfig.testIgnore).toBeUndefined();
     expect(releaseConfig.testIgnore).toBeUndefined();
-    expect(browserIntegrationConfig.testIgnore).toBeUndefined();
   });
 
   it('does not let per-project mobile/desktop applicability filtering blanket-exclude the pages/widgets owner tree', () => {

@@ -18,31 +18,46 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
 
 const VITE_BIN = './node_modules/.bin/vite';
 const BASE_PATH = '/';
 
-const defaultDeps = { runLocalCommand };
+/** Test-only dependencies for {@link buildManagedStableArtifact} / {@link runManagedUpdatesControllerArtifactIdentityProof}. */
+export interface ManagedUpdatesControllerArtifactIdentityProofDeps {
+  /** Test seam for child-process execution. */
+  runLocalCommand?: typeof runLocalCommand;
+}
+
+const defaultDeps: Required<ManagedUpdatesControllerArtifactIdentityProofDeps> = {
+  runLocalCommand,
+};
+
+/** Inputs for one representative managed stable-channel build. */
+export interface BuildManagedStableArtifactOptions {
+  /** `VITE_BUILD_ID` for this build. */
+  viteBuildId: string;
+  /** `VITE_BUILD_DATE` for this build. */
+  viteBuildDate: string;
+}
 
 /**
  * Runs one real production `vite build` for the managed stable channel with
  * a given application release identity.
- * @param options Build inputs.
- * @param options.viteBuildId `VITE_BUILD_ID` for this build.
- * @param options.viteBuildDate `VITE_BUILD_DATE` for this build.
- * @param [deps] Test seam for child-process execution.
+ * @param options - Build inputs.
+ * @param deps - Test seam for child-process execution.
  * @returns The built dist directory. Caller owns its lifetime.
- * @throws {Error} When the `vite build` step fails.
+ * @throws When the `vite build` step fails.
  */
 export async function buildManagedStableArtifact(
-  { viteBuildId, viteBuildDate },
-  deps = defaultDeps,
-) {
+  { viteBuildId, viteBuildDate }: BuildManagedStableArtifactOptions,
+  deps: ManagedUpdatesControllerArtifactIdentityProofDeps = defaultDeps,
+): Promise<string> {
+  const runCommand = deps.runLocalCommand ?? defaultDeps.runLocalCommand;
   const distDir = mkdtempSync(join(tmpdir(), 'managed-sw-identity-dist-'));
-  const result = await deps.runLocalCommand({
+  const result = await runCommand({
     command: VITE_BIN,
     args: ['build', '--outDir', distDir, '--emptyOutDir'],
     env: {
@@ -71,9 +86,11 @@ export async function buildManagedStableArtifact(
  * byte-equality assertion, not a check for known strings: any future
  * accidental reintroduction of application-release-specific bytes — under
  * any name — fails this, without needing to predict its shape.
- * @param [deps] Test seam for child-process execution.
+ * @param deps - Test seam for child-process execution.
  */
-export async function runManagedUpdatesControllerArtifactIdentityProof(deps = defaultDeps) {
+export async function runManagedUpdatesControllerArtifactIdentityProof(
+  deps: ManagedUpdatesControllerArtifactIdentityProofDeps = defaultDeps,
+): Promise<void> {
   const distA = await buildManagedStableArtifact(
     {
       viteBuildId: 'controller-artifact-identity-a',
@@ -109,7 +126,7 @@ export async function runManagedUpdatesControllerArtifactIdentityProof(deps = de
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     await runManagedUpdatesControllerArtifactIdentityProof();
   } catch (error) {

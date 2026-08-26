@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('./packageJsonImpact.ts', () => ({
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
+}));
+
+import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
 import {
   isAppUpdateBrowserIntegrationSpecPath,
   isAppUpdateProductionPath,
@@ -9,6 +14,9 @@ import {
   resolveBrowserIntegrationPlan,
   resolveGenericBrowserIntegrationPlan,
 } from './browserIntegrationRisk.ts';
+
+const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
+const alwaysValidMembership = () => ({ valid: true, errors: [] });
 
 const GENERIC_SPEC =
   'src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts';
@@ -65,11 +73,22 @@ describe('isFullBrowserIntegrationLanePath', () => {
     expect(isFullBrowserIntegrationLanePath('playwright.release.config.ts')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('scripts/e2eReleaseContainer.mjs')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('scripts/playwrightContainer.ts')).toBe(true);
-    expect(isFullBrowserIntegrationLanePath('scripts/release/managedUpdatesProof.mjs')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/release/managedUpdatesProof.ts')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('scripts/lib/browserIntegrationRisk.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/releaseProofInventory.ts')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('scripts/verify.ts')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('config/tooling.json')).toBe(true);
     expect(isFullBrowserIntegrationLanePath('pnpm-lock.yaml')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('vite.config.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/release/artifactServer.mjs')).toBe(true);
+  });
+
+  it('flags the shared managed-release fixture and real publisher/build support', () => {
+    expect(
+      isFullBrowserIntegrationLanePath('tests/e2e/release/fixtures/managedReleaseFixture.mjs'),
+    ).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/pages/lib/releasePublish.mjs')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/pages/lib/pagesFs.mjs')).toBe(true);
   });
 
   it('does not flag unrelated paths', () => {
@@ -79,7 +98,10 @@ describe('isFullBrowserIntegrationLanePath', () => {
 
 describe('resolveBrowserIntegrationPlan', () => {
   it('reports skip for an unrelated changed-file set', () => {
-    const plan = resolveBrowserIntegrationPlan(['src/features/documentCreate/index.ts']);
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const plan = resolveBrowserIntegrationPlan(['src/features/documentCreate/index.ts'], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan).toEqual({
       mode: 'skip',
@@ -89,8 +111,26 @@ describe('resolveBrowserIntegrationPlan', () => {
     });
   });
 
+  it('fails closed when the appUpdate filesystem inventory does not match the registered inventory', () => {
+    const plan = resolveBrowserIntegrationPlan(['src/features/documentCreate/index.ts'], {
+      validateMembership: () => ({
+        valid: false,
+        errors: ['appUpdate browser-integration spec X exists on disk but is not registered'],
+      }),
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.artifact).toBe(false);
+    expect(plan.managedUpdates).toBe(false);
+    expect(plan.reasons).toEqual([
+      'appUpdate browser-integration spec X exists on disk but is not registered',
+    ]);
+  });
+
   it('selects only the artifact leaf for a direct productionArtifactSmoke spec change', () => {
-    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.mode).toBe('focused');
     expect(plan.artifact).toBe(true);
@@ -98,7 +138,9 @@ describe('resolveBrowserIntegrationPlan', () => {
   });
 
   it('selects only the artifact leaf for an added productionArtifactSmoke spec', () => {
-    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.artifact).toBe(true);
     expect(plan.managedUpdates).toBe(false);
@@ -108,13 +150,17 @@ describe('resolveBrowserIntegrationPlan', () => {
     // The planner selects by changed path identity alone; add/modify/remove
     // status is resolved upstream by scripts/lib/changedPaths.ts before this
     // resolver runs, so a removed spec still surfaces here as its own path.
-    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.artifact).toBe(true);
   });
 
   it('selects only the managed-updates-browser-integration leaf for a direct managed-update spec change', () => {
-    const plan = resolveBrowserIntegrationPlan([LIFECYCLE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([LIFECYCLE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.mode).toBe('focused');
     expect(plan.artifact).toBe(false);
@@ -122,14 +168,18 @@ describe('resolveBrowserIntegrationPlan', () => {
   });
 
   it('selects only the managed-updates-browser-integration leaf for the cross-engine spec', () => {
-    const plan = resolveBrowserIntegrationPlan([CROSS_ENGINE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([CROSS_ENGINE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.managedUpdates).toBe(true);
     expect(plan.artifact).toBe(false);
   });
 
   it('selects both leaves for an appUpdate production source change', () => {
-    const plan = resolveBrowserIntegrationPlan([`${APP_UPDATE_DIR}workerInstall.ts`]);
+    const plan = resolveBrowserIntegrationPlan([`${APP_UPDATE_DIR}workerInstall.ts`], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.mode).toBe('focused');
     expect(plan.artifact).toBe(true);
@@ -137,16 +187,18 @@ describe('resolveBrowserIntegrationPlan', () => {
   });
 
   it('does not select either leaf for an appUpdate unit test or test helper change', () => {
-    const plan = resolveBrowserIntegrationPlan([
-      `${APP_UPDATE_DIR}workerInstall.test.ts`,
-      `${APP_UPDATE_DIR}fakeCacheStorage.testUtils.ts`,
-    ]);
+    const plan = resolveBrowserIntegrationPlan(
+      [`${APP_UPDATE_DIR}workerInstall.test.ts`, `${APP_UPDATE_DIR}fakeCacheStorage.testUtils.ts`],
+      { validateMembership: alwaysValidMembership },
+    );
 
     expect(plan.mode).toBe('skip');
   });
 
   it('unions leaves from multiple distinct changed specs', () => {
-    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC, LIFECYCLE_SPEC]);
+    const plan = resolveBrowserIntegrationPlan([PRODUCTION_ARTIFACT_SMOKE_SPEC, LIFECYCLE_SPEC], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.mode).toBe('focused');
     expect(plan.artifact).toBe(true);
@@ -154,7 +206,9 @@ describe('resolveBrowserIntegrationPlan', () => {
   });
 
   it('runs the full lane for release Playwright/orchestration infrastructure', () => {
-    const plan = resolveBrowserIntegrationPlan(['playwright.release.config.ts']);
+    const plan = resolveBrowserIntegrationPlan(['playwright.release.config.ts'], {
+      validateMembership: alwaysValidMembership,
+    });
 
     expect(plan.mode).toBe('full');
     expect(plan.artifact).toBe(true);
@@ -162,15 +216,35 @@ describe('resolveBrowserIntegrationPlan', () => {
     expect(plan.reasons[0]).toContain('browser-integration infrastructure path');
   });
 
-  it('runs the full lane for a managedUpdatesProof.mjs change even alongside an unrelated file', () => {
-    const plan = resolveBrowserIntegrationPlan([
-      'scripts/release/managedUpdatesProof.mjs',
-      'src/features/documentCreate/index.ts',
-    ]);
+  it('runs the full lane for a managedUpdatesProof.ts change even alongside an unrelated file', () => {
+    const plan = resolveBrowserIntegrationPlan(
+      ['scripts/release/managedUpdatesProof.ts', 'src/features/documentCreate/index.ts'],
+      { validateMembership: alwaysValidMembership },
+    );
 
     expect(plan.mode).toBe('full');
     expect(plan.artifact).toBe(true);
     expect(plan.managedUpdates).toBe(true);
+  });
+
+  it('runs the full lane for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+    const plan = resolveBrowserIntegrationPlan(['package.json'], {
+      validateMembership: alwaysValidMembership,
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.artifact).toBe(true);
+    expect(plan.managedUpdates).toBe(true);
+  });
+
+  it('does not run the full lane for a version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const plan = resolveBrowserIntegrationPlan(['package.json'], {
+      validateMembership: alwaysValidMembership,
+    });
+
+    expect(plan.mode).toBe('skip');
   });
 });
 

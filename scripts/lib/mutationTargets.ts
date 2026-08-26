@@ -1,13 +1,23 @@
 import fs from 'node:fs';
 
+import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+
+const PACKAGE_JSON_PATH = 'package.json';
+
 // Mutation infrastructure: a change here can alter every registered target's
 // execution/ownership, so it always selects the complete registered
 // inventory instead of the exact affected-source relation below (see
 // docs/testing/verify-redesign-pass-e-implementation.md's "Stryker
-// execution").
+// execution"). `pnpm-lock.yaml` is included because a lockfile change can
+// alter the resolved Stryker/Vitest-runner toolchain the same way a
+// runtime-relevant `package.json` change can (see
+// docs/testing/verify-redesign-final-review-correction.md's "Decision 5");
+// runtime-relevant `package.json` changes are handled separately below since
+// a confirmed version-only change must not widen mutation planning.
 const MUTATION_INFRA_PATHS: ReadonlySet<string> = new Set([
   'scripts/lib/mutationTargets.ts',
   'stryker.config.mjs',
+  'pnpm-lock.yaml',
 ]);
 
 /** One explicit, project-owned mutation ownership entry. */
@@ -84,6 +94,12 @@ export interface MutationTargetsOptions {
    * against the real repository state.
    */
   fileExists?: (filePath: string) => boolean;
+  /**
+   * Git ref to compare the current `package.json` against, for the
+   * version-only refinement. `null` fails closed to runtime-relevant.
+   * Only consulted by {@link resolveMutationPlan}.
+   */
+  packageJsonOldRef?: string | null;
 }
 
 /**
@@ -162,7 +178,7 @@ export type MutationPlan =
  */
 export function resolveMutationPlan(
   changedFiles: readonly string[],
-  { fileExists = isExistingFile }: MutationTargetsOptions = {},
+  { fileExists = isExistingFile, packageJsonOldRef = null }: MutationTargetsOptions = {},
 ): MutationPlan {
   const validation = validateMutationTargets(MUTATION_TARGETS, { fileExists });
 
@@ -180,6 +196,17 @@ export function resolveMutationPlan(
       reasons: [
         `mutation registry/infrastructure change ${infraHit} -> complete registered mutation inventory`,
       ],
+    };
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    return {
+      mode: 'full',
+      sources: allSources,
+      reasons: ['runtime-relevant package.json change -> complete registered mutation inventory'],
     };
   }
 

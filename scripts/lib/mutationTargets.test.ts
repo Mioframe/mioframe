@@ -1,10 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('./packageJsonImpact.ts', () => ({
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
+}));
+
+import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
 import {
   MUTATION_TARGETS,
   resolveMutationPlan,
   validateMutationTargets,
   type MutationTarget,
 } from './mutationTargets.ts';
+
+const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 
 describe('MUTATION_TARGETS', () => {
   it('registers exactly the four accepted deterministic high-risk targets', () => {
@@ -157,5 +165,40 @@ describe('resolveMutationPlan', () => {
 
     expect(plan.mode).toBe('invalid');
     expect(plan.reasons.length).toBeGreaterThan(0);
+  });
+
+  it('selects the complete registered inventory for a pnpm-lock.yaml change', () => {
+    const plan = resolveMutationPlan(['pnpm-lock.yaml']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.sources).toEqual(MUTATION_TARGETS.map((target) => target.source).sort());
+  });
+
+  it('selects the complete registered inventory for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const plan = resolveMutationPlan(['package.json']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.sources).toEqual(MUTATION_TARGETS.map((target) => target.source).sort());
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({ oldRef: null });
+  });
+
+  it('remains mutation-irrelevant for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const plan = resolveMutationPlan(['package.json']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('threads packageJsonOldRef through to the runtime-relevance check', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    resolveMutationPlan(['package.json'], { packageJsonOldRef: 'origin/develop' });
+
+    expect(isPackageJsonRuntimeRelevantChange).toHaveBeenCalledWith({
+      oldRef: 'origin/develop',
+    });
   });
 });

@@ -1,0 +1,158 @@
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('./packageJsonImpact.ts', () => ({
+  isPackageJsonRuntimeRelevantChange: vi.fn(),
+}));
+
+import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport } from './packageJsonImpact.ts';
+import { resolveReleaseStaticPlan } from './releaseStaticRisk.ts';
+
+const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
+
+describe('resolveReleaseStaticPlan', () => {
+  it('skips every leaf for an unrelated change', () => {
+    const plan = resolveReleaseStaticPlan(['src/features/documentCreate/index.ts']);
+
+    expect(plan).toEqual({
+      mode: 'skip',
+      releaseVersion: false,
+      releaseConfig: false,
+      build: false,
+      publisherNodeImport: false,
+      artifactStatic: false,
+      managedUpdatesStatic: false,
+      reasons: ['no release-sensitive static changes'],
+    });
+  });
+
+  it('skips for an empty changed-file list', () => {
+    const plan = resolveReleaseStaticPlan([]);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('selects only release-version for a package.json version bump', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const plan = resolveReleaseStaticPlan(['package.json']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.releaseVersion).toBe(true);
+    expect(plan.releaseConfig).toBe(false);
+    expect(plan.build).toBe(false);
+    expect(plan.publisherNodeImport).toBe(false);
+    expect(plan.artifactStatic).toBe(false);
+    expect(plan.managedUpdatesStatic).toBe(false);
+  });
+
+  it('widens build/artifact-static/managed-updates-static for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const plan = resolveReleaseStaticPlan(['package.json']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.releaseVersion).toBe(true);
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+  });
+
+  it('widens build/artifact-static/managed-updates-static for a pnpm-lock.yaml change', () => {
+    const plan = resolveReleaseStaticPlan(['pnpm-lock.yaml']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+  });
+
+  it('selects only release-config for a config/tooling.json change', () => {
+    const plan = resolveReleaseStaticPlan(['config/tooling.json']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.releaseConfig).toBe(true);
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(false);
+    expect(plan.managedUpdatesStatic).toBe(false);
+  });
+
+  it('selects only build for a vite.config.ts change', () => {
+    const plan = resolveReleaseStaticPlan(['vite.config.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.releaseConfig).toBe(false);
+    expect(plan.artifactStatic).toBe(false);
+    expect(plan.managedUpdatesStatic).toBe(false);
+  });
+
+  it('selects only publisher-node-import for a publisher implementation change', () => {
+    const plan = resolveReleaseStaticPlan(['scripts/pages/lib/releasePublish.mjs']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.publisherNodeImport).toBe(true);
+    expect(plan.build).toBe(false);
+    expect(plan.releaseVersion).toBe(false);
+  });
+
+  it('selects publisher-node-import for the release wire contract change', () => {
+    const plan = resolveReleaseStaticPlan(['src/shared/service/appUpdate/releaseWireContract.ts']);
+
+    expect(plan.publisherNodeImport).toBe(true);
+    // The wire contract also lives under the appUpdate production directory,
+    // so it is capable of changing worker byte identity too.
+    expect(plan.managedUpdatesStatic).toBe(true);
+    expect(plan.build).toBe(true);
+  });
+
+  it('selects build and artifact-static for src/sw.ts', () => {
+    const plan = resolveReleaseStaticPlan(['src/sw.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+  });
+
+  it('selects build and managed-updates-static for an appUpdate production source change', () => {
+    const plan = resolveReleaseStaticPlan(['src/shared/service/appUpdate/workerInstall.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+    expect(plan.artifactStatic).toBe(false);
+  });
+
+  it('does not select managed-updates-static for an appUpdate test/spec file', () => {
+    const plan = resolveReleaseStaticPlan(['src/shared/service/appUpdate/workerInstall.test.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('selects every leaf for a broad infrastructure-style combination', () => {
+    const plan = resolveReleaseStaticPlan([
+      'package.json',
+      'config/tooling.json',
+      'scripts/pages/lib/releasePublish.mjs',
+      'src/sw.ts',
+    ]);
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    expect(plan.releaseVersion).toBe(true);
+    expect(plan.releaseConfig).toBe(true);
+    expect(plan.publisherNodeImport).toBe(true);
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+  });
+
+  it('fails closed to runtime-relevant when packageJsonOldRef is unresolved', () => {
+    isPackageJsonRuntimeRelevantChange.mockImplementation(({ oldRef } = {}) => oldRef === null);
+
+    const plan = resolveReleaseStaticPlan(['package.json'], { packageJsonOldRef: null });
+
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(true);
+  });
+});

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { runManagedUpdatesControllerArtifactIdentityProof } from './managedUpdatesControllerArtifactIdentityProof.mjs';
+import { runManagedUpdatesControllerArtifactIdentityProof } from './managedUpdatesControllerArtifactIdentityProof.ts';
 
 describe('runManagedUpdatesControllerArtifactIdentityProof', () => {
   const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -19,16 +19,18 @@ describe('runManagedUpdatesControllerArtifactIdentityProof', () => {
   });
 
   it('builds two managed stable artifacts with distinct release identity and compares dist/sw.js bytes', async () => {
-    const runLocalCommand = vi.fn(async ({ args, env }) => {
-      const outDirIndex = args.indexOf('--outDir');
-      const outDir = args[outDirIndex + 1];
-      mkdirSync(outDir, { recursive: true });
-      writeFileSync(
-        join(outDir, 'sw.js'),
-        `self.addEventListener("install", () => {}); // stable, ${env.VITE_RELEASE_CHANNEL}`,
-      );
-      return { status: 0, signal: null };
-    });
+    const runLocalCommand = vi.fn(
+      ({ args, env = {} }: { args: readonly string[]; env?: NodeJS.ProcessEnv }) => {
+        const outDirIndex = args.indexOf('--outDir');
+        const outDir = args[outDirIndex + 1];
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(
+          join(outDir, 'sw.js'),
+          `self.addEventListener("install", () => {}); // stable, ${env.VITE_RELEASE_CHANNEL}`,
+        );
+        return Promise.resolve({ status: 0, signal: null });
+      },
+    );
 
     await runManagedUpdatesControllerArtifactIdentityProof({ runLocalCommand });
 
@@ -48,15 +50,17 @@ describe('runManagedUpdatesControllerArtifactIdentityProof', () => {
   });
 
   it('fails and cleans up the temp dist directories when dist/sw.js bytes differ', async () => {
-    const distDirs = [];
-    const runLocalCommand = vi.fn(async ({ args, env }) => {
-      const outDirIndex = args.indexOf('--outDir');
-      const outDir = args[outDirIndex + 1];
-      distDirs.push(outDir);
-      mkdirSync(outDir, { recursive: true });
-      writeFileSync(join(outDir, 'sw.js'), `identity: ${env.VITE_BUILD_ID}`);
-      return { status: 0, signal: null };
-    });
+    const distDirs: string[] = [];
+    const runLocalCommand = vi.fn(
+      ({ args, env = {} }: { args: readonly string[]; env?: NodeJS.ProcessEnv }) => {
+        const outDirIndex = args.indexOf('--outDir');
+        const outDir = args[outDirIndex + 1];
+        distDirs.push(outDir);
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(join(outDir, 'sw.js'), `identity: ${env.VITE_BUILD_ID}`);
+        return Promise.resolve({ status: 0, signal: null });
+      },
+    );
 
     await runManagedUpdatesControllerArtifactIdentityProof({ runLocalCommand });
 
