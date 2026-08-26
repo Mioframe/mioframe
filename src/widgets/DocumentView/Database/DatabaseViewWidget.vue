@@ -162,7 +162,7 @@ const onUpdateToolbarProperty = (payload: {
   propertyId: DatabasePropertyId;
   property: DatabaseUnknownProperty;
 }) => {
-  onUpdateProperty(payload.propertyId, payload.property);
+  return onUpdateProperty(payload.propertyId, payload.property);
 };
 
 const hasProperties = computed(() =>
