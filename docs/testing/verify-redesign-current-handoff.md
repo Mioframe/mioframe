@@ -6,28 +6,45 @@ Branch: `architecture/verify-redesign`
 
 PR: #218 — `refactor(testing): redesign verification ownership` (base `develop`).
 
-The redesign is implementation-complete and architect-accepted through **Pass A-F**.
+PR #218 is **draft and blocked** after a new complete resulting-PR semantic review of implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
 
-Accepted implementation/reference heads:
+The review reopened implementation acceptance without changing the canonical eight-type architecture. Prior Pass A-F acceptance remains historical evidence for the work reviewed at those pass boundaries, but it does not override newly discovered current-repository defects.
 
-- **Pass D:** `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- **Pass E:** `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
-- **Pass F / complete resulting-PR semantic review:** `853d3f8f370b781b9f74071fd383cee588f18e55`.
+Active review state:
 
-Final semantic review result on `853d3f8f370b781b9f74071fd383cee588f18e55`:
+- `scripts/REVIEW.md` — first correction owner;
+- `.github/workflows/REVIEW.md` — downstream CI owner after the scripts correction is accepted.
 
-- blockers: 0;
-- major issues: 0;
-- minor issues: 0;
-- accepted risks: 0.
+Current correction architecture:
 
-GitHub Actions run `32970768337` / run number `4413` completed successfully on that exact semantic head. It passed `static`, `unit`, real `mutation`, E2E, behavior, visual, aggregate `verification`, `release-version`, final `verify`, and PR preview deployment.
+- `docs/testing/verify-redesign-final-review-correction.md`.
 
-The first Pass F review had found one documentation-only blocker in `docs/release.md`; the architect corrected it before final acceptance. No active `REVIEW.md` remains.
+Current coding-agent task:
 
-## Final architecture state
+- `docs/testing/verify-redesign-final-review-agent-task.md`.
 
-The canonical public verification surface is:
+## Findings reopened by the complete PR review
+
+The scripts-owned correction must resolve all current `scripts/REVIEW.md` findings together:
+
+- release-sensitive static proof is incorrectly full-only instead of participating in normal affected `static` ownership;
+- exceptional managed-update/browser and `productionArtifact/` E2E execution membership is not structurally complete against the real filesystem inventory;
+- shared release fixture/publisher/artifact/build support can change while the dependent browser-integration/E2E proof skips;
+- the generic browser-integration Playwright config overlaps the managed-update special corpus;
+- mutation planning does not treat lockfile/runtime-relevant mutation toolchain changes as mutation infrastructure;
+- expensive Playwright E2E owner inventory is acquired before E2E relevance is established, including paths where it is unnecessary;
+- new/task-touched verifier proof entry points still violate the TypeScript-first tooling rule without a loader/runtime exception;
+- one managed-update comment claims a cross-type ordering invariant that is not part of the accepted architecture.
+
+The downstream workflow blocker is separate:
+
+- `.github/workflows/verify.yml` does not run public `browser-integration` in the develop verification gate, and aggregate `verification` therefore does not require it.
+
+Do not fix the workflow blocker in the first scripts-owned correction pass. Re-review the scripts correction first, then correct the workflow against the accepted planner semantics.
+
+## Canonical architecture that remains unchanged
+
+The public verification types remain exactly:
 
 ```text
 static
@@ -40,7 +57,7 @@ mutation
 e2e
 ```
 
-Canonical commands include:
+Canonical commands remain:
 
 ```text
 pnpm verify
@@ -53,37 +70,38 @@ pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-Key accepted ownership decisions:
+Preserved decisions/invariants:
 
-- public `--only` exposes verification types, not private planner leaves;
-- literal `pnpm verify --full` is the single release-grade entry point and runs every current type inventory without affected narrowing;
-- `verify:release` is removed;
-- behavior, visual, and browser-integration proof use truthful owner-local target suffixes;
-- unit impact uses native Vitest changed/related behavior with safe fallback and visible zero-match failure;
-- mutation uses one explicit validated four-target registry consumed directly by Stryker;
-- E2E uses structural page/widget ownership, dependency-cruiser reverse production reachability, independent Playwright project applicability, and filesystem/Playwright inventory equality validation;
-- persistent performance inventory remains intentionally empty until a real measurable budget exists;
-- verifier-managed Playwright remains container-only;
-- production-artifact and managed-update internal release/container runners remain where required by real execution semantics;
-- top-level verify locking, expensive-command locking, status/resume/logging/timeout/profile/base/fix semantics remain preserved.
+- public `--only` exposes verification types, not private leaf labels;
+- `pnpm verify --full` is the single release-grade public entry point;
+- `verify:release` remains removed;
+- unit affected selection remains native Vitest changed/related with safe fallback;
+- mutation remains one explicit four-target registry, with no adjacency inference;
+- ordinary E2E remains structural page/widget ownership with dependency-cruiser used only for production reachability;
+- Playwright project applicability remains separate from ownership;
+- persistent performance inventory remains intentionally empty;
+- every verifier-managed Playwright CLI invocation remains containerized;
+- top-level verify lock, expensive-command lock, status/resume/logging/timeouts/profile/base/fix behavior remain preserved.
 
-`docs/testing/architecture.md` is the durable target contract. `docs/testing/migration-plan.md` now records the migration as complete. Pass-specific files remain historical implementation/review records and must not be treated as active compatibility requirements.
+Previously closed Pass D evidence such as host-Playwright removal and real dependency-cruiser proof must not be reopened without new repository evidence.
 
-## Final PR scope check
+## CI evidence
 
-The complete PR was reviewed relative to `develop`, not only the Pass F patch. The final semantic review incorporated the previously accepted Pass A-E reviews and rechecked the post-Pass-E delta. After Pass E acceptance, executable changes were limited to the bounded Pass F public compatibility cleanup: release workflow/alias/help changes plus active documentation/comments. No verifier planning algorithm, E2E ownership, mutation registry, production behavior, test meaning, lock/container behavior, or performance semantics changed after the accepted Pass E implementation head.
+GitHub Actions run `32991717215` / run number `4419` passed on exact implementation head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
 
-The branch was `behind_by: 0` relative to the reviewed `develop` base at final semantic review time.
+That green run is **not merge proof** for the current review because the complete semantic review found missing affected/execution coverage, and the current develop workflow does not include the `browser-integration` type at all.
 
-## Remaining repository-level gate
+Review/control documentation commits after `f592714...` intentionally move the PR head and do not claim executable verification success.
 
-The architect-owned completion documentation commits after semantic head `853d3f8f370b781b9f74071fd383cee588f18e55` do not reopen implementation semantics, but they change the PR HEAD.
+## Next order of work
 
-Before merge:
+1. coding agent implements only `docs/testing/verify-redesign-final-review-agent-task.md`;
+2. architect re-reviews the complete scripts-owned affected scope against `scripts/REVIEW.md`;
+3. if scripts review is clean, remove `scripts/REVIEW.md` and correct the downstream `.github/workflows/REVIEW.md` blocker;
+4. re-review the complete resulting PR, not only the final patch;
+5. synchronize architect-owned migration/handoff/PR description with the accepted result;
+6. require green GitHub CI on the exact final head, including the corrected browser-integration lane;
+7. move PR out of draft only after semantic review and exact-head CI are both clean;
+8. merge into `develop` with squash merge.
 
-1. require green GitHub CI on the exact final documentation head;
-2. confirm no new commits changed implementation after this handoff;
-3. move PR #218 out of draft;
-4. merge into `develop` with **squash merge**.
-
-No coding-agent task is pending.
+Current merge readiness: **should not merge until blockers are fixed**.
