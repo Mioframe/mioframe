@@ -10,7 +10,7 @@ Pass status:
 - Pass B — completed and architect-accepted;
 - Pass C — completed and architect-accepted;
 - Pass D — completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
-- Pass E — implementation plus first correction landed; full architect re-review through correction HEAD `b633937801e78f45bf8fa6d577530dc1c26f025a` resolved the previous three script findings and left one final proof-ownership blocker in `config/REVIEW.md`;
+- Pass E — implementation plus first correction landed; the final proof-ownership correction was applied directly outside the read-only coding sandbox at `a2b9a1ebdfcbce5c40cd158f553d0876cbce2a71`; semantic acceptance is pending the required focused proof and full architect re-review;
 - Pass F — must not start until Pass E is architect-accepted.
 
 The first Pass E correction closed:
@@ -21,62 +21,66 @@ The first Pass E correction closed:
 
 Do not reopen those findings without new repository evidence.
 
-The remaining Pass E correction is fully resolved architecturally and is prepared in:
+The final Pass E correction architecture is recorded in:
 
 `docs/testing/verify-redesign-pass-e-proof-correction.md`
 
-Exact-head GitHub CI remains an architect-owned gate separate from semantic pass acceptance. No exact-head pull-request workflow run was available for `b633937801e78f45bf8fa6d577530dc1c26f025a` at re-review time.
+The coding sandbox exposed `config/` as read-only, so the architect applied the already-resolved deletion of `config/strykerConfig.test.ts` through GitHub rather than introducing a mount workaround. The commit contains only that deletion.
+
+Exact-head GitHub CI remains an architect-owned gate separate from semantic pass acceptance.
 
 ## Read order
 
-Before the remaining Pass E correction/re-review, read in this order:
+Before the remaining Pass E proof/re-review, read in this order:
 
 1. root `AGENTS.md`;
 2. `.agents/skills/verification/SKILL.md`;
 3. `.agents/skills/unit-testing/SKILL.md`;
 4. `.agents/skills/mutation-testing/SKILL.md`;
-5. `.agents/skills/implementation-preflight/SKILL.md` when implementing non-trivial tooling changes;
-6. `.agents/skills/project-review/SKILL.md` when reviewing;
-7. `docs/testing/architecture.md`;
-8. `docs/testing/verify-redesign-implementation-preflight.md`;
-9. `docs/testing/migration-plan.md`;
-10. `docs/testing/verify-redesign-pass-e-implementation.md`;
-11. `docs/testing/verify-redesign-pass-e-agent-task.md` for the original Pass E implementation boundary;
-12. `docs/testing/verify-redesign-pass-e-correction.md` for the closed first correction boundary;
-13. active `config/REVIEW.md`;
-14. `docs/testing/verify-redesign-pass-e-proof-correction.md` for the current final correction;
-15. current `config/strykerConfig.test.ts`, `stryker.config.mjs`, `scripts/lib/mutationTargets.ts`, `scripts/lib/mutationTargets.test.ts`, `vitest.config.ts`, `tsconfig.node.json`, `tsconfig.storybook.json`, `tsconfig.scripts.json`, and `scripts/typeCheck.mjs`.
+5. `.agents/skills/project-review/SKILL.md` when reviewing;
+6. `docs/testing/architecture.md`;
+7. `docs/testing/verify-redesign-implementation-preflight.md`;
+8. `docs/testing/migration-plan.md`;
+9. `docs/testing/verify-redesign-pass-e-implementation.md`;
+10. `docs/testing/verify-redesign-pass-e-agent-task.md` for the original Pass E implementation boundary;
+11. `docs/testing/verify-redesign-pass-e-correction.md` for the closed first correction boundary;
+12. active `config/REVIEW.md`;
+13. `docs/testing/verify-redesign-pass-e-proof-correction.md` for the final proof-ownership correction;
+14. current `stryker.config.mjs`, `scripts/lib/mutationTargets.ts`, `scripts/lib/mutationTargets.test.ts`, `vitest.config.ts`, `tsconfig.node.json`, `tsconfig.storybook.json`, `tsconfig.scripts.json`, and `scripts/typeCheck.mjs`.
 
 Pass D implementation/correction records are historical accepted source for invariants and should be consulted only when Pass E touches an adjacent boundary.
 
 ## Active Pass E review
 
-The complete Pass E result was re-reviewed from baseline:
+The complete Pass E result was previously re-reviewed from baseline:
 
 `75277c067cca6aba30f2e0698056e4f84f48fb69`
 
-through correction HEAD:
+through first-correction HEAD:
 
 `b633937801e78f45bf8fa6d577530dc1c26f025a`
 
 The previous `scripts/REVIEW.md` findings are resolved and that review document has been removed.
 
-The durable active review source is:
+The durable active review source remains:
 
 `config/REVIEW.md`
 
-The remaining blocker is narrow:
+Its required implementation is now present at:
 
-- Pass E added `config/strykerConfig.test.ts`, but that test crosses the repository TypeScript project boundaries by importing root `stryker.config.mjs` and `scripts/lib/mutationTargets.ts` from a `config/**/*.ts` test compiled by config-owned projects. Repository `vue-tsc --build` therefore fails on project-file-list/declaration ownership.
+`a2b9a1ebdfcbce5c40cd158f553d0876cbce2a71`
 
-The architecture decision is now explicit:
+The commit deletes only the redundant `config/strykerConfig.test.ts` proof. No TypeScript project, registry, Stryker config, production code, or verifier implementation was changed.
 
-- delete `config/strykerConfig.test.ts` without replacement;
-- keep `scripts/lib/mutationTargets.test.ts` as the durable deterministic mutation-registry proof;
-- keep real verifier-managed Stryker config loading as the integration proof that `stryker.config.mjs` consumes the TypeScript registry correctly;
-- do not widen any TypeScript project, add declaration shims/loaders, move the redundant test, or create another proof abstraction.
+The remaining work is proof, not implementation:
 
-This is the second and final local correction opportunity for Pass E. If the next re-review still exposes ownership drift, mixed responsibility, or workaround growth, stop correction loops and revisit Pass E architecture.
+- `scripts/lib/mutationTargets.test.ts` must remain green as the durable deterministic mutation-registry proof;
+- one real verifier-managed Stryker/config-load execution must prove that `stryker.config.mjs` still consumes the TypeScript registry and runs the exact four-source inventory;
+- focused static verification must show repository type-check green with the previous project-file-list/declaration failure gone.
+
+If a fresh sandbox still presents the deleted file because its read-only mount is stale, do not work around the mount. Recreate/resync the environment from the current branch HEAD so the mounted tree reflects the committed deletion.
+
+This is the second and final local correction opportunity for Pass E. If the next full re-review exposes ownership drift, mixed responsibility, or workaround growth, stop correction loops and revisit Pass E architecture.
 
 ## Pass E architecture summary
 
@@ -101,7 +105,7 @@ This is the second and final local correction opportunity for Pass E. If the nex
 - Structural registry invalidity fails before Stryker in focused/default and literal full mode.
 - `--full` executes every registered target with no affected narrowing only after registry validity is established.
 - `scripts/lib/mutationTargets.test.ts` owns durable deterministic registry proof; real Stryker execution owns native config-load integration proof.
-- No separate `config/strykerConfig.test.ts` proof is required or desired.
+- No separate `config/strykerConfig.test.ts` proof exists or is required.
 
 ### Performance
 
@@ -127,9 +131,9 @@ Do not reopen without new repository evidence:
 
 ## Next workflow
 
-1. Coding agent implements only `docs/testing/verify-redesign-pass-e-proof-correction.md`; Pass F remains closed.
-2. The expected implementation is deletion of the redundant `config/strykerConfig.test.ts` only, unless that deletion exposes a concrete pre-existing config defect that must be reported rather than worked around.
-3. Architect re-reviews the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the new implementation HEAD, not only the deletion patch.
-4. Remove `config/REVIEW.md` only when the active finding is resolved and no new blocker/major issue appears.
+1. Start/resync the coding environment from the current branch HEAD; do not attempt to rewrite the read-only `config/` mount.
+2. Run only the remaining focused proof required by `docs/testing/verify-redesign-pass-e-proof-correction.md`; no further code change is expected.
+3. Architect re-reviews the complete Pass E result from `75277c067cca6aba30f2e0698056e4f84f48fb69` through the final implementation HEAD, not only the deletion commit.
+4. Remove `config/REVIEW.md` only when the active finding is proven resolved and no new blocker/major issue appears.
 5. If clean, mark Pass E architect-accepted and then resolve/execute Pass F.
 6. Do not give final merge approval until exact-head GitHub CI exists and is green on the final resulting PR head.
