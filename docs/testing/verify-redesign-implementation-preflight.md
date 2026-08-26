@@ -128,25 +128,25 @@ Current root E2E files are migration inputs, not target ownership units. Split a
 
 Use this target inventory:
 
-| Current root spec | Target ownership |
-| --- | --- |
-| `appSmoke.spec.ts` | split startup/OPFS flow to `page/HomePane`; Settings toggles to `page/Settings` |
-| `appUpdatesNavigation.spec.ts` | Settings entry contract to `page/Settings`; dedicated update-pane navigation/state to `page/AppUpdatesPane` |
+| Current root spec                        | Target ownership                                                                                                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `appSmoke.spec.ts`                       | split startup/OPFS flow to `page/HomePane`; Settings toggles to `page/Settings`                                                                                                                 |
+| `appUpdatesNavigation.spec.ts`           | Settings entry contract to `page/Settings`; dedicated update-pane navigation/state to `page/AppUpdatesPane`                                                                                     |
 | `browserStoragePersistenceSmoke.spec.ts` | browser API startup/persistence mechanics to browser-integration owner `src/entities/browserStoragePersistence`; Home UI scenarios to `page/HomePane`; Settings UI scenarios to `page/Settings` |
-| `databasePersistenceSmoke.spec.ts` | `widget/DocumentView` |
-| `databaseItemFlows.spec.ts` | `widget/DocumentView` |
-| `databasePropertyFlows.spec.ts` | `widget/DocumentView` |
-| `databaseViewsAndQueryFlows.spec.ts` | `widget/DocumentView` |
-| `reorderSurfaceBottomSheet.spec.ts` | `widget/DocumentView` |
-| `reorderSurfaceTouch.spec.ts` | `widget/DocumentView` |
-| `reorderSurfaceCancellation.spec.ts` | `widget/DocumentView` |
-| `reorderSurfaceMouse.spec.ts` | `widget/DocumentView` |
-| `reorderSurfacePersistence.spec.ts` | `widget/DocumentView` |
-| `exportDocumentBrowserStorage.spec.ts` | `widget/RepositoryExplorerWidget` |
-| `helpNavigation.spec.ts` | `page/Help` |
-| `repoExplorerScreen.spec.ts` | `page/RepoExplorer` |
-| `repositoryFlows.spec.ts` | `widget/RepositoryExplorerWidget` |
-| `zipActionFlows.spec.ts` | `widget/RepositoryExplorerWidget` |
+| `databasePersistenceSmoke.spec.ts`       | `widget/DocumentView`                                                                                                                                                                           |
+| `databaseItemFlows.spec.ts`              | `widget/DocumentView`                                                                                                                                                                           |
+| `databasePropertyFlows.spec.ts`          | `widget/DocumentView`                                                                                                                                                                           |
+| `databaseViewsAndQueryFlows.spec.ts`     | `widget/DocumentView`                                                                                                                                                                           |
+| `reorderSurfaceBottomSheet.spec.ts`      | `widget/DocumentView`                                                                                                                                                                           |
+| `reorderSurfaceTouch.spec.ts`            | `widget/DocumentView`                                                                                                                                                                           |
+| `reorderSurfaceCancellation.spec.ts`     | `widget/DocumentView`                                                                                                                                                                           |
+| `reorderSurfaceMouse.spec.ts`            | `widget/DocumentView`                                                                                                                                                                           |
+| `reorderSurfacePersistence.spec.ts`      | `widget/DocumentView`                                                                                                                                                                           |
+| `exportDocumentBrowserStorage.spec.ts`   | `widget/RepositoryExplorerWidget`                                                                                                                                                               |
+| `helpNavigation.spec.ts`                 | `page/Help`                                                                                                                                                                                     |
+| `repoExplorerScreen.spec.ts`             | `page/RepoExplorer`                                                                                                                                                                             |
+| `repositoryFlows.spec.ts`                | `widget/RepositoryExplorerWidget`                                                                                                                                                               |
+| `zipActionFlows.spec.ts`                 | `widget/RepositoryExplorerWidget`                                                                                                                                                               |
 
 Preserve each scenario's existing desktop/mobile/both applicability when paths split/move. Refactor `e2eProjectApplicability.ts` so it validates target E2E paths rather than root-only paths; do not merge platform applicability into owner metadata.
 
@@ -157,14 +157,18 @@ The current inspected inventory does not require additional-owner metadata after
 Support the accepted exceptional mechanism for future/current genuinely cross-owner files using Playwright-native annotations:
 
 ```ts
-test.describe('scenario group', {
-  annotation: {
-    type: '_mioframe-owner',
-    description: 'widget/RepositoryExplorerWidget',
+test.describe(
+  'scenario group',
+  {
+    annotation: {
+      type: '_mioframe-owner',
+      description: 'widget/RepositoryExplorerWidget',
+    },
   },
-}, () => {
-  // ...
-});
+  () => {
+    // ...
+  },
+);
 ```
 
 The primary owner always comes from the file path and must not be repeated as an annotation. Multiple additional owners use multiple annotations. `page/<Name>` and `widget/<Name>` are the only valid descriptions.
@@ -213,23 +217,23 @@ The existing `tests/e2e/release` directory is mixed by proof type and must not s
 
 Classify the current suite as follows:
 
-| Current release spec | Target |
-| --- | --- |
-| `firstUserAndReturningUserSmoke.spec.ts` | E2E, `page/HomePane` |
-| `managedReleaseDataCompatibility.spec.ts` | E2E, `widget/DocumentView` |
-| `managedUpdatesActivationUi.spec.ts` | E2E, `page/AppUpdatesPane` |
-| `managedUpdatesControllerArtifactIdentity.spec.ts` | static build/artifact invariant; remove Playwright classification |
-| `managedUpdatesAutomaticCheck.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesControllerUpgrade.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesCrossEngineLifecycle.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesDevelop.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesLifecycle.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesMigration.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesRecovery.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesRollbackDiagnostics.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesUncontrolledWindow.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `managedUpdatesVueBootFailure.spec.ts` | browser-integration, `src/shared/service/appUpdate` |
-| `productionArtifactSmoke.spec.ts` | split: file/manifest/generated-artifact assertions -> static; built-page/service-worker lifecycle assertions -> browser-integration under `src/shared/service/appUpdate` |
+| Current release spec                               | Target                                                                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `firstUserAndReturningUserSmoke.spec.ts`           | E2E, `page/HomePane`                                                                                                                                                     |
+| `managedReleaseDataCompatibility.spec.ts`          | E2E, `widget/DocumentView`                                                                                                                                               |
+| `managedUpdatesActivationUi.spec.ts`               | E2E, `page/AppUpdatesPane`                                                                                                                                               |
+| `managedUpdatesControllerArtifactIdentity.spec.ts` | static build/artifact invariant; remove Playwright classification                                                                                                        |
+| `managedUpdatesAutomaticCheck.spec.ts`             | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesControllerUpgrade.spec.ts`          | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesCrossEngineLifecycle.spec.ts`       | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesDevelop.spec.ts`                    | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesLifecycle.spec.ts`                  | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesMigration.spec.ts`                  | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesRecovery.spec.ts`                   | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesRollbackDiagnostics.spec.ts`        | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesUncontrolledWindow.spec.ts`         | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `managedUpdatesVueBootFailure.spec.ts`             | browser-integration, `src/shared/service/appUpdate`                                                                                                                      |
+| `productionArtifactSmoke.spec.ts`                  | split: file/manifest/generated-artifact assertions -> static; built-page/service-worker lifecycle assertions -> browser-integration under `src/shared/service/appUpdate` |
 
 Preserve the current release fixture/build helpers when they are still the smallest mechanism required by browser-integration/E2E proof. Moving a spec does not require moving every mechanical fixture into production ownership.
 

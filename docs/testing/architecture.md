@@ -121,16 +121,16 @@ pnpm verify --full
 
 Every independently discovered test-spec type has one deterministic suffix.
 
-| Verification type | Target file naming | Primary purpose |
-| --- | --- | --- |
-| static | no test suffix | deterministic source/workspace/config validation |
-| unit | `*.test.<supported-ext>`; normally `*.test.ts` | deterministic behavior and component contracts through Vitest |
-| behavior | `*.behavior.spec.ts` | isolated interactive UI behavior in a real browser |
-| visual | `*.visual.spec.ts` | bounded deterministic appearance regression |
-| browser-integration | `*.browser-integration.spec.ts` | browser/runtime contract of a module/service/worker/entity boundary |
-| performance | `*.performance.spec.ts` | measurable performance/stress invariant |
-| mutation | no dedicated spec suffix | mutation of registered production targets using existing owning tests |
-| e2e | `*.e2e.spec.ts` | complete product/user flows |
+| Verification type   | Target file naming                             | Primary purpose                                                       |
+| ------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| static              | no test suffix                                 | deterministic source/workspace/config validation                      |
+| unit                | `*.test.<supported-ext>`; normally `*.test.ts` | deterministic behavior and component contracts through Vitest         |
+| behavior            | `*.behavior.spec.ts`                           | isolated interactive UI behavior in a real browser                    |
+| visual              | `*.visual.spec.ts`                             | bounded deterministic appearance regression                           |
+| browser-integration | `*.browser-integration.spec.ts`                | browser/runtime contract of a module/service/worker/entity boundary   |
+| performance         | `*.performance.spec.ts`                        | measurable performance/stress invariant                               |
+| mutation            | no dedicated spec suffix                       | mutation of registered production targets using existing owning tests |
+| e2e                 | `*.e2e.spec.ts`                                | complete product/user flows                                           |
 
 Legacy suffixes and locations remain executable only where `docs/testing/migration-plan.md` explicitly records them during migration. They are not the target naming contract.
 

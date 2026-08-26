@@ -30,12 +30,12 @@ Pass A already made `*.behavior.spec.ts`, owner-local `*.visual.spec.ts`, and `*
 
 Move current central Storybook behavior proof to these owners:
 
-| Current | Target |
-| --- | --- |
-| `tests/e2e/storybook/routerHarness.spec.ts` | `.storybook/router/routerHarness.behavior.spec.ts` |
-| `tests/e2e/storybook/focusIndicator.spec.ts` | `src/shared/ui/State/focusIndicator.behavior.spec.ts` |
-| `tests/e2e/storybook/colorOwnership.spec.ts` | Snackbar-owned behavior under `src/shared/ui/Snackbar/` |
-| `tests/e2e/storybook/overlayLifecycle.spec.ts` | Overlay-owned behavior under `src/shared/ui/Overlay/` |
+| Current                                        | Target                                                  |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| `tests/e2e/storybook/routerHarness.spec.ts`    | `.storybook/router/routerHarness.behavior.spec.ts`      |
+| `tests/e2e/storybook/focusIndicator.spec.ts`   | `src/shared/ui/State/focusIndicator.behavior.spec.ts`   |
+| `tests/e2e/storybook/colorOwnership.spec.ts`   | Snackbar-owned behavior under `src/shared/ui/Snackbar/` |
+| `tests/e2e/storybook/overlayLifecycle.spec.ts` | Overlay-owned behavior under `src/shared/ui/Overlay/`   |
 
 Rename every remaining owner-local `src/**/*.browser.spec.ts` in place to `*.behavior.spec.ts`. Known examples include `LegacyButton.browser.spec.ts` and `MDIconButton.browser.spec.ts` under `src/shared/ui/Button/`.
 

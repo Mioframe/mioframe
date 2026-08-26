@@ -144,7 +144,8 @@ export type StorybookBehaviorPlan =
   | { mode: 'focused'; specs: string[]; reasons: string[] }
   | { mode: 'none'; specs: string[]; reasons: string[] };
 
-/** The owner root a colocated behavior spec's local ownership applies to: the
+/**
+ * The owner root a colocated behavior spec's local ownership applies to: the
  * directory containing the spec. A changed path starting with this root
  * (including the spec itself) belongs to the spec's owner.
  * @param specPath Repository-relative colocated behavior spec path.

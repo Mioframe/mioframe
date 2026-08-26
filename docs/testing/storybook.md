@@ -188,14 +188,14 @@ If the contract is the application's actual route graph or a complete navigation
 
 ## Proof decision
 
-| Contract | Primary proof |
-| --- | --- |
-| props/emits/slots/native owner/ARIA ownership/controlled semantic state/non-browser wiring | colocated unit/component contract `*.test.ts` |
-| interactive public API exploration | Playground story; not merge proof |
-| isolated supported rendering state | colocated `*.stories.ts` |
-| focus/keyboard/pointer/drag/geometry/scrolling/overlays/responsive interaction/reusable routing/public motion | owner-local `*.behavior.spec.ts` |
-| bounded accepted appearance | owner-local `*.visual.spec.ts` against canonical story |
-| complete product scenario | E2E per `docs/testing/architecture.md` |
+| Contract                                                                                                      | Primary proof                                          |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| props/emits/slots/native owner/ARIA ownership/controlled semantic state/non-browser wiring                    | colocated unit/component contract `*.test.ts`          |
+| interactive public API exploration                                                                            | Playground story; not merge proof                      |
+| isolated supported rendering state                                                                            | colocated `*.stories.ts`                               |
+| focus/keyboard/pointer/drag/geometry/scrolling/overlays/responsive interaction/reusable routing/public motion | owner-local `*.behavior.spec.ts`                       |
+| bounded accepted appearance                                                                                   | owner-local `*.visual.spec.ts` against canonical story |
+| complete product scenario                                                                                     | E2E per `docs/testing/architecture.md`                 |
 
 One observable contract has one primary proof owner. Higher-level proof may protect integration, but must not duplicate the complete lower-level contract.
 

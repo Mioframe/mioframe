@@ -106,16 +106,16 @@ Therefore the current persistent inventory is intentionally empty. Pass E must n
 
 ## Public-contract difference still remaining
 
-| Concern | Current executable state | Durable target / remaining pass |
-| --- | --- | --- |
-| public types | canonical eight types | complete |
-| behavior/visual/browser-integration taxonomy | target suffixes/owners | complete |
-| E2E ownership/impact | structural owners + complete containerized metadata + reverse graph | complete |
-| unit impact | transitional direct/sibling selection | Pass E native Vitest changed/related + safe full fallback |
-| mutation ownership | adjacency-derived | Pass E explicit validated registry |
-| performance | valid type, empty persistent inventory | remains empty until real budget exists |
-| release compatibility | private release-named leaves/runners and `verify:release` alias remain | Pass F consumer migration/removal where safe |
-| CI consumers | transitional repository commands may remain | Pass F type-command/final full-gate cleanup |
+| Concern                                      | Current executable state                                               | Durable target / remaining pass                           |
+| -------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
+| public types                                 | canonical eight types                                                  | complete                                                  |
+| behavior/visual/browser-integration taxonomy | target suffixes/owners                                                 | complete                                                  |
+| E2E ownership/impact                         | structural owners + complete containerized metadata + reverse graph    | complete                                                  |
+| unit impact                                  | transitional direct/sibling selection                                  | Pass E native Vitest changed/related + safe full fallback |
+| mutation ownership                           | adjacency-derived                                                      | Pass E explicit validated registry                        |
+| performance                                  | valid type, empty persistent inventory                                 | remains empty until real budget exists                    |
+| release compatibility                        | private release-named leaves/runners and `verify:release` alias remain | Pass F consumer migration/removal where safe              |
+| CI consumers                                 | transitional repository commands may remain                            | Pass F type-command/final full-gate cleanup               |
 
 ## Remaining pass boundaries
 

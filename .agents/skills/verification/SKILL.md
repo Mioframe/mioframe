@@ -69,14 +69,14 @@ When a focused check is useful during the migration itself, use the narrowest co
 
 ## Target spec taxonomy
 
-| Type | Target naming |
-| --- | --- |
-| unit | `*.test.<supported-ext>`; normally `*.test.ts` |
-| behavior | `*.behavior.spec.ts` |
-| visual | `*.visual.spec.ts` |
-| browser-integration | `*.browser-integration.spec.ts` |
-| performance | `*.performance.spec.ts` |
-| e2e | `*.e2e.spec.ts` |
+| Type                | Target naming                                  |
+| ------------------- | ---------------------------------------------- |
+| unit                | `*.test.<supported-ext>`; normally `*.test.ts` |
+| behavior            | `*.behavior.spec.ts`                           |
+| visual              | `*.visual.spec.ts`                             |
+| browser-integration | `*.browser-integration.spec.ts`                |
+| performance         | `*.performance.spec.ts`                        |
+| e2e                 | `*.e2e.spec.ts`                                |
 
 Static and mutation are verification types but not independent test-spec suffixes.
 

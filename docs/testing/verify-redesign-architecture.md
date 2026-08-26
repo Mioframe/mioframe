@@ -270,17 +270,17 @@ The verifier needs only the concrete operation required here: production depende
 
 Default `pnpm verify` uses different mechanisms for different dependency models:
 
-| Type | Primary affected-selection mechanism |
-| --- | --- |
-| static | changed-file capability/config ownership |
-| unit | Vitest related/affected resolution |
-| behavior | colocated owner + suffix |
-| visual | colocated owner + suffix |
-| browser integration | colocated runtime owner + suffix |
-| local performance | colocated owner + suffix |
-| cross-system performance | primary/additional product ownership |
-| mutation | affected registered mutation targets |
-| E2E | reverse dependency graph → product owners → owner-structured specs |
+| Type                     | Primary affected-selection mechanism                               |
+| ------------------------ | ------------------------------------------------------------------ |
+| static                   | changed-file capability/config ownership                           |
+| unit                     | Vitest related/affected resolution                                 |
+| behavior                 | colocated owner + suffix                                           |
+| visual                   | colocated owner + suffix                                           |
+| browser integration      | colocated runtime owner + suffix                                   |
+| local performance        | colocated owner + suffix                                           |
+| cross-system performance | primary/additional product ownership                               |
+| mutation                 | affected registered mutation targets                               |
+| E2E                      | reverse dependency graph → product owners → owner-structured specs |
 
 There is no universal affected-test algorithm across all verification types.
 
@@ -342,14 +342,14 @@ Frequent fallback is a diagnostics signal. If ordinary changes repeatedly widen 
 
 Every verification type represented by standalone test-spec files has a unique deterministic suffix:
 
-| Type | Suffix |
-| --- | --- |
-| unit | `*.test.ts` |
-| behavior | `*.behavior.spec.ts` |
-| visual | `*.visual.spec.ts` |
+| Type                | Suffix                          |
+| ------------------- | ------------------------------- |
+| unit                | `*.test.ts`                     |
+| behavior            | `*.behavior.spec.ts`            |
+| visual              | `*.visual.spec.ts`              |
 | browser integration | `*.browser-integration.spec.ts` |
-| E2E | `*.e2e.spec.ts` |
-| performance/stress | `*.performance.spec.ts` |
+| E2E                 | `*.e2e.spec.ts`                 |
+| performance/stress  | `*.performance.spec.ts`         |
 
 Static and mutation are verification types but are not standalone test-spec file types and therefore have no spec suffix.
 
