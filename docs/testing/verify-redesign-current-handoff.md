@@ -13,7 +13,7 @@ Pass status:
 - **Pass C:** completed and architect-accepted;
 - **Pass D:** completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
 - **Pass E:** completed and architect-accepted on exact reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
-- **Pass F:** architecture/consumer inventory resolved in `docs/testing/verify-redesign-pass-f-implementation.md`; implementation is next and is the only remaining redesign work.
+- **Pass F:** architecture and consumer inventory resolved; coding-agent task prepared in `docs/testing/verify-redesign-pass-f-agent-task.md`; implementation is next and is the only remaining redesign work.
 
 Pass E was reviewed as the complete result from baseline `75277c067cca6aba30f2e0698056e4f84f48fb69` through exact PR head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`, not only the final correction patch.
 
@@ -75,9 +75,13 @@ Do not reopen without new repository evidence:
 
 ## Resolved Pass F boundary
 
-The authoritative implementation record is:
+The authoritative architecture/consumer-inventory record is:
 
 `docs/testing/verify-redesign-pass-f-implementation.md`
+
+The coding-agent execution contract is:
+
+`docs/testing/verify-redesign-pass-f-agent-task.md`
 
 Pass F is direct CI/public-compatibility cleanup only. Current consumer inspection established the minimum complete design:
 
@@ -101,13 +105,14 @@ The active-current cleanup inventory includes `AGENTS.md`, `.agents/skills/verif
 6. `docs/testing/verify-redesign-implementation-preflight.md`;
 7. `docs/testing/migration-plan.md`;
 8. `docs/testing/verify-redesign-pass-f-implementation.md`;
-9. this handoff;
-10. the current active files listed in the Pass F consumer inventory.
+9. `docs/testing/verify-redesign-pass-f-agent-task.md`;
+10. this handoff;
+11. the current active files listed in the Pass F consumer inventory.
 
 ## Next workflow
 
-1. Implement only the resolved Pass F delta; do not redesign verifier internals.
-2. Use focused verifier-managed feedback only where it materially proves a touched script/help/static contract; broad final local verification is not a coding-agent handoff requirement.
+1. Coding agent synchronizes a fresh environment to the latest `architecture/verify-redesign` head and executes `docs/testing/verify-redesign-pass-f-agent-task.md` exactly; architecture control docs remain read-only to the agent.
+2. Agent uses only focused verifier-managed feedback that materially helps implementation; broad local final verification is not a handoff requirement.
 3. Architect reviews Pass F and then the complete resulting PR relative to `develop`, not only the cleanup patch.
 4. If clean, mark Pass F accepted, finalize migration/handoff/PR documentation, and move PR #218 out of draft.
 5. Final merge readiness requires exact-head GitHub CI green on the final resulting PR head; ordinary merge into `develop` is squash merge.
