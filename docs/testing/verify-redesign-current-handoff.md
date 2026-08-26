@@ -13,7 +13,7 @@ Pass status:
 - **Pass C:** completed and architect-accepted;
 - **Pass D:** completed and architect-accepted at `c0aa686235d291089d413b77c4b5fe176acc07b3`;
 - **Pass E:** completed and architect-accepted on exact reviewed implementation head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`;
-- **Pass F:** architecture and consumer inventory resolved; coding-agent task prepared in `docs/testing/verify-redesign-pass-f-agent-task.md`; implementation is next and is the only remaining redesign work.
+- **Pass F:** implementation complete; the first review found one documentation-only blocker in `docs/release.md`, corrected by the architect. Pass F acceptance now requires exact-head CI plus architect re-review of Pass F and the complete resulting PR. No coding-agent work is currently pending.
 
 Pass E was reviewed as the complete result from baseline `75277c067cca6aba30f2e0698056e4f84f48fb69` through exact PR head `60a097a077cb834e4cab28f5a2a8fad616ff77fd`, not only the final correction patch.
 
@@ -73,46 +73,51 @@ Do not reopen without new repository evidence:
 - existing status/resume/logging/timeout behavior;
 - Pass E unit changed/related, zero-match, snapshot/global fallback, mutation registry/validation, and empty performance semantics.
 
-## Resolved Pass F boundary
+## Pass F implementation state
 
 The authoritative architecture/consumer-inventory record is:
 
 `docs/testing/verify-redesign-pass-f-implementation.md`
 
-The coding-agent execution contract is:
+The completed coding-agent execution contract is:
 
 `docs/testing/verify-redesign-pass-f-agent-task.md`
 
-Pass F is direct CI/public-compatibility cleanup only. Current consumer inspection established the minimum complete design:
+Coding-agent implementation landed at `df36809f7f02f4d6e03c2fd9b221e81ada91dd81` and kept the implementation inside the confirmed active-current consumer scope:
 
-- migrate `.github/workflows/release.yml` from `pnpm verify:release --verbose` to literal `pnpm verify --full --verbose`;
-- remove the now-redundant `verify:release` package alias after its required workflow consumer is migrated;
-- remove the alias from verifier public help;
-- correct active current instructions/comments that still advertise `verify:release`, private low-level `--only` labels, or invalid `--full --only ...` commands;
-- correct stale active release documentation claiming mutation is outside the full gate;
-- preserve internal `e2e:release`, artifact/release-smoke, managed-update, publisher-node-import, and other release-named internals where they own real execution constraints;
-- do not change accepted verifier algorithms, test meaning, product behavior, locks, containers, timeouts, logging, or status/resume behavior.
+- `.github/workflows/release.yml` now invokes literal `pnpm verify --full --verbose`;
+- `package.json` no longer exposes `verify:release`;
+- verifier help no longer advertises the alias;
+- active instructions/comments were migrated to the canonical public type surface;
+- real internal `e2e:release`, artifact/release-smoke, managed-update, publisher-node-import, container, lock, timeout, logging, and status/resume responsibilities were preserved;
+- no product code, verifier planning algorithm, test meaning, E2E ownership, mutation registry, or performance semantics changed.
 
-The active-current cleanup inventory includes `AGENTS.md`, `.agents/skills/verification/SKILL.md`, `DEVELOPMENT.md`, `docs/release.md`, `docs/release-checklist.md`, `docs/managed-pinned-updates.md`, `package.json`, `scripts/verify.ts`, `scripts/release/buildArtifact.mjs`, `.github/workflows/release.yml`, and `.github/workflows/release-tag.yml`. Historical release notes/design history are not rewritten solely to remove old command strings.
+The first Pass F review found one documentation-only blocker: `docs/release.md` still published a private `storybook-build` invocation and incompletely described full/managed-update type ownership. The architect corrected that source of truth at `c7ff328af91367b43565bcf77ebdc7c1ab0a42cb`:
 
-## Read order for Pass F implementation/review
+- current `verification-static` documentation now exposes only public `static`, `unit`, and `mutation` type commands and describes Storybook fallback as planner-internal;
+- `pnpm verify --full` is documented as running all eight public verification types, including current `behavior`, generic `browser-integration`, and the intentionally empty persistent `performance` inventory;
+- managed-update focused ownership is documented as `static` + `browser-integration` + `e2e`;
+- the stale `docs/REVIEW.md` blocker was removed after the correction was verified against current `verify.yml`, `scripts/verify.ts`, and `docs/testing/architecture.md`.
+
+No correction task for a coding agent is active.
+
+## Read order for final Pass F / PR review
 
 1. root `AGENTS.md`;
 2. `.agents/skills/verification/SKILL.md`;
-3. `.agents/skills/implementation-preflight/SKILL.md`;
-4. `.agents/skills/project-review/SKILL.md` when reviewing;
-5. `docs/testing/architecture.md`;
-6. `docs/testing/verify-redesign-implementation-preflight.md`;
-7. `docs/testing/migration-plan.md`;
-8. `docs/testing/verify-redesign-pass-f-implementation.md`;
-9. `docs/testing/verify-redesign-pass-f-agent-task.md`;
-10. this handoff;
-11. the current active files listed in the Pass F consumer inventory.
+3. `.agents/skills/project-review/SKILL.md`;
+4. `docs/testing/architecture.md`;
+5. `docs/testing/verify-redesign-implementation-preflight.md`;
+6. `docs/testing/migration-plan.md`;
+7. `docs/testing/verify-redesign-pass-f-implementation.md`;
+8. `docs/testing/verify-redesign-pass-f-agent-task.md`;
+9. this handoff;
+10. the complete current PR and affected consumers relative to `develop`.
 
 ## Next workflow
 
-1. Coding agent synchronizes a fresh environment to the latest `architecture/verify-redesign` head and executes `docs/testing/verify-redesign-pass-f-agent-task.md` exactly; architecture control docs remain read-only to the agent.
-2. Agent uses only focused verifier-managed feedback that materially helps implementation; broad local final verification is not a handoff requirement.
-3. Architect reviews Pass F and then the complete resulting PR relative to `develop`, not only the cleanup patch.
-4. If clean, mark Pass F accepted, finalize migration/handoff/PR documentation, and move PR #218 out of draft.
-5. Final merge readiness requires exact-head GitHub CI green on the final resulting PR head; ordinary merge into `develop` is squash merge.
+1. Wait for GitHub CI on the exact current PR head; do not duplicate it with another coding-agent broad local gate.
+2. Architect re-reviews the complete Pass F result, including the documentation correction, then reviews the complete resulting PR relative to `develop`, not only the Pass F patch.
+3. If no blocker/major issue remains, mark Pass F architect-accepted, finalize `docs/testing/migration-plan.md`, this handoff, and PR description/status, and move PR #218 out of draft.
+4. Any architect-owned final documentation/status commit must receive its own exact-head CI before merge readiness.
+5. Ordinary merge into `develop` is squash merge.
