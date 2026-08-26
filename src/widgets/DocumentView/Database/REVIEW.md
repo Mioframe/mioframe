@@ -4,9 +4,9 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- `DatabaseViewWidget.vue` as the Database screen-composition owner after PR #217 virtualization changes.
-- Direct child contracts in `DatabaseViewLayout.vue` and `DatabaseToolbar.vue`.
-- Existing inline-edit feature ownership and top-level virtualization surface-offset contract.
+- Final PR #217 Database widget ownership-cleanup implementation.
+- `DatabaseViewWidget.vue`, `DatabaseViewLayout.vue`, `DatabaseToolbar.vue`, `DatabaseRelationValueInline.vue`, and `useDatabaseViewSurfaceGeometry.ts`.
+- Toolbar component-contract proof, Database E2E impact mapping, and preserved nested-relation/virtualization behavior.
 
 ## Blockers
 
@@ -14,53 +14,32 @@ None.
 
 ## Major issues
 
-### M1 — Database widget subtree duplicates entity read ownership
+### M1 — toolbar property persistence Promise is detached at the widget boundary
 
 Owner: `src/widgets/DocumentView/Database`
 
-Problem: `DatabaseViewWidget` already owns `useDatabaseProperties(...)` and `useDatabaseViewSelection(...)`, while `DatabaseViewLayout` re-reads the Database property collection and `DatabaseToolbar` re-reads both the property collection and view selection. The current widget subtree therefore has more than one read-model owner for the same screen facts.
+Problem: the cleanup correctly routes toolbar property updates upward, but `DatabaseViewWidget.onUpdateToolbarProperty(...)` is synchronous and calls the async `onUpdateProperty(...)` without returning or awaiting its Promise. `useDatabaseProperties.patch(...)` forwards the asynchronous service mutation directly, so this wrapper changes the previous awaited property-update path into detached fire-and-forget work.
 
 Evidence:
 
-- [DatabaseViewWidget.vue](./DatabaseViewWidget.vue) — owns `useDatabaseProperties(...)` and `useDatabaseViewSelection(...)`.
-- [DatabaseViewLayout.vue](./DatabaseViewLayout.vue) — independently calls `useDatabaseProperties(...)`.
-- [DatabaseToolbar.vue](./DatabaseToolbar.vue) — independently calls `useDatabaseProperties(...)` and `useDatabaseViewSelection(...)`.
+- [DatabaseViewWidget.vue](./DatabaseViewWidget.vue) — `onUpdateProperty(...)` is async and awaits `putProperty(...)`, while `onUpdateToolbarProperty(...)` invokes it without `return`/`await`.
+- [database property entity API](../../../entities/databaseProperty/useDatabaseProperties.ts) — `patch(...)` returns the underlying asynchronous service mutation.
+- [ownership-cleanup handoff](../../../../docs/database-view-widget-ownership-cleanup-handoff.md) — the pass is behavior-preserving and requires the widget's existing property mutation path to service toolbar property-update intent.
 
 Basis:
 
-- [widget rules](../../AGENTS.md) — keep one source for each read model inside a widget and pass owned state down instead of duplicating the same observable/entity read.
-- [Database widget rules](./AGENTS.md) — this directory is composition, not a domain layer; use explicit props/emits and route mutations through entity/feature APIs.
+- [root repository rules](../../../../AGENTS.md) — preserve existing user scenarios unless the task explicitly changes them.
+- [ownership-cleanup handoff](../../../../docs/database-view-widget-ownership-cleanup-handoff.md) — property persistence behavior is explicitly outside the redesign scope and must remain preserved.
 
-Risk: duplicate subscriptions and repeated derivation obscure the actual source of truth, make controlled view/configuration behavior harder to reason about, and add unnecessary reactive work in a performance-sensitive screen.
+Risk: if the property mutation rejects, the wrapper no longer propagates that Promise through the Vue event-handler boundary. Failure handling therefore differs from the pre-cleanup awaited toolbar mutation path and can surface as an untracked asynchronous rejection rather than the normal component/event error path.
 
-Required final state: `DatabaseViewWidget` is the single owner of the Database property-collection and view-selection read models for this screen. `DatabaseViewLayout` and `DatabaseToolbar` receive only the narrow state they render. Property-update intent from toolbar-owned child surfaces flows upward through a typed emit to the widget's existing entity mutation path. Do not add a new entity/shared abstraction solely for this cleanup.
+Required final state: toolbar property-update forwarding must preserve the asynchronous mutation chain. The widget handler must return or await the existing `onUpdateProperty(...)` Promise; do not add another mutation API, local error recovery, notification path, retry, or state.
 
-Verification: update `DatabaseToolbar` component-contract tests for the controlled props/emits, then run the existing Database application E2E scenarios that protect item/configuration and virtualization behavior.
-
-### M2 — DOM measurement lifecycle is embedded in the screen component body
-
-Owner: `src/widgets/DocumentView/Database`
-
-Problem: PR #217 added two `useElementBounding(...)` instances plus `onMounted`/`onUpdated` refresh and root-to-surface formulas directly inside `DatabaseViewWidget.vue`. The geometry ownership is correct at widget level, but lifecycle-managed DOM mechanics are mixed into the composition component instead of being owned by a composable.
-
-Evidence:
-
-- [DatabaseViewWidget.vue](./DatabaseViewWidget.vue) — `databaseViewBounds`, `databaseViewLayoutBounds`, `updateDatabaseSurfaceBounds`, lifecycle hooks, and the two surface-offset computed values are inline in the screen component.
-- [database virtualization architecture](../../../../docs/database-virtualization.md) — the widget remains the physical-root/root-to-surface geometry owner.
-
-Basis:
-
-- [Vue component implementation skill](../../../../.agents/skills/vue-component-implementation/SKILL.md) — lifecycle-managed side effects belong in composables that own setup and cleanup; template refs/direct DOM access are valid for real measurement needs.
-
-Risk: product orchestration and low-level DOM lifecycle concerns are coupled in one component, making future changes harder to review and increasing the chance that geometry mechanics drift into unrelated screen state handling.
-
-Required final state: keep exactly the same widget-owned root-to-surface geometry contract and formulas, but move the measurement/lifecycle machinery into one local `useDatabaseViewSurfaceGeometry` composable under this widget directory. Do not change geometry semantics, invalidation behavior, TanStack/shared virtualization, or add another geometry state/cache.
-
-Verification: existing moving-surface Database E2E remains the primary real-browser proof; no happy-dom geometry test is required.
+Verification: focused static/type/unit feedback for the touched widget/toolbar scope as useful, then rerun the required `pnpm verify --base origin/develop` branch gate. Existing successful Database E2E remains sufficient for the unchanged success-path product behavior; no new broad test abstraction is required for this one-line async forwarding correction.
 
 ## Minor issues
 
-- `DatabaseViewWidget.vue` still contains scoped selectors for `database-view__controls`, `database-view__table`, and `.sheet` that have no matching template nodes in the component. Remove them during the same local cleanup.
+None.
 
 ## Accepted risks
 
@@ -68,11 +47,11 @@ None.
 
 ## Items not required
 
-- Refactoring pre-existing item context actions or edit-dialog ownership.
-- New databaseProperty write APIs solely to avoid passing an upward mutation intent.
-- Changing inline-edit feature ownership or persistence behavior.
-- Changing the current `onMounted`/`onUpdated` geometry refresh semantics during this behavior-preserving cleanup.
-- Shared virtualization or TanStack changes.
+- Reworking the accepted `useDatabaseViewSurfaceGeometry` extraction or its `onMounted`/`onUpdated` timing.
+- Moving relation-scoped property reads back into `DatabaseViewLayout`; `DatabaseRelationValueInline` is the correct composition owner for the different relation document consumed by its nested layout.
+- New entity/shared APIs.
+- Refactoring pre-existing item context actions, edit-dialog ownership, or inline-edit behavior.
+- Shared virtualization/TanStack changes.
 
 ## Unresolved questions
 
