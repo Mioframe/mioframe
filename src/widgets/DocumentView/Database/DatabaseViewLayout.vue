@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { DatabaseDataTable } from '@entity/databaseData';
 import DatabasePropertyBlock from '@entity/databaseProperty/DatabasePropertyBlock.vue';
-import { useDatabaseProperties } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type {
   DatabaseItemId,
@@ -16,6 +15,7 @@ import ValueInline from './ValueInline.vue';
 const props = defineProps<{
   path: string;
   documentId: AMDocumentId;
+  properties: readonly DatabasePropertyId[] | undefined;
   scrollRoot: HTMLElement | null | undefined;
   viewId?: DatabaseViewId | undefined;
   itemIdQuery?: ItemIdQuery | undefined;
@@ -30,7 +30,7 @@ const slots = defineSlots<{
   after: () => unknown;
 }>();
 
-const { documentId, horizontalSurfaceOffset, path, scrollRoot, verticalSurfaceOffset } =
+const { documentId, horizontalSurfaceOffset, path, properties, scrollRoot, verticalSurfaceOffset } =
   toRefs(props);
 
 const { arrivedState } = useScroll(scrollRoot, {
@@ -39,20 +39,18 @@ const { arrivedState } = useScroll(scrollRoot, {
 });
 
 const arrivedRight = computed(() => arrivedState.right);
-
-const { propertiesIdList } = useDatabaseProperties(path, documentId);
 </script>
 
 <template>
   <div class="database-view-layout">
     <DatabaseDataTable
-      v-if="propertiesIdList"
+      v-if="properties"
       class="database-view-layout__table"
       :directory-path="path"
       :document-id="documentId"
       :view-id="viewId"
       :id-query="itemIdQuery"
-      :properties="propertiesIdList"
+      :properties="properties"
       :scroll-root="scrollRoot"
       :vertical-surface-offset="verticalSurfaceOffset"
       :horizontal-surface-offset="horizontalSurfaceOffset"

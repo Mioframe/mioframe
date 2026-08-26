@@ -129,6 +129,7 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
       'src/widgets/DocumentView/Database/DatabaseViewLayout.vue',
       'src/widgets/DocumentView/Database/DatabaseViewWidget.vue',
+      'src/widgets/DocumentView/Database/useDatabaseViewSurfaceGeometry.ts',
       'src/widgets/DocumentView/Database/EditableInlineValue.vue',
       'src/features/databaseInlineValueEdit/',
     ],

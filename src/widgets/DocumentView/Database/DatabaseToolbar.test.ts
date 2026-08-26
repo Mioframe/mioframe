@@ -1,30 +1,11 @@
 /* eslint-disable vue/one-component-per-file -- This test file defines focused child stubs. */
 import { mount } from '@vue/test-utils';
 import { zodDocumentId } from '@shared/lib/automerge';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { generateViewId } from '@shared/lib/databaseDocument';
+import { describe, expect, it, vi } from 'vitest';
+import { defineComponent, h } from 'vue';
 import DatabaseToolbar from './DatabaseToolbar.vue';
 import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
-
-const controls = vi.hoisted(() => ({
-  propertySize: { value: 1 },
-  effectiveViewId: { value: 'view-id' },
-  patchProperty: vi.fn(),
-}));
-
-vi.mock('@entity/databaseView', () => ({
-  useDatabaseViewSelection: () => ({
-    effectiveViewId: ref(controls.effectiveViewId.value),
-    explicitViewId: ref(),
-  }),
-}));
-
-vi.mock('@entity/databaseProperty', () => ({
-  useDatabaseProperties: () => ({
-    patch: controls.patchProperty,
-    size: ref(controls.propertySize.value),
-  }),
-}));
 
 const MDIconButtonStub = defineComponent({
   props: {
@@ -59,22 +40,40 @@ const MDToolbarContainerStub = defineComponent({
 const createConfigurationSheetStub = (name: string, testId: string) =>
   defineComponent({
     name,
+    props: {
+      explicitViewId: {
+        required: false,
+        type: String,
+      },
+      viewId: {
+        required: false,
+        type: String,
+      },
+    },
     emits: ['closed'],
-    setup(_props, { emit, slots }) {
+    setup(props, { emit, slots }) {
       return () =>
-        h('div', { 'data-testid': testId }, [
-          h(
-            'button',
-            {
-              type: 'button',
-              onClick: () => {
-                emit('closed');
+        h(
+          'div',
+          {
+            'data-testid': testId,
+            'data-explicit-view-id': props.explicitViewId,
+            'data-view-id': props.viewId,
+          },
+          [
+            h(
+              'button',
+              {
+                type: 'button',
+                onClick: () => {
+                  emit('closed');
+                },
               },
-            },
-            'close',
-          ),
-          slots.default?.(),
-        ]);
+              'close',
+            ),
+            slots.default?.(),
+          ],
+        );
     },
   });
 
@@ -128,15 +127,27 @@ const ValueFieldStub = defineComponent({
 });
 
 const documentId = zodDocumentId.parse('4Z1fFANPScpDsLXmC1KsBCn4mWYu');
+const effectiveViewId = generateViewId();
+const explicitViewId = generateViewId();
 
 /* eslint-enable vue/one-component-per-file -- Child stubs end here. */
 
-const mountDatabaseToolbar = (activeConfigurationSurface?: DatabaseConfigurationSurface) =>
+const mountDatabaseToolbar = (
+  activeConfigurationSurface?: DatabaseConfigurationSurface,
+  options: {
+    hasProperties?: boolean;
+    effectiveViewId?: typeof effectiveViewId;
+    explicitViewId?: typeof explicitViewId;
+  } = {},
+) =>
   mount(DatabaseToolbar, {
     props: {
       directoryPath: '/database',
       documentId,
       activeConfigurationSurface,
+      hasProperties: options.hasProperties ?? true,
+      effectiveViewId: options.effectiveViewId ?? effectiveViewId,
+      explicitViewId: options.explicitViewId,
     },
     global: {
       stubs: {
@@ -156,12 +167,6 @@ const mountDatabaseToolbar = (activeConfigurationSurface?: DatabaseConfiguration
   });
 
 describe('DatabaseToolbar', () => {
-  beforeEach(() => {
-    controls.propertySize.value = 1;
-    controls.effectiveViewId.value = 'view-id';
-    controls.patchProperty.mockReset();
-  });
-
   it('renders all controls when properties exist and emits configuration intents', async () => {
     const wrapper = mountDatabaseToolbar();
     const requests: DatabaseConfigurationSurface[] = ['views', 'sort', 'filter', 'properties'];
@@ -180,8 +185,7 @@ describe('DatabaseToolbar', () => {
   });
 
   it('keeps only configure-properties available when there are no properties', () => {
-    controls.propertySize.value = 0;
-    const wrapper = mountDatabaseToolbar();
+    const wrapper = mountDatabaseToolbar(undefined, { hasProperties: false });
     expect(wrapper.find('button[aria-label="configure properties"]').exists()).toBe(true);
     for (const controlName of ['view settings', 'sort', 'add item', 'filter']) {
       expect(wrapper.find(`button[aria-label="${controlName}"]`).exists()).toBe(false);
@@ -194,8 +198,18 @@ describe('DatabaseToolbar', () => {
     ['filter', 'filters-sheet'],
     ['properties', 'properties-sheet'],
   ] as const)('renders only the controlled %s sheet', async (surface, testId) => {
-    const wrapper = mountDatabaseToolbar(surface);
+    const wrapper = mountDatabaseToolbar(surface, { explicitViewId });
     expect(wrapper.find(`[data-testid="${testId}"]`).exists()).toBe(true);
+    if (surface === 'views') {
+      expect(wrapper.get('[data-testid="views-sheet"]').attributes('data-explicit-view-id')).toBe(
+        explicitViewId,
+      );
+    }
+    if (surface === 'sort' || surface === 'filter') {
+      expect(wrapper.get(`[data-testid="${testId}"]`).attributes('data-view-id')).toBe(
+        effectiveViewId,
+      );
+    }
     for (const otherId of ['views-sheet', 'sort-sheet', 'filters-sheet', 'properties-sheet']) {
       if (otherId !== testId)
         expect(wrapper.find(`[data-testid="${otherId}"]`).exists()).toBe(false);
@@ -204,15 +218,15 @@ describe('DatabaseToolbar', () => {
     expect(wrapper.emitted('closeConfiguration')).toHaveLength(1);
   });
 
-  it('owns add-item dialog visibility and forwards property patches', async () => {
+  it('owns add-item dialog visibility and emits toolbar property updates upward', async () => {
     const wrapper = mountDatabaseToolbar();
     expect(wrapper.find('[data-testid="add-dialog"]').exists()).toBe(false);
     await wrapper.get('button[aria-label="add item"]').trigger('click');
     expect(wrapper.find('[data-testid="add-dialog"]').exists()).toBe(true);
     await wrapper.get('[data-testid="value-field"]').trigger('click');
-    expect(controls.patchProperty).toHaveBeenCalledWith('/database', documentId, 'property-id', {
-      name: 'new value',
-    });
+    expect(wrapper.emitted('update:property')).toEqual([
+      [{ propertyId: 'property-id', property: { name: 'new value' } }],
+    ]);
     await wrapper.get('[data-testid="add-dialog"] button').trigger('click');
     expect(wrapper.find('[data-testid="add-dialog"]').exists()).toBe(false);
     await wrapper.get('button[aria-label="add item"]').trigger('click');

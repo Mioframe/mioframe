@@ -5,8 +5,7 @@ import type {
   DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { useElementBounding } from '@vueuse/core';
-import { computed, onMounted, onUpdated, shallowRef, toRefs, useTemplateRef } from 'vue';
+import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import EditableInlineValue from './EditableInlineValue.vue';
@@ -27,6 +26,7 @@ import {
 } from '@feature/exampleDocumentsCreate';
 import { useDatabaseInlineEditSession } from '@feature/databaseInlineValueEdit';
 import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
+import { useDatabaseViewSurfaceGeometry } from './useDatabaseViewSurfaceGeometry';
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -158,52 +158,23 @@ const onUpdateProperty = async (propertyId: DatabasePropertyId, v: DatabaseUnkno
   await putProperty(path.value, documentId.value, propertyId, v);
 };
 
+const onUpdateToolbarProperty = (payload: {
+  propertyId: DatabasePropertyId;
+  property: DatabaseUnknownProperty;
+}) => {
+  onUpdateProperty(payload.propertyId, payload.property);
+};
+
 const hasProperties = computed(() =>
   propertiesIdList.value ? propertiesIdList.value.length > 0 : undefined,
 );
 
 const databaseViewRef = useTemplateRef<HTMLElement>('databaseViewRef');
 const databaseViewLayoutRef = useTemplateRef<HTMLElement>('databaseViewLayoutRef');
-const databaseViewBounds = useElementBounding(databaseViewRef);
-const databaseViewLayoutBounds = useElementBounding(databaseViewLayoutRef);
-
-const updateDatabaseSurfaceBounds = () => {
-  databaseViewBounds.update();
-  databaseViewLayoutBounds.update();
-};
-
-onMounted(updateDatabaseSurfaceBounds);
-onUpdated(updateDatabaseSurfaceBounds);
-
-const verticalSurfaceOffset = computed(() => {
-  const root = databaseViewRef.value;
-
-  if (!root || !databaseViewLayoutRef.value) {
-    return 0;
-  }
-
-  return (
-    databaseViewLayoutBounds.top.value -
-    databaseViewBounds.top.value -
-    root.clientTop +
-    root.scrollTop
-  );
-});
-
-const horizontalSurfaceOffset = computed(() => {
-  const root = databaseViewRef.value;
-
-  if (!root || !databaseViewLayoutRef.value) {
-    return 0;
-  }
-
-  return (
-    databaseViewLayoutBounds.left.value -
-    databaseViewBounds.left.value -
-    root.clientLeft +
-    root.scrollLeft
-  );
-});
+const { horizontalSurfaceOffset, verticalSurfaceOffset } = useDatabaseViewSurfaceGeometry(
+  databaseViewRef,
+  databaseViewLayoutRef,
+);
 
 const onCancelEditItemDialog = () => {
   isShowEditItemDialog.value = false;
@@ -237,9 +208,12 @@ const onUpdatedEditItemDialog = () => {
         :explicit-view-id="explicitViewId"
         :document-id="documentId"
         :directory-path="path"
+        :has-properties="hasProperties"
+        :effective-view-id="effectiveViewId"
         :auto-hide-target="databaseViewRef"
         :active-configuration-surface="activeConfigurationSurface"
         @update:explicit-view-id="onRequestExplicitViewId"
+        @update:property="onUpdateToolbarProperty"
         @request-configuration="onRequestConfiguration"
         @close-configuration="onCloseConfiguration"
       />
@@ -251,6 +225,7 @@ const onUpdatedEditItemDialog = () => {
       :document-id="documentId"
       :view-id="effectiveViewId"
       :path="path"
+      :properties="propertiesIdList"
       :scroll-root="databaseViewRef"
       :vertical-surface-offset="verticalSurfaceOffset"
       :horizontal-surface-offset="horizontalSurfaceOffset"
@@ -283,9 +258,12 @@ const onUpdatedEditItemDialog = () => {
           :explicit-view-id="explicitViewId"
           :document-id="documentId"
           :directory-path="path"
+          :has-properties="hasProperties"
+          :effective-view-id="effectiveViewId"
           :auto-hide-target="databaseViewRef"
           :active-configuration-surface="activeConfigurationSurface"
           @update:explicit-view-id="onRequestExplicitViewId"
+          @update:property="onUpdateToolbarProperty"
           @request-configuration="onRequestConfiguration"
           @close-configuration="onCloseConfiguration"
         />
@@ -329,18 +307,6 @@ const onUpdatedEditItemDialog = () => {
     flex-shrink: 0;
   }
 
-  &__controls {
-    margin-top: auto;
-    flex-shrink: 0;
-    position: sticky;
-    bottom: 0;
-    background: transparent;
-  }
-
-  &__table {
-    flex-grow: 1;
-  }
-
   &__without-properties {
     display: flex;
     flex-direction: column;
@@ -350,16 +316,6 @@ const onUpdatedEditItemDialog = () => {
     flex-grow: 1;
     text-align: center;
     padding: 4step;
-  }
-}
-
-.sheet {
-  &__head {
-    display: flex;
-  }
-
-  &__body {
-    padding: 16px;
   }
 }
 </style>

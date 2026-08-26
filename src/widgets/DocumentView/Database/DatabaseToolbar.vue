@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { useDatabaseViewSelection } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
-import { computed, ref, toRefs } from 'vue';
+import { ref, toRefs } from 'vue';
 import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
@@ -13,8 +12,6 @@ import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
-import { useDatabaseProperties } from '@entity/databaseProperty';
-import type { PartialDeep } from 'type-fest';
 import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
@@ -22,6 +19,8 @@ const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId')
 const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
+  hasProperties?: boolean | undefined;
+  effectiveViewId?: DatabaseViewId | undefined;
   autoHideTarget?: MaybeElement | undefined;
   activeConfigurationSurface?: DatabaseConfigurationSurface | undefined;
 }>();
@@ -29,6 +28,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   requestConfiguration: [surface: DatabaseConfigurationSurface];
   closeConfiguration: [];
+  'update:property': [
+    payload: { propertyId: DatabasePropertyId; property: DatabaseUnknownProperty },
+  ];
 }>();
 
 const {
@@ -36,22 +38,14 @@ const {
   directoryPath: path,
   autoHideTarget,
   activeConfigurationSurface,
+  effectiveViewId,
+  hasProperties,
 } = toRefs(props);
-const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelection(
-  path,
-  documentId,
-  explicitViewId,
-);
 
 const isShowAddItem = ref(false);
 
-const { size: propertySize, patch: patchProperty } = useDatabaseProperties(path, documentId);
-
-const onUpdateProperty = async (
-  propertyId: DatabasePropertyId,
-  v: PartialDeep<DatabaseUnknownProperty>,
-) => {
-  await patchProperty(path.value, documentId.value, propertyId, v);
+const onUpdateProperty = (propertyId: DatabasePropertyId, property: DatabaseUnknownProperty) => {
+  emit('update:property', { propertyId, property });
 };
 
 const onRequestViewSettings = () => {
@@ -85,12 +79,6 @@ const onItemAdded = () => {
 const onCancelAddItem = () => {
   isShowAddItem.value = false;
 };
-
-const hasProperties = computed(() => {
-  const size = propertySize.value;
-
-  return size && size > 0;
-});
 </script>
 
 <template>
@@ -137,7 +125,7 @@ const hasProperties = computed(() => {
 
     <DatabaseViewsSheet
       v-if="activeConfigurationSurface === 'views'"
-      v-model:explicit-view-id="viewSelection"
+      v-model:explicit-view-id="explicitViewId"
       :path="path"
       :document-id="documentId"
       @closed="onCloseConfiguration"

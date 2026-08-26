@@ -4,6 +4,7 @@ import {
   type ParentRelation,
   type RelationProperty,
 } from '@entity/databaseRelation';
+import { useDatabaseProperties } from '@entity/databaseProperty';
 import { useDatabaseViewSelection } from '@entity/databaseView';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
 import { computed, toRef, useTemplateRef } from 'vue';
@@ -29,6 +30,10 @@ const { effectiveViewId } = useDatabaseViewSelection(
   toRef(() => props.directoryPath),
   relationDocumentId,
   relationViewId,
+);
+const { propertiesIdList } = useDatabaseProperties(
+  toRef(() => props.directoryPath),
+  relationDocumentId,
 );
 
 const scrollRoot = useTemplateRef<HTMLElement>('scrollRoot');
@@ -57,6 +62,7 @@ const scrollRoot = useTemplateRef<HTMLElement>('scrollRoot');
         <DatabaseViewLayout
           :document-id="relationDocHandle"
           :path="relationDirectory"
+          :properties="propertiesIdList"
           :view-id="viewId"
           :item-id-query="{ $in: relationValue }"
           :scroll-root="scrollRoot"
