@@ -1,8 +1,8 @@
 # Database virtualization
 
-Status: **PR #217 virtualization implementation, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. One final Database widget ownership cleanup is active before the final exact-head merge gate.**
+Status: **PR #217 virtualization implementation, Database widget ownership cleanup, proportional browser/product proof, relation selected-view proof, and operator visual inspection are accepted. The remaining automatic merge gate is exact-head GitHub CI on the final repository head.**
 
-This is the architecture source of truth for PR #217. Temporary implementation handoff, preflight, diagnostic, and stage-result artifacts are intentionally not retained after closure. Retained measurement evidence and deferred performance scope are documented separately.
+This is the architecture source of truth for PR #217. Temporary implementation handoff, preflight, diagnostic, review, and stage-result artifacts are intentionally not retained after closure. Retained measurement evidence and deferred performance scope are documented separately.
 
 ## PR #217 scope
 
@@ -83,22 +83,18 @@ The proportional moving-surface E2E uses a compact deterministic viewport and 16
 
 The corrected scenario passes on desktop Chromium and Mobile Chrome without requiring shared virtualization changes.
 
-## Database widget ownership cleanup — active
+## Database widget ownership — accepted
 
-The top-level Database widget remains the correct owner of the physical scroll root, root-to-surface geometry, inline-edit arbitration, and configuration arbitration. The final cleanup only removes internal composition drift:
+The top-level Database widget owns the physical scroll root, root-to-surface geometry, screen-level property collection/view selection, inline-edit arbitration, and configuration arbitration.
 
-- `DatabaseViewWidget` becomes the single screen owner of the property-collection and view-selection read models;
-- `DatabaseViewLayout` and `DatabaseToolbar` consume narrow parent-provided state rather than creating duplicate screen reads;
-- property-update intent from toolbar-owned child surfaces returns upward to the widget's existing entity mutation path;
-- the already accepted root-to-surface formulas and refresh behavior move into one widget-local `useDatabaseViewSurfaceGeometry` composable without changing geometry semantics.
+Accepted composition contract:
 
-Active implementation contract:
-
-- `docs/database-view-widget-ownership-cleanup-handoff.md`;
-- `docs/database-view-widget-ownership-cleanup-preflight.md`;
-- `src/widgets/DocumentView/Database/REVIEW.md`.
-
-No entity/shared API expansion, new geometry state/cache/observer, or product behavior change is authorized by this cleanup.
+- `DatabaseViewWidget` is the single top-level owner of the Database property-collection and view-selection reads;
+- `DatabaseViewLayout` and `DatabaseToolbar` consume narrow parent-provided state instead of recreating those screen reads;
+- `DatabaseRelationValueInline` owns its own relation-scoped property/view reads because its nested layout targets a different relation document;
+- property-update intent from toolbar-owned child surfaces flows upward to the widget's existing entity mutation path and preserves that asynchronous Promise chain;
+- root-to-surface measurement lifecycle and the accepted formulas live in the widget-local `useDatabaseViewSurfaceGeometry` composable;
+- no entity/shared API expansion, second geometry state/cache/observer, or virtualization redesign is part of this contract.
 
 ## Relation selected-view proof — resolved
 
@@ -138,15 +134,16 @@ No additional shared `MDTable` correction is required.
 
 ## Verification state
 
-Accepted coding-agent evidence after the final relation proof correction:
+Accepted coding-agent evidence after the final Database widget correction:
 
-- focused application E2E for `tests/e2e/databaseViewsAndQueryFlows.spec.ts`: passed without retry/flaky classification;
-- cumulative branch gate `pnpm verify --base origin/develop`: passed;
-- applicable static checks: no blocking errors.
+- focused Database application E2E: 23/23 passed without retries;
+- cumulative branch gate `pnpm verify --base origin/develop`: passed all selected checks, including 83 application E2E tests;
+- focused format, Oxlint, ESLint, and type-check feedback for the final async-forwarding correction: passed;
+- final async-forwarding correction changed only `DatabaseViewWidget.vue` and preserves the existing property-mutation Promise chain.
 
 Operator visual inspection of the Database border/corner/sticky presentation is accepted.
 
-A new cumulative branch gate and exact-head GitHub CI are required after the active Database widget ownership cleanup.
+Exact-head GitHub CI on the final repository head remains the authoritative automatic merge gate.
 
 ## Residual Chromium jank
 
@@ -158,12 +155,10 @@ Retained evidence and the first discriminator for that work are recorded in `doc
 
 PR #217 may merge when:
 
-1. the Database widget ownership cleanup is implemented and architect-accepted;
-2. coding-agent `pnpm verify --base origin/develop` passes cleanly after that correction;
-3. exact-head GitHub CI on the final head is green without retry/flaky classification;
-4. the final merge decision confirms no new blocker was introduced.
+1. exact-head GitHub CI on the final head is green without retry/flaky classification;
+2. the final merge decision confirms no new blocker was introduced after the architect-owned closing documentation cleanup.
 
-No additional relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
+No additional Database ownership, relation-readiness, visual-reinspection, or performance-attribution correction is required for #217 unless new repository evidence contradicts the accepted state above.
 
 ## Forbidden before merge
 
@@ -172,6 +167,7 @@ No additional relation-readiness, visual-reinspection, or performance-attributio
 - replacing the accepted relation-view web-first proof with sampled polling without new evidence;
 - changing expected relation row values/order;
 - duplicate preload/query paths;
+- restoring duplicate top-level Database property/view read ownership;
 - restoring entity-owned ancestor/sibling geometry discovery;
 - shared virtualization/TanStack changes without new contrary evidence;
 - unconditional `virtualizer.measure()` or cache reset;
