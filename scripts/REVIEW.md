@@ -4,190 +4,134 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete PR #218 verification implementation relevant to public type ownership, affected selection, special Playwright execution, mutation ownership, and verifier cost/failure paths.
-- Canonical contract: `../docs/testing/architecture.md` and the accepted verify-redesign records.
-- Current implementation: `verify.ts`, `lib/*Risk.ts`, special release/browser runners, Playwright configuration, and focused verifier tests.
+- Complete scripts-owned correction on PR #218 from architect handoff `5d3c12baf60c4d87444b8410d72c0230a6ee7642` through coding-agent implementation `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`.
+- Canonical contract: [`../docs/testing/architecture.md`](../docs/testing/architecture.md), [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md), and the assigned [`../docs/testing/verify-redesign-final-review-agent-task.md`](../docs/testing/verify-redesign-final-review-agent-task.md).
+- Rechecked release-sensitive static ownership, exceptional release-browser inventory, special shared support, browser-integration lane separation, mutation impact, E2E relevance/acquisition, TypeScript-first conversion, and managed-update execution semantics.
 
 ## Blockers
 
-### B1 — Release-sensitive static proof is full-only instead of affected-owned
+### B1 — Release-static affected ownership still omits real production artifact inputs
 
 Owner: `scripts`
 
-Problem: deterministic release/build static leaves (`release-version`, `release-config`, `build`, `publisher-node-import`, `artifact-static`, `managed-updates-static`) are created only by `addReleaseOnlyCommands()`, and `buildCommands()` calls that function only in literal full mode. A normal/default or `--only static --files ...` invocation therefore cannot run these static contracts when their owning source/configuration changes.
+Problem: `releaseStaticRisk.ts` still treats ordinary production source as irrelevant to every release-sensitive static leaf and does not consistently propagate artifact/build inputs to `artifact-static`. The real `build` leaf runs `vite build` over the production application module graph, and `productionArtifactStaticProof.ts` validates the resulting emitted JavaScript/manifest/controller artifact. A normal production source change can therefore change or break the built artifact while default/`--only static` planning omits both `build` and `artifact-static`. Build configuration such as `vite.config.ts` is similarly classified as `build`-only even though it changes the artifact that `artifact-static` validates.
 
 Evidence:
 
-- [`verify.ts`](verify.ts) — `addReleaseOnlyCommands()` defines the release-sensitive static leaves, while the only caller is guarded by `if (fullMode)`.
-- [`../docs/release.md`](../docs/release.md) — current focused managed-update guidance explicitly uses `pnpm verify --only static --files <managed-update paths...>`.
+- [`lib/releaseStaticRisk.ts`](lib/releaseStaticRisk.ts) — `BUILD_EXACT_FILES`/`BUILD_PREFIXES` cover only a small config/entry/public set; ordinary `src/**` production source is absent, and `ARTIFACT_STATIC_EXACT_FILES` contains only `src/sw.ts` and the proof implementation.
+- [`lib/releaseStaticRisk.test.ts`](lib/releaseStaticRisk.test.ts) — explicitly expects `src/features/documentCreate/index.ts` to skip every release-sensitive static leaf and expects `vite.config.ts`/ordinary appUpdate production changes not to select `artifact-static`.
+- [`release/buildArtifact.mjs`](release/buildArtifact.mjs) — the `build` contract executes the real local Vite production build.
+- [`release/productionArtifactStaticProof.ts`](release/productionArtifactStaticProof.ts) — scans all emitted JS/MJS chunks plus the generated worker/manifest after building the artifact.
 
 Basis:
 
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — `static` owns deterministic build/config invariants, `--only` keeps the selected type's normal affected selection, and skipping a complete type requires deterministic evidence of irrelevance.
+- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 1 requires production artifact/build inputs to select `build` and the deterministic artifact proof they can affect, with broader explicit ownership preferred when precise narrowing is not cheaply provable.
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — a complete type may skip only with deterministic evidence of irrelevance; `static` owns deterministic build/config invariants.
 
-Risk: focused/default verification and the develop CI static job can pass while omitting a static contract affected by the change; `--full` being correct does not repair the normal affected contract.
+Risk: default/develop static verification can report success without building or checking the production artifact after a source/configuration change that actually affects that artifact, preserving the original B1 fail-open behavior for a large class of production changes.
 
-Required final state: release-sensitive static leaves participate outside `--full` when their explicit file capability/configuration ownership is affected. Use a small explicit static/release-static ownership resolver; prefer a safely broader path set over dependency inference. Literal `--full` remains unconditional and unchanged in coverage.
+Required final state: define the explicit production-build/artifact capability broadly enough that every changed production/build input that can enter or alter the Vite artifact selects `build` and `artifact-static`; appUpdate/controller inputs additionally select `managed-updates-static`. Keep test/spec/story helpers excluded where they cannot enter the production artifact. Do not add a dependency graph merely to narrow this safely broad capability.
 
-Verification: focused planner tests must prove relevant managed-update/artifact/build/config/publisher paths select the appropriate static leaves under normal/default and `--only static` semantics, unrelated paths do not select unrelated expensive leaves, and `--full` still runs the complete static inventory.
+Verification: focused planner/integration tests must prove representative ordinary production source, Vite/build configuration, public/static input, appUpdate production, runtime package/lock, and unrelated proof/test/doc paths resolve to the correct release-static leaves; a focused `--only static --files <ordinary production source>` plan must include the real build/artifact proof.
 
-### B2 — Exceptional browser/E2E execution inventories can silently omit valid target specs
+### B2 — Exceptional inventory validation is still bypassed by full/special execution and ownership is not fully centralized
 
 Owner: `scripts`
 
-Problem: structural target discovery and special execution routing have separate sources of truth. `e2eRisk.ts` accepts any structurally valid `productionArtifact/` target but routes it through a fixed owner-to-leaf table; an unrecognized special target can therefore disappear from the runnable plan. Managed-update browser/E2E execution is likewise driven by fixed arrays in `release/managedUpdatesProof.mjs`, while its tests compare them to another hard-coded expected corpus rather than the actual current special filesystem inventory.
+Problem: the new exceptional inventory is validated by the focused planners, but literal `--full` constructs the browser-integration full plan directly and bypasses `resolveBrowserIntegrationPlan()`/`validateBrowserIntegrationMembership()`. `managedUpdatesProof.ts` also executes the registered groups directly without validating current filesystem equality first. Therefore a newly added unregistered appUpdate browser-integration spec can still be omitted by `pnpm verify --full` and by direct special-runner execution. In addition, one managed-update E2E membership constant is still defined in `runManagedReleaseDataCompatibilityProof.mjs` and imported into `releaseProofInventory.ts`, while its inventory test repeats that spec path as a hard-coded expected member; the requested inventory file is therefore not yet the sole membership owner.
 
 Evidence:
 
-- [`lib/e2eRisk.ts`](lib/e2eRisk.ts) — `PRODUCTION_ARTIFACT_LEAF_BY_OWNER` plus `selectedSpecsToPlan()` only set the two known special leaf booleans; there is no invalid state for a structurally valid special target with no executable membership.
-- [`lib/e2eOwnerTree.ts`](lib/e2eOwnerTree.ts) — target-tree validation proves owner/path shape but does not validate special execution membership.
-- [`release/managedUpdatesProof.mjs`](release/managedUpdatesProof.mjs) — fixed managed-update browser-integration and E2E group arrays own actual execution.
-- [`release/managedUpdatesProof.test.mjs`](release/managedUpdatesProof.test.mjs) — group completeness is checked against duplicated `EXPECTED_*_CORPUS` constants rather than the current special spec tree.
+- [`verify.ts`](verify.ts) — `addBrowserIntegrationCommands()` uses a literal `{ mode: 'full', artifact: true, managedUpdates: true }` plan when `fullMode` is true instead of invoking the membership-validating resolver.
+- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) — `validateBrowserIntegrationMembership()` is called only inside `resolveBrowserIntegrationPlan()`.
+- [`release/managedUpdatesProof.ts`](release/managedUpdatesProof.ts) — consumes group arrays but calls no exceptional-inventory filesystem validation before `runGroupsSequentially()`.
+- [`lib/releaseProofInventory.ts`](lib/releaseProofInventory.ts) — imports `MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC`/label from `runManagedReleaseDataCompatibilityProof.mjs` instead of owning that E2E membership itself.
+- [`lib/releaseProofInventory.test.ts`](lib/releaseProofInventory.test.ts) — repeats the data-compatibility spec path in the expected E2E set.
 
 Basis:
 
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — suffix/location establish test type/ownership, invalid structure must fail loudly, uncertainty expands coverage, and replaced parallel ownership models must not remain.
+- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 2 requires one source of exceptional execution membership and exact filesystem equality validation **before affected selection or special execution**; unregistered special specs must fail closed.
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — `--full` means every spec with no affected narrowing, and invalid structure must fail visibly rather than silently skip.
 
-Risk: adding/moving a valid special `*.browser-integration.spec.ts` or `productionArtifact/*.e2e.spec.ts` can produce green verification without executing that spec.
+Risk: the release-grade command can remain green while omitting a valid new special browser-integration spec, which directly violates complete full-mode coverage and recreates the B2 failure the correction was meant to remove.
 
-Required final state: special execution membership has one small explicit source of truth justified by its fresh-container/cross-engine execution semantics. Before affected selection/execution, validate exact set equality between that source and the current special filesystem inventory, including missing, unexpected, and duplicate entries. Unknown special targets fail closed; they are never silently ignored. Planner and runner consume the same membership source.
+Required final state: exceptional membership is owned entirely by `releaseProofInventory.ts`; all special execution paths consume it. Browser-integration full planning must run the same structural membership validation as focused planning, and `managedUpdatesProof.ts` must fail closed before executing groups when the relevant filesystem corpus is not exactly registered. Tests must not maintain a second membership literal/list.
 
-Verification: deterministic tests must prove exact special-corpus equality, missing/unexpected/duplicate failure, direct selection of every registered special spec, and failure (not skip) for a newly introduced unregistered special spec.
+Verification: prove invalid browser-integration membership fails in both focused and literal-full `buildCommands`; prove the managed special runner refuses execution on missing/unexpected/duplicate membership; prove all registered groups execute from the central inventory and no duplicate expected-corpus literals remain.
 
-### B3 — Shared special browser/E2E support can change while both owning types skip
+### B3 — Shared special-runner support ownership remains incomplete
 
 Owner: `scripts`
 
-Problem: the managed-update browser-integration and production-artifact E2E corpora import shared release fixtures and real publisher/artifact support outside their owner directories, but the affected planners recognize only narrow fixed infrastructure files. Changes to shared release fixture/support can therefore leave the owning browser-integration and/or E2E proof unselected.
+Problem: the correction added the top-level release fixture/publisher/artifact/container paths, but it did not include the stable shared command/lock/result/signal support imported by those runners. For example, `playwrightContainer.ts` directly depends on `localCommandGuard.ts`, `processResult.ts`, and `runLocalCommand.ts`; `runLocalCommand.ts` depends on `signalForward.ts`; and `managedUpdatesProof.ts` itself depends on `runLocalCommand.ts`/`processResult.ts`. A change to these shared execution boundaries can alter whether/how the special browser/E2E proof runs while both special affected planners still classify the change as irrelevant.
 
 Evidence:
 
-- [`../src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts`](../src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts) — imports `tests/e2e/release/fixtures/managedReleaseFixture.mjs`.
-- [`../tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts`](../tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts) — imports the same fixture and shared E2E helpers.
-- [`../tests/e2e/release/fixtures/managedReleaseFixture.mjs`](../tests/e2e/release/fixtures/managedReleaseFixture.mjs) — uses the real `scripts/release/artifactServer.mjs`, `scripts/pages/lib/pagesFs.mjs`, and `scripts/pages/lib/releasePublish.mjs` boundaries.
-- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) and [`lib/e2eRisk.ts`](lib/e2eRisk.ts) — current full-lane/support path sets do not represent this complete shared dependency boundary.
+- [`playwrightContainer.ts`](playwrightContainer.ts) — directly imports `lib/localCommandGuard.ts`, `lib/processResult.ts`, and `lib/runLocalCommand.ts` for every container execution.
+- [`lib/localCommandGuard.ts`](lib/localCommandGuard.ts) — supplies the guarded expensive-command/lock boundary and imports `commandLock.ts` plus `runLocalCommand.ts`.
+- [`lib/runLocalCommand.ts`](lib/runLocalCommand.ts) — owns special-runner child execution and signal propagation through `signalForward.ts`.
+- [`release/managedUpdatesProof.ts`](release/managedUpdatesProof.ts) — directly uses `runLocalCommand.ts`/`processResult.ts` for the fresh-container group orchestration.
+- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) and [`lib/e2eRisk.ts`](lib/e2eRisk.ts) — list `playwrightContainer.ts` and high-level release support, but not this shared execution-support closure.
 
 Basis:
 
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — shared setup/config/support with non-local blast radius must widen the owning type when narrower ownership cannot be proved safely; a broader safe run is preferable to complex inference.
+- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 3 requires the coding pass to inspect the current direct execution/import boundary and include every additional stable support path required for completeness.
+- [`../.agents/skills/verification/SKILL.md`](../.agents/skills/verification/SKILL.md) — shared config/helpers use full owning-type fallback unless every consumer is explicit, small, stable, and validated.
 
-Risk: a test fixture, publisher, artifact server, or build/runtime support regression can change the meaning of the special proof while default verification reports that proof type as irrelevant.
+Risk: a regression in common child execution, expensive-lock propagation, result propagation, or signal handling can change the meaning/outcome of the special Playwright proof while default `browser-integration`/E2E verification skips it.
 
-Required final state: explicitly classify the stable shared support roots used by the special browser-integration/E2E runners so a support change selects all dependent special leaves/types. At minimum this includes the shared managed-release fixture boundary and the real publisher/artifact support it exercises. Do not introduce another general dependency graph or production-path-to-spec registry.
+Required final state: extend the explicit stable special-support ownership to the current common execution-support boundary used by release Playwright/group runners. Keep it an explicit small shared-support classification; do not introduce another dependency graph.
 
-Verification: focused tests must prove representative shared fixture, publisher/artifact support, Vite/build configuration, and runtime-relevant package/toolchain changes widen/select the correct browser-integration and E2E special proof rather than skip.
+Verification: focused planner tests must show representative changes in the shared command/guard/result/signal support select the dependent special browser-integration and E2E proof instead of skip.
 
 ## Major issues
 
-### M1 — Generic browser-integration discovery overlaps the managed-update special corpus
+### M1 — `--fix-only` still resolves non-static planners before its early return
 
 Owner: `scripts`
 
-Problem: `playwright.browserIntegration.config.ts` matches all `src/**/*.browser-integration.spec.ts`, including the appUpdate corpus that requires `playwright.release.config.ts` fresh-container and cross-engine semantics. `pnpm test:browser-integration` therefore exposes a second weaker execution path; `verify.ts` avoids it only by always passing an explicit generic spec list.
+Problem: expensive Playwright/dependency-cruiser acquisition is now gated correctly, but `buildCommands()` still resolves unit planning, target-tree/applicability validation, Storybook behavior/build/visual planning, mutation planning, and release-static planning before constructing fixer commands and reaching the `fixOnlyMode` return. This does not satisfy the resolved correction order that `--fix-only` finishes static fixer planning without resolving non-static planners.
 
 Evidence:
 
-- [`../playwright.browserIntegration.config.ts`](../playwright.browserIntegration.config.ts) — broad `testMatch` intentionally also matches the managed-update corpus.
-- [`browserIntegration.ts`](browserIntegration.ts) — bare package runner executes that configuration.
+- [`verify.ts`](verify.ts) — `unitPlan`, E2E target-tree/project applicability, Storybook behavior/build/visual, and mutation plans are resolved before `commands` are built; `if (fixOnlyMode) return ...` occurs only afterwards.
 
 Basis:
 
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — one contract has one primary proof owner; browser runtime proof must preserve its truthful execution semantics.
+- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 6 explicitly requires `--fix-only` to finish static fixer planning **without resolving non-static planners**, before E2E relevance/acquisition.
 
-Risk: callers can execute managed-update specs under a Chromium-only generic environment that does not prove their accepted fresh-container/cross-engine contract, creating parallel ownership and misleading green evidence.
+Risk: fixer-only feedback still performs unrelated filesystem/inventory/package-impact planning and can become slower or fail for non-static repository state that the invocation was explicitly not asked to verify. The original heavy-container cost is fixed, but the ownership/order contract remains only partially implemented.
 
-Required final state: the generic browser-integration configuration discovers only the generic non-appUpdate inventory. Exclude the managed-update special owner structurally in configuration; do not rely on one caller always passing a filtered list. Preserve the special release runner as the sole execution owner for that corpus.
+Required final state: construct and return the fixer-only command plan before resolving unit, behavior, visual, mutation, E2E structural/applicability, or other non-static proof planners. Preserve current fixer behavior and public invocation semantics.
 
-Verification: lane/config tests and a real/config-level collection proof must show the generic runner cannot collect appUpdate managed-update specs while the special release config still collects them.
+Verification: dependency-seam tests must prove a `fix-only` build does not call non-static planner/validation dependencies at all, not merely that Playwright/dependency-cruiser are skipped.
 
-### M2 — Mutation toolchain changes can skip the mutation type
+### M2 — Mutation planning discards deleted/renamed-away infrastructure paths
 
 Owner: `scripts`
 
-Problem: `MUTATION_INFRA_PATHS` contains only the registry and Stryker config. Runtime-relevant `package.json` changes and `pnpm-lock.yaml` can change Stryker/core/Vitest-runner execution but still resolve to an empty mutation plan.
+Problem: default changed-path resolution correctly preserves deleted paths and both sides of renames, but `buildCommands()` passes only `existingChangedFiles` into `resolveMutationPlan()`. A deleted or renamed-away `stryker.config.mjs` (and similarly another mutation-infrastructure path) is therefore removed before mutation impact classification and can yield an empty mutation scope even though mutation infrastructure changed.
 
 Evidence:
 
-- [`lib/mutationTargets.ts`](lib/mutationTargets.ts) — mutation infrastructure selection is limited to two exact paths.
-- [`../package.json`](../package.json) — Stryker core and Vitest runner are repository-owned dev dependencies.
+- [`lib/changedPaths.ts`](lib/changedPaths.ts) — changed-path projection intentionally preserves deleted paths and projects both `oldPath` and `newPath` for renames.
+- [`verify.ts`](verify.ts) — `existingChangedFiles` filters by current filesystem existence and is passed to `resolveMutationPlan(...)`.
+- [`lib/mutationTargets.ts`](lib/mutationTargets.ts) — infrastructure impact is path-identity based and would correctly widen `stryker.config.mjs`/lockfile if those changed paths reached it.
 
 Basis:
 
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — default mutation verification runs affected registered targets and a type may skip only with deterministic evidence of irrelevance.
-- [`../docs/testing/verify-redesign-pass-e-implementation.md`](../docs/testing/verify-redesign-pass-e-implementation.md) — mutation infrastructure changes select the complete registered inventory.
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — default verification preserves add/modify/remove/move identities; uncertain/removed affected ownership must widen safely rather than silently skip.
+- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 5 classifies the Stryker config/lock/toolchain as mutation infrastructure whose change selects the complete registered inventory.
 
-Risk: a Stryker/toolchain update can receive a green mutation job without executing any registered mutation target.
+Risk: removing or renaming mutation infrastructure can receive a green mutation skip, undermining the status-aware default contract and leaving the M2 toolchain ownership correction fail-open for non-existing changed paths.
 
-Required final state: mutation planning treats the lockfile and runtime-relevant mutation toolchain/package changes as complete-registry impact, while preserving the existing version-only package refinement where it can be proved irrelevant.
+Required final state: mutation impact receives the status-preserving changed-path identity needed to classify deleted/renamed infrastructure safely; existence filtering may still be used only where a command itself cannot accept a missing path, not to erase mutation relevance.
 
-Verification: focused planner tests for lockfile, Stryker dependency changes, version-only package changes, registry/config changes, and unrelated paths.
-
-### M3 — E2E inventory acquisition runs before E2E relevance is established
-
-Owner: `scripts`
-
-Problem: for the default all-type invocation, `buildCommands()` calls `resolveStructuralE2EPlan()` before knowing whether any changed path is E2E-relevant; that resolver collects two containerized Playwright `--list` inventories before evaluating changed-path relevance. Planner resolution also occurs before the `fix-only` command-plan early return.
-
-Evidence:
-
-- [`verify.ts`](verify.ts) — structural E2E/unit/behavior/visual/mutation plans are resolved before command construction and before the `fixOnlyMode` return.
-- [`lib/e2eRisk.ts`](lib/e2eRisk.ts) — owner inventory is collected before changed-path full/focused/skip classification.
-- [`lib/e2eOwnerInventoryContainer.ts`](lib/e2eOwnerInventoryContainer.ts) — inventory collection performs two sequential containerized Playwright list runs.
-
-Basis:
-
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — the goal is the smallest set of checks that can be proven safe; default verification first determines relevant verification types, and broader work should be used for safety rather than unconditional cost.
-
-Risk: docs-only/default and fixer-only feedback can unnecessarily require Podman/Playwright metadata and pay two container startups even though E2E cannot be relevant.
-
-Required final state: cheap changed-path relevance classification precedes expensive E2E graph/inventory acquisition. `--only <non-e2e>` and `--fix-only` acquire no E2E graph/inventory; default invocation acquires it only when changed paths can affect E2E. A changed/added/moved E2E target or E2E infrastructure/support path must still trigger structural validation, so optimization cannot weaken fail-closed behavior.
-
-Verification: dependency-seam tests must prove zero inventory/graph acquisition for docs-only, `--fix-only`, and non-E2E `--only`, and acquisition/fail-closed behavior for production/E2E/support changes.
+Verification: tests must cover deleted and renamed-away `stryker.config.mjs`/representative mutation infrastructure and prove complete-registry mutation selection (or an explicit fail-closed result), while unrelated deleted paths remain irrelevant.
 
 ## Minor issues
 
-### N1 — Task-touched/new verifier tooling still violates the TypeScript-first repository rule
-
-Owner: `scripts`
-
-Problem: new verifier-owned Node proof scripts such as `release/productionArtifactStaticProof.mjs` and `release/managedUpdatesControllerArtifactIdentityProof.mjs`, plus task-touched `release/managedUpdatesProof.mjs`, remain JavaScript even though the repository now executes verifier TypeScript directly on Node 24 and these scripts already import TypeScript modules.
-
-Evidence:
-
-- [`release/productionArtifactStaticProof.mjs`](release/productionArtifactStaticProof.mjs)
-- [`release/managedUpdatesControllerArtifactIdentityProof.mjs`](release/managedUpdatesControllerArtifactIdentityProof.mjs)
-- [`../tsconfig.scripts.json`](../tsconfig.scripts.json) — verifier tooling has a native Node 24 TypeScript configuration.
-
-Basis:
-
-- [`../AGENTS.md`](../AGENTS.md) — prefer TypeScript for new or task-touched Node/tooling scripts when the runtime/toolchain can execute it directly; JavaScript requires a concrete loader/runtime reason.
-
-Risk: the redesign leaves a known repository-rule exception without evidence and keeps part of new verifier logic outside `tsconfig.scripts` type checking.
-
-Required final state: convert the task-touched/new verifier proof scripts to native TypeScript where no concrete loader restriction exists, updating direct consumers/tests mechanically. Preserve genuinely loader-constrained legacy `.mjs` files.
-
-Verification: `tsconfig.scripts`/static focused proof and direct Node import/execution tests for the converted entry points.
-
-### N2 — Managed-update E2E ordering comment describes an invariant the planner does not enforce
-
-Owner: `scripts`
-
-Problem: `release/managedUpdatesProof.mjs` states that managed-update E2E runs only after the complete browser-integration leaf, but `verify.ts` currently appends `managed-updates-e2e` in `addReleaseOnlyCommands()` before the browser-integration commands are appended.
-
-Evidence:
-
-- [`release/managedUpdatesProof.mjs`](release/managedUpdatesProof.mjs) — E2E group comment claims browser-integration-first ordering.
-- [`verify.ts`](verify.ts) — full-mode release-only commands are appended before `addBrowserIntegrationCommands()`.
-
-Basis:
-
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — verification behavior must be deterministic and inspectable; comments must not claim nonexistent proof semantics.
-
-Risk: maintainers can rely on a fail-fast ordering guarantee that is not actually present.
-
-Required final state: either enforce the ordering if it remains a required current invariant, or correct the stale comment if no contract requires cross-type ordering. Do not introduce cross-type coupling solely to preserve a comment.
-
-Verification: planner order assertion only if the ordering is intentionally retained; otherwise a focused documentation/comment correction is sufficient.
+None.
 
 ## Accepted risks
 
@@ -195,8 +139,10 @@ None.
 
 ## Items not required
 
-- No new verification type, generic resolver framework, persistent graph/cache, or performance infrastructure is required.
-- No production feature behavior or migrated test assertions need redesign based on this review.
+- No redesign of the eight public verification types, unit architecture, ordinary structural E2E ownership, performance inventory, locks, or container model is required.
+- The generic browser-integration config is now structurally disjoint from the appUpdate special corpus; do not reopen that design.
+- The three required verifier proof/orchestration entry points are now TypeScript; no wider `.mjs` conversion is required.
+- The stale cross-type browser-integration-before-E2E claim is corrected; no cross-type ordering should be added.
 
 ## Unresolved questions
 
