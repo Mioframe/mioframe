@@ -287,13 +287,13 @@ focused and the full gate, and tag pushes never rerun the full gate:
     `scripts/release/materializePrVersion.mjs` before its existing fixer
     pipeline (`pnpm ci:autofix`) — see `Same-repository CI materialization`
     above;
-  - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
-    and mutation through verifier-managed focused lanes, then invokes
-    `pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback`.
-    That narrow verifier-owned fallback performs a real static Storybook build only
-    when the ordinary build plan requires one and neither Storybook browser lane
-    will run; otherwise it skips inside the already-provisioned static job. It
-    produces no cross-job Storybook artifact;
+  - `verification-static` runs the public focused `static`, `unit`, and
+    `mutation` verification types sequentially. The `static` planner owns
+    format, Oxlint, ESLint, type-check, and Storybook buildability; its
+    duplicate-build fallback is internal planner behavior and runs only when
+    the ordinary Storybook build plan requires it and neither Storybook browser
+    lane will provide the equivalent build proof. No private leaf label or
+    fallback flag is part of the public CLI;
   - `verification-browser (e2e)` remains an independent application E2E job
     that depends only on `autofix`;
   - Storybook behavior and visual are independent, self-contained parallel
@@ -362,31 +362,46 @@ focused and the full gate, and tag pushes never rerun the full gate:
 changed files and is meant for fast PR feedback on `develop`.
 
 `pnpm verify --full` is the release gate. It ignores changed-file scope and
-always runs, for the whole project:
+runs every public verification type for the whole project, with no affected
+narrowing:
 
-- format check (`oxfmt`) across the full supported file set;
-- `oxlint` across the full project;
-- `eslint` across the full project;
-- full TypeScript type-check;
-- the full `vitest run` unit/component suite;
-- the complete registered mutation inventory (`mutation` type, no affected
-  narrowing);
-- full app Playwright E2E smoke coverage;
-- full approved visual regression coverage;
-- managed pinned-update lifecycle proof across publisher, worker, client,
-  activation/rollback, migration, isolation, and Firefox/WebKit lifecycle;
-- production build and artifact validation (`docs/release.md#production-artifact-validation`);
-- release smoke coverage (`docs/release.md#release-smoke-coverage`);
-- release/version metadata validation (`scripts/release/validateVersion.mjs`);
-- release config validation (`scripts/release/validateReleaseConfig.mjs`, see
-  `docs/release.md#release-config-validation`).
+- `static`: full format, Oxlint, ESLint, TypeScript type-check, Storybook
+  buildability, release/version/config/build and other registered static
+  invariants;
+- `unit`: the full `vitest run` unit/component suite;
+- `behavior`: the complete isolated real-browser behavior inventory;
+- `visual`: the complete approved visual regression inventory;
+- `browser-integration`: the complete registered browser/runtime integration
+  inventory, including generic owner-local browser integration, production
+  artifact validation, and managed-update browser/runtime proof;
+- `performance`: every registered persistent performance target (the current
+  persistent inventory is intentionally empty);
+- `mutation`: the complete registered mutation inventory;
+- `e2e`: the complete application/product E2E inventory, including release
+  smoke and managed-update end-to-end proof.
+
+The full gate also runs the release-sensitive internal prerequisites and
+static checks owned by those types, including production build/artifact
+preparation, publisher plain-Node import proof, release/version metadata
+validation, and release config validation. See
+`docs/release.md#production-artifact-validation`,
+`docs/release.md#release-smoke-coverage`, and
+`docs/release.md#release-config-validation`.
 
 Full mode never reports a check as skipped because there were no changed
 files. `--full` is incompatible with `--only`/`--files`; it always runs the
-complete inventory above as one gate. For managed-update changes, use the
-focused `browser-integration`/`e2e` types (for example
-`pnpm verify --only browser-integration --files ...`) during implementation,
-without flaky classification, before the final `pnpm verify --full` gate.
+complete inventory above as one gate. For managed-update changes, focused
+implementation feedback/proof uses the owning public `static`,
+`browser-integration`, and `e2e` types as applicable, for example:
+
+```bash
+pnpm verify --only static --files <managed-update paths...>
+pnpm verify --only browser-integration --files <managed-update paths...>
+pnpm verify --only e2e --files <managed-update paths...>
+```
+
+The final release gate remains `pnpm verify --full` and must pass without
+flaky classification.
 
 ## Organization Pages deployment model
 
@@ -807,9 +822,10 @@ apply these manually in the GitHub UI):
 
 ## What blocks a release
 
-- Any failing check inside `pnpm verify --full` (format, lint, type-check,
-  unit, mutation, e2e, visual, managed updates, build, artifact, release
-  smoke, version metadata, release config).
+- Any failing check inside `pnpm verify --full`, which runs all eight public
+  verification types (`static`, `unit`, `behavior`, `visual`,
+  `browser-integration`, `performance`, `mutation`, `e2e`) plus their
+  release-sensitive internal prerequisites/checks.
 - A flaky classification in the focused managed-update gate for a release
   containing managed-update changes.
 - A missing or non-monotonic version bump.
