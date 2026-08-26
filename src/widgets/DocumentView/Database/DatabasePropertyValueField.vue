@@ -122,8 +122,8 @@ const onKeydown = (event: KeyboardEvent) => {
         :document-id="relationDocHandle"
         :selected-value="selectedValue"
         :view-id="viewId"
-        :on-select="onSelect"
         :scroll-root="scrollRoot"
+        @select="onSelect"
       >
         <template #value="{ itemId, propertyId: relationPropertyId }">
           <ValueInline

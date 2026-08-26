@@ -17,7 +17,10 @@ const props = defineProps<{
   selectedValue: DatabaseItemId[];
   viewId: DatabaseViewId;
   scrollRoot: HTMLElement | null | undefined;
-  onSelect: (itemId: DatabaseItemId) => void;
+}>();
+
+const emit = defineEmits<{
+  select: [itemId: DatabaseItemId];
 }>();
 
 defineSlots<{
@@ -31,7 +34,7 @@ const { propertiesIdList, isLoading } = useDatabaseProperties(directoryPath, doc
 const displayPropertiesIdList = computed(() => propertiesIdList.value ?? []);
 
 const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
-  props.onSelect(itemId);
+  emit('select', itemId);
 };
 </script>
 
