@@ -115,3 +115,51 @@ Stop conditions
 - If removing child reads requires a new cross-layer/entity API, stop and report instead of inventing it.
 - If geometry extraction requires changing formulas, refresh timing, observers, or virtualization semantics, stop and report.
 - If branch verification exposes a failure outside this accepted owner/scope, stop and report.
+
+## Architect correction pass after implementation review
+
+Authoring source for this correction
+
+- Active finding: `src/widgets/DocumentView/Database/REVIEW.md` M1.
+- The architecture handoff remains valid; no ownership or API decision is reopened.
+
+Confirmed resulting implementation
+
+- Single top-level property/view read ownership is accepted.
+- `DatabaseViewLayout`/`DatabaseToolbar` controlled contracts are accepted.
+- `DatabaseRelationValueInline` relation-scoped property read is accepted because it owns a different nested relation document.
+- `useDatabaseViewSurfaceGeometry` extraction, formulas, and lifecycle timing are accepted.
+- E2E impact mapping and existing success-path product proof are accepted.
+
+Remaining correction
+
+- `DatabaseViewWidget.onUpdateToolbarProperty(...)` currently calls async `onUpdateProperty(...)` without returning or awaiting the Promise.
+- Preserve the existing asynchronous property-mutation chain by returning or awaiting `onUpdateProperty(payload.propertyId, payload.property)` from that handler.
+- This is a local behavior-preserving forwarding correction only.
+
+Expected changed file for correction
+
+- `src/widgets/DocumentView/Database/DatabaseViewWidget.vue` only, unless an applicable formatter makes a mechanical change to the same touched source.
+
+TEST IMPACT for correction
+
+- Contract/scenario: toolbar property persistence keeps the existing asynchronous mutation/error propagation chain.
+  - Primary proof owner: existing component/product behavior; no new test abstraction is required for the one-line forwarding correction.
+  - Additional proof: focused static/type feedback as useful.
+  - Existing proof: accepted toolbar component contract and Database application E2E success-path proof.
+  - New/updated proof: none required unless the implementation change reveals an existing test mismatch.
+  - Risk or platform matrix: no new browser/layout/platform behavior.
+  - Durable ownership/impact updates: none.
+
+Correction verification
+
+- Run focused static/type feedback for `DatabaseViewWidget.vue` as useful.
+- Then rerun the mandatory cumulative branch gate: `pnpm verify --base origin/develop`.
+- Retry/flaky classification is failure.
+
+Correction forbidden
+
+- No toolbar contract redesign.
+- No new error handling, snackbar, retry, recovery, state, entity/shared API, or persistence abstraction.
+- No geometry, relation, virtualization, E2E mapping, timeout, or expected-value changes.
+- Do not edit architect-owned `REVIEW.md`, handoff/preflight documents, canonical docs, or PR metadata.
