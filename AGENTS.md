@@ -9,7 +9,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Inspect task-relevant files and direct dependencies first. Expand only when evidence shows wider impact.
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
 - `docs/testing/architecture.md` is the canonical project-wide testing and verification policy, including verification type names, test-spec suffixes, affected ownership, fallback, and E2E ownership.
-- `docs/testing/storybook.md` is the canonical Storybook workbench, story-authoring, fixture-isolation, and catalogue policy. `docs/testing/migration-plan.md` records which target test locations, suffixes, commands, and verifier mechanisms are currently executable during migration.
+- `docs/testing/storybook.md` is the canonical Storybook workbench, story-authoring, fixture-isolation, and catalogue policy. `docs/testing/migration-plan.md` records the current executable verification state and merge-readiness/completion status.
 - `src/shared/ui/material/docs/component-workflow.md`, `component-contract.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
@@ -88,8 +88,8 @@ For Material-specific worker roles, source authority, resume/correction routing,
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc.
 - Keep validation, parsing, and extraction close to the defining boundary.
-- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, proportional coverage, target test-spec suffixes, and affected-test ownership.
-- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook workbench/fixture rules. Use `docs/testing/migration-plan.md` for current executable legacy suffix/location compatibility; do not treat a target suffix/location as executable before the runner supports it.
+- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, proportional coverage, current test-spec suffixes, and affected-test ownership.
+- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook workbench/fixture rules. Use `docs/testing/migration-plan.md` for the current executable verification state; removed legacy suffix/location compatibility must not be restored unless a new architecture decision explicitly requires it.
 - Keep complete product scenarios in application E2E. E2E primary/additional ownership, directory structure, and affected-owner discovery follow `docs/testing/architecture.md`; do not move product flows into Storybook fixtures.
 - Keep unit tests and helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels.
 - Split tests by behavior when setup becomes conditional or failures no longer identify one contract.
