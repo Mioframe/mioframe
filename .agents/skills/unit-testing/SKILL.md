@@ -34,10 +34,10 @@ Avoid private methods, incidental call order, broad non-contractual snapshots, f
 ## Commands
 
 ```bash
-pnpm verify --only unit --files <exact-owning-test-paths...>
+pnpm verify --only unit --files <exact-owning-test-or-source-paths...>
 ```
 
-Until unit-impact migration is implemented, prefer exact owning test files. A production source path is valid only when the current relation is confirmed.
+The current unit planner uses Vitest-native related/affected resolution for truthful source-to-test relationships and safe full-unit fallback when a relation cannot be established. Prefer exact owning paths for focused feedback; do not add artificial imports or a second graph to influence selection.
 
 After focused proof is complete, return the implementation to its owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate. Do not require a broad local `pnpm verify` merely to complete this skill.
 
