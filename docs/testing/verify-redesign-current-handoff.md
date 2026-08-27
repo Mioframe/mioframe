@@ -8,11 +8,11 @@ PR: #218 — `refactor(testing): redesign verification ownership` (base `develop
 
 PR #218 remains **draft and blocked**.
 
-The scripts-owned verify redesign is now architect-accepted through coding-agent implementation:
+The complete scripts-owned verify redesign is architect-accepted through coding-agent implementation:
 
 - `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`.
 
-The revision-02 re-review found no remaining scripts blocker, major issue, minor issue, or accepted risk. `scripts/REVIEW.md` has therefore been removed.
+The revision-02 re-review found no remaining scripts blocker, major issue, minor issue, or accepted risk. `scripts/REVIEW.md` has been removed. Do not reopen accepted scripts semantics without new repository evidence.
 
 Accepted scripts state includes:
 
@@ -20,7 +20,7 @@ Accepted scripts state includes:
 - release-sensitive static affected ownership for production `src/**`, application Vite harness inputs, package/lock/build-entry impact, and the neutral local-command execution boundary;
 - neutral shared Vite build/harness capability consumed by truthful static, Storybook, browser-integration, and E2E owners;
 - neutral local-command execution ownership composed by Playwright execution and consumed directly by release/static and Storybook static proof;
-- generic and exceptional browser-integration remain disjoint while runtime-relevant `package.json` now widens the complete public browser-integration type;
+- generic and exceptional browser-integration remain disjoint while runtime-relevant `package.json` widens the complete public browser-integration type;
 - E2E relevance gates target-tree, applicability, owner inventory, exceptional membership, and dependency-graph work; literal `--full` remains always relevant and fail-closed;
 - central exceptional release-proof inventory with focused/full/direct validation;
 - true `--fix-only` early return;
@@ -35,6 +35,25 @@ Only one owner-local review remains:
 - `.github/workflows/REVIEW.md` — **1 blocker**: develop verification does not run the public `browser-integration` type and aggregate `verification` does not require it.
 
 No scripts review artifact remains.
+
+Current coding-agent assignment:
+
+- `docs/testing/verify-redesign-final-workflow-correction-agent-task.md`.
+
+This is a workflow-only correction. The expected implementation scope is `.github/workflows/verify.yml` plus the directly affected CI documentation in `docs/release.md`. Architect-owned review/handoff/migration/task files remain read-only to the coding agent.
+
+## Workflow correction contract
+
+Use the minimum complete existing-workflow pattern:
+
+1. add one independent `verification-browser-integration` job behind `autofix`, parallel with the existing E2E and Storybook browser jobs;
+2. use the public command `pnpm verify --verbose --only browser-integration` and preserve verifier-managed container-only Playwright;
+3. preserve the existing checkout/base-fetch/pnpm/Node/install conventions and upload a dedicated browser-integration verify log artifact on failure/cancellation;
+4. add the new job to aggregate `verification.needs` and require its result to be exactly `success`;
+5. keep browser-integration separate from the Storybook matrix and do not introduce a new reusable workflow/matrix/helper abstraction;
+6. update `docs/release.md` so the documented automatic CI topology matches the workflow.
+
+No scripts, public CLI, release-version, autofix, deploy-preview, version materialization, lock, profile/base, timeout, logging, or flaky-policy changes are part of this pass.
 
 ## Canonical public contract
 
@@ -83,8 +102,8 @@ That run is not current merge proof. Current code and review state have moved, a
 
 ## Next order of work
 
-1. correct the single downstream `.github/workflows/REVIEW.md` blocker without changing accepted scripts semantics;
-2. architect re-reviews the complete workflow scope and removes `.github/workflows/REVIEW.md` only when clean;
+1. coding agent implements only `docs/testing/verify-redesign-final-workflow-correction-agent-task.md`;
+2. architect re-reviews the complete workflow scope against `.github/workflows/REVIEW.md` and removes that review artifact only when clean;
 3. re-review the complete resulting PR against the canonical architecture and repository rules;
 4. synchronize migration/handoff/PR status;
 5. require green exact-head GitHub CI including browser-integration;
