@@ -1,11 +1,11 @@
 ---
 name: ui-browser-behavior
-description: 'Use for browser-observable UI behavior and choose behavior, browser-integration, or E2E by contract ownership. Follow the target suffix/ownership model from docs/testing/architecture.md and current executable compatibility from migration-plan.md.'
+description: 'Use for browser-observable UI behavior and choose behavior, browser-integration, or E2E by contract ownership. Follow the current suffix/ownership model from docs/testing/architecture.md and executable state from migration-plan.md.'
 ---
 
 # UI browser behavior workflow
 
-Follow `docs/testing/architecture.md`. For isolated reusable UI and Storybook-owned fixtures also follow `docs/testing/storybook.md`. `docs/testing/migration-plan.md` records which target suffixes/locations are executable during migration.
+Follow `docs/testing/architecture.md`. For isolated reusable UI and Storybook-owned fixtures also follow `docs/testing/storybook.md`. `docs/testing/migration-plan.md` records the current executable verification state.
 
 Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, private third-party implementation, or screenshot appearance unless the selected type is visual.
 
@@ -39,7 +39,7 @@ Use **e2e** when the complete product scenario crosses composition and product b
 
 Do not route reusable component behavior into E2E merely because the component has product consumers. Do not route service-worker/runtime mechanics into UI behavior merely because the result is visible somewhere in the product.
 
-## Target naming and placement
+## Current naming and placement
 
 ### Behavior
 
@@ -51,7 +51,7 @@ Ordinary behavior proof is owner-local:
 
 Use one file when practical. A small owner-local directory is allowed when several behavior specs are genuinely needed.
 
-Storybook may provide the deterministic isolated fixture, but the behavior spec owns real input and assertions.
+Storybook may provide the deterministic isolated fixture, but the behavior spec owns real input and assertions. Storybook infrastructure behavior with no FSD UI owner may live under `.storybook/**/*.behavior.spec.ts`.
 
 ### Browser integration
 
@@ -76,23 +76,11 @@ The directory defines the primary product owner.
 
 Additional E2E owners are exceptional validated Playwright-native owner metadata. Do not add owner tags to every scenario.
 
-## Migration compatibility
+## Removed compatibility
 
-The current repository may still execute:
+Legacy owner-local `*.browser.spec.ts`, central `tests/e2e/storybook/**/*.spec.ts`, legacy root application E2E discovery, and manual production-path -> E2E-spec mappings are no longer current execution mechanisms. Do not restore or extend them. Historical implementation records may mention them only as migration history.
 
-- owner-local `*.browser.spec.ts` behavior specs;
-- central `tests/e2e/storybook/**/*.spec.ts` behavior/infrastructure proof;
-- legacy root application `tests/e2e/*.spec.ts` E2E;
-- manual E2E source mappings.
-
-These are transitional mechanisms only where `docs/testing/migration-plan.md` says they remain executable.
-
-When implementing the redesign:
-
-- add target discovery before renaming/moving existing proof;
-- preserve existing assertions and platform applicability during migration;
-- remove legacy discovery/mappings only after replacement ownership is proven;
-- never add new permanent metadata to keep an obsolete migration mechanism alive.
+Current discovery, ownership, and fallback rules come from `docs/testing/architecture.md`, `docs/testing/storybook.md`, and `docs/testing/migration-plan.md`.
 
 ## Supported-browser policy
 
@@ -166,7 +154,7 @@ For private renderer animation outside Mioframe's observable boundary, do not in
 
 ### Behavior and browser integration
 
-- a changed target spec selects itself;
+- a changed current spec selects itself;
 - ordinary local source changes select owner-local specs through deterministic colocation;
 - shared config/helpers widen to the complete owning type unless every consumer is explicit, small, stable, and validated;
 - removed/moved/unresolved ownership widens safely or fails structural validation;
@@ -183,17 +171,17 @@ Production impact resolves product owners through the reverse dependency model i
 
 Unknown relevant owner discovery widens to full E2E. Invalid ownership structure fails verification.
 
-Do not maintain production-path -> E2E-spec source mappings after the graph/owner replacement is proven.
+Do not maintain production-path -> E2E-spec source mappings.
 
 ## Mobile and project applicability
 
 Source impact chooses scenarios. Platform/project applicability is a separate persistent contract.
 
-Preserve existing audited desktop/mobile/both applicability while migrating E2E files. Reclassify only through a dedicated review of observable platform, input, viewport, lifecycle, and composition requirements.
+Preserve existing audited desktop/mobile/both applicability. Reclassify only through a dedicated review of observable platform, input, viewport, lifecycle, and composition requirements.
 
 Missing/stale applicability metadata must fail closed or leave an unclassified scenario eligible for the broad fail-safe project set; it must never silently omit the scenario.
 
-## Target commands
+## Commands
 
 ```bash
 pnpm verify --only behavior --files <paths...>
@@ -201,7 +189,7 @@ pnpm verify --only browser-integration --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
-During migration, use the current branch's executable compatibility only when the target command has not landed yet. Do not treat legacy label names as the durable API.
+These are public verification-type commands. Private historical leaf labels are not a durable API.
 
 ## Forbidden
 
@@ -211,7 +199,7 @@ During migration, use the current branch's executable compatibility only when th
 - complete product flows in Storybook fixtures;
 - screenshots in behavior specs;
 - central registry metadata for ordinary owner-local proof;
-- manual production-path -> E2E mappings after structural ownership is proven;
+- manual production-path -> E2E mappings;
 - routine owner tags on every E2E;
 - custom E2E wrapper/ownership DSL;
 - architectural boundary violations to simplify setup;
@@ -219,4 +207,5 @@ During migration, use the current branch's executable compatibility only when th
 - declaration-only CSS assertions presented as rendered proof;
 - private renderer DOM/animation internals;
 - proxy assertions presented as proof of a different contract;
-- exhaustive testing of unchanged third-party behavior.
+- exhaustive testing of unchanged third-party behavior;
+- restoring removed legacy browser/Storybook/E2E discovery or mapping paths.
