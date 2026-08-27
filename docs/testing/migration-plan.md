@@ -8,12 +8,12 @@ On `architecture/verify-redesign` / PR #218, the verify redesign is **not curren
 
 Historical Pass A-F acceptance remains evidence for those reviewed boundaries. A later complete resulting-PR review reopened implementation acceptance.
 
-Two scripts correction rounds have now been implemented and re-reviewed:
+Two scripts correction rounds have been implemented and re-reviewed:
 
 - first correction implementation: `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`;
 - second correction implementation: `8911f44078676ccaceb19c8de8c05364b5ec6698`.
 
-The second correction resolves central exceptional release-proof inventory/full/direct validation, true `--fix-only` early return, and status-preserving mutation infrastructure impact. Architect re-review nevertheless found repeated affected-ownership drift in production-build inputs and shared Playwright execution infrastructure. Per root `AGENTS.md`, implementation has returned to architecture rather than proceeding with a third incremental path-list correction.
+The second correction resolves central exceptional release-proof inventory/full/direct validation, true `--fix-only` early return, and status-preserving mutation infrastructure impact. Architect re-review nevertheless found repeated affected-ownership drift in production-build inputs and shared Playwright execution infrastructure. Per root `AGENTS.md`, implementation returned to architecture instead of proceeding with another incremental path-list correction.
 
 Active review state:
 
@@ -24,7 +24,11 @@ Current ready architecture handoff:
 
 - `docs/testing/verify-redesign-final-review-architecture-revision.md`.
 
-Older final-review correction tasks remain historical implementation records and are no longer the current implementation contract.
+Current coding-agent assignment:
+
+- `docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md`.
+
+Older final-review correction tasks remain historical implementation records and are no longer current implementation contracts.
 
 ## Current executable public contract
 
@@ -99,7 +103,7 @@ Internal release-named commands/files remain where required by built-artifact, s
 
 The migration may be marked complete again only after:
 
-1. the ready architecture revision is implemented and `scripts/REVIEW.md` is clean in architect re-review;
+1. `docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md` is implemented and `scripts/REVIEW.md` is clean in architect re-review;
 2. the downstream `.github/workflows/REVIEW.md` browser-integration CI blocker is fixed;
 3. the complete resulting PR receives a clean semantic review against `docs/testing/architecture.md`;
 4. active review artifacts are removed only after their findings are actually resolved;
