@@ -138,6 +138,8 @@ describe('resolveReleaseStaticPlan', () => {
       'tsconfig.json',
       'tsconfig.app.json',
       'tsconfig.src.json',
+      'postcss.config.js',
+      'pwa-assets.config.ts',
     ]) {
       const plan = resolveReleaseStaticPlan([filePath]);
 
@@ -228,4 +230,22 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.artifactStatic).toBe(true);
     expect(plan.managedUpdatesStatic).toBe(true);
   });
+
+  it.each([
+    'scripts/lib/localCommandGuard.ts',
+    'scripts/lib/commandLock.ts',
+    'scripts/lib/runLocalCommand.ts',
+    'scripts/lib/processResult.ts',
+    'scripts/lib/signalForward.ts',
+  ])(
+    'widens build/artifact-static/managed-updates-static for a shared local-command execution change: %s',
+    (filePath) => {
+      const plan = resolveReleaseStaticPlan([filePath]);
+
+      expect(plan.mode).toBe('focused');
+      expect(plan.build).toBe(true);
+      expect(plan.artifactStatic).toBe(true);
+      expect(plan.managedUpdatesStatic).toBe(true);
+    },
+  );
 });

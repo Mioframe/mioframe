@@ -277,6 +277,19 @@ describe('resolveStructuralE2EPlan', () => {
     },
   );
 
+  it.each([
+    'vite.config.ts',
+    'postcss.config.js',
+    '.browserslistrc',
+    'index.html',
+    'pwa-assets.config.ts',
+    'public/favicon.svg',
+    'config/alias.ts',
+  ])('falls back to full E2E for an application Vite harness input: %s', (filePath) => {
+    const plan = resolveStructuralE2EPlan([filePath], baseDeps());
+    expect(plan.mode).toBe('full');
+  });
+
   it('falls back to full E2E for src/app and src/pages/routes.ts changes', () => {
     expect(resolveStructuralE2EPlan(['src/app/App.vue'], baseDeps()).mode).toBe('full');
     expect(resolveStructuralE2EPlan(['src/pages/routes.ts'], baseDeps()).mode).toBe('full');
@@ -414,6 +427,12 @@ describe('canChangedPathsAffectE2E', () => {
 
   it('returns true for a shared command/lock/result/signal execution-support change', () => {
     expect(canChangedPathsAffectE2E(['scripts/lib/runLocalCommand.ts'])).toBe(true);
+  });
+
+  it('returns true for an application Vite harness input', () => {
+    expect(canChangedPathsAffectE2E(['index.html'])).toBe(true);
+    expect(canChangedPathsAffectE2E(['pwa-assets.config.ts'])).toBe(true);
+    expect(canChangedPathsAffectE2E(['postcss.config.js'])).toBe(true);
   });
 
   it('returns true for app bootstrap/routing changes', () => {

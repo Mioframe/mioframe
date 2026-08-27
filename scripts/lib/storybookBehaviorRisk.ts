@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isSharedViteBuildInputPath } from './viteBuildRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 
@@ -31,7 +32,6 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/storybook.mjs',
   'scripts/storybookBehavior.mjs',
   'scripts/verify.ts',
-  'tsconfig.storybook.json',
   // Cross-owner `openStory()` helper: every owner-local behavior spec
   // imports it, so a change here is not safely attributable to one owner.
   'tests/e2e/storybook/storybook.testUtils.ts',
@@ -135,6 +135,7 @@ export function isColocatedBehaviorSpecPath(filePath: string): boolean {
 export function isFullStorybookBehaviorLanePath(filePath: string): boolean {
   if (
     isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isSharedViteBuildInputPath(filePath) ||
     FULL_LANE_EXACT_FILES.has(filePath)
   ) {
     return true;

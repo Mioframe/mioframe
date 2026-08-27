@@ -1,19 +1,24 @@
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedLocalCommandExecutionPath } from './localCommandExecutionRisk.ts';
+import { isSharedViteBuildInputPath } from './viteBuildRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 
-// Storybook configuration/runtime infrastructure: a change here can affect whether the
-// Storybook static build succeeds at all, so it always selects a full storybook-build run
-// instead of relying on per-story impact.
+// Storybook-specific configuration/runtime infrastructure not already owned
+// by the shared local-command execution or Vite build capabilities: a
+// change here can affect whether the Storybook static build succeeds at
+// all, so it always selects a full storybook-build run instead of relying
+// on per-story impact. Root/global Vite build inputs (`vite.config.ts`,
+// `postcss.config.js`, `.browserslistrc`, root `tsconfig*.json`,
+// non-test/proof `config/**`, `public/**`) and the shared local-command
+// execution boundary are owned by their dedicated capability modules rather
+// than duplicated here (see
+// docs/testing/verify-redesign-final-review-architecture-revision-02.md's
+// "Shared local command execution" and "Shared Vite-backed inputs").
 const STORYBOOK_BUILD_EXACT_FILES = new Set([
-  'config/alias.ts',
-  'config/tooling.json',
   'pnpm-lock.yaml',
   'scripts/storybook.mjs',
   'src/app/styles/base.css',
-  'tsconfig.src.json',
-  'tsconfig.storybook.json',
-  'vite.config.ts',
 ]);
 
 const STORYBOOK_BUILD_PREFIXES = ['.storybook/'];
@@ -28,7 +33,11 @@ function isStoryFile(filePath: string): boolean {
  * @returns True when the path is Storybook configuration/runtime or a story file.
  */
 export function isStorybookBuildRelevantFile(filePath: string): boolean {
-  if (STORYBOOK_BUILD_EXACT_FILES.has(filePath)) {
+  if (
+    STORYBOOK_BUILD_EXACT_FILES.has(filePath) ||
+    isSharedLocalCommandExecutionPath(filePath) ||
+    isSharedViteBuildInputPath(filePath)
+  ) {
     return true;
   }
 

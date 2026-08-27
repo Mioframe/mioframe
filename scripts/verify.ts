@@ -1375,10 +1375,17 @@ function addBrowserIntegrationCommands(
  * @param options Build options.
  * @param options.fullMode Full-project release mode.
  * @param options.changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param options.packageJsonOldRef Git ref to compare the current
+ * `package.json` against, for the same runtime-relevance decision the
+ * exceptional browser-integration path uses.
  */
 function addGenericBrowserIntegrationCommands(
   commands: CommandEntry[],
-  { fullMode, changedFiles }: { fullMode: boolean; changedFiles: readonly string[] },
+  {
+    fullMode,
+    changedFiles,
+    packageJsonOldRef,
+  }: { fullMode: boolean; changedFiles: readonly string[]; packageJsonOldRef: string | null },
 ): void {
   const plan: GenericBrowserIntegrationPlan = fullMode
     ? {
@@ -1386,7 +1393,7 @@ function addGenericBrowserIntegrationCommands(
         specs: listGenericBrowserIntegrationSpecs(),
         reasons: ['full-project release verification'],
       }
-    : resolveGenericBrowserIntegrationPlan(changedFiles);
+    : resolveGenericBrowserIntegrationPlan(changedFiles, { packageJsonOldRef });
 
   if (plan.mode === 'skip' || plan.specs.length === 0) {
     return;
@@ -2061,7 +2068,7 @@ export function buildCommands(
   }
 
   addBrowserIntegrationCommands(commands, { fullMode, changedFiles, packageJsonOldRef });
-  addGenericBrowserIntegrationCommands(commands, { fullMode, changedFiles });
+  addGenericBrowserIntegrationCommands(commands, { fullMode, changedFiles, packageJsonOldRef });
 
   return commands.map(withVerificationType);
 }

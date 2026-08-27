@@ -96,6 +96,23 @@ describe('isFullVisualLanePath', () => {
     expect(isFullVisualLanePath('src/features/documentCreate/index.ts')).toBe(false);
     expect(isFullVisualLanePath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(false);
   });
+
+  it('flags the shared Vite build inputs', () => {
+    expect(isFullVisualLanePath('postcss.config.js')).toBe(true);
+    expect(isFullVisualLanePath('.browserslistrc')).toBe(true);
+    expect(isFullVisualLanePath('tsconfig.app.json')).toBe(true);
+    expect(isFullVisualLanePath('config/alias.ts')).toBe(true);
+    expect(isFullVisualLanePath('public/favicon.svg')).toBe(true);
+  });
+
+  it('excludes a proof-only file under config/**', () => {
+    expect(isFullVisualLanePath('config/plugins/base.test.ts')).toBe(false);
+  });
+
+  it('does not require the application-harness-only inputs to widen the visual lane', () => {
+    expect(isFullVisualLanePath('index.html')).toBe(false);
+    expect(isFullVisualLanePath('pwa-assets.config.ts')).toBe(false);
+  });
 });
 
 describe('isBroadVisualRelevantPath', () => {
@@ -361,6 +378,11 @@ describe('resolveVisualPlan global infrastructure', () => {
 
   it('runs the full lane for the verify planner entry point', () => {
     expect(resolveVisualPlan(['scripts/verify.ts']).mode).toBe('full');
+  });
+
+  it('runs the full lane for a shared Vite build input', () => {
+    expect(resolveVisualPlan(['postcss.config.js']).mode).toBe('full');
+    expect(resolveVisualPlan(['public/favicon.svg']).mode).toBe('full');
   });
 });
 

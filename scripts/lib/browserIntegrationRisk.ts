@@ -20,6 +20,7 @@ import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
 import {
   MANAGED_UPDATES_BROWSER_INTEGRATION_SPEC_SET,
   PRODUCTION_ARTIFACT_SMOKE_SPEC,
@@ -47,7 +48,6 @@ export { PRODUCTION_ARTIFACT_SMOKE_SPEC };
 // docs/testing/verify-redesign-final-review-architecture-revision.md's
 // "Shared Playwright execution infrastructure").
 const FULL_LANE_EXACT_FILES = new Set([
-  'vite.config.ts',
   'playwright.release.config.ts',
   'scripts/e2eReleaseContainer.mjs',
   'scripts/release/artifactServer.mjs',
@@ -100,6 +100,7 @@ export function isAppUpdateProductionPath(filePath: string): boolean {
 export function isFullBrowserIntegrationLanePath(filePath: string): boolean {
   return (
     isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isApplicationViteHarnessInputPath(filePath) ||
     FULL_LANE_EXACT_FILES.has(filePath) ||
     FULL_LANE_PREFIXES.some((prefix) => filePath.startsWith(prefix))
   );
@@ -269,6 +270,7 @@ const GENERIC_FULL_LANE_EXACT_FILES = new Set([
 function isFullGenericBrowserIntegrationLanePath(filePath: string): boolean {
   return (
     isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isApplicationViteHarnessInputPath(filePath) ||
     GENERIC_FULL_LANE_EXACT_FILES.has(filePath)
   );
 }
@@ -369,16 +371,27 @@ export interface ResolveGenericBrowserIntegrationPlanDeps {
   listFilesRecursively?: (root: string) => string[];
   /** Test-only seam for the colocated-sibling directory scan. */
   listDirectoryFileNames?: (dirPath: string) => string[];
+  /**
+   * Git ref to compare the current `package.json` against, for the
+   * version-only refinement. `null` fails closed to runtime-relevant.
+   */
+  packageJsonOldRef?: string | null;
 }
 
 /**
  * Resolve the generic owner-local browser-integration plan for a changed-file
- * set, in priority order: full (generic infrastructure change, or a
- * removed/moved generic spec whose safe widening is the complete current
- * inventory), focused (a direct generic spec change and/or a production
- * change colocated with an existing generic spec), or skip (no relevant
- * changes). Never selects/widens into the appUpdate managed-update corpus,
- * which stays owned by {@link resolveBrowserIntegrationPlan}.
+ * set, in priority order: full (generic infrastructure change, a
+ * runtime-relevant `package.json` change, or a removed/moved generic spec
+ * whose safe widening is the complete current inventory), focused (a direct
+ * generic spec change and/or a production change colocated with an existing
+ * generic spec), or skip (no relevant changes). Never selects/widens into
+ * the appUpdate managed-update corpus, which stays owned by
+ * {@link resolveBrowserIntegrationPlan}. Reuses the same
+ * `isPackageJsonRuntimeRelevantChange` decision as the exceptional
+ * resolver, so a runtime-relevant `package.json` change widens the complete
+ * public browser-integration type across both execution paths (see
+ * docs/testing/verify-redesign-final-review-architecture-revision-02.md's
+ * "Browser-integration package impact").
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [deps] Test-only dependencies.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
@@ -390,6 +403,7 @@ export function resolveGenericBrowserIntegrationPlan(
     listSpecs = listGenericBrowserIntegrationSpecs,
     listFilesRecursively,
     listDirectoryFileNames = defaultListDirectoryFileNames,
+    packageJsonOldRef = null,
   }: ResolveGenericBrowserIntegrationPlanDeps = {},
 ): GenericBrowserIntegrationPlan {
   const listCurrentSpecs = (): string[] => listSpecs({ listFilesRecursively });
@@ -401,6 +415,19 @@ export function resolveGenericBrowserIntegrationPlan(
       specs: listCurrentSpecs(),
       reasons: [
         `generic browser-integration infrastructure path ${fullLaneHit} -> full generic browser-integration inventory`,
+      ],
+    };
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    return {
+      mode: 'full',
+      specs: listCurrentSpecs(),
+      reasons: [
+        'runtime-relevant package.json change -> full generic browser-integration inventory',
       ],
     };
   }

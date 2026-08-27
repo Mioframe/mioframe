@@ -660,6 +660,63 @@ describe('buildCommands browser-integration lane (browserIntegrationRisk integra
   });
 });
 
+// Additional proof for the complete public browser-integration package
+// ownership (primary proof owner: scripts/lib/browserIntegrationRisk.test.ts):
+// prove that buildCommands() passes the same packageJsonOldRef context to
+// both browser-integration execution paths, so a runtime-relevant
+// package.json change selects the exceptional and generic leaves together.
+describe('buildCommands complete browser-integration package.json composition', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('selects both the exceptional and generic browser-integration leaves for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+
+    expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+    expect(requireRunEntry(commands, 'browser-integration-local').kind).toBe('run');
+  });
+
+  it('does not widen either browser-integration leaf for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('artifact');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+    expect(labels).not.toContain('browser-integration-local');
+  });
+});
+
+// Additional proof for the complete application Vite harness capability
+// (primary proof owner: scripts/lib/viteBuildRisk.test.ts): prove that an
+// ownerless application Vite/PWA input widens full E2E and complete
+// browser-integration through the real (unmocked) planner wiring, without
+// requiring page/widget metadata.
+describe('buildCommands application Vite harness composition', () => {
+  it.each(['index.html', 'pwa-assets.config.ts', 'postcss.config.js'])(
+    'selects full e2e and both browser-integration leaves for %s',
+    (filePath) => {
+      const commands = buildCommands([filePath], { fullMode: false });
+
+      expect(requireRunEntry(commands, 'e2e').args).toEqual(['e2e:container']);
+      expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+      expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+      expect(requireRunEntry(commands, 'browser-integration-local').kind).toBe('run');
+    },
+  );
+});
+
 describe('buildCommands verification type composition', () => {
   it('assigns exactly one verification type to every non-release runnable/skipped leaf', () => {
     const commands = buildCommands([], { fullMode: true });
@@ -798,12 +855,31 @@ describe('buildCommands release-static production-artifact composition', () => {
     'config/vueCustomElements.ts',
     '.browserslistrc',
     'tsconfig.app.json',
+    'postcss.config.js',
+    'pwa-assets.config.ts',
   ])('selects build and artifact-static for a real %s change', (filePath) => {
     const commands = buildCommands([filePath]);
 
     expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
     expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
   });
+
+  it.each([
+    'scripts/lib/localCommandGuard.ts',
+    'scripts/lib/commandLock.ts',
+    'scripts/lib/runLocalCommand.ts',
+    'scripts/lib/processResult.ts',
+    'scripts/lib/signalForward.ts',
+  ])(
+    'selects build, artifact-static, and managed-updates-static for a shared local-command execution change: %s',
+    (filePath) => {
+      const commands = buildCommands([filePath]);
+
+      expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+      expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+      expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    },
+  );
 });
 
 describe('buildCommands visual compatibility', () => {
@@ -1553,6 +1629,16 @@ describe('buildCommands storybook-build lane', () => {
 
   it('selects storybook-build for a Storybook-wide dependency change', () => {
     const commands = buildCommands(['config/alias.ts'], { fullMode: false });
+    requireRunEntry(commands, 'storybook-build');
+  });
+
+  it('selects storybook-build for a shared Vite build input', () => {
+    const commands = buildCommands(['postcss.config.js'], { fullMode: false });
+    requireRunEntry(commands, 'storybook-build');
+  });
+
+  it('selects storybook-build for a shared local-command execution change', () => {
+    const commands = buildCommands(['scripts/lib/runLocalCommand.ts'], { fullMode: false });
     requireRunEntry(commands, 'storybook-build');
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./packageJsonImpact.ts', () => ({
   isPackageJsonRuntimeRelevantChange: vi.fn(),
@@ -101,6 +101,20 @@ describe('isFullBrowserIntegrationLanePath', () => {
 
   it('does not flag unrelated paths', () => {
     expect(isFullBrowserIntegrationLanePath('src/features/documentCreate/index.ts')).toBe(false);
+  });
+
+  it('flags the application Vite harness inputs', () => {
+    expect(isFullBrowserIntegrationLanePath('vite.config.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('postcss.config.js')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('.browserslistrc')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('index.html')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('pwa-assets.config.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('public/favicon.svg')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('config/alias.ts')).toBe(true);
+  });
+
+  it('excludes a proof-only file under config/**', () => {
+    expect(isFullBrowserIntegrationLanePath('config/plugins/base.test.ts')).toBe(false);
   });
 });
 
@@ -383,6 +397,62 @@ describe('resolveGenericBrowserIntegrationPlan', () => {
       expect(plan.specs).toEqual([GENERIC_SPEC]);
     },
   );
+
+  it.each(['vite.config.ts', 'postcss.config.js', 'index.html', 'pwa-assets.config.ts'])(
+    'runs the complete generic inventory for an application Vite harness input: %s',
+    (filePath) => {
+      const plan = resolveGenericBrowserIntegrationPlan([filePath], {
+        listSpecs: () => [GENERIC_SPEC],
+      });
+
+      expect(plan.mode).toBe('full');
+      expect(plan.specs).toEqual([GENERIC_SPEC]);
+    },
+  );
+
+  describe('package.json impact', () => {
+    beforeEach(() => {
+      isPackageJsonRuntimeRelevantChange.mockReset();
+    });
+
+    it('runs the complete generic inventory for a runtime-relevant package.json change', () => {
+      isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+      const plan = resolveGenericBrowserIntegrationPlan(['package.json'], {
+        listSpecs: () => [GENERIC_SPEC],
+      });
+
+      expect(plan.mode).toBe('full');
+      expect(plan.specs).toEqual([GENERIC_SPEC]);
+    });
+
+    it('does not widen for a confirmed version-only package.json change', () => {
+      isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+      const plan = resolveGenericBrowserIntegrationPlan(['package.json']);
+
+      expect(plan.mode).toBe('skip');
+    });
+  });
+});
+
+describe('browser-integration composition for a runtime-relevant package.json change', () => {
+  it('selects both the exceptional and generic browser-integration inventories together', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const exceptionalPlan = resolveBrowserIntegrationPlan(['package.json'], {
+      validateMembership: alwaysValidMembership,
+    });
+    const genericPlan = resolveGenericBrowserIntegrationPlan(['package.json'], {
+      listSpecs: () => [GENERIC_SPEC],
+    });
+
+    expect(exceptionalPlan.mode).toBe('full');
+    expect(exceptionalPlan.artifact).toBe(true);
+    expect(exceptionalPlan.managedUpdates).toBe(true);
+    expect(genericPlan.mode).toBe('full');
+    expect(genericPlan.specs).toEqual([GENERIC_SPEC]);
+  });
 });
 
 describe('browser-integration composition for a shared Playwright execution-infrastructure change', () => {

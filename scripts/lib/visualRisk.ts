@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { isVisualRelevantPackageJsonChange } from './packageJsonImpact.ts';
 import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isSharedViteBuildInputPath } from './viteBuildRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 
@@ -31,8 +32,6 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/storybook.mjs',
   'scripts/visual.mjs',
   'scripts/verify.ts',
-  'tsconfig.storybook.json',
-  'vite.config.ts',
   'src/app/styles/base.css',
   'src/app/styles/fonts.css',
   // Cross-owner `openStory()`/stabilization helper: every owner-local visual
@@ -127,6 +126,7 @@ export function isColocatedVisualSpecPath(filePath: string): boolean {
 export function isFullVisualLanePath(filePath: string): boolean {
   if (
     isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isSharedViteBuildInputPath(filePath) ||
     FULL_LANE_EXACT_FILES.has(filePath)
   ) {
     return true;

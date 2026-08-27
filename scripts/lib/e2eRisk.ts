@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
 import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
 import {
   formatOwnerId,
   ownerDirectoryExists as defaultOwnerDirectoryExists,
@@ -74,7 +75,6 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/release/artifactServer.mjs',
   'tests/e2e/helpers.ts',
   'tests/e2e/reorderSurface.testUtils.ts',
-  'vite.config.ts',
   'tsconfig.src.json',
 ]);
 const FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
@@ -82,6 +82,7 @@ const FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES = ['tests/e2e/release/fixtures/', 's
 function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
   if (
     isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isApplicationViteHarnessInputPath(filePath) ||
     FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)
   ) {
     return true;

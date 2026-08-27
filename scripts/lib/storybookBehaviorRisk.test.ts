@@ -110,6 +110,24 @@ describe('isFullStorybookBehaviorLanePath', () => {
     expect(isFullStorybookBehaviorLanePath('src/features/documentCreate/index.ts')).toBe(false);
   });
 
+  it('flags the shared Vite build inputs', () => {
+    expect(isFullStorybookBehaviorLanePath('vite.config.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('postcss.config.js')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('.browserslistrc')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('tsconfig.app.json')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('config/alias.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('public/favicon.svg')).toBe(true);
+  });
+
+  it('excludes a proof-only file under config/**', () => {
+    expect(isFullStorybookBehaviorLanePath('config/plugins/base.test.ts')).toBe(false);
+  });
+
+  it('does not require the application-harness-only inputs to widen the behavior lane', () => {
+    expect(isFullStorybookBehaviorLanePath('index.html')).toBe(false);
+    expect(isFullStorybookBehaviorLanePath('pwa-assets.config.ts')).toBe(false);
+  });
+
   it('flags every production-owned Storybook preview style dependency', () => {
     expect(isFullStorybookBehaviorLanePath('src/app/styles/base.css')).toBe(true);
     expect(isFullStorybookBehaviorLanePath('src/app/styles/fonts.css')).toBe(true);
@@ -166,6 +184,11 @@ describe('resolveStorybookBehaviorPlan', () => {
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path');
+  });
+
+  it('runs the full lane for a shared Vite build input', () => {
+    expect(resolveStorybookBehaviorPlan(['postcss.config.js']).mode).toBe('full');
+    expect(resolveStorybookBehaviorPlan(['public/favicon.svg']).mode).toBe('full');
   });
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {

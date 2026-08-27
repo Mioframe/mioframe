@@ -1,4 +1,6 @@
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedLocalCommandExecutionPath } from './localCommandExecutionRisk.ts';
+import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
 
 /**
  * Explicit affected ownership for the release-sensitive `static` leaves that
@@ -40,29 +42,24 @@ const RELEASE_CONFIG_EXACT_FILES: ReadonlySet<string> = new Set([
 // artifact that `scripts/release/buildArtifact.mjs` builds and
 // `scripts/release/productionArtifactStaticProof.ts` validates (emitted
 // JS/manifest/controller worker), so both leaves are selected together (see
-// docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Production artifact capability"). This is deliberately a broad capability
-// predicate rather than an exact direct-dependency list: `vite.config.ts`
-// directly imports `config/alias.ts` and `config/plugins/**` (which in turn
-// import further build configuration such as `config/vueCustomElements.ts`)
-// and derives its build target from `.browserslistrc`, so narrowing
-// `config/**` to only the current direct-import closure is not durable
-// across ordinary Vite/plugin config changes. Ordinary `src/**` production
-// source is included broadly for the same reason: precise narrowing to only
-// the subset that is actually reachable from the Vite entrypoint is not
-// cheaply provable without a dependency graph. `NON_PRODUCTION_SUFFIX_PATTERN`
-// below excludes deterministically irrelevant unit/story/behavior/visual/
-// browser-integration/performance/test-helper files under both `src/**` and
-// `config/**`.
+// docs/testing/verify-redesign-final-review-architecture-revision-02.md's
+// "Shared Vite-backed inputs"). Global/ownerless Vite build and application-
+// harness inputs (`vite.config.ts`, `postcss.config.js`, `.browserslistrc`,
+// root `tsconfig*.json`, non-test/proof `config/**`, `public/**`,
+// `index.html`, `pwa-assets.config.ts`) are owned by the shared
+// `isApplicationViteHarnessInputPath` capability rather than duplicated here.
+// Ordinary `src/**` production source stays a broad prefix here for the same
+// reason the shared capability does not enumerate `config/**` plugins:
+// precise narrowing to only the subset actually reachable from the Vite
+// entrypoint is not cheaply provable without a dependency graph.
+// `NON_PRODUCTION_SUFFIX_PATTERN` below excludes deterministically irrelevant
+// unit/story/behavior/visual/browser-integration/performance/test-helper
+// files under `src/**`.
 const PRODUCTION_ARTIFACT_EXACT_FILES: ReadonlySet<string> = new Set([
-  'vite.config.ts',
-  'index.html',
-  '.browserslistrc',
   'scripts/release/buildArtifact.mjs',
   'scripts/release/productionArtifactStaticProof.ts',
 ]);
-const PRODUCTION_ARTIFACT_PREFIXES: readonly string[] = ['public/', 'src/', 'config/'];
-const ROOT_TSCONFIG_PATTERN = /^tsconfig[^/]*\.json$/;
+const PRODUCTION_ARTIFACT_PREFIXES: readonly string[] = ['src/'];
 
 // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts's own
 // inputs: the managed controller worker source and every appUpdate
@@ -101,7 +98,7 @@ function isManagedUpdatesStaticProductionPath(filePath: string): boolean {
 function isProductionArtifactPath(filePath: string): boolean {
   return (
     PRODUCTION_ARTIFACT_EXACT_FILES.has(filePath) ||
-    ROOT_TSCONFIG_PATTERN.test(filePath) ||
+    isApplicationViteHarnessInputPath(filePath) ||
     (PRODUCTION_ARTIFACT_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
       !NON_PRODUCTION_SUFFIX_PATTERN.test(filePath))
   );
@@ -189,6 +186,15 @@ export function resolveReleaseStaticPlan(
       managedUpdatesStatic = true;
       reasons.push(
         `managed controller/appUpdate input ${filePath} -> build, artifact-static, managed-updates-static`,
+      );
+    }
+
+    if (isSharedLocalCommandExecutionPath(filePath)) {
+      build = true;
+      artifactStatic = true;
+      managedUpdatesStatic = true;
+      reasons.push(
+        `shared local-command execution input ${filePath} -> build, artifact-static, managed-updates-static`,
       );
     }
   }
