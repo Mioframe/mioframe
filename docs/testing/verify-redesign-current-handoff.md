@@ -6,23 +6,29 @@ Branch: `architecture/verify-redesign`
 
 PR: #218 — `refactor(testing): redesign verification ownership` (base `develop`).
 
-PR #218 remains **draft** and is blocked only by final exact-head GitHub CI / readiness transition.
+PR #218 remains **draft** and is **blocked by the post-develop integration review**.
 
-The complete scripts-owned verify redesign is architect-accepted through:
+The complete scripts-owned verify redesign was architect-accepted through:
 
 - `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`.
 
-The develop workflow correction is architect-accepted through:
+The develop workflow correction was architect-accepted through:
 
 - `32af5521b271de1fca4f94740572afa70b4900ec`.
 
-Current-facing documentation and verification skills have been synchronized with the executable target model. `scripts/REVIEW.md`, `.github/workflows/REVIEW.md`, and `docs/testing/REVIEW.md` are resolved and removed.
+Current-facing documentation and verification skills were synchronized with the executable target model before the latest `develop` integration.
 
-A complete resulting-PR semantic review found no remaining scripts, workflow, ownership, or documentation finding.
+Current `develop` integration:
+
+- merged `develop` commit: `9dd19ed320ce227e915a824b5552af16108a5a10`;
+- two-parent merge commit: `b6125cf2ce3c976402e269b117546a923eaa654f`;
+- CI autofix follow-up after the merge: `1c96158a869b2f60d8e7283d786d173797e18b74`.
+
+The branch is no longer behind `develop`.
 
 ## Accepted implementation state
 
-The public verification types are exactly:
+The public verification types remain exactly:
 
 ```text
 static
@@ -39,6 +45,7 @@ Canonical entry points are:
 
 ```text
 pnpm verify
+pnpm verify --base origin/develop
 pnpm verify --only <type>
 pnpm verify --files <paths...>
 pnpm verify --only <type> --files <paths...>
@@ -48,7 +55,7 @@ pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-Accepted invariants:
+Accepted invariants remain:
 
 - public `--only` exposes verification types, never private leaf labels;
 - `pnpm verify --full` is the single release-grade public entry point; no `verify:release`;
@@ -66,34 +73,73 @@ Accepted invariants:
 - develop aggregate verification requires static/unit/mutation, E2E, browser-integration, behavior, and visual lanes; the empty performance inventory requires no dedicated lane;
 - main release gate remains `pnpm verify --full`.
 
-## Review state
+The latest `develop` also adds a durable coding-agent handoff rule: ordinary PR code work must finish with one cumulative branch-diff verification using the agent's normal local profile:
 
-No active `REVIEW.md` finding remains for this PR.
+```bash
+pnpm verify --base origin/develop
+```
 
-Historical `verify-redesign-pass-*`, correction, architecture-revision, and coding-agent task files remain implementation history. They may contain historical terminology and are not current executable guidance.
+This is separate from exact-head GitHub CI and does not restore `verify:release`, private `--only` labels, or `--full` as the ordinary PR handoff gate.
 
-## CI evidence
+## Develop integration result
 
-Historical run `32991717215` / #4419 passed on old head `f5927142e724b7eb3787f751448cf5a5b2717e5c` and is not merge proof.
+The merge conflict resolution preserves both the accepted verify redesign and the product/test changes from `develop`:
 
-After the workflow correction, run `33056620129` / #4460 on `16c5904ac8bcdabb360d813d0eb8a213955e15ca` visibly included the new independent browser-integration job. It is not final merge proof because the head moved during documentation closeout.
+- root `AGENTS.md` and `.agents/skills/verification/SKILL.md` combine the eight-type public contract with the new mandatory branch-diff handoff gate;
+- `scripts/lib/e2eRisk.ts` and its tests preserve the structural PR #218 planner rather than restoring `E2E_SCENARIO_SCOPES` or root-E2E mappings;
+- `@tanstack/vue-virtual` and `dependency-cruiser` both remain in the final package/lock state, `test:browser-integration` remains, and `verify:release` remains removed;
+- the new virtualization Storybook proofs were migrated to `*.behavior.spec.ts`; no ordinary `*.browser.spec.ts` discovery was restored;
+- `playwright.storybook.config.ts` keeps the owner-local behavior corpus in Chromium and the database virtualization capability additionally in the dedicated `firefox-virtualization-capability` project because dynamic native-table measurement is the confirmed engine-specific risk;
+- the new database virtualization product E2E was migrated to `tests/e2e/widgets/DocumentView/databaseVirtualizationFlows.e2e.spec.ts` with applicability `both`;
+- behavioral changes from the `develop` database property/query E2E and shared E2E helpers are present in their structural target files;
+- the independent develop CI browser-integration lane and aggregate requirement remain intact.
 
-Required next evidence is one green GitHub CI run on the exact final PR head, including:
+The Firefox exception above is an accepted post-merge integration requirement. The root Playwright configuration contract test must explicitly guard that dedicated project and its exact database virtualization membership so future discovery/config refactors cannot silently remove the engine-specific proof.
 
-- `verification-static`;
-- `verification-browser (e2e)`;
-- `verification-browser (browser-integration)`;
-- `verification-browser (behavior)`;
-- `verification-browser (visual)`;
-- aggregate `verification` / required `verify` gate;
-- `release-version` where applicable.
+## Post-develop integration review
+
+Active review state is owned by root `REVIEW.md`.
+
+### B1 — required coding-agent branch handoff evidence is missing
+
+The conflict-resolution coding agent could not execute any `pnpm` verifier command in its sandbox because pnpm attempted to open its dependency-sync database under `/hoore/v11`, outside the writable sandbox, and failed with `[ERR_SQLITE_ERROR] unable to open database file`.
+
+Therefore the newly required cumulative handoff command has **not** been proven clean:
+
+```bash
+pnpm verify --base origin/develop
+```
+
+This is an environment/proof blocker, not current evidence of a repository defect. It still must be satisfied from a coding environment that can run the canonical command before merge readiness can be approved.
+
+### M1 — Firefox virtualization project lacks a configuration regression guard
+
+`playwright.storybook.config.ts` currently contains the correct dedicated Firefox project and exact renamed behavior spec. Exact-head behavior CI also exercised that project successfully. However, `playwright.lanes.test.ts` only guards the top-level behavior discovery and does not assert the dedicated Firefox project/name/engine/exact membership.
+
+The smallest required correction is a config-contract assertion in the existing Playwright lane test. Do not add another registry or change runtime discovery.
+
+## CI evidence after the develop merge
+
+Run `33064072119` on autofixed merge head `1c96158a869b2f60d8e7283d786d173797e18b74` is useful post-merge evidence but cannot be final merge proof because active review findings remain and the head will move for their correction.
+
+Confirmed from that run before this review-state update:
+
+- frozen `pnpm install` succeeded with both `@tanstack/vue-virtual` and `dependency-cruiser`;
+- static, unit, mutation, visual, release-version, and behavior passed;
+- behavior ran **191/191** tests successfully, including the database virtualization behavior corpus under the dedicated Firefox project;
+- browser-integration and E2E were still running when the review state was finalized.
+
+Historical pre-merge CI is not merge proof for the integrated branch.
 
 ## Next order of work
 
-1. wait for/review GitHub CI on the exact current head;
-2. if CI fails because of this PR, route only the concrete failing contract to its truthful owner and re-review the resulting new head;
-3. if exact-head CI is green and the semantic state remains clean, move PR #218 out of draft;
-4. issue the final merge-readiness verdict;
-5. squash merge into `develop`.
+1. add the narrow `playwright.lanes.test.ts` regression guard for the dedicated Firefox virtualization project without changing the accepted Storybook runtime topology;
+2. run focused public verifier feedback for the touched configuration/test surface as useful;
+3. from a valid coding environment, run the mandatory cumulative handoff gate `pnpm verify --base origin/develop` and require a clean non-flaky result;
+4. architect re-review the complete post-merge PR and remove `REVIEW.md` only when both findings are resolved;
+5. require green GitHub CI on the exact corrected final head, including browser-integration and aggregate `verify`;
+6. move PR #218 out of draft;
+7. issue the final merge-readiness verdict;
+8. squash merge into `develop`.
 
-Current merge readiness: **should not merge until blockers are fixed** — the remaining blocker is exact-head CI, not implementation, workflow, architecture, or documentation.
+Current merge readiness: **should not merge until blockers are fixed**.
