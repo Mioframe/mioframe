@@ -25,7 +25,7 @@ The active bounded correction assignment is:
 
 - `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
 
-That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened.
+That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened. Coding should start from the latest `architecture/verify-redesign` head after the architect-owned preparation commits.
 
 The migration is therefore not merge-ready yet even if an intermediate exact-head CI run is green.
 
@@ -110,7 +110,7 @@ Internal release-named commands/files remain where required by built-artifact, s
 
 The architecture migration may move to merge-ready only after:
 
-1. the coding agent completes `docs/testing/verify-redesign-post-merge-correction-agent-task.md`;
+1. the coding agent completes `docs/testing/verify-redesign-post-merge-correction-agent-task.md` from the latest prepared branch head;
 2. root `REVIEW.md` is clean and removed, including the deterministic test guard for the dedicated Firefox virtualization project;
 3. the final coding pass has a clean, non-flaky `pnpm verify --base origin/develop` branch-handoff result from a valid coding environment;
 4. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
