@@ -21,6 +21,12 @@ The only active review state is now:
 
 - `.github/workflows/REVIEW.md` — one blocker: develop CI omits the public `browser-integration` verification type and the aggregate `verification` job does not require it.
 
+Current coding-agent assignment:
+
+- `docs/testing/verify-redesign-final-workflow-correction-agent-task.md`.
+
+This final implementation pass is workflow-owned only. It must not reopen accepted scripts semantics.
+
 ## Current executable public contract
 
 The intended and executable public verification types are exactly:
@@ -94,18 +100,22 @@ Internal release-named commands/files remain where required by built-artifact, s
 
 ## Remaining migration work
 
-Only CI wiring remains before final PR review:
+Only CI wiring remains before final PR review. The current workflow correction must:
 
-- develop verification must run the public `browser-integration` type as its own verifier-managed lane;
-- aggregate `verification` must require that lane;
-- existing parallel topology, container-only Playwright execution, public type command, autofix/profile/base semantics, log artifacts, and fail-on-flaky behavior must remain unchanged.
+- add an independent `verification-browser-integration` job behind `autofix`, parallel with existing browser verification jobs;
+- invoke exactly the public verifier type `pnpm verify --verbose --only browser-integration`;
+- preserve the current checkout/base-fetch/pnpm/Node/install and container-only Playwright execution model;
+- upload its own `.verify/logs/` artifact on failure/cancellation;
+- make aggregate `verification` require the browser-integration job to succeed;
+- keep browser-integration separate from the Storybook matrix and avoid a new workflow/matrix/helper abstraction;
+- update `docs/release.md` so documented automatic CI coverage matches the workflow.
 
 ## Completion gate
 
 The migration may be marked complete only after:
 
-1. the `.github/workflows/REVIEW.md` browser-integration CI blocker is fixed and the workflow review is clean;
-2. `.github/workflows/REVIEW.md` is removed only after its finding is actually resolved;
+1. `docs/testing/verify-redesign-final-workflow-correction-agent-task.md` is implemented;
+2. the `.github/workflows/REVIEW.md` browser-integration CI blocker is re-reviewed clean and the review artifact is removed;
 3. the complete resulting PR receives a clean semantic review against `docs/testing/architecture.md` and repository rules;
 4. GitHub CI is green on the exact final head, including browser-integration;
 5. PR #218 is moved out of draft;
