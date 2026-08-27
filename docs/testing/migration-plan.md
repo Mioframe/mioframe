@@ -25,7 +25,7 @@ The active bounded correction assignment is:
 
 - `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
 
-That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened. Coding should start from the latest `architecture/verify-redesign` head after the architect-owned preparation commits.
+That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened. Coding starts from the latest prepared `architecture/verify-redesign` head.
 
 The migration is therefore not merge-ready yet even if an intermediate exact-head CI run is green.
 
