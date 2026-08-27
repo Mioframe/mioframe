@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { devices } from '@playwright/test';
 import { describe, expect, it } from 'vitest';
 import appConfig from './playwright.config';
 import browserIntegrationConfig from './playwright.browserIntegration.config';
@@ -28,6 +29,32 @@ describe('Playwright lane discovery stays disjoint', () => {
       'src/**/*.behavior.spec.ts',
       '.storybook/**/*.behavior.spec.ts',
     ]);
+  });
+
+  it('keeps the normal chromium storybook project inheriting the top-level owner-local behavior testMatch instead of narrowing to the virtualization exception', () => {
+    const chromiumProject = storybookBehaviorConfig.projects?.find(
+      (project) => project.name === 'chromium',
+    );
+
+    expect(chromiumProject).toBeDefined();
+    expect(chromiumProject?.testMatch).toBeUndefined();
+  });
+
+  it('keeps the dedicated firefox-virtualization-capability project scoped to exactly the audited native-table virtualization spec on the Firefox engine', () => {
+    const firefoxProject = storybookBehaviorConfig.projects?.find(
+      (project) => project.name === 'firefox-virtualization-capability',
+    );
+
+    expect(firefoxProject).toBeDefined();
+    expect(firefoxProject?.testMatch).toEqual([
+      'src/entities/databaseData/DatabaseVirtualizationCapability.behavior.spec.ts',
+    ]);
+    expect(firefoxProject?.use?.defaultBrowserType).toBe(
+      devices['Desktop Firefox'].defaultBrowserType,
+    );
+    // Guards against the dedicated Firefox project widening into a broad
+    // Firefox run of the complete owner-local behavior corpus.
+    expect(firefoxProject?.testMatch).not.toEqual(storybookBehaviorConfig.testMatch);
   });
 
   it('discovers the target browser-integration suffix from repo root, excluding the appUpdate special corpus', () => {
