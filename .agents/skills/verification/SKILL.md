@@ -5,7 +5,7 @@ description: 'Use verifier-managed checks for implementation feedback and risk-s
 
 # Verification workflow
 
-Follow `docs/testing/architecture.md`. `docs/testing/migration-plan.md` records which target mechanisms are currently executable and which legacy compatibility paths still exist.
+Follow `docs/testing/architecture.md`. `docs/testing/migration-plan.md` records the current executable verification state and completion/merge-readiness status.
 
 For Storybook authoring/workbench behavior also follow `docs/testing/storybook.md`. Project-wide verification type names, suffixes, affected ownership, and fallback rules come from `docs/testing/architecture.md`.
 
@@ -20,7 +20,7 @@ Coding agents own code and task-specific proof. They do not own a mandatory broa
 
 The architect owns PR creation/update, exact-head CI review, semantic review, and merge readiness.
 
-## Target public command contract
+## Public command contract
 
 ```bash
 pnpm verify
@@ -52,24 +52,21 @@ Low-level operations such as format, Oxlint, ESLint, type-check, Storybook build
 
 There is no public `release` verification type. Release-sensitive proof is classified by the contract it verifies.
 
-## Migration-aware execution
+## Current executable model
 
-During implementation of the verify redesign, the current repository may still accept legacy low-level labels, `*.browser.spec.ts`, root application E2E specs, or manual E2E mappings.
+The redesign target is executable. Removed compatibility is not a current fallback path:
 
-Treat those only as current executable compatibility described by `docs/testing/migration-plan.md`.
+- public low-level `--only` labels are removed;
+- ordinary `*.browser.spec.ts` discovery is removed;
+- root/legacy ordinary E2E discovery and manual production-path -> E2E-spec mappings are removed;
+- central ordinary Storybook behavior/visual assertion ownership is removed;
+- mutation adjacency inference is removed.
 
-Do not:
+Historical implementation records may mention those mechanisms only as migration history. Do not restore or extend them unless a new architecture decision explicitly replaces the current model.
 
-- preserve a legacy label merely because a focused command currently uses it;
-- add new source-to-E2E mappings to the legacy registry while implementing the replacement;
-- add new ordinary `*.browser.spec.ts` proof when the target behavior suffix is already executable for that owner;
-- describe a target mechanism as executable before its migration phase lands.
+## Spec taxonomy
 
-When a focused check is useful during the migration itself, use the narrowest command actually supported by the current branch state. The implementation task must still move the public surface to the target contract.
-
-## Target spec taxonomy
-
-| Type                | Target naming                                  |
+| Type                | Current naming                                 |
 | ------------------- | ---------------------------------------------- |
 | unit                | `*.test.<supported-ext>`; normally `*.test.ts` |
 | behavior            | `*.behavior.spec.ts`                           |
@@ -80,13 +77,11 @@ When a focused check is useful during the migration itself, use the narrowest co
 
 Static and mutation are verification types but not independent test-spec suffixes.
 
-Legacy naming is allowed only where the migration plan says the current runner still requires it.
-
 ## Focused coding-agent use
 
 Use focused verifier-managed checks only when they materially shorten feedback or prove a task-specific risk.
 
-Examples after the target CLI is executable:
+Examples:
 
 ```bash
 pnpm verify --only static --files <paths...>
@@ -113,7 +108,7 @@ Unresolved relevant unit impact widens to full unit.
 
 ### Behavior / visual / browser integration / local performance
 
-Ordinary local proof derives ownership from target suffix plus truthful repository colocation.
+Ordinary local proof derives ownership from current suffix plus truthful repository colocation.
 
 Do not add duplicate registry metadata when path/placement already expresses ownership.
 
@@ -123,7 +118,7 @@ Removed/moved/unresolved relevant ownership widens safely or fails structural va
 
 ### E2E
 
-Target primary ownership comes from:
+Primary ownership comes from:
 
 ```text
 tests/e2e/pages/<Owner>/**/*.e2e.spec.ts
@@ -136,7 +131,7 @@ Traversal records reachable widgets and continues upward; reachable pages/panes 
 
 The directory gives the primary E2E owner. Additional owners are exceptional machine-validated Playwright-native owner metadata only.
 
-Do not maintain a manual production-path -> E2E-spec registry after the structural/graph replacement is proven.
+Do not maintain a manual production-path -> E2E-spec registry.
 
 Do not add routine owner tags to every E2E and do not create a custom E2E wrapper/DSL.
 
@@ -144,13 +139,13 @@ Unknown relevant E2E impact widens to full E2E. Invalid E2E structure fails veri
 
 ### Mutation
 
-Mutation uses a project-owned registered target inventory. Do not infer mutation targets from adjacency.
+Mutation uses the explicit project-owned registry in `scripts/lib/mutationTargets.ts`. Do not infer mutation targets from adjacency.
 
 Default verification runs affected registered targets. `--full` runs the complete registered mutation inventory.
 
 ### Performance
 
-Persistent performance proof requires a measurable threshold/budget. Do not create permanent performance infrastructure for one-off task measurements.
+Persistent performance proof requires a measurable threshold/budget. Do not create permanent performance infrastructure for one-off task measurements. The current persistent performance inventory is intentionally empty.
 
 ## Release-sensitive work
 
@@ -162,9 +157,10 @@ Classify release-sensitive proof by contract:
 - isolated browser/PWA/runtime/update contract -> browser-integration;
 - isolated interactive UI -> behavior;
 - complete product/user flow -> e2e;
-- measurable performance invariant -> performance.
+- measurable performance invariant -> performance;
+- registered mutation strength -> mutation where applicable.
 
-The target release-grade command is:
+The release-grade command is:
 
 ```bash
 pnpm verify --full
@@ -176,7 +172,7 @@ Known flaky behavior is failed proof, not an accepted warning.
 
 Correct the root cause and rerun the smallest faithful owning proof. Do not weaken assertions, inflate timeouts, add sleeps, repeat already-delivered user actions, use `force`, or rely on a stronger CI runner to hide the issue.
 
-Any bounded repeat/stability mode that exists during migration is diagnostic only; it must not become the target public verification taxonomy.
+The bounded focused behavior `--repeat` mode is diagnostic only; it does not create another verification type or relax flaky-failure policy.
 
 ## Fix mode
 
