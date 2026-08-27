@@ -4,32 +4,25 @@
 
 ## Status
 
-On `architecture/verify-redesign` / PR #218, the verify redesign is **not yet merge-ready**.
-
-Historical Pass A-F acceptance remains evidence for those reviewed boundaries. Later full-PR review reopened implementation acceptance and led to several scripts corrections plus two architecture revisions.
+On `architecture/verify-redesign` / PR #218, the verify redesign implementation is **executable and architect-accepted**, but the PR is not yet merge-ready because final current-facing documentation cleanup and exact-head CI remain.
 
 Scripts implementation history includes:
 
 - first correction implementation: `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`;
 - second correction implementation: `8911f44078676ccaceb19c8de8c05364b5ec6698`;
 - first architecture-revision implementation: `ccd2bc0842428b3fde973afa9caf2f1a44b2aa53`;
-- revision-02 implementation: `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`.
+- revision-02 implementation: `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`;
+- develop workflow browser-integration correction: `32af5521b271de1fca4f94740572afa70b4900ec`.
 
-Architect re-review of `c42cc1a...` accepted the complete scripts-owned affected/execution ownership. `scripts/REVIEW.md` is resolved and removed.
+Architect re-review accepted the complete scripts-owned affected/execution ownership and the final workflow topology. `scripts/REVIEW.md` and `.github/workflows/REVIEW.md` are resolved and removed.
 
-The only active review state is now:
+The only active review state is:
 
-- `.github/workflows/REVIEW.md` — one blocker: develop CI omits the public `browser-integration` verification type and the aggregate `verification` job does not require it.
-
-Current coding-agent assignment:
-
-- `docs/testing/verify-redesign-final-workflow-correction-agent-task.md`.
-
-This final implementation pass is workflow-owned only. It must not reopen accepted scripts semantics.
+- `docs/testing/REVIEW.md` — one documentation major: current-facing Storybook/developer/ADR guidance has not fully closed the removed migration/private proof model.
 
 ## Current executable public contract
 
-The intended and executable public verification types are exactly:
+The public verification types are exactly:
 
 - `static`;
 - `unit`;
@@ -53,21 +46,23 @@ pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-`--only` accepts verification types, never private planner leaves. `--full` remains the release-grade full-project entry point and rejects narrowing combinations such as `--full --only` and `--full --files`. `verify:release` remains removed.
+`--only` accepts verification types, never private planner leaves. `--full` is the release-grade full-project entry point and rejects narrowing combinations such as `--full --only` and `--full --files`. `verify:release` is removed.
 
 ## Architect-accepted executable state
 
 - **Static:** release-sensitive artifact planning covers production `src/**`, application Vite harness inputs, package/lock/build-entry handling, and neutral local-command execution ownership; dependent `build`, `artifact-static`, and managed-update static proof are selected truthfully.
 - **Unit:** Vitest is the only affected/dependency engine with accepted safe fallback and zero-match behavior.
 - **Storybook static:** shared Vite build inputs and neutral local-command execution widen the Storybook static build when its real runtime/build can change.
-- **Behavior:** owner-local `*.behavior.spec.ts` remains primary proof; shared Playwright execution and shared Vite build inputs widen the complete behavior type.
-- **Visual:** owner-local `*.visual.spec.ts`/baselines remain primary proof; shared Playwright execution and shared Vite build inputs widen the complete visual type.
+- **Behavior:** target discovery is owner-local `*.behavior.spec.ts`; legacy ordinary `*.browser.spec.ts` and central ordinary Storybook behavior discovery have no current consumer.
+- **Visual:** target discovery is owner-local `*.visual.spec.ts` with colocated baselines; central ordinary visual-spec discovery has no current consumer.
 - **Browser integration:** generic and exceptional runners remain disjoint; exceptional membership is centrally validated; shared Playwright execution, application Vite harness inputs, and runtime-relevant `package.json` widen the complete public browser-integration type; confirmed version-only package changes stay narrow.
 - **Performance:** the public type remains valid with an intentionally empty persistent inventory.
 - **Mutation:** the explicit four-target registry remains unchanged; deleted/renamed infrastructure remains status-aware.
 - **E2E:** ordinary page/widget ownership remains structural; productionArtifact special execution remains central/fail-closed; shared Playwright execution and application Vite harness inputs widen full E2E.
 - **E2E relevance:** target-tree, project applicability, Playwright owner inventory, exceptional membership, and dependency graph validation occur only for E2E-relevant scopes or literal `--full`.
 - **Fix mode:** `--fix-only` returns before proof planning.
+- **Develop CI:** focused `static`, `unit`, `mutation`, `e2e`, `browser-integration`, `behavior`, and `visual` proof participate in the implementation gate; `browser-integration` is an independent job behind `autofix` and aggregate `verification` requires its success. The performance inventory is empty, so no persistent performance lane exists.
+- **Main CI:** the release gate runs `pnpm verify --full`.
 
 Shared Vite ownership is centralized in one derived capability rather than repeated per-planner lists. Neutral low-level command/lock/result/signal ownership is likewise centralized and composed only by truthful current consumers. No tooling dependency graph, universal planner registry, DSL, cache, or new public metadata model was introduced.
 
@@ -98,27 +93,26 @@ Internal release-named commands/files remain where required by built-artifact, s
 - central exceptional release-proof inventory/full/direct validation;
 - known flaky behavior remains failed proof.
 
-## Remaining migration work
+## Remaining migration closeout
 
-Only CI wiring remains before final PR review. The current workflow correction must:
+No implementation or workflow architecture correction remains without new repository evidence.
 
-- add an independent `verification-browser-integration` job behind `autofix`, parallel with existing browser verification jobs;
-- invoke exactly the public verifier type `pnpm verify --verbose --only browser-integration`;
-- preserve the current checkout/base-fetch/pnpm/Node/install and container-only Playwright execution model;
-- upload its own `.verify/logs/` artifact on failure/cancellation;
-- make aggregate `verification` require the browser-integration job to succeed;
-- keep browser-integration separate from the Storybook matrix and avoid a new workflow/matrix/helper abstraction;
-- update `docs/release.md` so documented automatic CI coverage matches the workflow.
+Before the migration is marked complete, current-facing documentation must be synchronized with the executable target:
+
+- `docs/testing/storybook.md` must stop presenting removed legacy behavior/central Storybook/visual discovery as current executable compatibility;
+- `DEVELOPMENT.md` must summarize proof ownership with public contract types rather than private leaf labels / a generic `release verification` category;
+- `docs/testing/verify-redesign-architecture.md` must no longer state that implementation is pending.
+
+Historical pass/correction/task records may retain their historical terminology.
 
 ## Completion gate
 
 The migration may be marked complete only after:
 
-1. `docs/testing/verify-redesign-final-workflow-correction-agent-task.md` is implemented;
-2. the `.github/workflows/REVIEW.md` browser-integration CI blocker is re-reviewed clean and the review artifact is removed;
-3. the complete resulting PR receives a clean semantic review against `docs/testing/architecture.md` and repository rules;
-4. GitHub CI is green on the exact final head, including browser-integration;
-5. PR #218 is moved out of draft;
-6. merge into `develop` uses squash merge.
+1. `docs/testing/REVIEW.md` is corrected, re-reviewed clean, and removed;
+2. the complete resulting PR has no active review finding or stale current-state documentation;
+3. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
+4. PR #218 is moved out of draft;
+5. merge into `develop` uses squash merge.
 
 Current merge readiness: **should not merge until blockers are fixed**.
