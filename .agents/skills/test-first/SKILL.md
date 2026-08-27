@@ -7,7 +7,7 @@ description: 'Use when observable behavior, a reproducible defect, migration, pe
 
 Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
-For Storybook-owned UI proof, use `docs/testing/storybook.md` for ownership and `docs/testing/migration-plan.md` for the currently executable Playwright location.
+For Storybook-owned UI proof, use `docs/testing/storybook.md` for current ownership and `docs/testing/migration-plan.md` for executable verification state.
 
 ## Activation
 
@@ -27,8 +27,8 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, durable own
 1. Name the changed contract and proof type.
 2. Select the highest-risk applicable acceptance case.
 3. Add or update one focused test before production edits.
-4. Maintain required durable ownership facts for any new/moved Playwright spec: use local ownership only when current discovery supports it; otherwise preserve the current truthful transitional/explicit relation.
-5. Run the owning verify-managed verification type and confirm the expected failure.
+4. Maintain the current durable ownership contract for any new/moved Playwright spec: owner-local behavior/visual/browser-integration or structural page/widget E2E ownership as defined by `docs/testing/architecture.md`.
+5. Run the owning verifier-managed verification type and confirm the expected failure.
 6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
 7. Implement the minimum production change.
 8. Rerun the same target and confirm it passes.
@@ -40,6 +40,7 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, durable own
 - Deterministic domain/service/storage/CRDT/validation/migration/transformation behavior: `unit-testing`.
 - Vue public API and non-browser wiring: `component-contract-testing`.
 - Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook.
+- Isolated browser/service/worker/runtime contracts: `ui-browser-behavior` as `browser-integration`.
 - Complete cross-boundary product scenario: `ui-browser-behavior` with app E2E.
 - Appearance: `visual-regression-testing`; normally not a red/green target.
 
@@ -48,6 +49,7 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, durable own
 ```bash
 pnpm verify --only unit --files <paths...>
 pnpm verify --only behavior --files <paths...>
+pnpm verify --only browser-integration --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
@@ -61,6 +63,6 @@ Raw Vitest or Playwright commands are diagnostic exceptions, not completion gate
 - Do not broaden coverage beyond the changed contract and confirmed risk.
 - Do not duplicate an existing owner at another proof type.
 - Do not create a framework, DSL, fixture system, registry, or helper for one case.
-- Do not create a colocated Playwright spec before the owning lane can discover it.
+- Do not create a Playwright spec outside the current owner/discovery contract.
 - Do not stop after one passing red/green test when the accepted contract requires additional cases.
 - Do not treat a passing focused run as proof that automatic ownership/impact resolution is complete.
