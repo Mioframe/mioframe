@@ -8,7 +8,7 @@ PR: #218 — `refactor(testing): redesign verification ownership` (base `develop
 
 PR #218 remains **draft and blocked**.
 
-The canonical eight-type public architecture remains unchanged, but scripts affected-ownership implementation is back in architecture mode after two correction rounds.
+The canonical eight-type public architecture remains unchanged. After two scripts correction rounds still exposed repeated affected-ownership drift, work returned to architecture as required by root `AGENTS.md`.
 
 Second scripts correction implementation:
 
@@ -19,16 +19,14 @@ Architect re-review accepted these parts of that correction:
 - exceptional release-proof membership is centralized in `releaseProofInventory.ts` and validated in focused/full/direct managed execution;
 - `--fix-only` returns before proof planners/validators;
 - mutation planning preserves deleted/renamed-away infrastructure identities;
-- common command/lock/result/signal support is now represented for the special browser-integration/E2E paths;
+- common command/lock/result/signal support is represented for the special browser-integration/E2E paths;
 - the first correction's generic/special browser separation, TypeScript-first conversion, E2E expensive-acquisition gate, and other accepted changes remain intact.
 
-However, re-review found repeated ownership drift:
+The remaining root causes are:
 
 - release-static still omits active Vite build inputs outside its exact config list (`config/alias.ts`, `config/plugins/**`, `.browserslistrc`, etc.);
 - the common Playwright execution-support boundary is also consumed by generic browser-integration, behavior, and visual, but those planners can still skip after the same support changes;
 - E2E target-tree/applicability validation remains outside the E2E relevance gate.
-
-Per root `AGENTS.md`, two correction rounds that still expose ownership errors require returning to architecture instead of issuing another incremental patch.
 
 Active review state:
 
@@ -39,7 +37,11 @@ Ready replacement architecture handoff:
 
 - `docs/testing/verify-redesign-final-review-architecture-revision.md`.
 
-The earlier correction docs/tasks remain historical evidence; do not execute another task from them as the current implementation contract.
+Current coding-agent assignment:
+
+- `docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md`.
+
+The earlier final-review correction docs/tasks remain historical evidence and are not current implementation contracts.
 
 ## Architecture revision
 
@@ -52,6 +54,8 @@ The revised affected-ownership design has three local changes:
 3. E2E target-tree/applicability validation moves behind the same relevance decision as E2E inventory/graph acquisition; literal `--full` still validates everything.
 
 This is the minimum complete alternative to repeated path additions and does not introduce a dependency graph, universal planner registry, or public API change.
+
+Implementation is now ready for the coding agent under the task above. The agent must run implementation preflight from the ready architecture before edits and stop if current repository evidence invalidates the contract.
 
 ## Canonical public contract
 
@@ -98,12 +102,12 @@ Preserved invariants:
 
 GitHub Actions run `32991717215` / run number `4419` passed on older head `f5927142e724b7eb3787f751448cf5a5b2717e5c`.
 
-That run is not current merge proof. Semantic blockers were discovered afterwards, current code has moved, and develop CI still lacks the public `browser-integration` gate.
+That run is not current merge proof. Semantic blockers were discovered afterwards, current code/docs have moved, and develop CI still lacks the public `browser-integration` gate.
 
 ## Next order of work
 
-1. implement only the ready architecture in `docs/testing/verify-redesign-final-review-architecture-revision.md` after an explicit coding-agent task is prepared;
-2. architect re-reviews the complete scripts-owned affected scope;
+1. coding agent implements only `docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md`;
+2. architect re-reviews the complete scripts-owned affected scope against `scripts/REVIEW.md` and the ready architecture revision;
 3. if scripts review is clean, remove `scripts/REVIEW.md` and correct the downstream `.github/workflows/REVIEW.md` browser-integration CI blocker;
 4. re-review the complete resulting PR;
 5. synchronize migration/handoff/PR status;
