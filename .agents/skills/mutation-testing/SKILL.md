@@ -20,20 +20,17 @@ Do not use mutation testing for ordinary UI behavior, documentation, type-only e
 
 ## Durable automatic ownership
 
-The target verifier architecture selects mutation only from persistent registered targets.
+The current verifier selects automatic mutation proof only from the explicit project-owned registry in `scripts/lib/mutationTargets.ts`.
 
-A target records:
+Each registered target records:
 
-- a unique name;
-- exact high-risk source files;
-- exact owning focused test files;
+- one exact high-risk production source file;
+- one or more exact owning focused test files;
 - a concrete risk reason.
 
-Register a target only when durable regression protection justifies automatic cost. Updating, moving, or removing registered source/tests updates the target in the same change.
+`stryker.config.mjs` derives its mutation source inventory directly from that registry. Register a target only when durable regression protection justifies automatic cost. Updating, moving, or removing a registered source/test updates the same registry entry in the same change.
 
-Do not use broad prefixes initially. Do not infer semantic applicability from neighboring files or agent prose.
-
-Until the persistent registry is implemented and validated, repository verification may still include legacy location-derived mutation scope when selected by the verifier. Treat that as a migration constraint, not target policy.
+Do not infer mutation applicability from adjacency, broad prefixes, neighboring files, or agent prose. There is no legacy location-derived automatic mutation ownership path to maintain.
 
 ## Workflow
 
@@ -51,7 +48,7 @@ Until the persistent registry is implemented and validated, repository verificat
 
 ```bash
 pnpm verify --only unit --files <exact-owning-test-paths...>
-pnpm verify --only mutation --files <narrow-source-or-test-paths...>
+pnpm verify --only mutation --files <registered-source-or-owning-test-paths...>
 ```
 
 Do not bypass an empty or unrelated scope with a broad mutation glob. A broad run is diagnostic only when explicitly required by a named workspace policy.
