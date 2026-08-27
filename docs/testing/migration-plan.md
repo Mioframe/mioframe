@@ -21,6 +21,12 @@ Post-merge review is currently **blocked** by root `REVIEW.md`:
 - required cumulative coding-agent handoff proof `pnpm verify --base origin/develop` has not yet executed successfully because the merge agent's sandbox failed inside pnpm before verifier execution;
 - the dedicated Firefox database-virtualization Storybook project exists and currently executes, but its exact engine-specific membership is not yet protected by the root Playwright configuration contract test.
 
+The active bounded correction assignment is:
+
+- `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
+
+That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened.
+
 The migration is therefore not merge-ready yet even if an intermediate exact-head CI run is green.
 
 ## Current executable public contract
@@ -104,11 +110,12 @@ Internal release-named commands/files remain where required by built-artifact, s
 
 The architecture migration may move to merge-ready only after:
 
-1. root `REVIEW.md` is clean and removed, including a deterministic test guard for the dedicated Firefox virtualization project;
-2. the final coding pass has a clean, non-flaky `pnpm verify --base origin/develop` branch-handoff result from a valid coding environment;
-3. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
-4. the exact final head still has no active semantic review finding;
-5. PR #218 is moved out of draft;
-6. merge into `develop` uses squash merge.
+1. the coding agent completes `docs/testing/verify-redesign-post-merge-correction-agent-task.md`;
+2. root `REVIEW.md` is clean and removed, including the deterministic test guard for the dedicated Firefox virtualization project;
+3. the final coding pass has a clean, non-flaky `pnpm verify --base origin/develop` branch-handoff result from a valid coding environment;
+4. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
+5. the exact final head still has no active semantic review finding;
+6. PR #218 is moved out of draft;
+7. merge into `develop` uses squash merge.
 
 Current merge readiness: **should not merge until blockers are fixed**.
