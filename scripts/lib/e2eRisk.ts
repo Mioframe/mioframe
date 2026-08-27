@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
 import {
   formatOwnerId,
   ownerDirectoryExists as defaultOwnerDirectoryExists,
@@ -45,14 +46,17 @@ const NON_PRODUCTION_PATH_PATTERN = /\.(test|spec|stories|testUtils)\.(ts|tsx|vu
 // productionArtifact leaves exercise (see
 // docs/testing/verify-redesign-final-review-correction.md's "Decision 3");
 // widening the complete E2E type is a safe superset of widening only the
-// two special leaves.
+// two special leaves. The shared Playwright command/lock/result/signal
+// execution boundary is a separate authoritative source of truth, checked by
+// {@link isFullLaneE2EInfrastructurePath} below rather than duplicated here
+// (see docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Shared Playwright execution infrastructure").
 const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
   'playwright.release.config.ts',
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
   'scripts/e2eReleaseContainer.mjs',
-  'scripts/playwrightContainer.ts',
   'scripts/verify.ts',
   'scripts/lib/e2eRisk.ts',
   'scripts/lib/e2eOwner.ts',
@@ -68,27 +72,18 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/lib/releaseProofInventory.ts',
   'scripts/release/managedUpdatesProof.ts',
   'scripts/release/artifactServer.mjs',
-  // Common command/lock/result/signal execution support shared by the
-  // release Playwright/group runners above (see
-  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-  // "Complete explicit shared special-runner support ownership"): a safely
-  // broad full-E2E fallback, simpler than adding a special-only dependency
-  // mapping for just the two productionArtifact leaves.
-  'scripts/lib/localCommandGuard.ts',
-  'scripts/lib/commandLock.ts',
-  'scripts/lib/runLocalCommand.ts',
-  'scripts/lib/processResult.ts',
-  'scripts/lib/signalForward.ts',
   'tests/e2e/helpers.ts',
   'tests/e2e/reorderSurface.testUtils.ts',
   'vite.config.ts',
-  'pnpm-lock.yaml',
   'tsconfig.src.json',
 ]);
 const FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
 function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
-  if (FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)) {
+  if (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)
+  ) {
     return true;
   }
 

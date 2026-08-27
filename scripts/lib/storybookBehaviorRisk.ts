@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 
@@ -15,17 +16,18 @@ const COLOCATED_BEHAVIOR_SPEC_ROOT_PREFIX = `${COLOCATED_BEHAVIOR_SPEC_ROOT_DIR}
 const COLOCATED_BEHAVIOR_SPEC_SUFFIX = '.behavior.spec.ts';
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior
-// Playwright config, the shared container runner, this resolver's own
-// module, the remaining cross-owner Storybook test helper, and the
-// production-owned Storybook preview style dependency closure. A change here
-// can affect every behavior spec, so it always triggers a full lane run
-// instead of relying on owner-local ownership.
+// Playwright config, this resolver's own module, the remaining cross-owner
+// Storybook test helper, and the production-owned Storybook preview style
+// dependency closure. A change here can affect every behavior spec, so it
+// always triggers a full lane run instead of relying on owner-local
+// ownership. The shared Playwright command/lock/result/signal execution
+// boundary is a separate authoritative source of truth, checked by
+// {@link isFullStorybookBehaviorLanePath} below rather than duplicated here
+// (see docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Shared Playwright execution infrastructure").
 const FULL_LANE_EXACT_FILES = new Set([
-  'config/tooling.json',
   'playwright.storybook.config.ts',
-  'pnpm-lock.yaml',
   'scripts/lib/storybookBehaviorRisk.ts',
-  'scripts/playwrightContainer.ts',
   'scripts/storybook.mjs',
   'scripts/storybookBehavior.mjs',
   'scripts/verify.ts',
@@ -131,7 +133,10 @@ export function isColocatedBehaviorSpecPath(filePath: string): boolean {
  * @returns True when the path is Storybook/Playwright infrastructure risk.
  */
 export function isFullStorybookBehaviorLanePath(filePath: string): boolean {
-  if (FULL_LANE_EXACT_FILES.has(filePath)) {
+  if (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    FULL_LANE_EXACT_FILES.has(filePath)
+  ) {
     return true;
   }
 

@@ -1641,9 +1641,24 @@ export function buildCommands(
     (needsStructuralE2EPlanning
       ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
       : { mode: 'skip', reasons: ['e2e planning not needed for this invocation'] });
-  const e2eTargetTreeValidation = e2eTargetTreeValidationOverride ?? validateE2ETargetTree();
-  const projectApplicabilityValidation =
-    projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
+  // Structural target-tree/project-applicability validation is real
+  // filesystem/registry inspection, not merely expensive
+  // Playwright/dependency-cruiser acquisition, so it is gated behind the same
+  // E2E relevance decision as `structuralE2EPlan` above rather than resolved
+  // unconditionally (see
+  // docs/testing/verify-redesign-final-review-architecture-revision.md's "E2E
+  // relevance gate"): an E2E-irrelevant invocation (docs-only default, or
+  // `--only <non-e2e>`) must not fail on unrelated `tests/e2e/**` structural
+  // drift it never selected. Literal `--full` and every E2E-relevant scope
+  // still retain complete validation, matching `needsStructuralE2EPlanning`.
+  const e2eTargetTreeValidation: E2ETargetTreeValidation =
+    e2eTargetTreeValidationOverride ??
+    (needsStructuralE2EPlanning
+      ? validateE2ETargetTree()
+      : { valid: true, errors: [], targetPaths: [] });
+  const projectApplicabilityValidation: E2EProjectApplicabilityValidation =
+    projectApplicabilityValidationOverride ??
+    (needsStructuralE2EPlanning ? validateE2EProjectApplicability() : { valid: true, errors: [] });
   const storybookBehaviorPlan =
     storybookBehaviorPlanOverride ??
     resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });

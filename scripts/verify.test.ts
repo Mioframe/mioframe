@@ -786,6 +786,26 @@ describe('selectOnlyCommands', () => {
   });
 });
 
+// Additional proof for the broadened release-static production-artifact
+// capability (primary proof owner: scripts/lib/releaseStaticRisk.test.ts):
+// prove selected real `build` + `artifact-static` leaves under default
+// composition for representative current Vite config dependency classes,
+// through the real (unmocked) resolveReleaseStaticPlan wiring.
+describe('buildCommands release-static production-artifact composition', () => {
+  it.each([
+    'config/alias.ts',
+    'config/plugins/base.ts',
+    'config/vueCustomElements.ts',
+    '.browserslistrc',
+    'tsconfig.app.json',
+  ])('selects build and artifact-static for a real %s change', (filePath) => {
+    const commands = buildCommands([filePath]);
+
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+  });
+});
+
 describe('buildCommands visual compatibility', () => {
   it('fails closed for a legacy invalid visual plan', () => {
     const commands = buildCommands([], {
@@ -979,6 +999,61 @@ describe('buildCommands E2E acquisition seams (cheap classifier gates expensive 
     buildCommands(['docs/testing/architecture.md'], { fullMode: true });
 
     expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+});
+
+// M1 (docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md's
+// "C. One E2E relevance gate before all E2E structural validation"):
+// target-tree/project-applicability structural validation must sit behind
+// the same E2E relevance decision as the expensive Playwright/dependency-
+// cruiser acquisition above, not run unconditionally after it.
+describe('buildCommands E2E structural validation relevance gate', () => {
+  beforeEach(() => {
+    validateE2ETargetTreeSpy.mockClear();
+    validateE2EProjectApplicabilitySpy.mockClear();
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('calls neither validator for a docs-only default invocation', () => {
+    buildCommands(['docs/testing/architecture.md']);
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls neither validator for an empty changed-file set', () => {
+    buildCommands([]);
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls neither validator for --only <non-e2e>, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { onlyType: 'unit' });
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls both validators for a default invocation with relevant production source', () => {
+    buildCommands(['src/entities/repository/index.ts']);
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls both validators for --only e2e with a direct target E2E spec change', () => {
+    buildCommands(['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'], { onlyType: 'e2e' });
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('always calls both validators in literal --full mode regardless of the cheap classifier', () => {
+    buildCommands(['docs/testing/architecture.md'], { fullMode: true });
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
   });
 });
 

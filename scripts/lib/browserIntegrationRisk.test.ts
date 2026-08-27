@@ -362,4 +362,42 @@ describe('resolveGenericBrowserIntegrationPlan', () => {
     expect(plan.specs).toEqual([GENERIC_SPEC]);
     expect(plan.reasons[0]).toContain('generic browser-integration infrastructure path');
   });
+
+  it.each([
+    'config/tooling.json',
+    'pnpm-lock.yaml',
+    'scripts/playwrightContainer.ts',
+    'scripts/lib/localCommandGuard.ts',
+    'scripts/lib/commandLock.ts',
+    'scripts/lib/runLocalCommand.ts',
+    'scripts/lib/processResult.ts',
+    'scripts/lib/signalForward.ts',
+  ])(
+    'runs the complete generic inventory for a shared Playwright execution-infrastructure change: %s',
+    (filePath) => {
+      const plan = resolveGenericBrowserIntegrationPlan([filePath], {
+        listSpecs: () => [GENERIC_SPEC],
+      });
+
+      expect(plan.mode).toBe('full');
+      expect(plan.specs).toEqual([GENERIC_SPEC]);
+    },
+  );
+});
+
+describe('browser-integration composition for a shared Playwright execution-infrastructure change', () => {
+  it('selects both the exceptional and generic browser-integration inventories together', () => {
+    const exceptionalPlan = resolveBrowserIntegrationPlan(['scripts/lib/commandLock.ts'], {
+      validateMembership: alwaysValidMembership,
+    });
+    const genericPlan = resolveGenericBrowserIntegrationPlan(['scripts/lib/commandLock.ts'], {
+      listSpecs: () => [GENERIC_SPEC],
+    });
+
+    expect(exceptionalPlan.mode).toBe('full');
+    expect(exceptionalPlan.artifact).toBe(true);
+    expect(exceptionalPlan.managedUpdates).toBe(true);
+    expect(genericPlan.mode).toBe('full');
+    expect(genericPlan.specs).toEqual([GENERIC_SPEC]);
+  });
 });

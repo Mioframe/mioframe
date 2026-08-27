@@ -71,6 +71,14 @@ describe('isFullVisualLanePath', () => {
     expect(isFullVisualLanePath('.storybook/main.ts')).toBe(true);
   });
 
+  it('flags the shared Playwright command/lock/result/signal execution infrastructure', () => {
+    expect(isFullVisualLanePath('scripts/lib/localCommandGuard.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/commandLock.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/runLocalCommand.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/processResult.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/signalForward.ts')).toBe(true);
+  });
+
   it('flags global app/base fonts and visual styling', () => {
     expect(isFullVisualLanePath('src/app/styles/base.css')).toBe(true);
     expect(isFullVisualLanePath('src/app/styles/fonts.css')).toBe(true);

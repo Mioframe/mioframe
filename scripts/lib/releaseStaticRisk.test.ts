@@ -125,6 +125,40 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.managedUpdatesStatic).toBe(false);
   });
 
+  it('selects build and artifact-static for the current real Vite config dependency classes', () => {
+    for (const filePath of [
+      'config/alias.ts',
+      'config/plugins/base.ts',
+      'config/plugins/pwa.ts',
+      'config/plugins/sentry.ts',
+      'config/vueCustomElements.ts',
+      '.browserslistrc',
+      'index.html',
+      'public/favicon.svg',
+      'tsconfig.json',
+      'tsconfig.app.json',
+      'tsconfig.src.json',
+    ]) {
+      const plan = resolveReleaseStaticPlan([filePath]);
+
+      expect(plan.mode, `${filePath} -> focused`).toBe('focused');
+      expect(plan.build, `${filePath} -> build`).toBe(true);
+      expect(plan.artifactStatic, `${filePath} -> artifact-static`).toBe(true);
+    }
+  });
+
+  it('does not select build/artifact-static for a proof-only file under config/**', () => {
+    expect(resolveReleaseStaticPlan(['config/plugins/base.test.ts']).mode).toBe('skip');
+    expect(resolveReleaseStaticPlan(['config/vueCustomElements.test.ts']).mode).toBe('skip');
+    expect(resolveReleaseStaticPlan(['config/postcss.config.test.ts']).mode).toBe('skip');
+  });
+
+  it('does not select build/artifact-static for a nested tsconfig*.json path', () => {
+    const plan = resolveReleaseStaticPlan(['some/nested/tsconfig.json']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
   it('selects only publisher-node-import for a publisher implementation change', () => {
     const plan = resolveReleaseStaticPlan(['scripts/pages/lib/releasePublish.mjs']);
 

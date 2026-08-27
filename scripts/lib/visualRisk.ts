@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isVisualRelevantPackageJsonChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 
@@ -14,18 +15,19 @@ const COLOCATED_VISUAL_SPEC_ROOT_PREFIX = `${COLOCATED_VISUAL_SPEC_ROOT_DIR}/`;
 const COLOCATED_VISUAL_SPEC_SUFFIX = '.visual.spec.ts';
 const COLOCATED_VISUAL_SNAPSHOT_MARKER = `${COLOCATED_VISUAL_SPEC_SUFFIX}-snapshots/`;
 
-// Broad blast-radius paths: the visual Playwright config, the shared
-// container runner, this resolver's own module, the visual lane
-// execution/planning entry points, and the production-owned Storybook
-// preview style dependency closure. A change here can affect every visual
-// spec (legacy or colocated), so it always triggers a full lane run instead
-// of relying on owner-local ownership.
+// Broad blast-radius paths: the visual Playwright config, this resolver's
+// own module, the visual lane execution/planning entry points, and the
+// production-owned Storybook preview style dependency closure. A change here
+// can affect every visual spec (legacy or colocated), so it always triggers
+// a full lane run instead of relying on owner-local ownership. The shared
+// Playwright command/lock/result/signal execution boundary is a separate
+// authoritative source of truth, checked by {@link isFullVisualLanePath}
+// below rather than duplicated here (see
+// docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Shared Playwright execution infrastructure").
 const FULL_LANE_EXACT_FILES = new Set([
-  'config/tooling.json',
   'playwright.visual.config.ts',
-  'pnpm-lock.yaml',
   'scripts/lib/visualRisk.ts',
-  'scripts/playwrightContainer.ts',
   'scripts/storybook.mjs',
   'scripts/visual.mjs',
   'scripts/verify.ts',
@@ -123,7 +125,10 @@ export function isColocatedVisualSpecPath(filePath: string): boolean {
  * @returns True when the path is visual/Playwright/Storybook infrastructure risk.
  */
 export function isFullVisualLanePath(filePath: string): boolean {
-  if (FULL_LANE_EXACT_FILES.has(filePath)) {
+  if (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    FULL_LANE_EXACT_FILES.has(filePath)
+  ) {
     return true;
   }
 

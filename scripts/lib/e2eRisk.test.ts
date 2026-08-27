@@ -261,13 +261,16 @@ describe('resolveStructuralE2EPlan', () => {
   });
 
   it.each([
+    'config/tooling.json',
+    'pnpm-lock.yaml',
+    'scripts/playwrightContainer.ts',
     'scripts/lib/localCommandGuard.ts',
     'scripts/lib/commandLock.ts',
     'scripts/lib/runLocalCommand.ts',
     'scripts/lib/processResult.ts',
     'scripts/lib/signalForward.ts',
   ])(
-    'falls back to full E2E for a shared command/lock/result/signal execution-support change: %s',
+    'falls back to full E2E for a shared Playwright execution-infrastructure change: %s',
     (filePath) => {
       const plan = resolveStructuralE2EPlan([filePath], baseDeps());
       expect(plan.mode).toBe('full');

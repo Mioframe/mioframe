@@ -35,28 +35,34 @@ const RELEASE_CONFIG_EXACT_FILES: ReadonlySet<string> = new Set([
   'scripts/release/validateReleaseConfig.mjs',
 ]);
 
-// The complete production artifact/build capability: every input capable of
-// entering or altering the real Vite production artifact that
-// `scripts/release/buildArtifact.mjs` builds and
+// The complete production artifact/build capability: every stable repository
+// capability class capable of entering or altering the real Vite production
+// artifact that `scripts/release/buildArtifact.mjs` builds and
 // `scripts/release/productionArtifactStaticProof.ts` validates (emitted
 // JS/manifest/controller worker), so both leaves are selected together (see
-// docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-// "Complete release-static production artifact capability"). Ordinary
-// `src/**` production source is included broadly rather than narrowed by a
-// dependency graph, since precise narrowing to only the subset that is
-// actually reachable from the Vite entrypoint is not cheaply provable;
-// `NON_PRODUCTION_SUFFIX_PATTERN` below excludes deterministically
-// irrelevant unit/story/behavior/visual/browser-integration/performance/
-// test-helper files.
+// docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Production artifact capability"). This is deliberately a broad capability
+// predicate rather than an exact direct-dependency list: `vite.config.ts`
+// directly imports `config/alias.ts` and `config/plugins/**` (which in turn
+// import further build configuration such as `config/vueCustomElements.ts`)
+// and derives its build target from `.browserslistrc`, so narrowing
+// `config/**` to only the current direct-import closure is not durable
+// across ordinary Vite/plugin config changes. Ordinary `src/**` production
+// source is included broadly for the same reason: precise narrowing to only
+// the subset that is actually reachable from the Vite entrypoint is not
+// cheaply provable without a dependency graph. `NON_PRODUCTION_SUFFIX_PATTERN`
+// below excludes deterministically irrelevant unit/story/behavior/visual/
+// browser-integration/performance/test-helper files under both `src/**` and
+// `config/**`.
 const PRODUCTION_ARTIFACT_EXACT_FILES: ReadonlySet<string> = new Set([
   'vite.config.ts',
   'index.html',
-  'config/tooling.json',
+  '.browserslistrc',
   'scripts/release/buildArtifact.mjs',
-  'src/sw.ts',
   'scripts/release/productionArtifactStaticProof.ts',
 ]);
-const PRODUCTION_ARTIFACT_PREFIXES: readonly string[] = ['public/', 'src/'];
+const PRODUCTION_ARTIFACT_PREFIXES: readonly string[] = ['public/', 'src/', 'config/'];
+const ROOT_TSCONFIG_PATTERN = /^tsconfig[^/]*\.json$/;
 
 // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts's own
 // inputs: the managed controller worker source and every appUpdate
@@ -95,6 +101,7 @@ function isManagedUpdatesStaticProductionPath(filePath: string): boolean {
 function isProductionArtifactPath(filePath: string): boolean {
   return (
     PRODUCTION_ARTIFACT_EXACT_FILES.has(filePath) ||
+    ROOT_TSCONFIG_PATTERN.test(filePath) ||
     (PRODUCTION_ARTIFACT_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
       !NON_PRODUCTION_SUFFIX_PATTERN.test(filePath))
   );

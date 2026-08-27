@@ -80,6 +80,14 @@ describe('isFullStorybookBehaviorLanePath', () => {
     expect(isFullStorybookBehaviorLanePath('scripts/verify.ts')).toBe(true);
   });
 
+  it('flags the shared Playwright command/lock/result/signal execution infrastructure', () => {
+    expect(isFullStorybookBehaviorLanePath('scripts/lib/localCommandGuard.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('scripts/lib/commandLock.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('scripts/lib/runLocalCommand.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('scripts/lib/processResult.ts')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('scripts/lib/signalForward.ts')).toBe(true);
+  });
+
   it('flags the remaining cross-owner Storybook test helper', () => {
     expect(isFullStorybookBehaviorLanePath('tests/e2e/storybook/storybook.testUtils.ts')).toBe(
       true,

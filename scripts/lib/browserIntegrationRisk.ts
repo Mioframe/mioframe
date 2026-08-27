@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
 import {
   MANAGED_UPDATES_BROWSER_INTEGRATION_SPEC_SET,
   PRODUCTION_ARTIFACT_SMOKE_SPEC,
@@ -39,28 +40,21 @@ export { PRODUCTION_ARTIFACT_SMOKE_SPEC };
 // the managed-update group/orchestration definition, this resolver's own
 // module, and the verifier planner entry point. A change here can affect
 // every browser-integration spec, so it always triggers both leaves instead
-// of relying on path-based ownership.
+// of relying on path-based ownership. The shared Playwright command/lock/
+// result/signal execution boundary is a separate authoritative source of
+// truth, checked by {@link isFullBrowserIntegrationLanePath} below rather
+// than duplicated here (see
+// docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Shared Playwright execution infrastructure").
 const FULL_LANE_EXACT_FILES = new Set([
-  'config/tooling.json',
-  'pnpm-lock.yaml',
   'vite.config.ts',
   'playwright.release.config.ts',
   'scripts/e2eReleaseContainer.mjs',
-  'scripts/playwrightContainer.ts',
   'scripts/release/artifactServer.mjs',
   'scripts/release/managedUpdatesProof.ts',
   'scripts/lib/browserIntegrationRisk.ts',
   'scripts/lib/releaseProofInventory.ts',
   'scripts/verify.ts',
-  // Common command/lock/result/signal execution support shared by the
-  // release Playwright/group runners above (see
-  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-  // "Complete explicit shared special-runner support ownership").
-  'scripts/lib/localCommandGuard.ts',
-  'scripts/lib/commandLock.ts',
-  'scripts/lib/runLocalCommand.ts',
-  'scripts/lib/processResult.ts',
-  'scripts/lib/signalForward.ts',
 ]);
 const FULL_LANE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
@@ -105,6 +99,7 @@ export function isAppUpdateProductionPath(filePath: string): boolean {
  */
 export function isFullBrowserIntegrationLanePath(filePath: string): boolean {
   return (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
     FULL_LANE_EXACT_FILES.has(filePath) ||
     FULL_LANE_PREFIXES.some((prefix) => filePath.startsWith(prefix))
   );
@@ -255,14 +250,28 @@ export function resolveBrowserIntegrationPlan(
 // Generic owner-local browser-integration infrastructure: a change here can
 // affect the complete generic inventory's discovery/execution, so it always
 // triggers the full generic inventory instead of relying on path ownership.
+// The shared Playwright command/lock/result/signal execution boundary is a
+// separate authoritative source of truth, checked directly in
+// {@link resolveGenericBrowserIntegrationPlan} below rather than duplicated
+// here (see
+// docs/testing/verify-redesign-final-review-architecture-revision.md's
+// "Shared Playwright execution infrastructure"): the generic public
+// browser-integration inventory must widen on the same shared hit as the
+// exceptional inventory, so the complete public browser-integration type is
+// selected together.
 const GENERIC_FULL_LANE_EXACT_FILES = new Set([
   'playwright.browserIntegration.config.ts',
   'scripts/browserIntegration.ts',
-  'scripts/playwrightContainer.ts',
   'scripts/lib/browserIntegrationRisk.ts',
   'scripts/verify.ts',
-  'pnpm-lock.yaml',
 ]);
+
+function isFullGenericBrowserIntegrationLanePath(filePath: string): boolean {
+  return (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    GENERIC_FULL_LANE_EXACT_FILES.has(filePath)
+  );
+}
 
 /**
  * Check whether a changed file is a generic (non-appUpdate) owner-local
@@ -384,7 +393,7 @@ export function resolveGenericBrowserIntegrationPlan(
   }: ResolveGenericBrowserIntegrationPlanDeps = {},
 ): GenericBrowserIntegrationPlan {
   const listCurrentSpecs = (): string[] => listSpecs({ listFilesRecursively });
-  const fullLaneHit = changedFiles.find((filePath) => GENERIC_FULL_LANE_EXACT_FILES.has(filePath));
+  const fullLaneHit = changedFiles.find(isFullGenericBrowserIntegrationLanePath);
 
   if (fullLaneHit) {
     return {
