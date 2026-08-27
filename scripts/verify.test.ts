@@ -505,15 +505,50 @@ describe('buildCommands full mode', () => {
 });
 
 describe('buildCommands release-sensitive static lane (releaseStaticRisk integration)', () => {
-  it('selects release-version outside full mode for a package.json change, without requiring --full', () => {
+  it('does not select release-version outside full mode for a confirmed version-only package.json change', () => {
     isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
     const commands = buildCommands(['package.json'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
 
-    expect(requireRunEntry(commands, 'release-version').args).toEqual([
-      'scripts/release/validateVersion.mjs',
-    ]);
-    expect(commands.map((entry) => entry.label)).not.toContain('build');
+    expect(labels).not.toContain('release-version');
+    expect(labels).not.toContain('build');
   });
+
+  it('selects build, artifact-static, and managed-updates-static, but not release-version, outside full mode for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+    const commands = buildCommands(['package.json'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
+    ]);
+    expect(labels).not.toContain('release-version');
+  });
+
+  it.each([
+    'scripts/release/validateVersion.mjs',
+    'scripts/release/versionPolicy.mjs',
+    'docs/release.md',
+    'docs/release-checklist.md',
+    'docs/releases/2026-08-27.md',
+  ])(
+    'does not select release-version, or any other release-sensitive static leaf, outside full mode for a version-policy input: %s',
+    (filePath) => {
+      const commands = buildCommands([filePath], { fullMode: false });
+      const labels = commands.map((entry) => entry.label);
+
+      expect(labels).not.toContain('release-version');
+      expect(labels).not.toContain('release-config');
+      expect(labels).not.toContain('build');
+      expect(labels).not.toContain('artifact-static');
+      expect(labels).not.toContain('managed-updates-static');
+      expect(labels).not.toContain('publisher-node-import');
+    },
+  );
 
   it('selects release-config outside full mode for a config/tooling.json change', () => {
     const commands = buildCommands(['config/tooling.json'], { fullMode: false });
@@ -577,7 +612,7 @@ describe('buildCommands release-sensitive static lane (releaseStaticRisk integra
     expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
     expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
     expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
-    expect(requireRunEntry(commands, 'release-version').verificationType).toBe('static');
+    expect(commands.map((entry) => entry.label)).not.toContain('release-version');
   });
 
   it('still runs the complete static leaf set unconditionally in literal --full mode', () => {

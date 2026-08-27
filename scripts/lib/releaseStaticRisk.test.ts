@@ -15,7 +15,6 @@ describe('resolveReleaseStaticPlan', () => {
 
     expect(plan).toEqual({
       mode: 'skip',
-      releaseVersion: false,
       releaseConfig: false,
       build: false,
       publisherNodeImport: false,
@@ -70,13 +69,12 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.mode).toBe('skip');
   });
 
-  it('selects only release-version for a package.json version bump', () => {
+  it('selects no release-sensitive static leaf for a confirmed version-only package.json change', () => {
     isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
 
     const plan = resolveReleaseStaticPlan(['package.json']);
 
-    expect(plan.mode).toBe('focused');
-    expect(plan.releaseVersion).toBe(true);
+    expect(plan.mode).toBe('skip');
     expect(plan.releaseConfig).toBe(false);
     expect(plan.build).toBe(false);
     expect(plan.publisherNodeImport).toBe(false);
@@ -84,16 +82,32 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.managedUpdatesStatic).toBe(false);
   });
 
-  it('widens build/artifact-static/managed-updates-static for a runtime-relevant package.json change', () => {
+  it('widens build/artifact-static/managed-updates-static for a runtime-relevant package.json change, without requiring release-version selection', () => {
     isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
 
     const plan = resolveReleaseStaticPlan(['package.json']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.releaseVersion).toBe(true);
     expect(plan.build).toBe(true);
     expect(plan.artifactStatic).toBe(true);
     expect(plan.managedUpdatesStatic).toBe(true);
+  });
+
+  it.each([
+    'scripts/release/validateVersion.mjs',
+    'scripts/release/versionPolicy.mjs',
+    'docs/release.md',
+    'docs/release-checklist.md',
+    'docs/releases/2026-08-27.md',
+  ])('selects no release-sensitive static leaf for a version-policy input: %s', (filePath) => {
+    const plan = resolveReleaseStaticPlan([filePath]);
+
+    expect(plan.mode).toBe('skip');
+    expect(plan.releaseConfig).toBe(false);
+    expect(plan.build).toBe(false);
+    expect(plan.publisherNodeImport).toBe(false);
+    expect(plan.artifactStatic).toBe(false);
+    expect(plan.managedUpdatesStatic).toBe(false);
   });
 
   it('widens build/artifact-static/managed-updates-static for a pnpm-lock.yaml change', () => {
@@ -167,7 +181,6 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.mode).toBe('focused');
     expect(plan.publisherNodeImport).toBe(true);
     expect(plan.build).toBe(false);
-    expect(plan.releaseVersion).toBe(false);
   });
 
   it('selects publisher-node-import for the release wire contract change', () => {
@@ -204,7 +217,7 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.mode).toBe('skip');
   });
 
-  it('selects every leaf for a broad infrastructure-style combination', () => {
+  it('selects every remaining leaf for a broad infrastructure-style combination', () => {
     const plan = resolveReleaseStaticPlan([
       'package.json',
       'config/tooling.json',
@@ -213,7 +226,6 @@ describe('resolveReleaseStaticPlan', () => {
     ]);
     isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
 
-    expect(plan.releaseVersion).toBe(true);
     expect(plan.releaseConfig).toBe(true);
     expect(plan.publisherNodeImport).toBe(true);
     expect(plan.build).toBe(true);

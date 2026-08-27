@@ -1208,33 +1208,26 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 }
 
 /**
- * Add the release-sensitive `static` leaves (`release-version`,
- * `release-config`, `build`, `publisher-node-import`, `artifact-static`,
- * `managed-updates-static`) that are relevant outside literal `--full`,
- * using {@link resolveReleaseStaticPlan}'s explicit file capability/
- * configuration ownership (see
+ * Add the release-sensitive `static` leaves (`release-config`, `build`,
+ * `publisher-node-import`, `artifact-static`, `managed-updates-static`) that
+ * are relevant outside literal `--full`, using
+ * {@link resolveReleaseStaticPlan}'s explicit file capability/configuration
+ * ownership (see
  * docs/testing/verify-redesign-final-review-correction.md's "Decision 1").
- * Reuses the exact same leaf commands `addReleaseOnlyCommands` uses purely
- * behind `--full`; this only adds default/`--only static` relevance without
- * requiring `--full`. Never called from the `fullMode` branch, so a leaf is
- * never duplicated against `addReleaseOnlyCommands`'s own unconditional
- * `--full` leaves.
+ * `release-version` is deliberately never emitted here: PR release-version
+ * policy is owned independently by the develop-CI `release-version` job and
+ * by literal `pnpm verify --full` (`addReleaseOnlyCommands` below), and must
+ * not leak into affected/default `static` planning (see docs/release.md's
+ * "What CI verifies automatically"). Reuses the exact same leaf commands
+ * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
+ * default/`--only static` relevance without requiring `--full`. Never called
+ * from the `fullMode` branch, so a leaf is never duplicated against
+ * `addReleaseOnlyCommands`'s own unconditional `--full` leaves.
  * @param commands Command list to push into.
  * @param plan Resolved release-sensitive static plan.
  */
 function addReleaseStaticCommands(commands: CommandEntry[], plan: ReleaseStaticPlan): void {
   const triggerReason = plan.reasons.join('; ');
-
-  if (plan.releaseVersion) {
-    commands.push({
-      kind: 'run',
-      label: 'release-version',
-      command: 'node',
-      args: ['scripts/release/validateVersion.mjs'],
-      weight: classifyCommandWeight({ label: 'release-version' }),
-      triggerReason,
-    });
-  }
 
   if (plan.releaseConfig) {
     commands.push({
@@ -1688,7 +1681,6 @@ export function buildCommands(
   const releaseStaticPlan: ReleaseStaticPlan = fullMode
     ? {
         mode: 'skip',
-        releaseVersion: false,
         releaseConfig: false,
         build: false,
         publisherNodeImport: false,

@@ -7,9 +7,13 @@ import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
  * were historically created only as a side effect of literal
  * `pnpm verify --full` (see
  * docs/testing/verify-redesign-final-review-correction.md's "Decision 1"):
- * `release-version`, `release-config`, `build`, `publisher-node-import`,
- * `artifact-static`, and `managed-updates-static`. This is a narrow
- * static-specific resolver derived from explicit file capability/
+ * `release-config`, `build`, `publisher-node-import`, `artifact-static`, and
+ * `managed-updates-static`. `release-version` is deliberately excluded from
+ * affected selection: PR release-version policy is owned independently by
+ * the develop-CI `release-version` job and by literal `pnpm verify --full`
+ * (see docs/release.md's "What CI verifies automatically"), so this planner
+ * must not select it merely because a version-policy input changed. This is
+ * a narrow static-specific resolver derived from explicit file capability/
  * configuration ownership, not a general registry/framework: every trigger
  * below is the exact file (or narrow prefix) the corresponding proof script
  * itself reads, builds from, or validates.
@@ -17,18 +21,6 @@ import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
 
 const PACKAGE_JSON_PATH = 'package.json';
 const LOCKFILE_PATH = 'pnpm-lock.yaml';
-
-// scripts/release/validateVersion.mjs's own inputs: the package.json version
-// field/policy, its own implementation, and the release-notes/checklist
-// existence it validates ahead of a `main` promotion.
-const RELEASE_VERSION_EXACT_FILES: ReadonlySet<string> = new Set([
-  PACKAGE_JSON_PATH,
-  'scripts/release/validateVersion.mjs',
-  'scripts/release/versionPolicy.mjs',
-  'docs/release.md',
-  'docs/release-checklist.md',
-]);
-const RELEASE_VERSION_PREFIXES: readonly string[] = ['docs/releases/'];
 
 // scripts/release/validateReleaseConfig.mjs's own inputs: the release
 // base-path/config it validates, and its own implementation.
@@ -107,7 +99,6 @@ function isProductionArtifactPath(filePath: string): boolean {
 /** Resolved release-sensitive static plan, discriminated by `mode`. */
 export interface ReleaseStaticPlan {
   mode: 'skip' | 'focused';
-  releaseVersion: boolean;
   releaseConfig: boolean;
   build: boolean;
   publisherNodeImport: boolean;
@@ -134,8 +125,10 @@ function uniqSorted(values: readonly string[]): string[] {
  * relevant, from explicit file capability/configuration ownership. Runtime-
  * relevant `package.json` changes and `pnpm-lock.yaml` changes widen every
  * build-derived leaf (`build`, `artifact-static`, `managed-updates-static`)
- * safely; a confirmed version-only `package.json` change selects only
- * `release-version`.
+ * safely; a confirmed version-only `package.json` change selects no
+ * release-sensitive static leaf, since PR release-version policy is owned
+ * independently by the develop-CI `release-version` job and by literal
+ * `pnpm verify --full`.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @returns The resolved {@link ReleaseStaticPlan}.
@@ -144,7 +137,6 @@ export function resolveReleaseStaticPlan(
   changedFiles: readonly string[],
   { packageJsonOldRef = null }: ResolveReleaseStaticPlanOptions = {},
 ): ReleaseStaticPlan {
-  let releaseVersion = false;
   let releaseConfig = false;
   let build = false;
   let publisherNodeImport = false;
@@ -153,14 +145,6 @@ export function resolveReleaseStaticPlan(
   const reasons: string[] = [];
 
   for (const filePath of changedFiles) {
-    if (
-      RELEASE_VERSION_EXACT_FILES.has(filePath) ||
-      RELEASE_VERSION_PREFIXES.some((prefix) => filePath.startsWith(prefix))
-    ) {
-      releaseVersion = true;
-      reasons.push(`release-version input ${filePath} -> release-version`);
-    }
-
     if (RELEASE_CONFIG_EXACT_FILES.has(filePath)) {
       releaseConfig = true;
       reasons.push(`release-config input ${filePath} -> release-config`);
@@ -222,18 +206,12 @@ export function resolveReleaseStaticPlan(
   }
 
   const mode: ReleaseStaticPlan['mode'] =
-    releaseVersion ||
-    releaseConfig ||
-    build ||
-    publisherNodeImport ||
-    artifactStatic ||
-    managedUpdatesStatic
+    releaseConfig || build || publisherNodeImport || artifactStatic || managedUpdatesStatic
       ? 'focused'
       : 'skip';
 
   return {
     mode,
-    releaseVersion,
     releaseConfig,
     build,
     publisherNodeImport,
