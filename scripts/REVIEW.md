@@ -4,87 +4,93 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete second scripts-owned correction on PR #218 from architect handoff `acec9f30d207ad622f5f52352fa4c7160b39c2d9` through coding-agent implementation `8911f44078676ccaceb19c8de8c05364b5ec6698`.
-- Canonical contract: [`../docs/testing/architecture.md`](../docs/testing/architecture.md), [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md), and [`../docs/testing/verify-redesign-final-review-correction-02-agent-task.md`](../docs/testing/verify-redesign-final-review-correction-02-agent-task.md).
-- Rechecked every previous B1-B3/M1-M2 finding plus current build-config consumers and every type that executes through `playwrightContainer.ts`.
-- Because this is the second correction round and ownership gaps remain, root [`../AGENTS.md`](../AGENTS.md) requires returning to architecture rather than issuing another incremental path-list patch. The replacement ready handoff is [`../docs/testing/verify-redesign-final-review-architecture-revision.md`](../docs/testing/verify-redesign-final-review-architecture-revision.md).
+- Complete scripts-owned architecture-revision implementation on PR #218 from architect handoff `f91d01fc1f3813def4709d4590b5e4e52ef0c516` through coding-agent implementation `ccd2bc0842428b3fde973afa9caf2f1a44b2aa53`.
+- Canonical contract: [`../docs/testing/architecture.md`](../docs/testing/architecture.md), root [`../AGENTS.md`](../AGENTS.md), [`../.agents/skills/verification/SKILL.md`](../.agents/skills/verification/SKILL.md), and the implemented [`../docs/testing/verify-redesign-final-review-architecture-revision.md`](../docs/testing/verify-redesign-final-review-architecture-revision.md).
+- Rechecked the real `buildCommands()` execution graph, release/static runners, Storybook runner/build configuration, generic and exceptional browser-integration, ordinary/special E2E, package impact, and the new E2E relevance gate.
+- `ccd2bc...` correctly implements the previous handoff, including the E2E relevance gate. Deeper consumer inspection invalidated that handoff's shared-boundary assumptions. The replacement ready architecture is [`../docs/testing/verify-redesign-final-review-architecture-revision-02.md`](../docs/testing/verify-redesign-final-review-architecture-revision-02.md).
 
 ## Blockers
 
-### B1 — Production-artifact static ownership still depends on an incomplete exact build-input list
+### B1 — Common local-command execution infrastructure is still modeled as Playwright-only
 
 Owner: `scripts`
 
-Problem: the second correction correctly broadened `releaseStaticRisk.ts` to ordinary production `src/**` and `public/**`, but root/config build ownership still enumerates only a few exact files. The real Vite configuration directly imports `config/alias.ts` and `config/plugins/**`; plugin configuration in turn imports other build configuration such as `config/vueCustomElements.ts`. `vite.config.ts` also derives its build target from the repository Browserslist configuration. Changes to those current artifact inputs can therefore alter emitted production output while default/`--only static` still omits `build` and `artifact-static`.
+Problem: `playwrightExecutionRisk.ts` now centralizes the command/lock/result/signal paths for browser-backed types, but those paths are not Playwright-specific. The release build/artifact proof and Storybook static build execute through the same `localCommandGuard` / `runLocalCommand` / `processResult` boundary. A change to that low-level execution layer therefore widens behavior/visual/browser-integration/E2E but can still leave the dependent `static` build/artifact leaves skipped.
 
 Evidence:
 
-- [`lib/releaseStaticRisk.ts`](lib/releaseStaticRisk.ts) — `PRODUCTION_ARTIFACT_EXACT_FILES` includes `vite.config.ts`, `index.html`, `config/tooling.json`, `scripts/release/buildArtifact.mjs`, `src/sw.ts`, and the artifact proof, while the only broad prefixes are `public/` and `src/`; `config/alias.ts`, `config/plugins/**`, `.browserslistrc`, and other current build-config inputs are not covered.
-- [`../vite.config.ts`](../vite.config.ts) — directly imports `./config/alias` and `./config/plugins` and calls `browserslistToEsbuild(..., { path: process.cwd() })` to derive the build target.
-- [`../config/plugins/base.ts`](../config/plugins/base.ts) — application Vite plugin configuration imports `../vueCustomElements`, proving the artifact-config dependency extends beyond the exact files registered in the planner.
-- [`../.browserslistrc`](../.browserslistrc) — repository-owned browser baseline consumed by the build-target derivation above.
+- [`lib/playwrightExecutionRisk.ts`](lib/playwrightExecutionRisk.ts) — owns `localCommandGuard.ts`, `commandLock.ts`, `runLocalCommand.ts`, `processResult.ts`, and `signalForward.ts` only as shared Playwright infrastructure.
+- [`release/buildArtifact.mjs`](release/buildArtifact.mjs) — directly uses `runGuardedExpensiveLocalCommand`, `runLocalCommand`, and `applyProcessResult` for the production build.
+- [`release/productionArtifactStaticProof.ts`](release/productionArtifactStaticProof.ts) — executes the production build through `runLocalCommand` before validating the artifact.
+- [`release/managedUpdatesControllerArtifactIdentityProof.ts`](release/managedUpdatesControllerArtifactIdentityProof.ts) — uses the same local command/result boundary for managed controller artifact proof.
+- [`storybook.mjs`](storybook.mjs) — Storybook build uses `runGuardedExpensiveLocalCommand`, `runLocalCommand`, and `applyProcessResult`.
+- [`lib/releaseStaticRisk.ts`](lib/releaseStaticRisk.ts) and [`lib/storybookBuildRisk.ts`](lib/storybookBuildRisk.ts) — do not currently classify the shared command/lock/result/signal paths as owning those static leaves.
 
 Basis:
 
-- [`../docs/testing/verify-redesign-final-review-correction-02-agent-task.md`](../docs/testing/verify-redesign-final-review-correction-02-agent-task.md) — section A requires **every changed input capable of entering or altering the real Vite production artifact** to select `build` + `artifact-static`, preferring a safely broad capability over source-graph inference.
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — a complete type may skip only with deterministic evidence of irrelevance; static owns deterministic build/config/artifact invariants.
-- [`../AGENTS.md`](../AGENTS.md) — after two correction rounds that still reveal ownership errors or workaround growth, stop patching and redo the architecture decision.
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — skipping a complete type requires deterministic evidence of irrelevance; shared support with unresolved consumer impact widens the owning type rather than silently skipping.
+- [`../.agents/skills/verification/SKILL.md`](../.agents/skills/verification/SKILL.md) — shared helpers use full owning-type fallback unless the complete consumer set is explicit, small, stable, and validated.
 
-Risk: changes to active build/plugin/alias/browser-target configuration can receive a green affected static result without rebuilding or validating the artifact they actually change.
+Risk: a regression in command start, locking, signal forwarding, or result propagation can break or falsely report the release/Storybook static proof while affected `static` verification omits the proof path that actually uses the changed infrastructure.
 
-Required final state: implement the revised architecture in [`../docs/testing/verify-redesign-final-review-architecture-revision.md`](../docs/testing/verify-redesign-final-review-architecture-revision.md): release-static build ownership is expressed as broad stable repository capability classes (`src`, `public`, non-test `config`, root build inputs, package/lock/build entry), not another exact direct-dependency list.
+Required final state: implement the neutral local-command execution ownership from [`../docs/testing/verify-redesign-final-review-architecture-revision-02.md`](../docs/testing/verify-redesign-final-review-architecture-revision-02.md). Playwright-specific ownership composes that shared fact; release static and Storybook static consume it directly. Do not widen unit/mutation merely because optional standalone wrappers reuse the same helpers when `buildCommands()` invokes those types directly.
 
-Verification: prove representative `config/alias.ts`, `config/plugins/*.ts`, `config/vueCustomElements.ts`, `.browserslistrc`, `tsconfig*.json`, ordinary production/assets/public paths, package/lock cases, and deterministic proof-only exclusions select the required static leaves.
+Verification: representative changes to each shared local-command path must select the dependent release-static leaves, Storybook static build, and browser-backed owning types, while unit/mutation remain governed by their existing real verify execution paths.
 
-### B2 — Shared Playwright execution infrastructure has fragmented affected ownership across browser-backed types
+### B2 — Vite-backed build/harness inputs still have fragmented ownership across public types
 
 Owner: `scripts`
 
-Problem: the second correction correctly added the common command/lock/result/signal support to the exceptional browser-integration and E2E planners, but those same modules are real dependencies of **all** Playwright-container-backed execution. Generic browser-integration, Storybook behavior, and visual runners also call `runPlaywrightInContainer()`, while their affected planners know only `scripts/playwrightContainer.ts` (or their own top-level runner) and not its shared dependency closure. A change to `localCommandGuard.ts`, `commandLock.ts`, `runLocalCommand.ts`, `processResult.ts`, or `signalForward.ts` can therefore alter those types' execution while generic browser-integration/behavior/visual skip.
+Problem: the latest release-static capability is broader than before, but Vite inputs are still modeled independently in release static, Storybook, browser-integration, and E2E. The real runners share root/config/static build inputs that current planners omit in different combinations. In particular, root `postcss.config.js` is a real Vite CSS build input but is absent from the latest release-static capability; generic browser-integration and ordinary E2E build the application through Vite but can skip ownerless application inputs such as `index.html`, `public/**`, and shared Vite configuration; Storybook's Vite builder also consumes the root Vite configuration but its build/behavior/visual planners carry only partial copies of that input set.
 
 Evidence:
 
-- [`../scripts/browserIntegration.ts`](browserIntegration.ts) — generic browser-integration executes exclusively through `runPlaywrightInContainer()`.
-- [`storybookBehavior.mjs`](storybookBehavior.mjs) — behavior execution uses the same `runPlaywrightInContainer()` boundary.
-- [`visual.mjs`](visual.mjs) — visual execution uses the same boundary.
-- [`playwrightContainer.ts`](playwrightContainer.ts) — directly depends on `lib/localCommandGuard.ts`, `lib/processResult.ts`, and `lib/runLocalCommand.ts`; those transitively own command locking and signal propagation.
-- [`lib/storybookBehaviorRisk.ts`](lib/storybookBehaviorRisk.ts) and [`lib/visualRisk.ts`](lib/visualRisk.ts) — include `scripts/playwrightContainer.ts` as full-lane infrastructure but not its shared command/lock/result/signal dependencies.
-- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) — the exceptional full-lane set includes the new shared support, while `GENERIC_FULL_LANE_EXACT_FILES` does not, so the same public browser-integration type has inconsistent infrastructure ownership between its two execution paths.
+- [`../vite.config.ts`](../vite.config.ts) — imports `config/alias`, `config/plugins`, and `config/tooling.json`, derives build targets from the repository Browserslist configuration, and configures application/worker Vite plugins.
+- [`../postcss.config.js`](../postcss.config.js) — repository PostCSS transformation configuration; Vite automatically loads project-root PostCSS configuration for CSS processing.
+- [`../.storybook/main.ts`](../.storybook/main.ts) — uses `@storybook/vue3-vite` and directly consumes shared Vite aliases/tooling configuration; Storybook's Vite builder also loads/merges the root Vite configuration.
+- [`../playwright.browserIntegration.config.ts`](../playwright.browserIntegration.config.ts) — generic browser-integration starts `vite build` + `vite preview` against the real application build.
+- [`../playwright.config.ts`](../playwright.config.ts) — ordinary E2E also starts `vite build` + `vite preview`.
+- [`lib/e2eRisk.ts`](lib/e2eRisk.ts) — relevance currently recognizes `src/**`, E2E paths, and its explicit infrastructure set, so ownerless `index.html` / `public/**` / missing shared Vite inputs can still be classified irrelevant.
+- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) — generic browser-integration similarly owns `src/**` colocated paths plus explicit infrastructure, not the full application Vite harness.
+- [`../config/plugins/pwa.ts`](../config/plugins/pwa.ts) and [`../pwa-assets.config.ts`](../pwa-assets.config.ts) — the production PWA plugin enables external PWA-assets configuration, making that root file a real production artifact input.
 
 Basis:
 
-- [`../.agents/skills/verification/SKILL.md`](../.agents/skills/verification/SKILL.md) — shared config/helpers use full owning-type fallback unless every consumer is explicit, small, stable, and validated.
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — unknown relevant impact uses full, never skip, and uncertainty must not silently reduce coverage.
-- [`../AGENTS.md`](../AGENTS.md) — repeated ownership drift after two correction rounds requires an architecture redo rather than another local patch.
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — global/shared configuration with broad unresolved impact must widen the truthful owning type; unknown relevant impact uses `full`, never `skip`.
+- [`../AGENTS.md`](../AGENTS.md) — prefer a broader safe capability over repeated fragile mappings and return to architecture when ownership drift persists.
 
-Risk: regressions in container startup, locking, process result propagation, or signal handling can change browser test semantics while one or more affected public verification types are omitted by default verification.
+Risk: Vite/PostCSS/static-entry/configuration changes can alter the production or browser test harness while one or more Vite-backed public types report a deterministic skip. The same repository fact remains duplicated across several planners, so future build-config additions can drift again.
 
-Required final state: use the revised architecture's single small shared Playwright-execution-infrastructure predicate as the one source of truth for this genuinely shared runtime boundary. Existing behavior, visual, browser-integration, and E2E planners consume that predicate and widen only their own public type. Do not create a universal planner registry or dependency graph.
+Required final state: implement one neutral Vite build/harness capability from [`../docs/testing/verify-redesign-final-review-architecture-revision-02.md`](../docs/testing/verify-redesign-final-review-architecture-revision-02.md). Existing type-specific planners consume that capability and widen only their truthful public type; ordinary production `src/**` stays with current colocated/dependency ownership rather than being routed through a new global mapping.
 
-Verification: representative changes to each shared command/lock/result/signal path must select full behavior, full visual, full public browser-integration (generic + exceptional), and full E2E.
+Verification: focused planner/integration tests must cover `config/**`, `postcss.config.js`, `.browserslistrc`, root tsconfigs, `public/**`, `index.html`, and `pwa-assets.config.ts`, including deterministic proof/test exclusions, and prove the correct static/Storybook/browser-integration/E2E widening.
+
+### B3 — Runtime-relevant package.json does not widen the complete browser-integration type
+
+Owner: `scripts`
+
+Problem: exceptional browser-integration correctly treats runtime-relevant `package.json` as full, but `resolveGenericBrowserIntegrationPlan()` has no package impact refinement. The public `browser-integration` type therefore has inconsistent package ownership between its exceptional and generic execution paths.
+
+Evidence:
+
+- [`lib/browserIntegrationRisk.ts`](lib/browserIntegrationRisk.ts) — `resolveBrowserIntegrationPlan()` calls `isPackageJsonRuntimeRelevantChange`, while `resolveGenericBrowserIntegrationPlan()` does not accept `packageJsonOldRef` or classify `package.json`.
+- [`../package.json`](../package.json) — owns the `test:browser-integration` execution script and browser/Vite/Playwright runtime dependencies; a non-version package change can alter generic browser-integration execution without a lockfile change (for example a script change).
+- [`../src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts`](../src/entities/browserStoragePersistence/browserStoragePersistence.browser-integration.spec.ts) — the generic browser-integration inventory is non-empty, so the omitted path is a real current proof owner rather than hypothetical future infrastructure.
+
+Basis:
+
+- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — `--only browser-integration` represents one public verification type and may narrow only when irrelevance is proven safely.
+- [`../.agents/skills/verification/SKILL.md`](../.agents/skills/verification/SKILL.md) — browser-integration affected ownership must widen safely for shared runtime/config impact.
+
+Risk: a runtime package/script change can run only the exceptional browser-integration proof while silently omitting the generic corpus, despite both belonging to the same public type.
+
+Required final state: reuse the existing `isPackageJsonRuntimeRelevantChange` decision for both browser-integration execution paths. Runtime-relevant package changes select the complete public type; a positively confirmed top-level version-only change retains the existing narrow behavior. Do not introduce another package parser.
+
+Verification: tests must prove runtime-relevant `package.json` selects generic + exceptional browser-integration and confirmed version-only does not widen browser proof solely because of package.json.
 
 ## Major issues
 
-### M1 — E2E target-tree/applicability validation still runs after E2E was classified irrelevant
-
-Owner: `scripts`
-
-Problem: `buildCommands()` now correctly avoids Playwright owner-inventory/dependency-cruiser acquisition when the cheap classifier says E2E is irrelevant, but it still calls `validateE2ETargetTree()` and `validateE2EProjectApplicability()` unconditionally immediately afterwards. Thus a docs-only/default or `--only <non-e2e>` invocation still resolves E2E structural validators even though the accepted correction order says structural E2E validation belongs behind the same relevance decision.
-
-Evidence:
-
-- [`verify.ts`](verify.ts) — `needsStructuralE2EPlanning` controls only `resolveStructuralE2EPlan(...)`; `e2eTargetTreeValidation` and `projectApplicabilityValidation` are then resolved unconditionally.
-
-Basis:
-
-- [`../docs/testing/verify-redesign-final-review-correction.md`](../docs/testing/verify-redesign-final-review-correction.md) — Decision 6 requires structural E2E filesystem/Playwright validation to occur only when E2E is relevant or literal `--full` requires complete validation.
-- [`../docs/testing/architecture.md`](../docs/testing/architecture.md) — default verification first determines relevant types and validates structural invariants required by affected-test selection.
-
-Risk: E2E-irrelevant focused/default work can pay unrelated planning cost or fail because of E2E repository state that the invocation did not need to select, contrary to the public affected-verification model.
-
-Required final state: derive one E2E relevance decision and put target-tree, applicability, Playwright inventory, and dependency-graph validation behind it. Literal `--full` and E2E-relevant scopes retain all existing fail-closed validation.
-
-Verification: dependency-seam tests prove docs-only/default and `--only <non-e2e>` scopes call none of the E2E validators/acquisition paths, while relevant E2E and literal `--full` call them.
+None.
 
 ## Minor issues
 
@@ -96,13 +102,10 @@ None.
 
 ## Items not required
 
-- B2 from the previous review (central exceptional release-proof inventory/full/direct validation) is resolved by `8911f440...`; do not reopen it without new evidence.
-- Previous B3 is resolved for the special browser/E2E boundary, but the re-review exposed the broader shared-Playwright ownership root cause recorded as current B2.
-- Previous M1 (`--fix-only` planner order) is resolved.
-- Previous M2 (deleted/renamed mutation infrastructure being filtered out) is resolved.
-- Generic browser-integration remains structurally disjoint from the appUpdate special corpus.
-- TypeScript-first proof entry points, ordinary structural E2E ownership, mutation registry, performance inventory, public taxonomy, and container-only Playwright remain unchanged.
-- `.github/workflows/REVIEW.md` remains downstream and must not be corrected until this scripts architecture is implemented and reviewed cleanly.
+- The E2E relevance gate from `ccd2bc...` is accepted: target-tree/applicability validation now follows the same relevance decision as inventory/graph acquisition.
+- The central exceptional release-proof inventory and focused/full/direct validation remain accepted.
+- `--fix-only` early return, status-preserving mutation infrastructure handling, TypeScript-first proof entry points, generic/appUpdate browser-runner separation, ordinary structural E2E ownership, mutation registry, performance inventory, public taxonomy, and container-only Playwright remain accepted.
+- Do not start `.github/workflows/REVIEW.md` correction until this scripts review is clean.
 
 ## Unresolved questions
 
