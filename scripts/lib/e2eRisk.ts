@@ -27,8 +27,7 @@ import {
 } from './releaseProofInventory.ts';
 
 /**
- * Structural, dependency-graph-driven application E2E planner (see
- * docs/testing/verify-redesign-pass-d-implementation.md). Replaces the
+ * Structural, dependency-graph-driven application E2E planner. Replaces the
  * historical `E2E_SCENARIO_SCOPES` manual production-path -> spec registry:
  * primary E2E ownership comes only from `tests/e2e/pages/<Owner>/**` /
  * `tests/e2e/widgets/<Owner>/**` target paths, and affected-owner discovery
@@ -44,14 +43,13 @@ const NON_PRODUCTION_PATH_PATTERN = /\.(test|spec|stories|testUtils)\.(ts|tsx|vu
 // every target E2E spec's discovery, ownership resolution, or execution,
 // regardless of graph/inventory-derived scope. Also carries the shared
 // managed-release fixture/publisher/artifact build support the special
-// productionArtifact leaves exercise (see
-// docs/testing/verify-redesign-final-review-correction.md's "Decision 3");
-// widening the complete E2E type is a safe superset of widening only the
-// two special leaves. The shared Playwright command/lock/result/signal
-// execution boundary is a separate authoritative source of truth, checked by
-// {@link isFullLaneE2EInfrastructurePath} below rather than duplicated here
-// (see docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Shared Playwright execution infrastructure").
+// productionArtifact leaves exercise; widening the complete E2E type is a
+// safe superset of widening only the two special leaves. The shared
+// Playwright command/lock/result/signal execution boundary is a separate
+// authoritative source of truth, checked by
+// {@link isFullLaneE2EInfrastructurePath} below rather than duplicated here,
+// since it widens relevance across every Playwright-container-backed type,
+// not only e2e.
 const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
   'playwright.release.config.ts',
@@ -253,9 +251,7 @@ export function resolveStructuralE2EPlan(
   // "what must be proven"; the Playwright-collected inventory must be
   // proven complete against it before any selection happens, so a
   // testMatch/testIgnore/project drift can never silently drop a direct
-  // changed/added target E2E from the plan (see
-  // docs/testing/verify-redesign-pass-d-correction.md's "Fail-closed
-  // filesystem / Playwright inventory equality").
+  // changed/added target E2E from the plan.
   const targetTreeValidation = validateTargetTree();
 
   if (!targetTreeValidation.valid) {
@@ -275,9 +271,7 @@ export function resolveStructuralE2EPlan(
   // scripts/lib/releaseProofInventory.ts) must equal, exactly, the current
   // filesystem productionArtifact/ target set before any spec is routed to
   // the `release-smoke`/`managed-updates-e2e` leaves below: an unregistered
-  // productionArtifact target is structural invalidity, never a silent skip
-  // (see docs/testing/verify-redesign-final-review-correction.md's
-  // "Decision 2").
+  // productionArtifact target is structural invalidity, never a silent skip.
   const productionArtifactMembershipValidation = validateProductionArtifactMembership();
 
   if (!productionArtifactMembershipValidation.valid) {
@@ -410,10 +404,10 @@ export interface CanChangedPathsAffectE2EOptions {
 /**
  * Cheaply classify whether a changed-file set can plausibly affect E2E,
  * without acquiring the expensive containerized Playwright ownership
- * inventory or the dependency-cruiser reverse-dependency graph (see
- * docs/testing/verify-redesign-final-review-correction.md's "Decision 6"):
- * relevance is resolved before {@link resolveStructuralE2EPlan}'s expensive
- * acquisition, not merely inside it. Conservative by design: any path this
+ * inventory or the dependency-cruiser reverse-dependency graph: relevance is
+ * resolved before {@link resolveStructuralE2EPlan}'s expensive acquisition,
+ * not merely inside it, so an E2E-irrelevant invocation never pays for
+ * acquisition it cannot use. Conservative by design: any path this
  * classifier cannot cheaply rule out returns `true` (acquire), so a false
  * positive is acceptable but a false negative is not.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.

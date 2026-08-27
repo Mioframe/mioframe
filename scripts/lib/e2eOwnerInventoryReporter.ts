@@ -13,10 +13,9 @@ interface CollectedAnnotation {
 /**
  * Playwright reporter used only in `--list` (no browser execution) mode to
  * collect the target E2E ownership inventory: every discovered spec file
- * path plus the union of its tests' annotations (see
- * docs/testing/verify-redesign-pass-d-implementation.md's "Exceptional
- * additional owners" — collection goes through Playwright's suite/reporter
- * API, never TypeScript source parsing). Passed to Playwright as
+ * path plus the union of its tests' annotations. Collection goes through
+ * Playwright's suite/reporter API, never TypeScript source parsing, so the
+ * inventory reflects exactly what Playwright itself will execute. Passed to Playwright as
  * `--reporter=` by the containerized child collector
  * `scripts/lib/e2eOwnerInventoryContainer.ts`.
  */

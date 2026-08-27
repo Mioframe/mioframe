@@ -2,8 +2,7 @@ import fs from 'node:fs';
 
 /**
  * Structural primary-owner parsing/validation for target application E2E
- * specs (see docs/testing/verify-redesign-pass-d-implementation.md's
- * "Primary E2E owner contract"). A target E2E spec's owner comes only from
+ * specs. A target E2E spec's owner comes only from
  * its path: `tests/e2e/pages/<Owner>/**\/*.e2e.spec.ts` or
  * `tests/e2e/widgets/<Owner>/**\/*.e2e.spec.ts`. There is no second list of
  * legal owner names; validity is checked directly against the current

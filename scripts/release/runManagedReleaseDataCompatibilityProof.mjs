@@ -22,9 +22,8 @@ import {
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
 // Re-exported for this proof's own consumers/tests; the label and spec are
-// owned by scripts/lib/releaseProofInventory.ts (see
-// docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-// "Make releaseProofInventory.ts the sole exceptional membership owner").
+// owned by scripts/lib/releaseProofInventory.ts, the sole owner of every
+// exceptional release-proof membership constant.
 export { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL, MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC };
 
 const defaultDeps = { runLocalCommand };

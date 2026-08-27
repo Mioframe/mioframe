@@ -9,15 +9,15 @@ import type { RawE2ESpecInventoryEntry } from './e2eOwnerInventory.ts';
 /**
  * Collects the target E2E ownership inventory (spec path plus its union of
  * test annotations) through the repository's existing Playwright container
- * boundary (see docs/testing/verify-redesign-pass-d-correction.md's
- * "Correction A — containerize Playwright ownership inventory"). This
+ * boundary: every Playwright invocation in this repository runs inside that
+ * container, so this ownership inventory reuses the same boundary instead of
+ * invoking Playwright directly from the synchronous planner. This
  * synchronous adapter never invokes Playwright itself; it spawns one narrow
  * async Node child collector (`scripts/lib/e2eOwnerInventoryContainer.ts`)
  * that runs Playwright's `--list` mode against both configs that own target
  * `.e2e.spec.ts` discovery — `playwright.config.ts` for ordinary target E2E
- * and `playwright.release.config.ts` for `productionArtifact/` target E2E
- * (see docs/testing/verify-redesign-pass-d-implementation.md's "Exceptional
- * additional owners") — through `runPlaywrightInContainer`, launching no
+ * and `playwright.release.config.ts` for `productionArtifact/` target E2E —
+ * through `runPlaywrightInContainer`, launching no
  * browser. Filters the merged result down to `.e2e.spec.ts` files only,
  * dropping the release config's colocated appUpdate browser-integration
  * corpus.

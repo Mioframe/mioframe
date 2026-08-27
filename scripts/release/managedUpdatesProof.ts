@@ -25,20 +25,16 @@ import type { ProcessResult } from '../lib/processResult.ts';
  * Runs the two exceptional managed-update proof leaves —
  * `managed-updates-browser-integration` and `managed-updates-e2e` — from the
  * single fixed group inventory registered in
- * `scripts/lib/releaseProofInventory.ts` (see
- * docs/testing/verify-redesign-final-review-correction.md's "Decision 2"):
- * that module is the sole source of truth for group membership and order;
- * this file owns only their fresh-container execution.
+ * `scripts/lib/releaseProofInventory.ts`: that module is the sole source of
+ * truth for group membership and order; this file owns only their
+ * fresh-container execution.
  *
  * Each proof leaf runs its own fixed groups sequentially, each in its own
  * fresh Playwright container (see `pnpm e2e:release`); a later group never
  * starts unless every earlier group in the same leaf passes. There is no
  * cross-type ordering: the browser-integration leaf and the E2E leaf are
  * independent proof leaves, and neither is required to finish before the
- * other starts (see docs/testing/verify-redesign-final-review-correction.md's
- * "Decision 7" — a stale comment previously claimed the whole
- * browser-integration type had to finish before E2E; `scripts/verify.ts`
- * never enforced that, and no accepted contract requires it).
+ * other starts.
  */
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
@@ -74,10 +70,8 @@ function isPassingResult(result: ProcessResult): boolean {
 /**
  * Report an invalid exceptional release-proof membership state and fail
  * closed before any group starts. Invalid, unexpected, duplicate, or
- * malformed registered membership must never become a skip (see
- * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
- * "Make releaseProofInventory.ts the sole exceptional membership owner and
- * validate every execution path").
+ * malformed registered membership must never become a skip: a skip here
+ * would silently drop the managed-update proof this run exists to provide.
  * @param validation - Failed membership validation result.
  * @param leafLabel - Diagnostic label for the proof leaf that failed to start.
  * @returns A failing `{ status: 1, signal: null }` result.
@@ -155,10 +149,8 @@ export interface RunManagedUpdatesProofOptions {
  * registered exceptional browser-integration membership against the current
  * filesystem inventory before starting any group, so a newly added
  * unregistered appUpdate browser-integration spec fails closed here even
- * when this runner is invoked directly (see
- * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
- * "Make releaseProofInventory.ts the sole exceptional membership owner and
- * validate every execution path").
+ * when this runner is invoked directly, independent of whichever caller
+ * (`scripts/verify.ts` or a direct invocation) started it.
  * @param options - Run options.
  * @param deps - Test seams for child-process execution.
  * @returns The last group's normalized `{ status, signal }` result, or a

@@ -4,10 +4,8 @@ import type { ChangedPath, ChangedPathsScopeInput } from './changedPaths.ts';
 
 // Global unit infrastructure: a change here can alter every unit test's
 // resolution/execution, so it always widens to full unit instead of relying
-// on Vitest's own related/changed analysis (see
-// docs/testing/verify-redesign-pass-e-implementation.md's "Git-diff/default
-// scopes"). Keep this narrow and infrastructure-owned; it is not a
-// source-to-test registry.
+// on Vitest's own related/changed analysis. Keep this narrow and
+// infrastructure-owned; it is not a source-to-test registry.
 const UNIT_GLOBAL_INFRA_PATHS: ReadonlySet<string> = new Set([
   'vitest.config.ts',
   'src/setupVitest.ts',
@@ -28,8 +26,8 @@ const SNAPSHOT_SUFFIX = '.snap';
 // tsconfig.src.json, tsconfig.scripts.json, ...) can affect Vitest/Vite
 // TypeScript transform/resolution for every unit test, so they are global
 // unit infrastructure. One narrow root-only pattern instead of enumerating
-// every current filename (see
-// docs/testing/verify-redesign-pass-e-correction.md's "B2").
+// every current filename, so a new root tsconfig variant is covered without
+// an update here.
 const ROOT_TSCONFIG_PATTERN = /^tsconfig[\w.-]*\.json$/;
 
 function isExistingFile(filePath: string): boolean {
@@ -231,8 +229,7 @@ function resolveGitDiffUnitPlan(
       }
 
       // Renamed standard snapshot: prefer the safe full fallback rather than
-      // deterministically proving the complete old/new ownership relation
-      // (see docs/testing/verify-redesign-pass-e-correction.md's "B2").
+      // deterministically proving the complete old/new ownership relation.
       if (isStandardSnapshotPath(change.oldPath) || isStandardSnapshotPath(change.newPath)) {
         fullReasons.push(
           `renamed standard snapshot ${change.oldPath} -> ${change.newPath} cannot be safely represented -> full unit`,
@@ -296,8 +293,7 @@ function resolveGitDiffUnitPlan(
   // A snapshot-owner direct proof cannot be truthfully preserved alongside
   // ordinary Git source/test-support impact with the existing two-strategy
   // shape (native `--changed` xor explicit direct/related paths) without
-  // adding a third strategy; widen to full unit instead (see
-  // docs/testing/verify-redesign-pass-e-correction.md's "B2").
+  // adding a third strategy; widen to full unit instead.
   if (snapshotOwners.size > 0 && hasOrdinaryUnitRelevantChange) {
     return {
       mode: 'full',
@@ -426,8 +422,7 @@ function resolveExplicitFilesUnitPlan(
  * Resolve the unit affected plan for a resolved changed-path scope input.
  * Vitest itself owns the actual dependency/affected relation for `changed`
  * and `explicit`'s `relatedPaths`; this planner only classifies which native
- * Vitest strategy is safe to use (see
- * docs/testing/verify-redesign-pass-e-implementation.md).
+ * Vitest strategy is safe to use.
  * @param input Resolved changed-path scope input (`git-diff` or
  * `explicit-files`), or `null` when no scope applies (for example full mode).
  * @param [options] Resolution options.

@@ -1113,11 +1113,11 @@ describe('buildCommands E2E acquisition seams (cheap classifier gates expensive 
   });
 });
 
-// M1 (docs/testing/verify-redesign-final-review-architecture-revision-agent-task.md's
-// "C. One E2E relevance gate before all E2E structural validation"):
-// target-tree/project-applicability structural validation must sit behind
+// Target-tree/project-applicability structural validation must sit behind
 // the same E2E relevance decision as the expensive Playwright/dependency-
-// cruiser acquisition above, not run unconditionally after it.
+// cruiser acquisition above, not run unconditionally after it: an
+// E2E-irrelevant invocation must not fail on unrelated `tests/e2e/**`
+// structural drift it never selected.
 describe('buildCommands E2E structural validation relevance gate', () => {
   beforeEach(() => {
     validateE2ETargetTreeSpy.mockClear();
@@ -1168,12 +1168,11 @@ describe('buildCommands E2E structural validation relevance gate', () => {
   });
 });
 
-// M1 (docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-// "Make --fix-only return before all proof planning"): a fixer-only build
-// must construct and return its fixer command plan without invoking any
-// non-static proof planner/validator dependency at all, not merely without
-// the expensive Playwright/dependency-cruiser acquisition those planners may
-// trigger.
+// A fixer-only build must construct and return its fixer command plan
+// without invoking any non-static proof planner/validator dependency at
+// all, not merely without the expensive Playwright/dependency-cruiser
+// acquisition those planners may trigger: `--fix-only` never runs a proof
+// leaf, so paying any planner's acquisition cost for it would be pure waste.
 describe('buildCommands --fix-only planning-order seams', () => {
   beforeEach(() => {
     resolveUnitPlanSpy.mockClear();
@@ -1338,8 +1337,8 @@ describe('buildCommands mutation registry scope', () => {
     });
   });
 
-  // B3 (docs/testing/verify-redesign-pass-e-correction.md): literal --full
-  // must not bypass registry structural invalidity before Stryker execution.
+  // Literal --full must not bypass registry structural invalidity before
+  // Stryker execution.
   it('fails closed for an invalid mutation registry state in literal full mode, without a runnable Stryker child', () => {
     const commands = buildCommands([], {
       fullMode: true,
@@ -1370,10 +1369,11 @@ describe('buildCommands mutation registry scope', () => {
       }
     });
 
-    // M2 (docs/testing/verify-redesign-final-review-correction-02-agent-task.md):
-    // deleted/renamed-away mutation infrastructure must still reach
+    // Deleted/renamed-away mutation infrastructure must still reach
     // resolveMutationPlan()'s changed-file classification; it must not be
-    // erased by filesystem-existence filtering before mutation planning.
+    // erased by filesystem-existence filtering before mutation planning,
+    // which would silently drop the mutation proof its removal should
+    // trigger.
     it('passes a deleted/renamed-away path through to the mutation planner instead of filtering it by filesystem existence', () => {
       resolveMutationPlanSpy.mockClear();
       const deletedInfraPath = 'stryker.config.mjs';
@@ -2240,10 +2240,9 @@ describe('getBlockingLogIssue', () => {
     expect(getBlockingLogIssue('type-check', vueWarnLog)).toBeNull();
   });
 
-  // B1 (docs/testing/verify-redesign-pass-e-correction.md): Vitest's own
-  // --changed/related passWithNoTests-implicit-true diagnostic exits 0, so a
-  // unit-relevant scope with zero matching tests must still fail closed
-  // through this same blocking-log mechanism.
+  // Vitest's own --changed/related passWithNoTests-implicit-true diagnostic
+  // exits 0, so a unit-relevant scope with zero matching tests must still
+  // fail closed through this same blocking-log mechanism.
   const noTestFilesLog = [
     'RUN  v4.1.10 /home/mioframe',
     '',

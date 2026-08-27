@@ -2,8 +2,7 @@ import { cruise } from 'dependency-cruiser';
 
 /**
  * Programmatic dependency-cruiser invocation for the E2E affected-owner
- * graph adapter (see docs/testing/verify-redesign-pass-d-implementation.md's
- * "Dependency-cruiser boundary"). Run as its own child process (see
+ * graph adapter. Run as its own child process (see
  * `scripts/lib/e2eGraph.ts`) so the synchronous verify planner never awaits a
  * promise directly; this keeps dependency-cruiser's own async programmatic
  * API isolated to exactly one concrete adapter, acquired once per relevant

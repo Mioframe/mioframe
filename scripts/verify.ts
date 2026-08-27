@@ -226,9 +226,8 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   'artifact-static': 10 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'managed-updates-static': 8 * 60 * 1000,
-  // Split from the historical single `managed-updates` aggregate (see
-  // docs/testing/verify-redesign-implementation-preflight.md's
-  // "Managed-updates grouping"): three sequential fresh-container sessions
+  // Managed-updates is split into its own container sessions rather than
+  // one aggregate run: three sequential fresh-container sessions
   // (lifecycle, migration-isolation, cross-engine) for the
   // browser-integration proof leaf, and two (activation-UI,
   // data-compatibility) for the E2E proof leaf; each session is bounded by
@@ -245,10 +244,8 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
 const cliOnlyType = currentVerifyInvocation?.onlyType ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
 
-// Internal verification-type ownership for every planner leaf label (Pass A
-// of the verify redesign: see
-// docs/testing/verify-redesign-implementation-preflight.md). The public
-// `--only` CLI selects by these types (see resolveVerificationType and
+// Internal verification-type ownership for every planner leaf label. The
+// public `--only` CLI selects by these types (see resolveVerificationType and
 // selectOnlyCommands); leaf labels themselves remain private identifiers for
 // logs, weights, timeouts, and locks. Every proof leaf label must appear
 // here with exactly one type; a label that is a pure execution prerequisite
@@ -496,7 +493,7 @@ const BLOCKING_LOG_SIGNALS: readonly { label: string; marker: string; reason: st
   // vitest CLI): `--changed`/`related` implicitly default passWithNoTests to
   // true, so a unit-relevant scope with zero matching tests still exits 0.
   // Blocking on this exact line keeps that a visible failure instead of a
-  // successful empty pass (see docs/testing/verify-redesign-pass-e-correction.md's "B1").
+  // successful empty pass.
   {
     label: 'unit-tests',
     marker: 'No test files found, exiting with code 0',
@@ -1102,9 +1099,7 @@ function createStorybookBehaviorCommand(
 /**
  * Add the `release-smoke` and/or `managed-updates-e2e` production-artifact
  * E2E leaves when a focused structural E2E plan selects a
- * `productionArtifact/` target under their owner (see
- * docs/testing/verify-redesign-pass-d-implementation.md's "Production-artifact
- * E2E execution boundary"). Reuses the exact same leaf commands
+ * `productionArtifact/` target under their owner. Reuses the exact same leaf commands
  * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
  * default/`--only e2e` relevance without requiring `--full`. Never called
  * from the `fullMode` branch of the e2e command block, so a selected
@@ -1212,13 +1207,13 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
  * `publisher-node-import`, `artifact-static`, `managed-updates-static`) that
  * are relevant outside literal `--full`, using
  * {@link resolveReleaseStaticPlan}'s explicit file capability/configuration
- * ownership (see
- * docs/testing/verify-redesign-final-review-correction.md's "Decision 1").
+ * ownership.
  * `release-version` is deliberately never emitted here: PR release-version
  * policy is owned independently by the develop-CI `release-version` job and
- * by literal `pnpm verify --full` (`addReleaseOnlyCommands` below), and must
- * not leak into affected/default `static` planning (see docs/release.md's
- * "What CI verifies automatically"). Reuses the exact same leaf commands
+ * by literal `pnpm verify --full` (`addReleaseOnlyCommands` below); emitting
+ * it here would let ordinary affected/default runs assert a version outcome
+ * that only CI's dedicated job and `--full` are authorized to check (see
+ * docs/release.md's "What CI verifies automatically"). Reuses the exact same leaf commands
  * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
  * default/`--only static` relevance without requiring `--full`. Never called
  * from the `fullMode` branch, so a leaf is never duplicated against
@@ -1288,15 +1283,13 @@ function addReleaseStaticCommands(commands: CommandEntry[], plan: ReleaseStaticP
 /**
  * Add the two browser-integration managed-update leaves (`artifact`,
  * `managed-updates-browser-integration`) when they are relevant, using
- * {@link resolveBrowserIntegrationPlan}'s owner-local path-based planning
- * (see docs/testing/verify-redesign-pass-c-implementation.md's
- * "Browser-integration type-local planning"). Literal `--full` also goes
- * through the same resolver (via its `fullMode` option) instead of
- * constructing a literal plan directly, so exceptional membership validation
- * runs before every execution boundary, including literal `--full` (see
- * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
- * "Make releaseProofInventory.ts the sole exceptional membership owner and
- * validate every execution path").
+ * {@link resolveBrowserIntegrationPlan}'s owner-local path-based planning.
+ * Literal `--full` also goes through the same resolver (via its `fullMode`
+ * option) instead of constructing a literal plan directly, so exceptional
+ * managed-update membership has exactly one owner and its validation runs
+ * before every execution boundary, including literal `--full`. A second,
+ * independently constructed literal plan would risk drifting from the
+ * resolver's membership and skipping that validation.
  * @param commands Command list to push into.
  * @param options Build options.
  * @param options.fullMode Full-project release mode.
@@ -1355,15 +1348,17 @@ function addBrowserIntegrationCommands(
 }
 
 /**
- * Add the generic owner-local `browser-integration-local` leaf when relevant
- * (see docs/testing/verify-redesign-pass-d-implementation.md's "Generic
- * owner-local browser-integration execution"). Reuses
- * {@link resolveGenericBrowserIntegrationPlan}'s path-based planning outside
- * full mode; `--full` runs the complete current generic inventory
+ * Add the generic owner-local `browser-integration-local` leaf when relevant.
+ * Reuses {@link resolveGenericBrowserIntegrationPlan}'s path-based planning
+ * outside full mode; `--full` runs the complete current generic inventory
  * unconditionally. Always passes an explicit spec list — never a bare
  * `pnpm test:browser-integration` invocation — so this generic leaf can
  * never accidentally sweep in the appUpdate managed-update corpus that also
- * matches `playwright.browserIntegration.config.ts`'s broad `src/**` testMatch.
+ * matches `playwright.browserIntegration.config.ts`'s broad `src/**` testMatch;
+ * that corpus has its own dedicated exceptional leaves
+ * (`managed-updates-browser-integration`) with their own container-session
+ * count and membership validation, and running it again here would duplicate
+ * that proof under the wrong label and weight.
  * @param commands Command list to push into.
  * @param options Build options.
  * @param options.fullMode Full-project release mode.
@@ -1411,10 +1406,10 @@ export interface BuildCommandsOptions {
   /**
    * Resolved `--only` verification type; defaults to the CLI-resolved value.
    * Gates whether the expensive structural E2E graph/Playwright-ownership
-   * acquisition runs at all (see docs/testing/verify-redesign-pass-d-implementation.md's
-   * "Do not acquire the graph or Playwright E2E owner inventory for a
-   * `--only <non-e2e-type>` invocation"): only relevant when `null` (default,
-   * every type) or `'e2e'`.
+   * acquisition runs at all: it is only relevant when `null` (default, every
+   * type) or `'e2e'`, since no other `--only <type>` invocation can select an
+   * e2e leaf, and building that graph/inventory unconditionally would pay
+   * its cost on every focused non-e2e invocation for no proof it uses.
    */
   onlyType?: VerificationType | null;
   /**
@@ -1452,9 +1447,8 @@ export interface BuildCommandsOptions {
    * equivalent static-build prerequisite. Has no effect on any other label
    * and does not change `--full` or the ordinary (non-GitHub-focused-static)
    * reuse-aware trigger. There is no public CLI flag or persisted field for
-   * this (see docs/testing/verify-redesign-pass-b-implementation.md's
-   * "Storybook CI fallback"); `main()` derives it from the resolved
-   * invocation as `profile === 'github-actions' && onlyType === 'static'`.
+   * this; `main()` derives it from the resolved invocation as
+   * `profile === 'github-actions' && onlyType === 'static'`.
    * Defaults to `false`.
    */
   storybookBuildCiFallback?: boolean;
@@ -1602,9 +1596,9 @@ export function buildCommands(
 
   // No non-static proof planner/validator is resolved before this point:
   // `--fix-only` constructs and returns its fixer-only command plan above
-  // without invoking any of the planners/validators below (see
-  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-  // "Make --fix-only return before all proof planning").
+  // without invoking any of the planners/validators below, since `--fix-only`
+  // never runs a proof leaf and paying their acquisition cost would be pure
+  // waste.
   const unitPlan: UnitPlan =
     unitPlanOverride ??
     (fullMode
@@ -1617,22 +1611,21 @@ export function buildCommands(
         ));
   // Expensive structural E2E graph/Playwright-ownership acquisition only
   // runs when e2e is actually relevant to this invocation (default, or
-  // `--only e2e`); see docs/testing/verify-redesign-pass-d-implementation.md's
-  // "Do not acquire the graph or Playwright E2E owner inventory for a
-  // `--only <non-e2e-type>` invocation". The placeholder plan below is never
-  // observed in a final `--only <non-e2e-type>` result: selectOnlyCommands
-  // filters every `e2e`-typed entry out for any other type.
+  // `--only e2e`): a `--only <non-e2e-type>` invocation can never select an
+  // e2e leaf (selectOnlyCommands filters every `e2e`-typed entry out for any
+  // other type), so acquiring the graph/inventory for it would pay real cost
+  // for proof it never uses. The placeholder plan below is never observed in
+  // a final `--only <non-e2e-type>` result for the same reason.
   //
   // A second, cheap gate applies even when e2e IS the relevant type for this
   // invocation (default or `--only e2e`): `--fix-only` never needs E2E
   // acquisition at all (already returned above), and a changed-path set that
   // {@link canChangedPathsAffectE2E} can cheaply prove E2E-irrelevant skips
-  // acquisition too (see
-  // docs/testing/verify-redesign-final-review-correction.md's "Decision 6").
-  // The classifier is conservative (false positives acquire; false
-  // negatives never happen), and literal `--full` always acquires
-  // unconditionally regardless of the classifier, since it must still
-  // perform complete structural validation.
+  // acquisition too, since running the acquisition anyway would pay its cost
+  // for a scope that cannot select any e2e leaf. The classifier is
+  // conservative (false positives acquire; false negatives never happen),
+  // and literal `--full` always acquires unconditionally regardless of the
+  // classifier, since it must still perform complete structural validation.
   const needsStructuralE2EPlanning =
     (onlyType === null || onlyType === 'e2e') &&
     (fullMode || canChangedPathsAffectE2E(changedFiles, { packageJsonOldRef }));
@@ -1645,9 +1638,7 @@ export function buildCommands(
   // filesystem/registry inspection, not merely expensive
   // Playwright/dependency-cruiser acquisition, so it is gated behind the same
   // E2E relevance decision as `structuralE2EPlan` above rather than resolved
-  // unconditionally (see
-  // docs/testing/verify-redesign-final-review-architecture-revision.md's "E2E
-  // relevance gate"): an E2E-irrelevant invocation (docs-only default, or
+  // unconditionally: an E2E-irrelevant invocation (docs-only default, or
   // `--only <non-e2e>`) must not fail on unrelated `tests/e2e/**` structural
   // drift it never selected. Literal `--full` and every E2E-relevant scope
   // still retain complete validation, matching `needsStructuralE2EPlanning`.
@@ -1673,9 +1664,10 @@ export function buildCommands(
   // must still be classified: passes the status-preserving `changedFiles`
   // projection, not the filesystem-existence-filtered
   // `existingChangedFiles`, so a removed registered path is never erased
-  // before mutation impact classification (see
-  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-  // "Preserve deleted/renamed mutation infrastructure impact").
+  // before mutation impact classification. Filtering by current filesystem
+  // existence first would make a deleted config file invisible to the
+  // mutation planner, silently dropping the mutation proof its removal
+  // should trigger.
   const mutationPlan: MutationPlan =
     mutationPlanOverride ?? resolveMutationPlan(changedFiles, { packageJsonOldRef });
   const releaseStaticPlan: ReleaseStaticPlan = fullMode
@@ -2008,18 +2000,16 @@ export function buildCommands(
 
   // Literal full mode runs the complete registered mutation inventory
   // already registered in stryker.config.mjs, with no affected `-m` override.
-  // Focused/default mode selects only from the explicit registry (see
-  // docs/testing/verify-redesign-pass-e-implementation.md's "Architecture
-  // decision — mutation"): a registered target's exact source or owning
-  // test changed, or a mutation registry/infrastructure change selects the
-  // complete registered inventory. Invalid registry state fails closed
-  // before any Stryker execution.
+  // Focused/default mode selects only from the explicit registry: a
+  // registered target's exact source or owning test changed, or a mutation
+  // registry/infrastructure change selects the complete registered
+  // inventory. Invalid registry state fails closed before any Stryker
+  // execution.
   if (mutationPlan.mode === 'invalid') {
     // Registry structural invalidity must fail before any Stryker child
     // execution in every mode, including literal --full: check this before
     // fullMode so an invalid registry can never reach the unconditional full
-    // `pnpm exec stryker run` below (see
-    // docs/testing/verify-redesign-pass-e-correction.md's "B3").
+    // `pnpm exec stryker run` below.
     commands.push({
       kind: 'failed',
       label: 'mutation',
@@ -2068,9 +2058,8 @@ export function buildCommands(
 /**
  * Select the planned command entries for a resolved `--only` verification
  * type. Selects every proof leaf owned by that type, plus the `e2e-install`
- * pure execution prerequisite when `e2e` is selected (see
- * docs/testing/verify-redesign-pass-b-implementation.md's "Type selection");
- * no other type ever selects a leaf owned by another type. An empty
+ * pure execution prerequisite when `e2e` is selected; no other type ever
+ * selects a leaf owned by another type. An empty
  * selection — for example `--only performance`, which currently has no
  * persistent proof inventory — is a valid, non-failing outcome, not an
  * error.
@@ -2141,10 +2130,10 @@ export function getActionRequired(
     (result) => result.status !== 'failed' && result.hasWarnings,
   );
 
-  // A full invocation can never be reformatted as `--full --only <type>` (see
-  // docs/testing/verify-redesign-pass-b-implementation.md's "Rerun/status
-  // behavior"), so a failure/warning during full mode retains the valid
-  // full-scope rerun instead of narrowing by verification type.
+  // `--full` and `--only` are mutually exclusive CLI flags (resolveVerifyInvocation
+  // rejects `--full --only <type>`), so a failure/warning during full mode
+  // retains the valid full-scope rerun instead of narrowing by verification
+  // type.
   const getRerunCommand = (label: string, profileOverride?: 'github-actions') =>
     fullMode
       ? getVerifyRerunCommand(invocation, { profile: profileOverride })
@@ -2447,8 +2436,7 @@ export interface VerifyChangedPathContext {
   /**
    * Resolved changed-path scope input (`git-diff` with per-path status, or
    * `explicit-files`), preserved for the unit planner's status-aware
-   * classification (see docs/testing/verify-redesign-pass-e-implementation.md's
-   * "Unit planner"). `null` for full mode, which needs no scope input.
+   * classification. `null` for full mode, which needs no scope input.
    */
   input: ChangedPathsScopeInput | null;
 }

@@ -22,8 +22,7 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
-  // Structural E2E ownership (see
-  // docs/testing/verify-redesign-pass-d-implementation.md): ordinary target
+  // Structural E2E ownership: ordinary target
   // E2E lives only under tests/e2e/pages/<Owner>/**/*.e2e.spec.ts or
   // tests/e2e/widgets/<Owner>/**/*.e2e.spec.ts. productionArtifact/ specs
   // are structurally the same target E2E, but require production/managed-

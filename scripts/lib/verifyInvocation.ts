@@ -14,8 +14,7 @@ export const MAX_STORYBOOK_BEHAVIOR_REPEAT = 20;
  * This is the complete public `--only` contract: low-level runner/check
  * labels (format, Oxlint, ESLint, type-check, Storybook build, individual
  * release-runtime checks, and so on) are private verifier implementation
- * identifiers only and are never accepted through public `--only` (see
- * docs/testing/verify-redesign-pass-b-implementation.md).
+ * identifiers only and are never accepted through public `--only`.
  */
 export const VERIFICATION_TYPES = [
   'static',

@@ -1,12 +1,14 @@
 /**
  * Single shared capability owner for Vite-backed global/ownerless build and
- * application-harness inputs (see
- * docs/testing/verify-redesign-final-review-architecture-revision-02.md's
- * "Shared Vite-backed inputs"): `vite.config.ts` imports `config/alias.ts`
+ * application-harness inputs: `vite.config.ts` imports `config/alias.ts`
  * and `config/plugins/**` and derives its build target from
  * `.browserslistrc`; Vite automatically loads root PostCSS configuration and
  * root TypeScript build configuration; Storybook's `@storybook/vue3-vite`
- * builder also loads/merges the same root Vite configuration.
+ * builder also loads/merges the same root Vite configuration. Because every
+ * one of these build-backed types consumes the same shared root
+ * configuration, a change to it must widen relevance to all of them from one
+ * owner here — attributing it to only one build type's own risk module would
+ * miss the others silently.
  *
  * This module is only a path predicate, not a dependency/import graph:
  * `config/**` narrowing excludes deterministic test/spec/story/test-helper

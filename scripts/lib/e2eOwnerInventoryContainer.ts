@@ -5,9 +5,7 @@ import path from 'node:path';
 import { runPlaywrightInContainer } from '../playwrightContainer.ts';
 
 /**
- * Narrow async child collector for the target E2E ownership inventory (see
- * docs/testing/verify-redesign-pass-d-correction.md's "Correction A —
- * containerize Playwright ownership inventory"). Run as its own Node child
+ * Narrow async child collector for the target E2E ownership inventory. Run as its own Node child
  * process from the synchronous `scripts/lib/e2eOwnerInventoryCollector.ts`
  * adapter so the verifier planner never has to await a promise. Collects
  * Playwright `--list` inventory for both configs that own target

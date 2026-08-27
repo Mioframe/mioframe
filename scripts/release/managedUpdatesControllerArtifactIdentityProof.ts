@@ -1,11 +1,9 @@
 /**
- * Static build/artifact invariant, extracted from the historical Playwright
- * `managedUpdatesControllerArtifactIdentity.spec.ts` (see
- * docs/testing/verify-redesign-implementation-preflight.md's managed-updates
- * grouping: "controller artifact byte identity is static proof and no
- * longer requires Playwright classification"): the managed controller
- * worker artifact (`dist/sw.js`) must never embed application release
- * identity. Proves this by comparing `dist/sw.js` bytes across two
+ * Static build/artifact invariant: the managed controller worker artifact
+ * (`dist/sw.js`) must never embed application release identity, so this
+ * proof only needs to inspect built output, not a running browser, and runs
+ * as a plain static Node check rather than a Playwright classification.
+ * Proves this by comparing `dist/sw.js` bytes across two
  * otherwise equivalent managed builds that differ only in
  * VITE_BUILD_ID/VITE_BUILD_DATE — the application's own release identity
  * inputs (see src/shared/config.ts's APP_BUILD_ID/APP_BUILD_DATE). See

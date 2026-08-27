@@ -1,9 +1,12 @@
 /**
  * Additional-owner annotation validation, and filesystem/Playwright
- * completeness validation, over a collected target E2E inventory (see
- * docs/testing/verify-redesign-pass-d-implementation.md's "Exceptional
- * additional owners" and docs/testing/verify-redesign-pass-d-correction.md's
- * "Remaining blocker — ownership inventory completeness"). This module is
+ * completeness validation, over a collected target E2E inventory. The
+ * filesystem `.e2e.spec.ts` listing and the Playwright-reported inventory
+ * must match exactly: a spec Playwright cannot discover (misconfigured
+ * project/testMatch) or a file on disk Playwright silently drops both mean
+ * the affected-owner planner is working from an inventory that does not
+ * match what will actually execute, so any mismatch fails closed rather than
+ * proceeding on a partial or guessed ownership set. This module is
  * pure: it consumes an already-collected inventory (real collection goes
  * through the synchronous `scripts/lib/e2eOwnerInventoryCollector.ts`
  * adapter, which runs Playwright's list/reporter inside the containerized
@@ -199,8 +202,7 @@ export interface E2EOwnerInventoryCompletenessValidation {
 /**
  * Validate that the collected Playwright target E2E inventory and the
  * structurally valid filesystem target E2E tree represent the exact same
- * spec set (see docs/testing/verify-redesign-pass-d-correction.md's
- * "Fail-closed filesystem / Playwright inventory equality"). A filesystem
+ * spec set. A filesystem
  * target missing from the collected inventory, or a collected entry that is
  * not a current filesystem target, is structural invalidity: an empty or
  * partial Playwright inventory must never be accepted as complete merely

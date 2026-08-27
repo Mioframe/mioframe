@@ -20,9 +20,8 @@ export interface E2EProjectApplicabilityEntry {
 const VALID_APPLICABILITY_VALUES = new Set<E2EProjectApplicability>(['desktop', 'mobile', 'both']);
 
 /**
- * Explicit project applicability for every current target E2E spec (see
- * docs/testing/verify-redesign-pass-d-implementation.md's "Project
- * applicability"). Separate from primary/additional E2E ownership: this
+ * Explicit project applicability for every current target E2E spec.
+ * Separate from primary/additional E2E ownership: this
  * registry owns which Playwright project(s) a spec runs in, never which
  * specs a source change selects. Every `tests/e2e/pages/<Owner>/**` /
  * `tests/e2e/widgets/<Owner>/**` `*.e2e.spec.ts` file, including

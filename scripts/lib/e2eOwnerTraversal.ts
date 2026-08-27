@@ -1,10 +1,8 @@
 /**
  * Pure reverse-dependency-graph traversal for structural E2E affected-owner
- * discovery (see docs/testing/verify-redesign-pass-d-implementation.md's
- * "Reverse-owner traversal"). Consumes a plain reverse-dependency graph
- * object so unit tests can use small explicit fixtures without invoking
- * dependency-cruiser; real graph acquisition lives in
- * `scripts/lib/e2eGraph.ts`.
+ * discovery. Consumes a plain reverse-dependency graph object so unit tests
+ * can use small explicit fixtures without invoking dependency-cruiser; real
+ * graph acquisition lives in `scripts/lib/e2eGraph.ts`.
  */
 
 import { getPageOwnerIdForSourcePath, getWidgetOwnerIdForSourcePath } from './e2eOwner.ts';

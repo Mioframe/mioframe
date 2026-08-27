@@ -1,10 +1,7 @@
 /**
  * Owner-local planning for the browser-integration verification type: the
- * managed-update proof (see
- * docs/testing/verify-redesign-pass-c-implementation.md's "Browser-integration
- * type-local planning") and the generic owner-local `browser-integration-local`
- * leaf (see docs/testing/verify-redesign-pass-d-implementation.md's "Generic
- * owner-local browser-integration execution"). Reuses the existing `artifact`
+ * managed-update proof and the generic owner-local
+ * `browser-integration-local` leaf. Reuses the existing `artifact`
  * and `managed-updates-browser-integration` verifier leaves/orchestration
  * (`scripts/release/managedUpdatesProof.ts`, `scripts/e2eReleaseContainer.mjs`,
  * `playwright.release.config.ts`) for the managed-update proof, and the
@@ -36,17 +33,15 @@ export { PRODUCTION_ARTIFACT_SMOKE_SPEC };
 
 // Broad blast-radius paths: the release Playwright config/container runner,
 // the shared managed-release fixture/publisher/artifact build support the
-// managed-update corpus exercises (see
-// docs/testing/verify-redesign-final-review-correction.md's "Decision 3"),
-// the managed-update group/orchestration definition, this resolver's own
-// module, and the verifier planner entry point. A change here can affect
-// every browser-integration spec, so it always triggers both leaves instead
-// of relying on path-based ownership. The shared Playwright command/lock/
-// result/signal execution boundary is a separate authoritative source of
-// truth, checked by {@link isFullBrowserIntegrationLanePath} below rather
-// than duplicated here (see
-// docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Shared Playwright execution infrastructure").
+// managed-update corpus exercises, the managed-update group/orchestration
+// definition, this resolver's own module, and the verifier planner entry
+// point. A change here can affect every browser-integration spec, so it
+// always triggers both leaves instead of relying on path-based ownership.
+// The shared Playwright command/lock/result/signal execution boundary is a
+// separate authoritative source of truth, checked by
+// {@link isFullBrowserIntegrationLanePath} below rather than duplicated
+// here, since it widens relevance across every Playwright-container-backed
+// type, not only browser-integration.
 const FULL_LANE_EXACT_FILES = new Set([
   'playwright.release.config.ts',
   'scripts/e2eReleaseContainer.mjs',
@@ -132,12 +127,11 @@ export interface ResolveBrowserIntegrationPlanOptions {
   /**
    * Literal `--full`: run the complete managed-update browser-integration
    * lane unconditionally, skipping changed-file-based selection. Exceptional
-   * membership validation still runs first (see
-   * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
-   * "Make releaseProofInventory.ts the sole exceptional membership owner and
-   * validate every execution path"), so an unregistered special spec still
-   * fails closed under literal `--full` instead of being silently swept in
-   * or omitted.
+   * membership validation still runs first: `releaseProofInventory.ts` is
+   * the sole owner of the exceptional managed-update inventory, and every
+   * execution path — including literal `--full` — validates against it, so
+   * an unregistered special spec still fails closed under literal `--full`
+   * instead of being silently swept in or omitted.
    */
   fullMode?: boolean;
 }
@@ -254,12 +248,9 @@ export function resolveBrowserIntegrationPlan(
 // The shared Playwright command/lock/result/signal execution boundary is a
 // separate authoritative source of truth, checked directly in
 // {@link resolveGenericBrowserIntegrationPlan} below rather than duplicated
-// here (see
-// docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Shared Playwright execution infrastructure"): the generic public
-// browser-integration inventory must widen on the same shared hit as the
-// exceptional inventory, so the complete public browser-integration type is
-// selected together.
+// here: the generic public browser-integration inventory must widen on the
+// same shared hit as the exceptional inventory, so the complete public
+// browser-integration type is selected together.
 const GENERIC_FULL_LANE_EXACT_FILES = new Set([
   'playwright.browserIntegration.config.ts',
   'scripts/browserIntegration.ts',
@@ -389,9 +380,7 @@ export interface ResolveGenericBrowserIntegrationPlanDeps {
  * {@link resolveBrowserIntegrationPlan}. Reuses the same
  * `isPackageJsonRuntimeRelevantChange` decision as the exceptional
  * resolver, so a runtime-relevant `package.json` change widens the complete
- * public browser-integration type across both execution paths (see
- * docs/testing/verify-redesign-final-review-architecture-revision-02.md's
- * "Browser-integration package impact").
+ * public browser-integration type across both execution paths.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [deps] Test-only dependencies.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.

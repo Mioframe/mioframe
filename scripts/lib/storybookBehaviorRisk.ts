@@ -23,9 +23,9 @@ const COLOCATED_BEHAVIOR_SPEC_SUFFIX = '.behavior.spec.ts';
 // always triggers a full lane run instead of relying on owner-local
 // ownership. The shared Playwright command/lock/result/signal execution
 // boundary is a separate authoritative source of truth, checked by
-// {@link isFullStorybookBehaviorLanePath} below rather than duplicated here
-// (see docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Shared Playwright execution infrastructure").
+// {@link isFullStorybookBehaviorLanePath} below rather than duplicated here,
+// since it widens relevance across every Playwright-container-backed type,
+// not only storybook-behavior.
 const FULL_LANE_EXACT_FILES = new Set([
   'playwright.storybook.config.ts',
   'scripts/lib/storybookBehaviorRisk.ts',

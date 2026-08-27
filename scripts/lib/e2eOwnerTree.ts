@@ -5,12 +5,12 @@ import { validateE2ETargetPath, type E2ETargetPathValidation } from './e2eOwner.
 
 /**
  * Filesystem-only structural invariant check: every `*.e2e.spec.ts` file
- * under `tests/e2e/` must be a structurally valid target E2E path (see
- * docs/testing/verify-redesign-pass-d-implementation.md's "Primary E2E owner
- * contract" — "A target E2E spec outside these two trees is structural
- * invalidity and fails E2E verification. It is not a harmless full-lane
- * fallback."). Independent of Playwright/dependency-cruiser acquisition, so
- * it is always cheap to run.
+ * under `tests/e2e/` must be a structurally valid target E2E path. A target
+ * E2E spec outside `tests/e2e/pages/<Owner>/` or `tests/e2e/widgets/<Owner>/`
+ * is structural invalidity and fails E2E verification; it is not a harmless
+ * full-lane fallback, since a misplaced spec would otherwise silently escape
+ * affected-owner attribution. Independent of Playwright/dependency-cruiser
+ * acquisition, so it is always cheap to run.
  */
 
 const E2E_ROOT = 'tests/e2e';

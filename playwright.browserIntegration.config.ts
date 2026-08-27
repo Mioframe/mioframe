@@ -16,13 +16,13 @@ const previewURLPattern = new RegExp(
 // without exercising a complete product flow. This is a generic
 // Chromium-only execution path for ordinary (non-managed-update)
 // browser-integration specs. The managed-update/artifact corpus under
-// `src/shared/service/appUpdate/` requires playwright.release.config.ts's
-// fresh-container, built-artifact, and cross-engine execution instead (see
-// docs/testing/verify-redesign-pass-c-implementation.md's "Managed-update
-// execution semantics"), so this generic config structurally excludes it —
-// bare `pnpm test:browser-integration` must never be able to collect the
-// appUpdate special corpus (see
-// docs/testing/verify-redesign-final-review-correction.md's "Decision 4").
+// `src/shared/service/appUpdate/` needs a fresh-container, built-artifact,
+// cross-engine run instead of this generic dev-preview single-browser one —
+// playwright.release.config.ts owns that execution — so this generic config
+// structurally excludes it via `testIgnore` below: bare
+// `pnpm test:browser-integration` must never be able to collect the
+// appUpdate special corpus and silently run it under the wrong execution
+// model.
 export default defineConfig({
   testDir: '.',
   testMatch: ['src/**/*.browser-integration.spec.ts'],

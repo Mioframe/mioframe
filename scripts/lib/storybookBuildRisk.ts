@@ -12,9 +12,8 @@ const PACKAGE_JSON_PATH = 'package.json';
 // `postcss.config.js`, `.browserslistrc`, root `tsconfig*.json`,
 // non-test/proof `config/**`, `public/**`) and the shared local-command
 // execution boundary are owned by their dedicated capability modules rather
-// than duplicated here (see
-// docs/testing/verify-redesign-final-review-architecture-revision-02.md's
-// "Shared local command execution" and "Shared Vite-backed inputs").
+// than duplicated here, since they widen relevance across every build type
+// that consumes them, not only storybook-build.
 const STORYBOOK_BUILD_EXACT_FILES = new Set([
   'pnpm-lock.yaml',
   'scripts/storybook.mjs',

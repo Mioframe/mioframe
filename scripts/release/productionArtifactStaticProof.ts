@@ -1,9 +1,8 @@
 /**
  * Static production-artifact proof: the deterministic emitted-file/manifest/
- * generated-artifact assertions split out of the historical
- * `productionArtifactSmoke.browser-integration.spec.ts` Playwright suite (see
- * docs/testing/verify-redesign-implementation-preflight.md's "Production
- * artifact split"). These never load a page or a browser, so they run as
+ * generated-artifact assertions that belong beside
+ * `productionArtifactSmoke.browser-integration.spec.ts`'s Playwright suite.
+ * These never load a page or a browser, so they run as
  * plain Node tooling proof against the built `dist/` directory instead of
  * through Playwright. Browser-loaded page, service-worker/runtime, SPA
  * fallback, and managed-controller-capability assertions remain in that
@@ -35,12 +34,11 @@ function collectJsFiles(dir: string): string[] {
 
 /**
  * Validates the deterministic generated PWA manifest (`dist/manifest.webmanifest`)
- * against the configured release base path. Preserves the manifest-content
- * meaning historically asserted in the browser-integration
- * `productionArtifactSmoke.browser-integration.spec.ts` suite (see
- * docs/testing/verify-redesign-implementation-preflight.md's "Release-suite
- * reclassification"): the manifest is valid JSON, `name` is a string, and
- * `start_url` or `scope` is scoped to the configured base path. Browser
+ * against the configured release base path, matching the manifest-content
+ * meaning also asserted in the browser-integration
+ * `productionArtifactSmoke.browser-integration.spec.ts` suite: the manifest
+ * is valid JSON, `name` is a string, and `start_url` or `scope` is scoped to
+ * the configured base path. Browser
  * proof (page manifest link + fetchability) remains in that Playwright spec.
  * @param distDir - Built artifact directory to validate.
  * @param basePath - Configured release base path (e.g. `/`).

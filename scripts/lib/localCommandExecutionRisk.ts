@@ -1,14 +1,16 @@
 /**
  * Single source of truth for the neutral command/lock/result/signal
  * execution boundary shared by every current verifier proof path that
- * actually executes a local command through it, independent of Playwright
- * (see docs/testing/verify-redesign-final-review-architecture-revision-02.md's
- * "Shared local command execution"): `scripts/release/buildArtifact.mjs`,
+ * actually executes a local command through it, independent of Playwright:
+ * `scripts/release/buildArtifact.mjs`,
  * `scripts/release/productionArtifactStaticProof.ts`,
  * `scripts/release/managedUpdatesControllerArtifactIdentityProof.ts`, and
  * `scripts/storybook.mjs` use this boundary directly, and
  * `scripts/playwrightContainer.ts` also calls into it for every
- * Playwright-container-backed type.
+ * Playwright-container-backed type. Because every one of those consuming
+ * types shares this one execution boundary, a change to it must widen
+ * relevance to all of them from one owner here — attributing it to only one
+ * consuming type's own risk module would miss the others silently.
  *
  * This module is only a path predicate, not a verification-type registry:
  * consuming planners remain the single owner of which of their own leaves a

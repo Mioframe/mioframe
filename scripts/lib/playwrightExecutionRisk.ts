@@ -6,9 +6,7 @@ import { isSharedLocalCommandExecutionPath } from './localCommandExecutionRisk.t
  * (behavior, visual, browser-integration, and E2E): the Playwright-specific
  * container/tooling/lock infrastructure `scripts/playwrightContainer.ts`
  * itself reads, composed with the neutral local command/lock/result/signal
- * execution boundary it also calls into (see
- * docs/testing/verify-redesign-final-review-architecture-revision-02.md's
- * "Shared local command execution"). A change to any of these paths can
+ * execution boundary it also calls into. A change to any of these paths can
  * alter container startup, locking, process-result propagation, or signal
  * handling for every consumer, so it always widens each consuming type's
  * affected planner to its complete owning type instead of a narrower

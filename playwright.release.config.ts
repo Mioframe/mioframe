@@ -28,13 +28,11 @@ const isManagedCompatibilityRun = process.env.MANAGED_COMPAT_WORK_DIR !== undefi
 
 export default defineConfig({
   testDir: '.',
-  // Target productionArtifact/ E2E (see
-  // docs/testing/verify-redesign-pass-d-implementation.md): structurally the
-  // same pages/<Owner>/widgets/<Owner> target E2E as playwright.config.ts,
-  // but requiring production/managed-release execution, so they stay
-  // discovered here instead. The managed-update browser-integration corpus
-  // lives at its truthful owner under src/shared/service/appUpdate (see
-  // docs/testing/verify-redesign-pass-c-implementation.md). Both trees run
+  // Target productionArtifact/ E2E: structurally the same
+  // pages/<Owner>/widgets/<Owner> target E2E as playwright.config.ts, but
+  // requiring production/managed-release execution, so they stay discovered
+  // here instead. The managed-update browser-integration corpus lives at its
+  // truthful owner under src/shared/service/appUpdate. Both trees run
   // through this same fresh-container Playwright config/execution
   // infrastructure, which needs their built-artifact/cross-engine semantics.
   testMatch: [

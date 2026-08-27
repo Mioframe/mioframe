@@ -5,14 +5,14 @@ import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
 /**
  * Explicit affected ownership for the release-sensitive `static` leaves that
  * were historically created only as a side effect of literal
- * `pnpm verify --full` (see
- * docs/testing/verify-redesign-final-review-correction.md's "Decision 1"):
- * `release-config`, `build`, `publisher-node-import`, `artifact-static`, and
- * `managed-updates-static`. `release-version` is deliberately excluded from
- * affected selection: PR release-version policy is owned independently by
- * the develop-CI `release-version` job and by literal `pnpm verify --full`
- * (see docs/release.md's "What CI verifies automatically"), so this planner
- * must not select it merely because a version-policy input changed. This is
+ * `pnpm verify --full`: `release-config`, `build`, `publisher-node-import`,
+ * `artifact-static`, and `managed-updates-static`. `release-version` is
+ * deliberately excluded from affected selection: PR release-version policy
+ * is owned independently by the develop-CI `release-version` job and by
+ * literal `pnpm verify --full` (see docs/release.md's "What CI verifies
+ * automatically"), so emitting it here would let an ordinary
+ * affected/default run assert a version outcome that only CI's dedicated job
+ * and `--full` are authorized to check. This is
  * a narrow static-specific resolver derived from explicit file capability/
  * configuration ownership, not a general registry/framework: every trigger
  * below is the exact file (or narrow prefix) the corresponding proof script
@@ -33,9 +33,8 @@ const RELEASE_CONFIG_EXACT_FILES: ReadonlySet<string> = new Set([
 // capability class capable of entering or altering the real Vite production
 // artifact that `scripts/release/buildArtifact.mjs` builds and
 // `scripts/release/productionArtifactStaticProof.ts` validates (emitted
-// JS/manifest/controller worker), so both leaves are selected together (see
-// docs/testing/verify-redesign-final-review-architecture-revision-02.md's
-// "Shared Vite-backed inputs"). Global/ownerless Vite build and application-
+// JS/manifest/controller worker), so both leaves are selected together.
+// Global/ownerless Vite build and application-
 // harness inputs (`vite.config.ts`, `postcss.config.js`, `.browserslistrc`,
 // root `tsconfig*.json`, non-test/proof `config/**`, `public/**`,
 // `index.html`, `pwa-assets.config.ts`) are owned by the shared

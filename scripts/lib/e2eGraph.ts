@@ -1,8 +1,6 @@
 /**
  * I/O boundary for the production reverse-dependency graph used by
- * structural E2E affected-owner discovery (see
- * docs/testing/verify-redesign-pass-d-implementation.md's
- * "Dependency-cruiser boundary"). Deliberately separated from the pure
+ * structural E2E affected-owner discovery. Deliberately separated from the pure
  * traversal logic in `scripts/lib/e2eOwnerTraversal.ts` so resolver unit
  * tests use small explicit graph fixtures and never execute
  * dependency-cruiser. The actual `cruise()` call runs in a dedicated child

@@ -23,9 +23,8 @@ const COLOCATED_VISUAL_SNAPSHOT_MARKER = `${COLOCATED_VISUAL_SPEC_SUFFIX}-snapsh
 // a full lane run instead of relying on owner-local ownership. The shared
 // Playwright command/lock/result/signal execution boundary is a separate
 // authoritative source of truth, checked by {@link isFullVisualLanePath}
-// below rather than duplicated here (see
-// docs/testing/verify-redesign-final-review-architecture-revision.md's
-// "Shared Playwright execution infrastructure").
+// below rather than duplicated here, since it widens relevance across every
+// Playwright-container-backed type, not only visual.
 const FULL_LANE_EXACT_FILES = new Set([
   'playwright.visual.config.ts',
   'scripts/lib/visualRisk.ts',

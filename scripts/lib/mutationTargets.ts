@@ -6,14 +6,12 @@ const PACKAGE_JSON_PATH = 'package.json';
 
 // Mutation infrastructure: a change here can alter every registered target's
 // execution/ownership, so it always selects the complete registered
-// inventory instead of the exact affected-source relation below (see
-// docs/testing/verify-redesign-pass-e-implementation.md's "Stryker
-// execution"). `pnpm-lock.yaml` is included because a lockfile change can
-// alter the resolved Stryker/Vitest-runner toolchain the same way a
-// runtime-relevant `package.json` change can (see
-// docs/testing/verify-redesign-final-review-correction.md's "Decision 5");
-// runtime-relevant `package.json` changes are handled separately below since
-// a confirmed version-only change must not widen mutation planning.
+// inventory instead of the exact affected-source relation below.
+// `pnpm-lock.yaml` is included because a lockfile change can alter the
+// resolved Stryker/Vitest-runner toolchain the same way a runtime-relevant
+// `package.json` change can; runtime-relevant `package.json` changes are
+// handled separately below since a confirmed version-only change must not
+// widen mutation planning.
 const MUTATION_INFRA_PATHS: ReadonlySet<string> = new Set([
   'scripts/lib/mutationTargets.ts',
   'stryker.config.mjs',
@@ -33,9 +31,7 @@ export interface MutationTarget {
 /**
  * The single explicit source of mutation ownership. `stryker.config.mjs`
  * derives its complete `mutate` list only from this registry; `scripts/verify.ts`
- * selects only from this registry's exact source/test relations. See
- * docs/testing/verify-redesign-pass-e-implementation.md's "Initial accepted
- * registry".
+ * selects only from this registry's exact source/test relations.
  */
 export const MUTATION_TARGETS: readonly MutationTarget[] = [
   {
