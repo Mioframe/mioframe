@@ -28,12 +28,77 @@ vi.mock('./lib/e2eGraph.ts', () => ({
   acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
 }));
 
+// Wraps (rather than replaces) the real resolver so every existing mutation
+// test still exercises real registry logic; only tests in this file that
+// explicitly inspect `.mock.calls` care about the wrapping.
+vi.mock('./lib/mutationTargets.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/mutationTargets.ts')>();
+  return { ...actual, resolveMutationPlan: vi.fn(actual.resolveMutationPlan) };
+});
+
+// The following wrap (rather than replace) their real resolvers/validators,
+// purely so the `--fix-only` planning-order seam tests below can assert
+// non-invocation; every other existing test in this file still exercises
+// real planner logic.
+vi.mock('./lib/unitRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/unitRisk.ts')>();
+  return { ...actual, resolveUnitPlan: vi.fn(actual.resolveUnitPlan) };
+});
+vi.mock('./lib/storybookBehaviorRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/storybookBehaviorRisk.ts')>();
+  return { ...actual, resolveStorybookBehaviorPlan: vi.fn(actual.resolveStorybookBehaviorPlan) };
+});
+vi.mock('./lib/storybookBuildRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/storybookBuildRisk.ts')>();
+  return { ...actual, resolveStorybookBuildPlan: vi.fn(actual.resolveStorybookBuildPlan) };
+});
+vi.mock('./lib/visualRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/visualRisk.ts')>();
+  return { ...actual, resolveVisualPlan: vi.fn(actual.resolveVisualPlan) };
+});
+vi.mock('./lib/e2eProjectApplicability.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/e2eProjectApplicability.ts')>();
+  return {
+    ...actual,
+    validateE2EProjectApplicability: vi.fn(actual.validateE2EProjectApplicability),
+  };
+});
+vi.mock('./lib/browserIntegrationRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/browserIntegrationRisk.ts')>();
+  return {
+    ...actual,
+    resolveBrowserIntegrationPlan: vi.fn(actual.resolveBrowserIntegrationPlan),
+    resolveGenericBrowserIntegrationPlan: vi.fn(actual.resolveGenericBrowserIntegrationPlan),
+  };
+});
+vi.mock('./lib/releaseStaticRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/releaseStaticRisk.ts')>();
+  return { ...actual, resolveReleaseStaticPlan: vi.fn(actual.resolveReleaseStaticPlan) };
+});
+vi.mock('./lib/e2eRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/e2eRisk.ts')>();
+  return { ...actual, resolveStructuralE2EPlan: vi.fn(actual.resolveStructuralE2EPlan) };
+});
+
 import {
   isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport,
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
 } from './lib/packageJsonImpact.ts';
 import { collectE2EOwnerInventory as collectE2EOwnerInventoryImport } from './lib/e2eOwnerInventoryCollector.ts';
 import { acquireProductionReverseGraph as acquireProductionReverseGraphImport } from './lib/e2eGraph.ts';
+import { resolveMutationPlan as resolveMutationPlanImport } from './lib/mutationTargets.ts';
+import { resolveUnitPlan as resolveUnitPlanImport } from './lib/unitRisk.ts';
+import { resolveStorybookBehaviorPlan as resolveStorybookBehaviorPlanImport } from './lib/storybookBehaviorRisk.ts';
+import { resolveStorybookBuildPlan as resolveStorybookBuildPlanImport } from './lib/storybookBuildRisk.ts';
+import { resolveVisualPlan as resolveVisualPlanImport } from './lib/visualRisk.ts';
+import { validateE2EProjectApplicability as validateE2EProjectApplicabilityImport } from './lib/e2eProjectApplicability.ts';
+import {
+  resolveBrowserIntegrationPlan as resolveBrowserIntegrationPlanImport,
+  resolveGenericBrowserIntegrationPlan as resolveGenericBrowserIntegrationPlanImport,
+} from './lib/browserIntegrationRisk.ts';
+import { resolveStructuralE2EPlan as resolveStructuralE2EPlanImport } from './lib/e2eRisk.ts';
+import { validateE2ETargetTree as validateE2ETargetTreeImport } from './lib/e2eOwnerTree.ts';
+import { resolveReleaseStaticPlan as resolveReleaseStaticPlanImport } from './lib/releaseStaticRisk.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
 import {
   buildCommandEnv,
@@ -70,6 +135,19 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 const isVisualRelevantPackageJsonChange = vi.mocked(isVisualRelevantPackageJsonChangeImport);
 const collectE2EOwnerInventory = vi.mocked(collectE2EOwnerInventoryImport);
 const acquireProductionReverseGraph = vi.mocked(acquireProductionReverseGraphImport);
+const resolveMutationPlanSpy = vi.mocked(resolveMutationPlanImport);
+const resolveUnitPlanSpy = vi.mocked(resolveUnitPlanImport);
+const resolveStorybookBehaviorPlanSpy = vi.mocked(resolveStorybookBehaviorPlanImport);
+const resolveStorybookBuildPlanSpy = vi.mocked(resolveStorybookBuildPlanImport);
+const resolveVisualPlanSpy = vi.mocked(resolveVisualPlanImport);
+const validateE2EProjectApplicabilitySpy = vi.mocked(validateE2EProjectApplicabilityImport);
+const resolveBrowserIntegrationPlanSpy = vi.mocked(resolveBrowserIntegrationPlanImport);
+const resolveGenericBrowserIntegrationPlanSpy = vi.mocked(
+  resolveGenericBrowserIntegrationPlanImport,
+);
+const resolveReleaseStaticPlanSpy = vi.mocked(resolveReleaseStaticPlanImport);
+const resolveStructuralE2EPlanSpy = vi.mocked(resolveStructuralE2EPlanImport);
+const validateE2ETargetTreeSpy = vi.mocked(validateE2ETargetTreeImport);
 
 function requireRunEntry(commands: readonly CommandEntry[], label: string): RunCommandEntry {
   const entry = commands.find((item) => item.label === label);
@@ -467,7 +545,7 @@ describe('buildCommands release-sensitive static lane (releaseStaticRisk integra
   });
 
   it('does not select any release-sensitive static leaf outside full mode for an unrelated change', () => {
-    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+    const commands = buildCommands(['docs/testing/architecture.md'], { fullMode: false });
     const labels = commands.map((entry) => entry.label);
 
     expect(labels).not.toContain('release-version');
@@ -476,6 +554,20 @@ describe('buildCommands release-sensitive static lane (releaseStaticRisk integra
     expect(labels).not.toContain('artifact-static');
     expect(labels).not.toContain('managed-updates-static');
     expect(labels).not.toContain('publisher-node-import');
+  });
+
+  it('selects build and artifact-static outside full mode, and under --only static, for an ordinary production src/** change', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+
+    const selectedStatic = selectOnlyCommands(commands, 'static');
+    expect(selectedStatic.map((entry) => entry.label)).toEqual(
+      expect.arrayContaining(['build', 'artifact-static']),
+    );
   });
 
   it('stamps every selected release-sensitive static leaf with the static verification type', () => {
@@ -890,6 +982,86 @@ describe('buildCommands E2E acquisition seams (cheap classifier gates expensive 
   });
 });
 
+// M1 (docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+// "Make --fix-only return before all proof planning"): a fixer-only build
+// must construct and return its fixer command plan without invoking any
+// non-static proof planner/validator dependency at all, not merely without
+// the expensive Playwright/dependency-cruiser acquisition those planners may
+// trigger.
+describe('buildCommands --fix-only planning-order seams', () => {
+  beforeEach(() => {
+    resolveUnitPlanSpy.mockClear();
+    resolveStorybookBehaviorPlanSpy.mockClear();
+    resolveStorybookBuildPlanSpy.mockClear();
+    resolveVisualPlanSpy.mockClear();
+    resolveMutationPlanSpy.mockClear();
+    validateE2EProjectApplicabilitySpy.mockClear();
+    resolveBrowserIntegrationPlanSpy.mockClear();
+    resolveGenericBrowserIntegrationPlanSpy.mockClear();
+    resolveReleaseStaticPlanSpy.mockClear();
+    resolveStructuralE2EPlanSpy.mockClear();
+    validateE2ETargetTreeSpy.mockClear();
+    collectE2EOwnerInventory.mockClear();
+    acquireProductionReverseGraph.mockClear();
+  });
+
+  it('calls no non-static proof planner/validator for a docs-only --fix-only invocation', () => {
+    buildCommands(['docs/testing/architecture.md'], { fixMode: 'fix-only' });
+
+    expect(resolveUnitPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBehaviorPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBuildPlanSpy).not.toHaveBeenCalled();
+    expect(resolveVisualPlanSpy).not.toHaveBeenCalled();
+    expect(resolveMutationPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+    expect(resolveBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveGenericBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveReleaseStaticPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStructuralE2EPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('calls no non-static proof planner/validator for --fix-only with a broad production/release-sensitive change', () => {
+    buildCommands(
+      [
+        'src/entities/repository/index.ts',
+        'src/sw.ts',
+        'package.json',
+        'stryker.config.mjs',
+        'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts',
+      ],
+      { fixMode: 'fix-only' },
+    );
+
+    expect(resolveUnitPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBehaviorPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBuildPlanSpy).not.toHaveBeenCalled();
+    expect(resolveVisualPlanSpy).not.toHaveBeenCalled();
+    expect(resolveMutationPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+    expect(resolveBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveGenericBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveReleaseStaticPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStructuralE2EPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+  });
+
+  it('still constructs the fixer-only command plan for --fix-only', () => {
+    const commands = buildCommands(['src/entities/repository/index.ts'], {
+      fixMode: 'fix-only',
+    });
+
+    expect(commands.map((entry) => entry.label)).toEqual([
+      'agent-environment',
+      'format',
+      'oxlint',
+      'eslint',
+    ]);
+  });
+});
+
 describe('buildCommands type-check applicability', () => {
   it.each([
     'scripts/verify.ts',
@@ -1010,6 +1182,25 @@ describe('buildCommands mutation registry scope', () => {
         const args = entry.kind === 'run' ? entry.args : [];
         expect(JSON.stringify(args)).not.toContain(deletedProductionPath);
       }
+    });
+
+    // M2 (docs/testing/verify-redesign-final-review-correction-02-agent-task.md):
+    // deleted/renamed-away mutation infrastructure must still reach
+    // resolveMutationPlan()'s changed-file classification; it must not be
+    // erased by filesystem-existence filtering before mutation planning.
+    it('passes a deleted/renamed-away path through to the mutation planner instead of filtering it by filesystem existence', () => {
+      resolveMutationPlanSpy.mockClear();
+      const deletedInfraPath = 'stryker.config.mjs';
+      const deletedUnrelatedPath = 'src/shared/lib/verifyMutationScopeDeletedFixture.ts';
+
+      expect(fs.existsSync(deletedUnrelatedPath)).toBe(false);
+
+      buildCommands([deletedInfraPath, deletedUnrelatedPath], { fullMode: false });
+
+      expect(resolveMutationPlanSpy).toHaveBeenCalledWith(
+        expect.arrayContaining([deletedInfraPath, deletedUnrelatedPath]),
+        expect.anything(),
+      );
     });
   });
 });

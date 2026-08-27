@@ -260,6 +260,20 @@ describe('resolveStructuralE2EPlan', () => {
     expect(plan.mode).toBe('full');
   });
 
+  it.each([
+    'scripts/lib/localCommandGuard.ts',
+    'scripts/lib/commandLock.ts',
+    'scripts/lib/runLocalCommand.ts',
+    'scripts/lib/processResult.ts',
+    'scripts/lib/signalForward.ts',
+  ])(
+    'falls back to full E2E for a shared command/lock/result/signal execution-support change: %s',
+    (filePath) => {
+      const plan = resolveStructuralE2EPlan([filePath], baseDeps());
+      expect(plan.mode).toBe('full');
+    },
+  );
+
   it('falls back to full E2E for src/app and src/pages/routes.ts changes', () => {
     expect(resolveStructuralE2EPlan(['src/app/App.vue'], baseDeps()).mode).toBe('full');
     expect(resolveStructuralE2EPlan(['src/pages/routes.ts'], baseDeps()).mode).toBe('full');
@@ -393,6 +407,10 @@ describe('canChangedPathsAffectE2E', () => {
 
   it('returns true for full-lane E2E infrastructure', () => {
     expect(canChangedPathsAffectE2E(['playwright.config.ts'])).toBe(true);
+  });
+
+  it('returns true for a shared command/lock/result/signal execution-support change', () => {
+    expect(canChangedPathsAffectE2E(['scripts/lib/runLocalCommand.ts'])).toBe(true);
   });
 
   it('returns true for app bootstrap/routing changes', () => {

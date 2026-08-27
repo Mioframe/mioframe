@@ -198,6 +198,56 @@ describe('runManagedUpdatesBrowserIntegrationProof ordering and propagation', ()
   });
 });
 
+describe('runManagedUpdatesBrowserIntegrationProof exceptional membership validation', () => {
+  it('refuses to start any group when the browser-integration membership is invalid', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
+    const validateMembership = vi.fn(() => ({
+      valid: false,
+      errors: ['appUpdate browser-integration spec X exists on disk but is not registered'],
+    }));
+
+    const result = await runManagedUpdatesBrowserIntegrationProof(
+      { env: {}, validateMembership },
+      { runLocalCommand },
+    );
+
+    expect(result).toEqual({ status: 1, signal: null });
+    expect(runLocalCommand).not.toHaveBeenCalled();
+  });
+
+  it('runs the groups normally when the browser-integration membership is valid', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
+    const validateMembership = vi.fn(() => ({ valid: true, errors: [] }));
+
+    const result = await runManagedUpdatesBrowserIntegrationProof(
+      { env: {}, validateMembership },
+      { runLocalCommand },
+    );
+
+    expect(validateMembership).toHaveBeenCalled();
+    expect(runLocalCommand).toHaveBeenCalledTimes(3);
+    expect(result).toEqual(passingResult());
+  });
+});
+
+describe('runManagedUpdatesE2EProof exceptional membership validation', () => {
+  it('refuses to start any group when the productionArtifact E2E membership is invalid', async () => {
+    const runLocalCommand = vi.fn().mockResolvedValue(passingResult());
+    const validateMembership = vi.fn(() => ({
+      valid: false,
+      errors: ['productionArtifact E2E spec X exists on disk but is not registered'],
+    }));
+
+    const result = await runManagedUpdatesE2EProof(
+      { env: {}, validateMembership },
+      { runLocalCommand },
+    );
+
+    expect(result).toEqual({ status: 1, signal: null });
+    expect(runLocalCommand).not.toHaveBeenCalled();
+  });
+});
+
 describe('runManagedUpdatesE2EProof ordering and propagation', () => {
   it('runs activation-UI then data-compatibility, each through scripts/e2eReleaseContainer.mjs with its own diagnostic label', async () => {
     const runLocalCommand = vi.fn().mockResolvedValue(passingResult());

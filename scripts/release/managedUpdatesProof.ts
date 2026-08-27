@@ -14,7 +14,10 @@ import {
   MANAGED_UPDATES_LIFECYCLE_SPECS,
   MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
   MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
+  validateBrowserIntegrationMembership,
+  validateProductionArtifactE2EMembership,
   type ReleaseProofGroup,
+  type ReleaseProofInventoryValidation,
 } from '../lib/releaseProofInventory.ts';
 import type { ProcessResult } from '../lib/processResult.ts';
 
@@ -69,6 +72,28 @@ function isPassingResult(result: ProcessResult): boolean {
 }
 
 /**
+ * Report an invalid exceptional release-proof membership state and fail
+ * closed before any group starts. Invalid, unexpected, duplicate, or
+ * malformed registered membership must never become a skip (see
+ * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+ * "Make releaseProofInventory.ts the sole exceptional membership owner and
+ * validate every execution path").
+ * @param validation - Failed membership validation result.
+ * @param leafLabel - Diagnostic label for the proof leaf that failed to start.
+ * @returns A failing `{ status: 1, signal: null }` result.
+ */
+function reportInvalidMembership(
+  validation: ReleaseProofInventoryValidation,
+  leafLabel: string,
+): ProcessResult {
+  for (const error of validation.errors) {
+    console.error(`[${leafLabel}] invalid exceptional release-proof membership: ${error}`);
+  }
+
+  return { status: 1, signal: null };
+}
+
+/**
  * Runs a fixed list of groups sequentially, each in its own fresh Playwright
  * container via `scripts/e2eReleaseContainer.mjs` (see `pnpm e2e:release`). A
  * later group never starts unless every earlier group passes; the aggregate
@@ -116,37 +141,71 @@ export interface RunManagedUpdatesProofOptions {
   env?: NodeJS.ProcessEnv;
   /** Override for the fixed group list, for tests only. */
   groups?: readonly ReleaseProofGroup[];
+  /**
+   * Test-only override for the exceptional-inventory membership check this
+   * proof leaf validates before starting any group.
+   */
+  validateMembership?: () => ReleaseProofInventoryValidation;
 }
 
 /**
  * Runs every browser-integration managed-update group (see
  * {@link MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS}) as the
- * `managed-updates-browser-integration` verifier proof leaf.
+ * `managed-updates-browser-integration` verifier proof leaf. Validates the
+ * registered exceptional browser-integration membership against the current
+ * filesystem inventory before starting any group, so a newly added
+ * unregistered appUpdate browser-integration spec fails closed here even
+ * when this runner is invoked directly (see
+ * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+ * "Make releaseProofInventory.ts the sole exceptional membership owner and
+ * validate every execution path").
  * @param options - Run options.
  * @param deps - Test seams for child-process execution.
- * @returns The last group's normalized `{ status, signal }` result.
+ * @returns The last group's normalized `{ status, signal }` result, or a
+ * failing result when the exceptional membership is invalid.
  */
 export async function runManagedUpdatesBrowserIntegrationProof(
   {
     env = process.env,
     groups = MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS,
+    validateMembership = validateBrowserIntegrationMembership,
   }: RunManagedUpdatesProofOptions = {},
   deps: ManagedUpdatesProofDeps = defaultDeps,
 ): Promise<ProcessResult> {
+  const membershipValidation = validateMembership();
+
+  if (!membershipValidation.valid) {
+    return reportInvalidMembership(membershipValidation, 'managed-updates-browser-integration');
+  }
+
   return runGroupsSequentially(groups, { env }, deps);
 }
 
 /**
  * Runs every E2E managed-update group (see {@link MANAGED_UPDATES_E2E_GROUPS})
- * as the `managed-updates-e2e` verifier proof leaf.
+ * as the `managed-updates-e2e` verifier proof leaf. Validates the registered
+ * exceptional productionArtifact E2E membership against the current
+ * filesystem inventory before starting any group (see
+ * {@link runManagedUpdatesBrowserIntegrationProof}).
  * @param options - Run options.
  * @param deps - Test seams for child-process execution.
- * @returns The last group's normalized `{ status, signal }` result.
+ * @returns The last group's normalized `{ status, signal }` result, or a
+ * failing result when the exceptional membership is invalid.
  */
 export async function runManagedUpdatesE2EProof(
-  { env = process.env, groups = MANAGED_UPDATES_E2E_GROUPS }: RunManagedUpdatesProofOptions = {},
+  {
+    env = process.env,
+    groups = MANAGED_UPDATES_E2E_GROUPS,
+    validateMembership = validateProductionArtifactE2EMembership,
+  }: RunManagedUpdatesProofOptions = {},
   deps: ManagedUpdatesProofDeps = defaultDeps,
 ): Promise<ProcessResult> {
+  const membershipValidation = validateMembership();
+
+  if (!membershipValidation.valid) {
+    return reportInvalidMembership(membershipValidation, 'managed-updates-e2e');
+  }
+
   return runGroupsSequentially(groups, { env }, deps);
 }
 

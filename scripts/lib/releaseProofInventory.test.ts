@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+  MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
   MANAGED_UPDATES_ACTIVATION_UI_LABEL,
   MANAGED_UPDATES_ACTIVATION_UI_SPECS,
   MANAGED_UPDATES_BROWSER_INTEGRATION_GROUPS,
@@ -36,7 +38,7 @@ describe('registered exceptional release-proof inventory', () => {
   it('exposes the E2E groups in fixed run order', () => {
     expect(MANAGED_UPDATES_E2E_GROUPS.map((group) => group.label)).toEqual([
       MANAGED_UPDATES_ACTIVATION_UI_LABEL,
-      'managed-updates-data-compatibility',
+      MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
     ]);
   });
 
@@ -84,7 +86,7 @@ describe('registered exceptional release-proof inventory', () => {
       new Set([
         RELEASE_SMOKE_SPEC,
         ...MANAGED_UPDATES_ACTIVATION_UI_SPECS,
-        'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts',
+        MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
       ]),
     );
   });

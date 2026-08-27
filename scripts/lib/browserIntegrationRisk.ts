@@ -52,6 +52,15 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/lib/browserIntegrationRisk.ts',
   'scripts/lib/releaseProofInventory.ts',
   'scripts/verify.ts',
+  // Common command/lock/result/signal execution support shared by the
+  // release Playwright/group runners above (see
+  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+  // "Complete explicit shared special-runner support ownership").
+  'scripts/lib/localCommandGuard.ts',
+  'scripts/lib/commandLock.ts',
+  'scripts/lib/runLocalCommand.ts',
+  'scripts/lib/processResult.ts',
+  'scripts/lib/signalForward.ts',
 ]);
 const FULL_LANE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
@@ -124,6 +133,17 @@ export interface ResolveBrowserIntegrationPlanOptions {
   packageJsonOldRef?: string | null;
   /** Test-only override for the exceptional-inventory membership check. */
   validateMembership?: typeof validateBrowserIntegrationMembership;
+  /**
+   * Literal `--full`: run the complete managed-update browser-integration
+   * lane unconditionally, skipping changed-file-based selection. Exceptional
+   * membership validation still runs first (see
+   * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+   * "Make releaseProofInventory.ts the sole exceptional membership owner and
+   * validate every execution path"), so an unregistered special spec still
+   * fails closed under literal `--full` instead of being silently swept in
+   * or omitted.
+   */
+  fullMode?: boolean;
 }
 
 /**
@@ -132,7 +152,8 @@ export interface ResolveBrowserIntegrationPlanOptions {
  * browser-integration filesystem inventory does not exactly equal the
  * registered exceptional inventory in `scripts/lib/releaseProofInventory.ts`
  * — a structural problem that must fail closed instead of silently
- * widening/narrowing), full (broad infrastructure/shared-support risk or a
+ * widening/narrowing, checked before literal `--full` too), full (literal
+ * `--full`, or broad infrastructure/shared-support risk, or a
  * runtime-relevant `package.json` change, both leaves), focused (a direct
  * appUpdate browser-integration spec change and/or an unresolvable appUpdate
  * production change, either or both leaves), or skip (no relevant changes).
@@ -145,6 +166,7 @@ export function resolveBrowserIntegrationPlan(
   {
     packageJsonOldRef = null,
     validateMembership = validateBrowserIntegrationMembership,
+    fullMode = false,
   }: ResolveBrowserIntegrationPlanOptions = {},
 ): BrowserIntegrationPlan {
   const membershipValidation = validateMembership();
@@ -155,6 +177,15 @@ export function resolveBrowserIntegrationPlan(
       artifact: false,
       managedUpdates: false,
       reasons: membershipValidation.errors,
+    };
+  }
+
+  if (fullMode) {
+    return {
+      mode: 'full',
+      artifact: true,
+      managedUpdates: true,
+      reasons: ['full-project release verification'],
     };
   }
 

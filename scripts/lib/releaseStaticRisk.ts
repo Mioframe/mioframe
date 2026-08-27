@@ -35,25 +35,28 @@ const RELEASE_CONFIG_EXACT_FILES: ReadonlySet<string> = new Set([
   'scripts/release/validateReleaseConfig.mjs',
 ]);
 
-// scripts/release/buildArtifact.mjs's own build inputs: the Vite build
-// configuration/entrypoint/static assets it bundles, release-relevant
-// tooling config, and its own implementation.
-const BUILD_EXACT_FILES: ReadonlySet<string> = new Set([
+// The complete production artifact/build capability: every input capable of
+// entering or altering the real Vite production artifact that
+// `scripts/release/buildArtifact.mjs` builds and
+// `scripts/release/productionArtifactStaticProof.ts` validates (emitted
+// JS/manifest/controller worker), so both leaves are selected together (see
+// docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+// "Complete release-static production artifact capability"). Ordinary
+// `src/**` production source is included broadly rather than narrowed by a
+// dependency graph, since precise narrowing to only the subset that is
+// actually reachable from the Vite entrypoint is not cheaply provable;
+// `NON_PRODUCTION_SUFFIX_PATTERN` below excludes deterministically
+// irrelevant unit/story/behavior/visual/browser-integration/performance/
+// test-helper files.
+const PRODUCTION_ARTIFACT_EXACT_FILES: ReadonlySet<string> = new Set([
   'vite.config.ts',
   'index.html',
   'config/tooling.json',
   'scripts/release/buildArtifact.mjs',
-]);
-const BUILD_PREFIXES: readonly string[] = ['public/'];
-
-// scripts/release/productionArtifactStaticProof.ts's own inputs: it builds
-// the artifact itself (so every `build` input applies) and additionally
-// validates the emitted managed controller worker/manifest, so the worker
-// source and its own implementation are included explicitly.
-const ARTIFACT_STATIC_EXACT_FILES: ReadonlySet<string> = new Set([
   'src/sw.ts',
   'scripts/release/productionArtifactStaticProof.ts',
 ]);
+const PRODUCTION_ARTIFACT_PREFIXES: readonly string[] = ['public/', 'src/'];
 
 // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts's own
 // inputs: the managed controller worker source and every appUpdate
@@ -86,6 +89,14 @@ function isManagedUpdatesStaticProductionPath(filePath: string): boolean {
   return (
     MANAGED_UPDATES_STATIC_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
     !NON_PRODUCTION_SUFFIX_PATTERN.test(filePath)
+  );
+}
+
+function isProductionArtifactPath(filePath: string): boolean {
+  return (
+    PRODUCTION_ARTIFACT_EXACT_FILES.has(filePath) ||
+    (PRODUCTION_ARTIFACT_PREFIXES.some((prefix) => filePath.startsWith(prefix)) &&
+      !NON_PRODUCTION_SUFFIX_PATTERN.test(filePath))
   );
 }
 
@@ -151,12 +162,10 @@ export function resolveReleaseStaticPlan(
       reasons.push(`release-config input ${filePath} -> release-config`);
     }
 
-    if (
-      BUILD_EXACT_FILES.has(filePath) ||
-      BUILD_PREFIXES.some((prefix) => filePath.startsWith(prefix))
-    ) {
+    if (isProductionArtifactPath(filePath)) {
       build = true;
-      reasons.push(`production artifact/build input ${filePath} -> build`);
+      artifactStatic = true;
+      reasons.push(`production artifact/build input ${filePath} -> build, artifact-static`);
     }
 
     if (PUBLISHER_NODE_IMPORT_EXACT_FILES.has(filePath)) {
@@ -164,20 +173,15 @@ export function resolveReleaseStaticPlan(
       reasons.push(`publisher import-boundary input ${filePath} -> publisher-node-import`);
     }
 
-    if (ARTIFACT_STATIC_EXACT_FILES.has(filePath)) {
-      build = true;
-      artifactStatic = true;
-      reasons.push(`artifact-static input ${filePath} -> build, artifact-static`);
-    }
-
     if (
       MANAGED_UPDATES_STATIC_EXACT_FILES.has(filePath) ||
       isManagedUpdatesStaticProductionPath(filePath)
     ) {
       build = true;
+      artifactStatic = true;
       managedUpdatesStatic = true;
       reasons.push(
-        `managed controller/appUpdate input ${filePath} -> build, managed-updates-static`,
+        `managed controller/appUpdate input ${filePath} -> build, artifact-static, managed-updates-static`,
       );
     }
   }

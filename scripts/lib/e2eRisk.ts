@@ -68,6 +68,17 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/lib/releaseProofInventory.ts',
   'scripts/release/managedUpdatesProof.ts',
   'scripts/release/artifactServer.mjs',
+  // Common command/lock/result/signal execution support shared by the
+  // release Playwright/group runners above (see
+  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+  // "Complete explicit shared special-runner support ownership"): a safely
+  // broad full-E2E fallback, simpler than adding a special-only dependency
+  // mapping for just the two productionArtifact leaves.
+  'scripts/lib/localCommandGuard.ts',
+  'scripts/lib/commandLock.ts',
+  'scripts/lib/runLocalCommand.ts',
+  'scripts/lib/processResult.ts',
+  'scripts/lib/signalForward.ts',
   'tests/e2e/helpers.ts',
   'tests/e2e/reorderSurface.testUtils.ts',
   'vite.config.ts',

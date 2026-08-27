@@ -1296,11 +1296,14 @@ function addReleaseStaticCommands(commands: CommandEntry[], plan: ReleaseStaticP
  * Add the two browser-integration managed-update leaves (`artifact`,
  * `managed-updates-browser-integration`) when they are relevant, using
  * {@link resolveBrowserIntegrationPlan}'s owner-local path-based planning
- * outside full mode (see docs/testing/verify-redesign-pass-c-implementation.md's
- * "Browser-integration type-local planning"). Reuses the exact existing leaf
- * commands/orchestration `addReleaseOnlyCommands` used to gate purely behind
- * `--full`; this only adds default/`--only browser-integration` relevance
- * without requiring `--full` or the old release-directory path.
+ * (see docs/testing/verify-redesign-pass-c-implementation.md's
+ * "Browser-integration type-local planning"). Literal `--full` also goes
+ * through the same resolver (via its `fullMode` option) instead of
+ * constructing a literal plan directly, so exceptional membership validation
+ * runs before every execution boundary, including literal `--full` (see
+ * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+ * "Make releaseProofInventory.ts the sole exceptional membership owner and
+ * validate every execution path").
  * @param commands Command list to push into.
  * @param options Build options.
  * @param options.fullMode Full-project release mode.
@@ -1314,14 +1317,10 @@ function addBrowserIntegrationCommands(
     packageJsonOldRef,
   }: { fullMode: boolean; changedFiles: readonly string[]; packageJsonOldRef: string | null },
 ): void {
-  const plan: BrowserIntegrationPlan = fullMode
-    ? {
-        mode: 'full',
-        artifact: true,
-        managedUpdates: true,
-        reasons: ['full-project release verification'],
-      }
-    : resolveBrowserIntegrationPlan(changedFiles, { packageJsonOldRef });
+  const plan: BrowserIntegrationPlan = resolveBrowserIntegrationPlan(changedFiles, {
+    packageJsonOldRef,
+    fullMode,
+  });
 
   if (plan.mode === 'invalid') {
     commands.push({
@@ -1505,70 +1504,6 @@ export function buildCommands(
   const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const unitPlan: UnitPlan =
-    unitPlanOverride ??
-    (fullMode
-      ? { mode: 'skip', reasons: ['full mode runs the complete unit type unconditionally'] }
-      : resolveUnitPlan(
-          changedPathsInputOverride ?? { kind: 'explicit-files', files: [...changedFiles] },
-          {
-            packageJsonOldRef,
-          },
-        ));
-  // Expensive structural E2E graph/Playwright-ownership acquisition only
-  // runs when e2e is actually relevant to this invocation (default, or
-  // `--only e2e`); see docs/testing/verify-redesign-pass-d-implementation.md's
-  // "Do not acquire the graph or Playwright E2E owner inventory for a
-  // `--only <non-e2e-type>` invocation". The placeholder plan below is never
-  // observed in a final `--only <non-e2e-type>` result: selectOnlyCommands
-  // filters every `e2e`-typed entry out for any other type.
-  //
-  // A second, cheap gate applies even when e2e IS the relevant type for this
-  // invocation (default or `--only e2e`): `--fix-only` never needs E2E
-  // acquisition at all, and a changed-path set that
-  // {@link canChangedPathsAffectE2E} can cheaply prove E2E-irrelevant skips
-  // acquisition too (see
-  // docs/testing/verify-redesign-final-review-correction.md's "Decision 6").
-  // The classifier is conservative (false positives acquire; false
-  // negatives never happen), and literal `--full` always acquires
-  // unconditionally regardless of the classifier, since it must still
-  // perform complete structural validation.
-  const needsStructuralE2EPlanning =
-    !fixOnlyMode &&
-    (onlyType === null || onlyType === 'e2e') &&
-    (fullMode || canChangedPathsAffectE2E(changedFiles, { packageJsonOldRef }));
-  const structuralE2EPlan: StructuralE2EPlan =
-    structuralE2EPlanOverride ??
-    (needsStructuralE2EPlanning
-      ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
-      : { mode: 'skip', reasons: ['e2e planning not needed for this invocation'] });
-  const e2eTargetTreeValidation = e2eTargetTreeValidationOverride ?? validateE2ETargetTree();
-  const projectApplicabilityValidation =
-    projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
-  const storybookBehaviorPlan =
-    storybookBehaviorPlanOverride ??
-    resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
-  const storybookBuildPlan =
-    storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
-  // Skip resolution in full mode: the full-mode branch below always runs the
-  // complete visual lane unconditionally and does not consult the plan.
-  const visualPlan: BuildCommandsVisualPlan | null =
-    visualPlanOverride ??
-    (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
-  const mutationPlan: MutationPlan =
-    mutationPlanOverride ?? resolveMutationPlan(existingChangedFiles, { packageJsonOldRef });
-  const releaseStaticPlan: ReleaseStaticPlan = fullMode
-    ? {
-        mode: 'skip',
-        releaseVersion: false,
-        releaseConfig: false,
-        build: false,
-        publisherNodeImport: false,
-        artifactStatic: false,
-        managedUpdatesStatic: false,
-        reasons: ['full mode runs the complete static type unconditionally'],
-      }
-    : resolveReleaseStaticPlan(changedFiles, { packageJsonOldRef });
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 
@@ -1664,6 +1599,82 @@ export function buildCommands(
   if (fixOnlyMode) {
     return commands.map(withVerificationType);
   }
+
+  // No non-static proof planner/validator is resolved before this point:
+  // `--fix-only` constructs and returns its fixer-only command plan above
+  // without invoking any of the planners/validators below (see
+  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+  // "Make --fix-only return before all proof planning").
+  const unitPlan: UnitPlan =
+    unitPlanOverride ??
+    (fullMode
+      ? { mode: 'skip', reasons: ['full mode runs the complete unit type unconditionally'] }
+      : resolveUnitPlan(
+          changedPathsInputOverride ?? { kind: 'explicit-files', files: [...changedFiles] },
+          {
+            packageJsonOldRef,
+          },
+        ));
+  // Expensive structural E2E graph/Playwright-ownership acquisition only
+  // runs when e2e is actually relevant to this invocation (default, or
+  // `--only e2e`); see docs/testing/verify-redesign-pass-d-implementation.md's
+  // "Do not acquire the graph or Playwright E2E owner inventory for a
+  // `--only <non-e2e-type>` invocation". The placeholder plan below is never
+  // observed in a final `--only <non-e2e-type>` result: selectOnlyCommands
+  // filters every `e2e`-typed entry out for any other type.
+  //
+  // A second, cheap gate applies even when e2e IS the relevant type for this
+  // invocation (default or `--only e2e`): `--fix-only` never needs E2E
+  // acquisition at all (already returned above), and a changed-path set that
+  // {@link canChangedPathsAffectE2E} can cheaply prove E2E-irrelevant skips
+  // acquisition too (see
+  // docs/testing/verify-redesign-final-review-correction.md's "Decision 6").
+  // The classifier is conservative (false positives acquire; false
+  // negatives never happen), and literal `--full` always acquires
+  // unconditionally regardless of the classifier, since it must still
+  // perform complete structural validation.
+  const needsStructuralE2EPlanning =
+    (onlyType === null || onlyType === 'e2e') &&
+    (fullMode || canChangedPathsAffectE2E(changedFiles, { packageJsonOldRef }));
+  const structuralE2EPlan: StructuralE2EPlan =
+    structuralE2EPlanOverride ??
+    (needsStructuralE2EPlanning
+      ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
+      : { mode: 'skip', reasons: ['e2e planning not needed for this invocation'] });
+  const e2eTargetTreeValidation = e2eTargetTreeValidationOverride ?? validateE2ETargetTree();
+  const projectApplicabilityValidation =
+    projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
+  const storybookBehaviorPlan =
+    storybookBehaviorPlanOverride ??
+    resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
+  const storybookBuildPlan =
+    storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
+  // Skip resolution in full mode: the full-mode branch below always runs the
+  // complete visual lane unconditionally and does not consult the plan.
+  const visualPlan: BuildCommandsVisualPlan | null =
+    visualPlanOverride ??
+    (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
+  // Deleted/renamed-away mutation infrastructure (e.g. `stryker.config.mjs`)
+  // must still be classified: passes the status-preserving `changedFiles`
+  // projection, not the filesystem-existence-filtered
+  // `existingChangedFiles`, so a removed registered path is never erased
+  // before mutation impact classification (see
+  // docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+  // "Preserve deleted/renamed mutation infrastructure impact").
+  const mutationPlan: MutationPlan =
+    mutationPlanOverride ?? resolveMutationPlan(changedFiles, { packageJsonOldRef });
+  const releaseStaticPlan: ReleaseStaticPlan = fullMode
+    ? {
+        mode: 'skip',
+        releaseVersion: false,
+        releaseConfig: false,
+        build: false,
+        publisherNodeImport: false,
+        artifactStatic: false,
+        managedUpdatesStatic: false,
+        reasons: ['full mode runs the complete static type unconditionally'],
+      }
+    : resolveReleaseStaticPlan(changedFiles, { packageJsonOldRef });
 
   if (fullMode || changedFiles.some(isTypeCheckTarget)) {
     commands.push({

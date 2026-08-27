@@ -91,6 +91,14 @@ describe('isFullBrowserIntegrationLanePath', () => {
     expect(isFullBrowserIntegrationLanePath('scripts/pages/lib/pagesFs.mjs')).toBe(true);
   });
 
+  it('flags the shared command/lock/result/signal execution support used by release Playwright/group runners', () => {
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/localCommandGuard.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/commandLock.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/runLocalCommand.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/processResult.ts')).toBe(true);
+    expect(isFullBrowserIntegrationLanePath('scripts/lib/signalForward.ts')).toBe(true);
+  });
+
   it('does not flag unrelated paths', () => {
     expect(isFullBrowserIntegrationLanePath('src/features/documentCreate/index.ts')).toBe(false);
   });
@@ -245,6 +253,34 @@ describe('resolveBrowserIntegrationPlan', () => {
     });
 
     expect(plan.mode).toBe('skip');
+  });
+
+  it('runs the full lane for literal fullMode regardless of changed files', () => {
+    const plan = resolveBrowserIntegrationPlan([], {
+      validateMembership: alwaysValidMembership,
+      fullMode: true,
+    });
+
+    expect(plan).toEqual({
+      mode: 'full',
+      artifact: true,
+      managedUpdates: true,
+      reasons: ['full-project release verification'],
+    });
+  });
+
+  it('fails closed for literal fullMode when the exceptional inventory is invalid', () => {
+    const plan = resolveBrowserIntegrationPlan([], {
+      validateMembership: () => ({
+        valid: false,
+        errors: ['appUpdate browser-integration spec X exists on disk but is not registered'],
+      }),
+      fullMode: true,
+    });
+
+    expect(plan.mode).toBe('invalid');
+    expect(plan.artifact).toBe(false);
+    expect(plan.managedUpdates).toBe(false);
   });
 });
 

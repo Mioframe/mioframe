@@ -11,7 +11,7 @@ const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevan
 
 describe('resolveReleaseStaticPlan', () => {
   it('skips every leaf for an unrelated change', () => {
-    const plan = resolveReleaseStaticPlan(['src/features/documentCreate/index.ts']);
+    const plan = resolveReleaseStaticPlan(['docs/testing/architecture.md']);
 
     expect(plan).toEqual({
       mode: 'skip',
@@ -23,6 +23,45 @@ describe('resolveReleaseStaticPlan', () => {
       managedUpdatesStatic: false,
       reasons: ['no release-sensitive static changes'],
     });
+  });
+
+  it('selects build and artifact-static for an ordinary production src/** change', () => {
+    const plan = resolveReleaseStaticPlan(['src/features/documentCreate/index.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+    expect(plan.managedUpdatesStatic).toBe(false);
+  });
+
+  it('selects build and artifact-static for a non-TypeScript Vite-consumed production asset', () => {
+    const plan = resolveReleaseStaticPlan(['src/features/documentCreate/icon.svg']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
+  });
+
+  it('does not select build/artifact-static for a colocated unit test, story, or behavior/visual/browser-integration spec', () => {
+    expect(resolveReleaseStaticPlan(['src/features/documentCreate/index.test.ts']).mode).toBe(
+      'skip',
+    );
+    expect(resolveReleaseStaticPlan(['src/features/documentCreate/index.stories.ts']).mode).toBe(
+      'skip',
+    );
+    expect(
+      resolveReleaseStaticPlan(['src/features/documentCreate/index.behavior.spec.ts']).mode,
+    ).toBe('skip');
+    expect(
+      resolveReleaseStaticPlan(['src/features/documentCreate/index.visual.spec.ts']).mode,
+    ).toBe('skip');
+    expect(
+      resolveReleaseStaticPlan(['src/features/documentCreate/index.browser-integration.spec.ts'])
+        .mode,
+    ).toBe('skip');
+    expect(resolveReleaseStaticPlan(['src/features/documentCreate/index.testUtils.ts']).mode).toBe(
+      'skip',
+    );
   });
 
   it('skips for an empty changed-file list', () => {
@@ -66,23 +105,23 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.managedUpdatesStatic).toBe(true);
   });
 
-  it('selects only release-config for a config/tooling.json change', () => {
+  it('selects release-config plus build/artifact-static for a config/tooling.json change', () => {
     const plan = resolveReleaseStaticPlan(['config/tooling.json']);
 
     expect(plan.mode).toBe('focused');
     expect(plan.releaseConfig).toBe(true);
     expect(plan.build).toBe(true);
-    expect(plan.artifactStatic).toBe(false);
+    expect(plan.artifactStatic).toBe(true);
     expect(plan.managedUpdatesStatic).toBe(false);
   });
 
-  it('selects only build for a vite.config.ts change', () => {
+  it('selects build and artifact-static for a vite.config.ts change', () => {
     const plan = resolveReleaseStaticPlan(['vite.config.ts']);
 
     expect(plan.mode).toBe('focused');
     expect(plan.build).toBe(true);
+    expect(plan.artifactStatic).toBe(true);
     expect(plan.releaseConfig).toBe(false);
-    expect(plan.artifactStatic).toBe(false);
     expect(plan.managedUpdatesStatic).toBe(false);
   });
 
@@ -114,13 +153,13 @@ describe('resolveReleaseStaticPlan', () => {
     expect(plan.managedUpdatesStatic).toBe(true);
   });
 
-  it('selects build and managed-updates-static for an appUpdate production source change', () => {
+  it('selects build, artifact-static, and managed-updates-static for an appUpdate production source change', () => {
     const plan = resolveReleaseStaticPlan(['src/shared/service/appUpdate/workerInstall.ts']);
 
     expect(plan.mode).toBe('focused');
     expect(plan.build).toBe(true);
     expect(plan.managedUpdatesStatic).toBe(true);
-    expect(plan.artifactStatic).toBe(false);
+    expect(plan.artifactStatic).toBe(true);
   });
 
   it('does not select managed-updates-static for an appUpdate test/spec file', () => {

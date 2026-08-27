@@ -1,10 +1,5 @@
 import fs from 'node:fs';
 
-import {
-  MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
-  MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
-} from '../release/runManagedReleaseDataCompatibilityProof.mjs';
-
 /**
  * Single source of truth for the exceptional release-browser execution
  * membership: the fresh-container/cross-engine `artifact` and
@@ -86,7 +81,19 @@ export const MANAGED_UPDATES_ACTIVATION_UI_SPECS: readonly string[] = [
   'tests/e2e/pages/AppUpdatesPane/productionArtifact/managedUpdatesActivationUi.e2e.spec.ts',
 ];
 
-export { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL, MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC };
+/**
+ * Verifier/container label and spec for the managed-release data-
+ * compatibility proof leaf (see
+ * `scripts/release/runManagedReleaseDataCompatibilityProof.mjs`). Defined
+ * here, not there: this module is the sole owner of every exceptional
+ * release-browser execution membership constant, including this one (see
+ * docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+ * "Make releaseProofInventory.ts the sole exceptional membership owner");
+ * the runner file consumes these constants instead of defining them.
+ */
+export const MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL = 'managed-updates-data-compatibility';
+export const MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC =
+  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts';
 
 /** Fixed run order for the E2E proof leaf. */
 export const MANAGED_UPDATES_E2E_GROUPS: readonly ReleaseProofGroup[] = [

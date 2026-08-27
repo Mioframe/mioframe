@@ -14,14 +14,18 @@
 import { relative } from 'node:path';
 
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
+import {
+  MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+  MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
+} from '../lib/releaseProofInventory.ts';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
-/** Verifier/container label for this proof's own isolated Playwright run. */
-export const MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL = 'managed-updates-data-compatibility';
-/** The single spec this proof runs. */
-export const MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC =
-  'tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts';
+// Re-exported for this proof's own consumers/tests; the label and spec are
+// owned by scripts/lib/releaseProofInventory.ts (see
+// docs/testing/verify-redesign-final-review-correction-02-agent-task.md's
+// "Make releaseProofInventory.ts the sole exceptional membership owner").
+export { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL, MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC };
 
 const defaultDeps = { runLocalCommand };
 
