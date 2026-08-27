@@ -142,6 +142,8 @@ Static impact uses file capability and configuration ownership rather than seman
 
 Removed files are never passed as formatter/linter inputs. Shared static configuration changes run the complete owning static check when narrower execution cannot be proved safe.
 
+PR release-intent validation is a merge-policy gate, not affected implementation verification. The private `release-version` leaf is classified as `static` because literal `pnpm verify --full` must include version validation for release-grade proof, but default/affected `static` planning must not select that leaf. Develop PR CI runs `release-version` independently so a missing or incorrect version-intent label can block merge without blocking implementation verification or preview publication.
+
 ## Unit
 
 Unit tests use Vitest.
@@ -370,6 +372,8 @@ Classify release-oriented checks by what they prove:
 - complete production/user flow -> e2e;
 - measurable performance invariant -> performance.
 
+The PR release-intent/version-policy decision is separate from affected implementation proof: develop PR CI validates it through the independent `release-version` merge gate. `release-version` remains a private `static` leaf for literal `pnpm verify --full`, but ordinary affected/default static planning does not select it.
+
 `pnpm verify --full` is the complete release-grade verification entry point after migration. Legacy release labels or aliases are transitional implementation details recorded in the migration plan.
 
 ## Storybook
@@ -399,13 +403,15 @@ TEST IMPACT
 
 ## Coding-agent and CI ownership
 
-Coding agents own code and task-specific proof. They may run focused verifier-managed commands that materially help implementation or diagnosis.
+Verification has three distinct execution purposes:
 
-They do not own a mandatory broad local handoff gate merely because implementation is complete.
+1. focused verifier-managed checks are coding-agent implementation and diagnostic feedback;
+2. ordinary PR code work ends with one cumulative coding-agent branch handoff gate against the PR base, for example `pnpm verify --base origin/develop` for a `develop` PR;
+3. GitHub CI on the exact published PR head is the authoritative automatic repository merge gate owned by the architect.
 
-GitHub CI on the exact published PR head is the authoritative automatic repository verification gate. The architect owns PR creation/update, CI review, semantic review, and merge readiness.
+The branch handoff gate is diff-aware and uses the coding environment's normal local verifier profile. It is deliberately not `pnpm verify --full`; `--full` is full-project/release scope and cannot be combined with `--base`. The branch gate may be skipped only for explicitly diagnostic/read-only work with no tracked implementation result, or when the architect explicitly records the allowed non-code exception.
 
-A green CI run does not replace correct architecture, ownership, test placement, or required scenario coverage.
+A clean branch handoff does not replace exact-head CI, and green CI does not replace the branch handoff, correct architecture, ownership, test placement, or required scenario coverage.
 
 ## Non-goals
 

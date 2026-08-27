@@ -4,7 +4,7 @@
 
 ## Status
 
-On `architecture/verify-redesign` / PR #218, the verify redesign implementation, workflow topology, documentation migration, current `develop` integration, and post-merge correction are architect-accepted.
+On `architecture/verify-redesign` / PR #218, the verify redesign implementation, workflow topology, documentation migration, current `develop` integration, and post-merge Firefox correction are otherwise architect-accepted.
 
 Current `develop` integration:
 
@@ -18,14 +18,10 @@ Relevant scripts/workflow implementation history includes:
 - second correction: `8911f44078676ccaceb19c8de8c05364b5ec6698`;
 - first architecture-revision implementation: `ccd2bc0842428b3fde973afa9caf2f1a44b2aa53`;
 - revision-02 implementation: `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`;
-- develop workflow browser-integration correction: `32af5521b271de1fca4f94740572afa70b4900ec`.
+- develop workflow browser-integration correction: `32af5521b271de1fca4f94740572afa70b4900ec`;
+- previously reviewed exact head before this correction round: `50f16c4d231feef20f5f10c9d6a800c61ccfcce8`.
 
-The post-merge review findings are resolved:
-
-- the dedicated Firefox database-virtualization Storybook project is now protected by the existing root Playwright configuration contract test;
-- the final coding pass completed `pnpm verify --base origin/develop` cleanly: all 20 selected checks passed with no retry/flaky acceptance.
-
-No active `REVIEW.md` finding remains. The migration is waiting only for green exact-head GitHub CI and the PR readiness transition.
+The final semantic audit found one remaining verifier-planning defect. `scripts/REVIEW.md` is active: ordinary affected/default `static` planning can still select the private `release-version` leaf even though PR version policy is intentionally an independent merge gate. The canonical architecture now records the required isolation explicitly. PR #218 is draft and blocked until that scripts correction, a new clean branch handoff, re-review, and new exact-head CI are complete.
 
 ## Current executable public contract
 
@@ -60,6 +56,8 @@ pnpm verify --fix-only
 
 ## Architect-accepted executable state
 
+Except for the active `release-version` isolation correction below, the following state remains accepted and must not be reopened without new repository evidence:
+
 - **Static:** release-sensitive artifact planning covers production `src/**`, application Vite harness inputs, package/lock/build-entry handling, and neutral local-command execution ownership; dependent build/artifact proof is selected truthfully.
 - **Unit:** Vitest is the only affected/dependency engine with accepted safe fallback and zero-match behavior.
 - **Storybook static:** shared Vite build inputs and neutral local-command execution widen the Storybook static build when its real runtime/build can change.
@@ -71,10 +69,24 @@ pnpm verify --fix-only
 - **E2E:** ordinary page/widget ownership is structural; productionArtifact special execution remains central/fail-closed; shared Playwright execution and application Vite harness inputs widen full E2E. The integrated database virtualization scenario lives under `tests/e2e/widgets/DocumentView/` and is applicable to both desktop and mobile projects.
 - **E2E relevance:** target-tree, project applicability, Playwright owner inventory, exceptional membership, and dependency graph validation occur only for E2E-relevant scopes or literal `--full`.
 - **Fix mode:** `--fix-only` returns before proof planning.
-- **Develop CI:** focused `static`, `unit`, `mutation`, `e2e`, `browser-integration`, `behavior`, and `visual` proof participate in the implementation gate; `browser-integration` is an independent job behind `autofix` and aggregate `verification` requires its success. The performance inventory is empty, so no persistent performance lane exists.
+- **Develop CI:** focused `static`, `unit`, `mutation`, `e2e`, `browser-integration`, `behavior`, and `visual` proof participate in the implementation gate; `browser-integration` is an independent job behind `autofix` and aggregate `verification` requires its success. The independent PR-only `release-version` job is a separate merge-policy gate and preview depends only on implementation `verification`.
 - **Main CI:** the release gate runs `pnpm verify --full`.
 
 Shared Vite ownership is centralized in one derived capability rather than repeated per-planner lists. Neutral low-level command/lock/result/signal ownership is likewise centralized and composed only by truthful current consumers. No tooling dependency graph beyond the dedicated E2E `dependency-cruiser` use, universal planner registry, DSL, cache, or second public metadata model was introduced.
+
+## Active correction
+
+The current implementation still allows `scripts/lib/releaseStaticRisk.ts` to mark `releaseVersion` affected for `package.json`, version-policy scripts, release docs/checklists, and release notes. `scripts/verify.ts` then emits the private `release-version` leaf during ordinary/default `static` planning.
+
+Required final state:
+
+- ordinary/default/affected `static` planning never emits `release-version`;
+- the affected release-static planner does not retain an always-false or otherwise redundant `releaseVersion` state solely for that removed path;
+- runtime-relevant `package.json` changes still select the existing build/artifact/managed-update static proof they truthfully affect;
+- confirmed version-only `package.json` changes do not select release-sensitive static proof solely because of the version change;
+- literal `pnpm verify --full` still runs `release-version` as a private `static` leaf;
+- `.github/workflows/verify.yml` keeps the existing independent PR-only `release-version` job and preview remains dependent only on aggregate implementation `verification`;
+- no public verification type, CLI entry point, workflow topology, release-version validator semantics, or accepted planner ownership outside this seam changes.
 
 ## Compatibility removed and not to be restored
 
@@ -106,11 +118,13 @@ Internal release-named commands/files remain where required by built-artifact, s
 
 ## Completion gate
 
-The implementation/migration work is complete. PR #218 may move to merge-ready only after:
+PR #218 may return to merge-ready only after:
 
-1. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
-2. the exact final head still has no active semantic review finding;
-3. PR #218 is moved out of draft;
-4. merge into `develop` uses squash merge.
+1. the active `scripts/REVIEW.md` finding is corrected without reopening accepted architecture;
+2. the coding agent completes one clean `pnpm verify --base origin/develop` on the resulting cumulative branch with no retry/flaky acceptance;
+3. architect re-review confirms the full affected verifier/CI contract and removes `scripts/REVIEW.md`;
+4. GitHub CI is green on that exact final head, including independent browser-integration, aggregate implementation `verification`, independent `release-version`, and required aggregate `verify`;
+5. PR #218 is moved out of draft;
+6. merge into `develop` uses squash merge.
 
-Current merge readiness: **should not merge until blockers are fixed** — the remaining blocker is exact-head CI / draft readiness, not implementation or documentation.
+Current merge readiness: **should not merge until blockers are fixed**.
