@@ -30,6 +30,8 @@ Current bounded coding-agent assignment:
 
 - `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
 
+The repository was prepared for this assignment through architect-owned documentation commits ending at the current handoff-preparation head. The coding agent should start from the latest branch head, not from an earlier merge/CI head.
+
 This task owns only the missing deterministic Firefox project configuration guard plus the mandatory cumulative coding-agent branch handoff proof. It does not reopen verifier architecture, Storybook runtime topology, E2E ownership, browser-integration ownership, or CI topology.
 
 ## Accepted implementation state
@@ -143,7 +145,7 @@ Historical pre-merge CI is not merge proof for the integrated branch.
 
 ## Next order of work
 
-1. coding agent executes `docs/testing/verify-redesign-post-merge-correction-agent-task.md`;
+1. coding agent executes `docs/testing/verify-redesign-post-merge-correction-agent-task.md` from the latest `architecture/verify-redesign` head;
 2. the expected code change is only the deterministic `playwright.lanes.test.ts` Firefox project guard;
 3. coding agent runs focused unit verification, then the mandatory cumulative `pnpm verify --base origin/develop` branch gate and resolves only concrete PR-caused in-contract failures if any;
 4. architect re-reviews the complete post-merge PR and removes `REVIEW.md` only when both findings are resolved;
