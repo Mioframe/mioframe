@@ -30,7 +30,7 @@ Current bounded coding-agent assignment:
 
 - `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
 
-The repository was prepared for this assignment through architect-owned documentation commits ending at the current handoff-preparation head. The coding agent should start from the latest branch head, not from an earlier merge/CI head.
+The repository has now been prepared for this assignment through architect-owned documentation commits. The coding agent must start from the latest `architecture/verify-redesign` head shown by the repository, not from an earlier merge/CI SHA.
 
 This task owns only the missing deterministic Firefox project configuration guard plus the mandatory cumulative coding-agent branch handoff proof. It does not reopen verifier architecture, Storybook runtime topology, E2E ownership, browser-integration ownership, or CI topology.
 
