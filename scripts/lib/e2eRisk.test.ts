@@ -207,6 +207,7 @@ describe('validateE2EScenarioRegistry', () => {
     expect(coveredSpecs.has('tests/e2e/databasePersistenceSmoke.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/databasePropertyFlows.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/databaseViewsAndQueryFlows.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/databaseVirtualizationFlows.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/repoExplorerScreen.spec.ts')).toBe(true);
     expect(coveredSpecs.has('tests/e2e/repositoryFlows.spec.ts')).toBe(true);
   });
@@ -386,8 +387,31 @@ describe('resolveAppE2EPlan', () => {
 });
 
 describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
+  it('routes the virtualized Database table through its persistence, item, and view owners', () => {
+    const plan = resolveAppE2EPlan(['src/entities/databaseData/DatabaseDataTable.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/databaseItemFlows.spec.ts',
+      'tests/e2e/databasePersistenceSmoke.spec.ts',
+      'tests/e2e/databaseVirtualizationFlows.spec.ts',
+    ]);
+  });
+
   it.each([
     ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
+    [
+      'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
+    ],
+    [
+      'src/widgets/DocumentView/Database/useDatabaseViewSurfaceGeometry.ts',
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
+    ],
+    [
+      'src/features/databaseInlineValueEdit/',
+      ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
+    ],
     [
       'src/shared/lib/sortable/useReorderSurface.ts',
       ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
@@ -398,6 +422,21 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual(expectedSpecs);
+  });
+
+  it.each([
+    'src/features/relationValueEdit/RelationValueField.vue',
+    'src/features/relationValueEdit/RelationValueFieldData.vue',
+    'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
+  ])('resolves %s to the exact inline relation selected-view spec union', (filePath) => {
+    const plan = resolveAppE2EPlan([filePath]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/databaseItemFlows.spec.ts',
+      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+      'tests/e2e/databaseVirtualizationFlows.spec.ts',
+    ]);
   });
 
   it('resolves DatabaseViewsSheet.vue to exactly the six-spec database views/reorder set', () => {

@@ -257,6 +257,10 @@ export const createDatabaseProperty = async (
     relatedDocumentName?: string | undefined;
   },
 ) => {
+  const table = page.getByRole('table');
+  const previousColumnCount =
+    (await table.count()) > 0 ? await table.getAttribute('aria-colcount') : undefined;
+
   const sheet = await openPropertiesSheet(page);
   await sheet.getByRole('button', { name: /add property/i }).click();
 
@@ -285,6 +289,12 @@ export const createDatabaseProperty = async (
 
   await expect(dialog).toHaveCount(0);
   await closeBottomSheet(page, /database properties sheet/i);
+
+  if (previousColumnCount) {
+    await expect(table).toHaveAttribute('aria-colcount', String(Number(previousColumnCount) + 1));
+    return name;
+  }
+
   await expect(
     page.getByRole('columnheader', { name: new RegExp(`^${escapeRegex(name)}$`, 'i') }),
   ).toBeVisible();
@@ -400,7 +410,7 @@ export const addDatabaseItemValues = async (
 };
 
 export const findDatabaseRow = (root: Page | Locator, value: string): Locator =>
-  root.locator('tbody[role="list"] > tr').filter({ hasText: value }).first();
+  root.locator('tbody > tr:not([aria-hidden="true"])').filter({ hasText: value }).first();
 
 export const findListRow = (root: Page | Locator, value: string | RegExp): Locator =>
   root.getByRole('list').locator(':scope > *').filter({ hasText: value }).first();
@@ -635,7 +645,7 @@ export const removeFirstFilter = async (page: Page) => {
 };
 
 export const getDatabaseRowTexts = async (root: Page | Locator) => {
-  const rows = root.locator('tbody[role="list"] > tr');
+  const rows = root.locator('tbody > tr:not([aria-hidden="true"])');
   const rowCount = await rows.count();
   return Promise.all(
     Array.from({ length: rowCount }, async (_, index) =>

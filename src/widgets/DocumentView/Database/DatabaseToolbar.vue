@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { useDatabaseViewSelection } from '@entity/databaseView';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseUnknownProperty } from '@shared/lib/databaseDocument';
 import { type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MDIconButton } from '@shared/ui/Button';
 import MDToolbarContainer from '@shared/ui/Toolbar/MDToolbarContainer.vue';
-import { computed, ref, toRefs } from 'vue';
+import { ref, toRefs } from 'vue';
 import DatabaseViewsSheet from './DatabaseViewsSheet.vue';
 import DatabaseSortSheet from './DatabaseSortSheet.vue';
 import DatabasePropertiesSheet from './DatabasePropertiesSheet.vue';
@@ -13,77 +12,64 @@ import { DbItemAddDialog } from '@feature/databaseItemEdit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
 import type { MaybeElement } from '@vueuse/core';
 import DatabaseFiltersSheet from './DatabaseFiltersSheet.vue';
-import { useDatabaseProperties } from '@entity/databaseProperty';
-import type { PartialDeep } from 'type-fest';
+import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
 
 const explicitViewId = defineModel<DatabaseViewId | undefined>('explicitViewId');
 
 const props = defineProps<{
   documentId: AMDocumentId;
   directoryPath: string;
+  hasProperties?: boolean | undefined;
+  effectiveViewId?: DatabaseViewId | undefined;
   autoHideTarget?: MaybeElement | undefined;
+  activeConfigurationSurface?: DatabaseConfigurationSurface | undefined;
 }>();
 
-const { documentId, directoryPath: path, autoHideTarget } = toRefs(props);
-const { explicitViewId: viewSelection, effectiveViewId } = useDatabaseViewSelection(
-  path,
+const emit = defineEmits<{
+  requestConfiguration: [surface: DatabaseConfigurationSurface];
+  closeConfiguration: [];
+  'update:property': [
+    payload: { propertyId: DatabasePropertyId; property: DatabaseUnknownProperty },
+  ];
+}>();
+
+const {
   documentId,
-  explicitViewId,
-);
-
-const showViewSettings = ref(false);
-
-const showSortSettings = ref(false);
-
-const showPropertySettings = ref(false);
-
-const showFilterSettings = ref(false);
+  directoryPath: path,
+  autoHideTarget,
+  activeConfigurationSurface,
+  effectiveViewId,
+  hasProperties,
+} = toRefs(props);
 
 const isShowAddItem = ref(false);
 
-const { size: propertySize, patch: patchProperty } = useDatabaseProperties(path, documentId);
-
-const onUpdateProperty = async (
-  propertyId: DatabasePropertyId,
-  v: PartialDeep<DatabaseUnknownProperty>,
-) => {
-  await patchProperty(path.value, documentId.value, propertyId, v);
+const onUpdateProperty = (propertyId: DatabasePropertyId, property: DatabaseUnknownProperty) => {
+  emit('update:property', { propertyId, property });
 };
 
-const onToggleViewSettings = () => {
-  showViewSettings.value = !showViewSettings.value;
+const onRequestViewSettings = () => {
+  emit('requestConfiguration', 'views');
 };
 
-const onToggleSortSettings = () => {
-  showSortSettings.value = !showSortSettings.value;
+const onRequestSortSettings = () => {
+  emit('requestConfiguration', 'sort');
 };
 
 const onToggleAddItemDialog = () => {
   isShowAddItem.value = !isShowAddItem.value;
 };
 
-const onToggleFilterSettings = () => {
-  showFilterSettings.value = !showFilterSettings.value;
+const onRequestFilterSettings = () => {
+  emit('requestConfiguration', 'filter');
 };
 
-const onTogglePropertySettings = () => {
-  showPropertySettings.value = !showPropertySettings.value;
+const onRequestPropertySettings = () => {
+  emit('requestConfiguration', 'properties');
 };
 
-const onCloseViewsSheet = () => {
-  showViewSettings.value = false;
-};
-
-const onCloseSortSheet = () => {
-  showSortSettings.value = false;
-};
-
-const onClosePropertiesSheet = () => {
-  showPropertySettings.value = false;
-};
-
-const onCloseFiltersSheet = () => {
-  showFilterSettings.value = false;
+const onCloseConfiguration = () => {
+  emit('closeConfiguration');
 };
 
 const onItemAdded = () => {
@@ -93,12 +79,6 @@ const onItemAdded = () => {
 const onCancelAddItem = () => {
   isShowAddItem.value = false;
 };
-
-const hasProperties = computed(() => {
-  const size = propertySize.value;
-
-  return size && size > 0;
-});
 </script>
 
 <template>
@@ -108,7 +88,7 @@ const hasProperties = computed(() => {
       tooltip="view settings"
       md-symbol-name="view_quilt"
       color="standard"
-      @click="onToggleViewSettings"
+      @click="onRequestViewSettings"
     />
 
     <MDIconButton
@@ -116,7 +96,7 @@ const hasProperties = computed(() => {
       tooltip="sort"
       md-symbol-name="sort_by_alpha"
       color="standard"
-      @click="onToggleSortSettings"
+      @click="onRequestSortSettings"
     />
 
     <MDIconButton
@@ -133,45 +113,45 @@ const hasProperties = computed(() => {
       tooltip="filter"
       md-symbol-name="filter_alt"
       color="standard"
-      @click="onToggleFilterSettings"
+      @click="onRequestFilterSettings"
     />
 
     <MDIconButton
       tooltip="configure properties"
       md-symbol-name="tune"
       color="standard"
-      @click="onTogglePropertySettings"
+      @click="onRequestPropertySettings"
     />
 
     <DatabaseViewsSheet
-      v-if="showViewSettings"
-      v-model:explicit-view-id="viewSelection"
+      v-if="activeConfigurationSurface === 'views'"
+      v-model:explicit-view-id="explicitViewId"
       :path="path"
       :document-id="documentId"
-      @closed="onCloseViewsSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabaseSortSheet
-      v-if="showSortSettings"
+      v-if="activeConfigurationSurface === 'sort'"
       :directory-path="path"
       :document-id="documentId"
       :view-id="effectiveViewId"
-      @closed="onCloseSortSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabasePropertiesSheet
-      v-if="showPropertySettings"
+      v-if="activeConfigurationSurface === 'properties'"
       :document-id="documentId"
       :directory-path="path"
-      @closed="onClosePropertiesSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DatabaseFiltersSheet
-      v-if="showFilterSettings && effectiveViewId"
+      v-if="activeConfigurationSurface === 'filter' && effectiveViewId"
       :document-id="documentId"
       :view-id="effectiveViewId"
       :directory-path="path"
-      @closed="onCloseFiltersSheet"
+      @closed="onCloseConfiguration"
     />
 
     <DbItemAddDialog

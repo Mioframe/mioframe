@@ -107,6 +107,35 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
     specs: ['tests/e2e/databaseItemFlows.spec.ts'],
   },
   {
+    name: 'database inline relation selected view application',
+    sourcePrefixes: [
+      'src/features/relationValueEdit/RelationValueField.vue',
+      'src/features/relationValueEdit/RelationValueFieldData.vue',
+      'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
+    ],
+    specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+  },
+  {
+    name: 'database virtualized table product behavior',
+    sourcePrefixes: [
+      'src/entities/databaseData/DatabaseDataTable.vue',
+      'src/entities/databaseRelation/RelationValueInline.vue',
+      'src/entities/databaseValue/useDatabaseStoredValue.ts',
+      'src/entities/databaseValue/useDatabaseValueWrite.ts',
+      'src/features/relationValueEdit/RelationValueField.vue',
+      'src/features/relationValueEdit/RelationValueFieldData.vue',
+      'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
+      'src/widgets/DocumentView/Database/DatabaseRelationValueInline.vue',
+      'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
+      'src/widgets/DocumentView/Database/DatabaseViewLayout.vue',
+      'src/widgets/DocumentView/Database/DatabaseViewWidget.vue',
+      'src/widgets/DocumentView/Database/useDatabaseViewSurfaceGeometry.ts',
+      'src/widgets/DocumentView/Database/EditableInlineValue.vue',
+      'src/features/databaseInlineValueEdit/',
+    ],
+    specs: ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
+  },
+  {
     name: 'database property flows',
     sourcePrefixes: [
       'src/features/databasePropertyEdit/',

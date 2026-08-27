@@ -28,7 +28,11 @@ const DESKTOP_ONLY_SPECS = [
   'tests/e2e/zipActionFlows.spec.ts',
 ];
 
-const BOTH_SPECS = ['tests/e2e/appSmoke.spec.ts', 'tests/e2e/reorderSurfaceBottomSheet.spec.ts'];
+const BOTH_SPECS = [
+  'tests/e2e/appSmoke.spec.ts',
+  'tests/e2e/databaseVirtualizationFlows.spec.ts',
+  'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
+];
 
 describe('E2E_PROJECT_APPLICABILITY', () => {
   it('classifies every current spec exactly as audited', () => {

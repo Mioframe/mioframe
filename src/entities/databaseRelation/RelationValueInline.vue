@@ -144,7 +144,6 @@ const onClickShowValueButton = (e: Event) => {
 <style lang="css" scoped>
 .relation-value {
   display: inline-block;
-  overflow: auto;
 
   &__empty {
     opacity: 0.5;

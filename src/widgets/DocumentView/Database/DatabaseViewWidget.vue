@@ -24,6 +24,9 @@ import {
   DatabaseExampleDocumentCreateSuccessCard,
   useDatabaseExampleDocumentCreateSuccess,
 } from '@feature/exampleDocumentsCreate';
+import { useDatabaseInlineEditSession } from '@feature/databaseInlineValueEdit';
+import type { DatabaseConfigurationSurface } from './databaseConfigurationSurface';
+import { useDatabaseViewSurfaceGeometry } from './useDatabaseViewSurfaceGeometry';
 
 const props = defineProps<{
   documentId: AMDocumentId;
@@ -38,6 +41,7 @@ const {
   viewList: databaseViewList,
   explicitViewId,
   effectiveViewId,
+  setExplicitViewId,
 } = useDatabaseViewSelection(path, documentId, stateExplicitViewId);
 
 const documentError = computed(() => {
@@ -61,6 +65,60 @@ const itemContextualButtons = defineMenuButtonList([
 const { addSnackbar } = useSnackbar();
 
 const { removeItem } = useDatabaseData(path, documentId);
+const {
+  cancel: cancelInlineEdit,
+  commit: commitInlineEdit,
+  getSession: getInlineEditSession,
+  request: requestInlineEdit,
+  resolve: resolveActiveInlineEdit,
+  updateDraft: updateInlineEditDraft,
+} = useDatabaseInlineEditSession(path, documentId);
+
+const activeConfigurationSurface = shallowRef<DatabaseConfigurationSurface>();
+
+const onRequestInlineEdit = async (
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
+  initialValue: unknown,
+) => {
+  await requestInlineEdit(itemId, propertyId, initialValue);
+};
+
+const onUpdateInlineEditDraft = (
+  itemId: DatabaseItemId,
+  propertyId: DatabasePropertyId,
+  draft: unknown,
+) => {
+  updateInlineEditDraft(itemId, propertyId, draft);
+};
+
+const onCommitInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
+  commitInlineEdit(itemId, propertyId);
+};
+
+const onCancelInlineEdit = (itemId: DatabaseItemId, propertyId: DatabasePropertyId) => {
+  cancelInlineEdit(itemId, propertyId);
+};
+
+const onRequestExplicitViewId = async (viewId: DatabaseViewId | undefined) => {
+  if (viewId === explicitViewId.value) {
+    return;
+  }
+
+  if ((await resolveActiveInlineEdit()).status === 'success') {
+    setExplicitViewId(viewId);
+  }
+};
+
+const onRequestConfiguration = async (surface: DatabaseConfigurationSurface) => {
+  if ((await resolveActiveInlineEdit()).status === 'success') {
+    activeConfigurationSurface.value = surface;
+  }
+};
+
+const onCloseConfiguration = () => {
+  activeConfigurationSurface.value = undefined;
+};
 
 const editedItemId = shallowRef<DatabaseItemId>();
 const isShowEditItemDialog = computed({
@@ -100,11 +158,23 @@ const onUpdateProperty = async (propertyId: DatabasePropertyId, v: DatabaseUnkno
   await putProperty(path.value, documentId.value, propertyId, v);
 };
 
+const onUpdateToolbarProperty = (payload: {
+  propertyId: DatabasePropertyId;
+  property: DatabaseUnknownProperty;
+}) => {
+  return onUpdateProperty(payload.propertyId, payload.property);
+};
+
 const hasProperties = computed(() =>
   propertiesIdList.value ? propertiesIdList.value.length > 0 : undefined,
 );
 
-const databaseViewRef = useTemplateRef('databaseViewRef');
+const databaseViewRef = useTemplateRef<HTMLElement>('databaseViewRef');
+const databaseViewLayoutRef = useTemplateRef<HTMLElement>('databaseViewLayoutRef');
+const { horizontalSurfaceOffset, verticalSurfaceOffset } = useDatabaseViewSurfaceGeometry(
+  databaseViewRef,
+  databaseViewLayoutRef,
+);
 
 const onCancelEditItemDialog = () => {
   isShowEditItemDialog.value = false;
@@ -135,18 +205,30 @@ const onUpdatedEditItemDialog = () => {
       </section>
 
       <DatabaseToolbar
-        v-model:explicit-view-id="explicitViewId"
+        :explicit-view-id="explicitViewId"
         :document-id="documentId"
         :directory-path="path"
+        :has-properties="hasProperties"
+        :effective-view-id="effectiveViewId"
         :auto-hide-target="databaseViewRef"
+        :active-configuration-surface="activeConfigurationSurface"
+        @update:explicit-view-id="onRequestExplicitViewId"
+        @update:property="onUpdateToolbarProperty"
+        @request-configuration="onRequestConfiguration"
+        @close-configuration="onCloseConfiguration"
       />
     </div>
 
     <DatabaseViewLayout
       v-else
+      ref="databaseViewLayoutRef"
       :document-id="documentId"
       :view-id="effectiveViewId"
       :path="path"
+      :properties="propertiesIdList"
+      :scroll-root="databaseViewRef"
+      :vertical-surface-offset="verticalSurfaceOffset"
+      :horizontal-surface-offset="horizontalSurfaceOffset"
       class="database-view__layout"
     >
       <template #value="{ itemId, propertyId }">
@@ -155,6 +237,11 @@ const onUpdatedEditItemDialog = () => {
           :property-id="propertyId"
           :document-id="documentId"
           :directory-path="path"
+          :edit-session="getInlineEditSession(itemId, propertyId)"
+          @request-edit="onRequestInlineEdit(itemId, propertyId, $event)"
+          @update:draft="onUpdateInlineEditDraft(itemId, propertyId, $event)"
+          @commit-edit="onCommitInlineEdit(itemId, propertyId)"
+          @cancel-edit="onCancelInlineEdit(itemId, propertyId)"
           @update:property="onUpdateProperty(propertyId, $event)"
         />
       </template>
@@ -168,10 +255,17 @@ const onUpdatedEditItemDialog = () => {
 
       <template #after>
         <DatabaseToolbar
-          v-model:explicit-view-id="explicitViewId"
+          :explicit-view-id="explicitViewId"
           :document-id="documentId"
           :directory-path="path"
+          :has-properties="hasProperties"
+          :effective-view-id="effectiveViewId"
           :auto-hide-target="databaseViewRef"
+          :active-configuration-surface="activeConfigurationSurface"
+          @update:explicit-view-id="onRequestExplicitViewId"
+          @update:property="onUpdateToolbarProperty"
+          @request-configuration="onRequestConfiguration"
+          @close-configuration="onCloseConfiguration"
         />
       </template>
     </DatabaseViewLayout>
@@ -213,18 +307,6 @@ const onUpdatedEditItemDialog = () => {
     flex-shrink: 0;
   }
 
-  &__controls {
-    margin-top: auto;
-    flex-shrink: 0;
-    position: sticky;
-    bottom: 0;
-    background: transparent;
-  }
-
-  &__table {
-    flex-grow: 1;
-  }
-
   &__without-properties {
     display: flex;
     flex-direction: column;
@@ -234,16 +316,6 @@ const onUpdatedEditItemDialog = () => {
     flex-grow: 1;
     text-align: center;
     padding: 4step;
-  }
-}
-
-.sheet {
-  &__head {
-    display: flex;
-  }
-
-  &__body {
-    padding: 16px;
   }
 }
 </style>

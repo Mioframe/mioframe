@@ -7,9 +7,27 @@ const storybookStaticDir = toolingConfig.storybook.staticDir;
 const storybookURL = `http://${host}:${port}`;
 const viteBin = './node_modules/.bin/vite';
 
+// Firefox is required only for the database native-table virtualization capability because dynamic
+// table-row measurement is the confirmed engine-specific risk.
+const DATABASE_VIRTUALIZATION_CAPABILITY_SPECS = [
+  'src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts',
+];
+
+const sharedUse = {
+  baseURL: storybookURL,
+  viewport: { width: 1280, height: 900 },
+  deviceScaleFactor: 1,
+  colorScheme: 'light',
+  locale: 'en-US',
+  timezoneId: 'UTC',
+  trace: 'on-first-retry',
+  screenshot: 'only-on-failure',
+  video: 'retain-on-failure',
+  serviceWorkers: 'block',
+} as const;
+
 export default defineConfig({
   testDir: '.',
-  testMatch: ['tests/e2e/storybook/**/*.spec.ts', 'src/**/*.browser.spec.ts'],
   respectGitIgnore: true,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -18,20 +36,18 @@ export default defineConfig({
   failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   workers: 1,
-  use: {
-    ...devices['Desktop Chrome'],
-    channel: 'chromium',
-    baseURL: storybookURL,
-    viewport: { width: 1280, height: 900 },
-    deviceScaleFactor: 1,
-    colorScheme: 'light',
-    locale: 'en-US',
-    timezoneId: 'UTC',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-    serviceWorkers: 'block',
-  },
+  projects: [
+    {
+      name: 'chromium',
+      testMatch: ['tests/e2e/storybook/**/*.spec.ts', 'src/**/*.browser.spec.ts'],
+      use: { ...devices['Desktop Chrome'], ...sharedUse, channel: 'chromium' },
+    },
+    {
+      name: 'firefox-virtualization-capability',
+      testMatch: DATABASE_VIRTUALIZATION_CAPABILITY_SPECS,
+      use: { ...devices['Desktop Firefox'], ...sharedUse },
+    },
+  ],
   webServer: {
     command:
       'node scripts/storybook.mjs build && ' +

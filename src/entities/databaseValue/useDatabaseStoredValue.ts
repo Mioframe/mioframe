@@ -4,7 +4,16 @@ import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
 import { computed, toValue, type Ref } from 'vue';
+import { useDatabaseValueWrite } from './useDatabaseValueWrite';
 
+/**
+ * Reads an item's stored database value and exposes the matching item/property-scoped write.
+ * @param path - Directory path containing the Database document.
+ * @param documentId - Database document identity.
+ * @param itemId - Item whose stored value is read or written.
+ * @param propertyId - Property whose stored value is read or written.
+ * @returns Reactive stored-value state and a persistence function.
+ */
 export const useDatabaseStoredValue = (
   path: Ref<string>,
   documentId: Ref<AMDocumentId>,
@@ -13,9 +22,11 @@ export const useDatabaseStoredValue = (
 ) => {
   const {
     databaseDocument: {
-      data: { postValue, databaseStoredValue },
+      data: { databaseStoredValue },
     },
   } = useMainServiceClient();
+
+  const { postValue } = useDatabaseValueWrite(path, documentId);
 
   const { data, error, isLoading } = useObservableQuery(
     databaseStoredValue,
@@ -46,7 +57,6 @@ export const useDatabaseStoredValue = (
     errorMessage,
     isLoading,
 
-    post: (value: unknown) =>
-      postValue(path.value, documentId.value, itemId.value, propertyId.value, value),
+    post: (value: unknown) => postValue(itemId.value, propertyId.value, value),
   };
 };

@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.3.32",
+  "version": "0.3.33",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -60,6 +60,7 @@
     "@m3e/web": "^2.7.4",
     "@sentry/browser": "^10.68.0",
     "@sentry/vue": "^10.68.0",
+    "@tanstack/vue-virtual": "^3.13.36",
     "@unhead/vue": "^3.2.3",
     "@vueuse/components": "^14.3.0",
     "@vueuse/core": "^14.3.0",

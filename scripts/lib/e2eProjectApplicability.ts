@@ -36,6 +36,7 @@ export const E2E_PROJECT_APPLICABILITY: readonly E2EProjectApplicabilityEntry[] 
   { spec: 'tests/e2e/databaseItemFlows.spec.ts', applicability: 'desktop' },
   { spec: 'tests/e2e/databasePropertyFlows.spec.ts', applicability: 'desktop' },
   { spec: 'tests/e2e/databaseViewsAndQueryFlows.spec.ts', applicability: 'desktop' },
+  { spec: 'tests/e2e/databaseVirtualizationFlows.spec.ts', applicability: 'both' },
   { spec: 'tests/e2e/exportDocumentBrowserStorage.spec.ts', applicability: 'desktop' },
   { spec: 'tests/e2e/helpNavigation.spec.ts', applicability: 'desktop' },
   { spec: 'tests/e2e/reorderSurfaceCancellation.spec.ts', applicability: 'desktop' },
