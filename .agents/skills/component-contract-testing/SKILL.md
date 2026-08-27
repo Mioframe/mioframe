@@ -92,7 +92,7 @@ This proof type owns native semantics, explicit ARIA ownership, accessible name,
 pnpm verify --only unit --files <exact-component-or-test-paths...>
 ```
 
-Until unit-impact migration is complete, prefer the exact owning component test path when a production source path would rely on an unconfirmed relation. After focused proof is complete, return to the owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate; do not require a broad local final verification solely to complete this skill.
+The current unit planner uses Vitest-native related/affected resolution for truthful source-to-test relationships with safe fallback. Prefer exact component/test paths for focused feedback; do not add artificial relations solely to influence selection. After focused proof is complete, return to the owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate; do not require a broad local final verification solely to complete this skill.
 
 ## Forbidden
 
