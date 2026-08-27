@@ -26,6 +26,12 @@ Current `develop` integration:
 
 The branch is no longer behind `develop`.
 
+Current bounded coding-agent assignment:
+
+- `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
+
+This task owns only the missing deterministic Firefox project configuration guard plus the mandatory cumulative coding-agent branch handoff proof. It does not reopen verifier architecture, Storybook runtime topology, E2E ownership, browser-integration ownership, or CI topology.
+
 ## Accepted implementation state
 
 The public verification types remain exactly:
@@ -118,6 +124,10 @@ This is an environment/proof blocker, not current evidence of a repository defec
 
 The smallest required correction is a config-contract assertion in the existing Playwright lane test. Do not add another registry or change runtime discovery.
 
+The active coding task for both findings is:
+
+- `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
+
 ## CI evidence after the develop merge
 
 Run `33064072119` on autofixed merge head `1c96158a869b2f60d8e7283d786d173797e18b74` is useful post-merge evidence but cannot be final merge proof because active review findings remain and the head will move for their correction.
@@ -133,10 +143,10 @@ Historical pre-merge CI is not merge proof for the integrated branch.
 
 ## Next order of work
 
-1. add the narrow `playwright.lanes.test.ts` regression guard for the dedicated Firefox virtualization project without changing the accepted Storybook runtime topology;
-2. run focused public verifier feedback for the touched configuration/test surface as useful;
-3. from a valid coding environment, run the mandatory cumulative handoff gate `pnpm verify --base origin/develop` and require a clean non-flaky result;
-4. architect re-review the complete post-merge PR and remove `REVIEW.md` only when both findings are resolved;
+1. coding agent executes `docs/testing/verify-redesign-post-merge-correction-agent-task.md`;
+2. the expected code change is only the deterministic `playwright.lanes.test.ts` Firefox project guard;
+3. coding agent runs focused unit verification, then the mandatory cumulative `pnpm verify --base origin/develop` branch gate and resolves only concrete PR-caused in-contract failures if any;
+4. architect re-reviews the complete post-merge PR and removes `REVIEW.md` only when both findings are resolved;
 5. require green GitHub CI on the exact corrected final head, including browser-integration and aggregate `verify`;
 6. move PR #218 out of draft;
 7. issue the final merge-readiness verdict;
