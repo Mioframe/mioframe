@@ -296,14 +296,20 @@ focused and the full gate, and tag pushes never rerun the full gate:
     fallback flag is part of the public CLI;
   - `verification-browser (e2e)` remains an independent application E2E job
     that depends only on `autofix`;
+  - `verification-browser (browser-integration)` is an independent job that
+    depends only on `autofix` and runs the public focused `browser-integration`
+    verification type (`pnpm verify --verbose --only browser-integration`),
+    proving isolated browser/runtime contracts (service-worker lifecycle,
+    browser storage, managed-update runtime behavior, and similar boundaries)
+    that the E2E and Storybook lanes do not cover;
   - Storybook behavior and visual are independent, self-contained parallel
     `verification-browser (...)` jobs that also depend only on `autofix`.
     Each runs its own verifier-selected Playwright proof and builds the
     Storybook it needs in that job; neither waits for nor consumes output from
     `verification-static`;
   - aggregate `verification` succeeds only when static verification,
-    application E2E, and the complete Storybook browser matrix succeed, and
-    owns whether deployable PR source is valid;
+    application E2E, browser-integration, and the complete Storybook browser
+    matrix succeed, and owns whether deployable PR source is valid;
   - PR-only `release-version` enforces the exact label-selected version for an
     ordinary `develop` PR and the exact inherited direct-base version for an
     intermediate dependent PR;
@@ -845,8 +851,9 @@ same build script and base-path contract the release gate validates.
 - In GitHub Actions: the failing step's inline log. For the ordinary `verify`
   workflow, failed/cancelled static verification — including the Storybook
   build fallback when it actually runs — uploads `verify-static-logs`,
-  application E2E uploads `verify-e2e-logs`, and failed/cancelled Storybook
-  browser lanes upload `verify-<lane>-logs`; the `release` workflow uploads
+  application E2E uploads `verify-e2e-logs`, browser-integration uploads
+  `verify-browser-integration-logs`, and failed/cancelled Storybook browser
+  lanes upload `verify-<lane>-logs`; the `release` workflow uploads
   `release-logs` on failure or cancellation (Actions run page -> Summary ->
   Artifacts).
 

@@ -241,6 +241,55 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Independent browser-integration proof: parallel with the existing E2E and
+  # Storybook browser jobs, with no dependency on the storybook-build fallback
+  # step in verification-static.
+  verification-browser-integration:
+    needs:
+      - autofix
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    name: verification-browser (browser-integration)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify browser-integration
+        run: pnpm verify --verbose --only browser-integration
+
+      - name: Upload browser verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-browser-integration-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Storybook-owned browser proof: parallel, self-contained behavior/visual
   # lanes that each build their own Storybook static output when selected,
   # with no dependency on the storybook-build fallback step in
@@ -302,6 +351,7 @@ jobs:
     needs:
       - verification-static
       - verification-browser-e2e
+      - verification-browser-integration
       - verification-storybook-browser
     if: always()
     runs-on: ubuntu-24.04
@@ -312,6 +362,7 @@ jobs:
         env:
           STATIC_RESULT: ${{ needs.verification-static.result }}
           E2E_RESULT: ${{ needs.verification-browser-e2e.result }}
+          BROWSER_INTEGRATION_RESULT: ${{ needs.verification-browser-integration.result }}
           STORYBOOK_BROWSER_RESULT: ${{ needs.verification-storybook-browser.result }}
         run: |
           failed=0
@@ -323,6 +374,11 @@ jobs:
 
           if [ "$E2E_RESULT" != "success" ]; then
             echo "E2E verification result: $E2E_RESULT"
+            failed=1
+          fi
+
+          if [ "$BROWSER_INTEGRATION_RESULT" != "success" ]; then
+            echo "Browser-integration verification result: $BROWSER_INTEGRATION_RESULT"
             failed=1
           fi
 
