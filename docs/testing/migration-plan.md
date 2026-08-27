@@ -1,33 +1,14 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` is the durable testing and verification contract. This file records the current executable migration state; detailed intermediate pass history remains in the `verify-redesign-*` records and Git history.
+`docs/testing/architecture.md` is the canonical testing and verification contract. `docs/testing/verify-redesign-architecture.md` records the accepted design rationale. This document records only the durable executable migration state; implementation passes, coding-agent tasks, review handoffs, and correction history belong in Git history and the completed PR, not in the long-lived documentation set.
 
 ## Status
 
-On `architecture/verify-redesign` / PR #218, the verify redesign implementation, workflow topology, documentation migration, current `develop` integration, post-merge Firefox correction, and final release-version isolation correction are architect-accepted.
+The verify redesign migration is complete. The current repository implements the target ownership and public command model. No transitional public compatibility path remains.
 
-Current `develop` integration:
+## Public executable contract
 
-- merged `develop`: `9dd19ed320ce227e915a824b5552af16108a5a10`;
-- two-parent integration merge: `b6125cf2ce3c976402e269b117546a923eaa654f`;
-- post-merge Firefox configuration-contract correction: `69e28e631a4a634817210e22a87a43a7095c6dd5`;
-- release-version isolation correction: `2524e5e53f881f8271be84e9190eb0a6808b1915`.
-
-Relevant scripts/workflow implementation history includes:
-
-- first correction: `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`;
-- second correction: `8911f44078676ccaceb19c8de8c05364b5ec6698`;
-- first architecture-revision implementation: `ccd2bc0842428b3fde973afa9caf2f1a44b2aa53`;
-- revision-02 implementation: `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`;
-- develop workflow browser-integration correction: `32af5521b271de1fca4f94740572afa70b4900ec`.
-
-The final semantic-audit finding is resolved. `scripts/REVIEW.md` has been removed after architect re-review. The final coding pass reported clean focused unit/static verification and a clean cumulative `pnpm verify --base origin/develop` handoff with no retry/flaky acceptance.
-
-PR #218 remains draft only until new exact-head GitHub CI succeeds on the architect-synchronized final tree and the architect performs the final readiness transition.
-
-## Current executable public contract
-
-The public verification types are exactly:
+Public verification types are exactly:
 
 - `static`;
 - `unit`;
@@ -52,65 +33,46 @@ pnpm verify:resume
 pnpm verify --fix-only
 ```
 
-`--only` accepts verification types, never private planner leaves. `--full` is the release-grade full-project entry point and rejects narrowing combinations such as `--full --only` and `--full --files`. `verify:release` is removed.
+`--only` accepts verification types, never private planner leaves. `--full` is complete release-grade full-project verification and rejects narrowing combinations such as `--full --only` and `--full --files`. There is no public `release` type and no `verify:release` alias.
 
-`pnpm verify --base origin/develop` is the ordinary coding-agent branch-handoff gate for PRs targeting `develop`. It is cumulative and diff-aware, uses the agent's normal local profile, and is separate from exact-head GitHub CI. It is deliberately not a substitute for `--full`, and `--full` is not the ordinary handoff gate.
+## Current ownership
 
-## Architect-accepted executable state
+- **Static:** formatting, linting, type-checking, Storybook buildability, release/build/config/artifact invariants, and other deterministic repository checks. PR release-version policy is not affected/default static planning: the independent PR-only `release-version` CI job owns that merge policy, while literal `pnpm verify --full` retains version validation as a private static leaf.
+- **Unit:** Vitest owns related/affected dependency selection, with safe full-unit fallback when the relation cannot be represented reliably.
+- **Behavior:** owner-local `*.behavior.spec.ts` Playwright proof for isolated interactive UI behavior. Storybook infrastructure behavior may live under `.storybook/**/*.behavior.spec.ts`.
+- **Visual:** owner-local `*.visual.spec.ts` proof with colocated baselines.
+- **Browser integration:** owner-local `*.browser-integration.spec.ts` plus the explicitly bounded exceptional release/runtime inventory. Verifier-managed Playwright remains container-only.
+- **Performance:** a valid public type with an intentionally empty persistent inventory until a concrete measurable requirement is registered.
+- **Mutation:** one explicit four-target registry is the sole automatic mutation ownership source; `stryker.config.mjs` derives the mutation inventory from it.
+- **E2E:** ordinary application proof uses structural `tests/e2e/pages/<Owner>/**` and `tests/e2e/widgets/<Owner>/**` ownership. Production reachability uses `dependency-cruiser`; there is no manual production-path -> ordinary-E2E mapping registry.
 
-- **Static:** release-sensitive artifact planning covers production `src/**`, application Vite harness inputs, package/lock/build-entry handling, and neutral local-command execution ownership. Ordinary/default affected static planning does not select the private `release-version` leaf. A confirmed version-only `package.json` change therefore does not run release-policy validation through implementation static proof, while runtime-relevant package changes still select build/artifact/managed-update static proof. Literal `pnpm verify --full` still runs `release-version` as a private `static` leaf.
-- **Unit:** Vitest is the only affected/dependency engine with accepted safe fallback and zero-match behavior.
-- **Storybook static:** shared Vite build inputs and neutral local-command execution widen the Storybook static build when its real runtime/build can change.
-- **Behavior:** discovery is owner-local `*.behavior.spec.ts`, with `.storybook/**/*.behavior.spec.ts` reserved for truthful Storybook infrastructure ownership. The database native-table virtualization behavior proof additionally runs in the dedicated Firefox project, and the root Playwright lane contract test machine-validates that routing.
-- **Visual:** discovery is owner-local `*.visual.spec.ts` with colocated baselines.
-- **Browser integration:** generic and exceptional runners remain disjoint; exceptional membership is centrally validated; shared Playwright execution, application Vite harness inputs, and runtime-relevant `package.json` widen the complete public browser-integration type; confirmed version-only package changes stay narrow.
-- **Performance:** the public type remains valid with an intentionally empty persistent inventory.
-- **Mutation:** the explicit four-target registry is the single automatic mutation ownership source; deleted/renamed infrastructure remains status-aware.
-- **E2E:** ordinary page/widget ownership is structural; productionArtifact special execution remains central/fail-closed; shared Playwright execution and application Vite harness inputs widen full E2E. The integrated database virtualization scenario lives under `tests/e2e/widgets/DocumentView/` and is applicable to both desktop and mobile projects.
-- **E2E relevance:** target-tree, project applicability, Playwright owner inventory, exceptional membership, and dependency graph validation occur only for E2E-relevant scopes or literal `--full`.
-- **Fix mode:** `--fix-only` returns before proof planning.
-- **Develop CI:** focused `static`, `unit`, `mutation`, `e2e`, `browser-integration`, `behavior`, and `visual` proof participate in the implementation gate. The independent PR-only `release-version` job is the sole PR version-policy merge gate; preview depends on implementation `verification`, not on that job.
-- **Main CI:** the release gate runs `pnpm verify --full`.
+## Verification ownership
 
-Shared Vite ownership is centralized in one derived capability rather than repeated per-planner lists. Neutral low-level command/lock/result/signal ownership is likewise centralized and composed only by truthful current consumers. No tooling dependency graph beyond the dedicated E2E `dependency-cruiser` use, universal planner registry, DSL, cache, or second public metadata model was introduced.
+Verification has three distinct execution purposes:
 
-## Compatibility removed and not to be restored
+1. focused verifier-managed checks are implementation and diagnostic feedback;
+2. ordinary PR code work ends with one cumulative coding-agent branch handoff gate against the PR base, for example `pnpm verify --base origin/develop`;
+3. GitHub CI on the exact published head is the architect-owned repository merge gate.
+
+The branch handoff gate is diff-aware and is not `pnpm verify --full`. A clean branch handoff does not replace exact-head CI, and green CI does not replace architecture/ownership review.
+
+## Removed compatibility
 
 Do not restore:
 
 - public low-level `--only` labels;
-- `verify:release`;
-- legacy ordinary `*.browser.spec.ts` discovery;
-- central ordinary behavior/visual assertion ownership;
-- root/release ordinary application E2E assertion ownership;
-- `E2E_SCENARIO_SCOPES` or production-path -> ordinary E2E mappings;
-- host Playwright ownership-metadata execution;
-- unit adjacency/custom graph selection;
-- mutation adjacency or duplicate mutation registries.
+- `verify:release` or a public `release` type;
+- ordinary `*.browser.spec.ts` discovery;
+- central ordinary Storybook behavior/visual ownership;
+- root-level ordinary application E2E ownership;
+- `E2E_SCENARIO_SCOPES` or another production-path -> ordinary-E2E registry;
+- host Playwright execution for verifier-managed discovery/proof;
+- unit adjacency or a second dependency graph for unit selection;
+- mutation adjacency or duplicate mutation registries;
+- compatibility layers whose only purpose is preserving a removed migration-era command/location.
 
-Internal release-named commands/files remain where required by built-artifact, service-worker, fresh-container, cross-engine, deployment, logging, timeout, or lock semantics.
+Internal release-named scripts and private proof leaves remain where they own real build, artifact, service-worker, fresh-container, cross-engine, publication, logging, timeout, or lock semantics.
 
-## Preserved invariants
+## Maintenance
 
-- top-level single-run verify lock and expensive-command lock;
-- container-only Playwright for verifier-managed browser proof;
-- E2E project applicability and release/fresh-container semantics;
-- accepted E2E relevance gate;
-- status/resume/logging/timeout/profile/base/fix behavior;
-- fail-closed structural validation when the owning type is relevant;
-- central exceptional release-proof inventory/full/direct validation;
-- known flaky behavior remains failed proof;
-- ordinary coding-agent PR handoff requires one clean cumulative `pnpm verify --base origin/<base>` result unless repository rules explicitly permit the narrow non-code/read-only exception.
-
-## Completion gate
-
-Implementation, architecture, documentation, workflow topology, develop integration, and coding-agent branch verification are complete and architect-accepted.
-
-PR #218 may move to merge-ready only after:
-
-1. GitHub CI is green on the exact final architect-synchronized head, including independent browser-integration, aggregate implementation `verification`, independent `release-version`, and required aggregate `verify`;
-2. the exact final head still has no active semantic review finding;
-3. PR #218 is moved out of draft;
-4. merge into `develop` uses squash merge.
-
-Current merge readiness: **should not merge until blockers are fixed** — the remaining blocker is new exact-head CI / draft readiness, not implementation or architecture.
+Future verification changes start from `docs/testing/architecture.md`, current repository rules, and current implementation/tests. Do not add new migration-pass documents for routine maintenance. If a future architectural change requires staged migration, create only the minimum temporary control artifacts needed for that active change and remove them when the migration closes.
