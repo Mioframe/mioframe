@@ -2,7 +2,7 @@
 
 This document defines Storybook ownership, developer-workbench behavior, story authoring, fixture isolation, catalogue conventions, and visual sandbox rules for Mioframe.
 
-`docs/testing/architecture.md` is canonical for project-wide verification types, test-spec suffixes, affected ownership, E2E ownership, and fallback. `docs/testing/migration-plan.md` records current executable legacy suffix/location compatibility during migration.
+`docs/testing/architecture.md` is canonical for project-wide verification types, test-spec suffixes, affected ownership, E2E ownership, and fallback. `docs/testing/migration-plan.md` records the current executable verification state.
 
 ## Goal
 
@@ -35,7 +35,7 @@ It provides:
 
 Stories prepare deterministic initial state. Controls modify public inputs. Automated tests own assertions and merge proof.
 
-## Ownership and target placement
+## Ownership and current placement
 
 The truthful UI owner owns its stories and ordinary owner-specific behavior/visual proof.
 
@@ -46,8 +46,8 @@ src/shared/ui/material/components/<family>/
 ├── <Component>.vue
 ├── <Component>.test.ts
 ├── <Component>.stories.ts
-├── <Family>.behavior.spec.ts      # optional target behavior proof
-├── <Family>.visual.spec.ts        # optional target visual proof
+├── <Family>.behavior.spec.ts      # optional behavior proof
+├── <Family>.visual.spec.ts        # optional visual proof
 └── local fixture files            # rare, optional
 ```
 
@@ -59,15 +59,15 @@ Material workflow artifacts, renderer boundaries, public API, token ownership, a
 
 Colocate with the existing truthful component or cohesive local UI module; do not restructure a module only to match an example tree.
 
-Typical target:
+Typical shape:
 
 ```text
 src/<layer>/<slice>/ui/
 ├── <Owner>.vue
 ├── <Owner>.test.ts
 ├── <Owner>.stories.ts
-├── <Owner>.behavior.spec.ts       # optional target behavior proof
-├── <Owner>.visual.spec.ts         # optional target visual proof
+├── <Owner>.behavior.spec.ts       # optional behavior proof
+├── <Owner>.visual.spec.ts         # optional visual proof
 └── <Owner>BrowserFixture.vue      # rare, optional
 ```
 
@@ -75,21 +75,24 @@ src/<layer>/<slice>/ui/
 
 Complete product scenarios are E2E, not Storybook proof.
 
-Their target placement and ownership follow `docs/testing/architecture.md` under `tests/e2e/pages/<Owner>/` or `tests/e2e/widgets/<Owner>/` with `*.e2e.spec.ts`.
+Their placement and ownership follow `docs/testing/architecture.md` under `tests/e2e/pages/<Owner>/` or `tests/e2e/widgets/<Owner>/` with `*.e2e.spec.ts`.
 
 Storybook infrastructure proof may remain non-local only when it truthfully has no single UI owner. Do not use central Storybook proof as a permanent mirror for ordinary component ownership.
 
 Stories, fixtures, specs, snapshots, and test helpers are never exported from production barrels.
 
-## Current executable compatibility
+## Current executable state
 
-The target naming above may differ from the current runner while the verify redesign is being implemented.
+Behavior discovery is target-only:
 
-Current legacy behavior discovery may still execute `src/**/*.browser.spec.ts` and central `tests/e2e/storybook/**/*.spec.ts`. Current visual discovery may still combine owner-local `src/**/*.visual.spec.ts` with central legacy visual specs.
+- owner-local UI proof: `src/**/*.behavior.spec.ts`;
+- Storybook infrastructure proof with no FSD UI owner: `.storybook/**/*.behavior.spec.ts`.
 
-Those compatibility mechanisms are recorded only in `docs/testing/migration-plan.md`. They are not a second target architecture.
+Visual discovery is target-only and owner-local:
 
-Do not rename/move a spec before target discovery is executable. Do not add new permanent proof in a legacy naming/location model once its target replacement is executable.
+- `src/**/*.visual.spec.ts`.
+
+Legacy owner-local `*.browser.spec.ts`, central `tests/e2e/storybook/**/*.spec.ts`, and central `tests/e2e/visual/**/*.spec.ts` discovery have no remaining consumer and must not be restored. Current executable compatibility and any remaining migration state are recorded in `docs/testing/migration-plan.md`; they are not a second architecture.
 
 ## Developer workbench contract
 
@@ -232,9 +235,7 @@ Behavior specs:
 - use deterministic stories/fixtures for initial state;
 - fail when required preconditions/outcomes are absent.
 
-Target naming is `*.behavior.spec.ts` beside the truthful owner.
-
-During migration, legacy `*.browser.spec.ts` remains executable only where the migration plan says so.
+Current naming is `*.behavior.spec.ts` beside the truthful owner, with `.storybook/**/*.behavior.spec.ts` reserved for truthful Storybook infrastructure ownership.
 
 A non-local fixture dependency must be truthful. Prefer the smallest owner-local fixture when the scenario actually belongs to the local owner.
 
@@ -248,7 +249,7 @@ Visual specs:
 - contain no click/keyboard/pointer/focus/navigation/semantic/token-table/geometry success criteria;
 - own snapshots through deterministic local ownership.
 
-Target baseline convention:
+Current baseline convention:
 
 ```text
 <Owner>.visual.spec.ts
@@ -288,14 +289,12 @@ Title/export renames can change story IDs, URLs, and visual baselines; migrate t
 
 Application/runtime type-checking and Vitest must not accidentally classify Playwright specs as production/unit inputs.
 
-The target exclusions/discovery must account for:
+Current exclusions/discovery account for:
 
 - `*.behavior.spec.ts`;
 - `*.visual.spec.ts`;
 - `*.browser-integration.spec.ts`;
 - `*.performance.spec.ts` where executed outside unit tooling.
-
-During migration, preserve exclusions/discovery for any still-executable legacy `*.browser.spec.ts` files until they are renamed.
 
 Do not create a mirrored central component-spec tree as permanent ownership metadata.
 
@@ -344,5 +343,5 @@ Shared infrastructure must not select product behavior, silently recover missing
 - test-only exports from production barrels;
 - generic Storybook registry/DSL/generated runner without demonstrated need;
 - moving complete product behavior into Storybook fixtures;
-- adding new legacy `*.browser.spec.ts` proof after target behavior discovery is available;
+- restoring legacy `*.browser.spec.ts`, central Storybook behavior, or central visual discovery;
 - duplicating Material workflow policy here.
