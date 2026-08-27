@@ -14,6 +14,7 @@ const MOBILE_ONLY_SPECS = ['tests/e2e/widgets/DocumentView/reorderSurfaceTouch.e
 const BOTH_SPECS = [
   'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts',
   'tests/e2e/pages/Settings/settingsToggles.e2e.spec.ts',
+  'tests/e2e/widgets/DocumentView/databaseVirtualizationFlows.e2e.spec.ts',
   'tests/e2e/widgets/DocumentView/reorderSurfaceBottomSheet.e2e.spec.ts',
 ];
 

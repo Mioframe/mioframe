@@ -114,13 +114,16 @@ const onKeydown = (event: KeyboardEvent) => {
     @update:value="onUpdateValue"
     @update:property="onUpdateProperty"
   >
-    <template #data="{ documentId: relationDocHandle, onSelect, value: selectedValue, viewId }">
+    <template
+      #data="{ documentId: relationDocHandle, onSelect, value: selectedValue, viewId, scrollRoot }"
+    >
       <RelationValueFieldData
         :directory-path="directoryPath"
         :document-id="relationDocHandle"
         :selected-value="selectedValue"
         :view-id="viewId"
-        :on-select="onSelect"
+        :scroll-root="scrollRoot"
+        @select="onSelect"
       >
         <template #value="{ itemId, propertyId: relationPropertyId }">
           <ValueInline

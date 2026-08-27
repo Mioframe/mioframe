@@ -5,7 +5,7 @@ import { DatabaseViewChipsList, useDatabaseViewSelection } from '@entity/databas
 import type { AMDocumentId } from '@shared/lib/cfrDocument';
 import { type DatabaseItemId, type DatabaseViewId } from '@shared/lib/databaseDocument';
 import { zodIs } from '@shared/lib/validateZodScheme';
-import { computed, toRefs } from 'vue';
+import { computed, toRefs, useTemplateRef } from 'vue';
 
 const props = defineProps<{
   value: unknown;
@@ -27,6 +27,7 @@ defineSlots<{
     documentId: AMDocumentId;
     value: DatabaseItemId[];
     viewId: DatabaseViewId;
+    scrollRoot: HTMLElement | null | undefined;
   }) => unknown;
 }>();
 
@@ -67,6 +68,8 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
   setRelationExplicitViewId(viewId);
   setExplicitViewId(viewId);
 };
+
+const dataScrollRoot = useTemplateRef<HTMLElement>('dataScrollRoot');
 </script>
 
 <template>
@@ -81,7 +84,7 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
       @click="onClickViewChip"
     />
 
-    <div v-if="effectiveViewId" class="relation-value-field__data">
+    <div v-if="effectiveViewId" ref="dataScrollRoot" class="relation-value-field__data">
       <slot
         name="data"
         :on-select="onSelect"
@@ -89,6 +92,7 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
         :document-id="relationDocumentId"
         :value="relationValue"
         :view-id="effectiveViewId"
+        :scroll-root="dataScrollRoot"
       />
     </div>
   </div>
@@ -99,6 +103,7 @@ const onClickViewChip = (viewId: DatabaseViewId) => {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  min-height: 0;
 
   &__data {
     margin-top: 4step;

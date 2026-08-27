@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   addDatabaseItem,
+  closeBottomSheet,
   closeDocumentPane,
   createDatabaseDocument,
   createDirectory,
@@ -97,6 +98,7 @@ test('shows relation settings during property creation and requires a related do
   await dialog.getByRole('button', { name: /^create$/i }).click();
   await expect(dialog).toHaveCount(0);
 
+  await closeBottomSheet(page, /database properties sheet/i);
   await closeDocumentPane(page);
   await openDocumentFromExplorer(page, sourceDocumentName);
   await expect(

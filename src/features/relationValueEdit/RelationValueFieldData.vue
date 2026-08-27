@@ -16,21 +16,25 @@ const props = defineProps<{
   documentId: AMDocumentId;
   selectedValue: DatabaseItemId[];
   viewId: DatabaseViewId;
-  onSelect: (itemId: DatabaseItemId) => void;
+  scrollRoot: HTMLElement | null | undefined;
+}>();
+
+const emit = defineEmits<{
+  select: [itemId: DatabaseItemId];
 }>();
 
 defineSlots<{
   value: (p: { itemId: DatabaseItemId; propertyId: DatabasePropertyId }) => unknown;
 }>();
 
-const { directoryPath, documentId, viewId } = toRefs(props);
+const { directoryPath, documentId, scrollRoot, viewId } = toRefs(props);
 
 const { propertiesIdList, isLoading } = useDatabaseProperties(directoryPath, documentId);
 
 const displayPropertiesIdList = computed(() => propertiesIdList.value ?? []);
 
 const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
-  props.onSelect(itemId);
+  emit('select', itemId);
 };
 </script>
 
@@ -38,10 +42,15 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
   <MDCircularProgressIndicator v-if="isLoading && !propertiesIdList" :size="24" />
 
   <DatabaseDataTable
+    v-else
+    class="relation-value-field-data__table"
     :directory-path="directoryPath"
     :document-id="documentId"
     :view-id="viewId"
     :properties="displayPropertiesIdList"
+    :scroll-root="scrollRoot"
+    :vertical-surface-offset="0"
+    :horizontal-surface-offset="0"
   >
     <template #property="{ propertyId }">
       <DatabasePropertyBlock
@@ -63,3 +72,9 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
     </template>
   </DatabaseDataTable>
 </template>
+
+<style lang="css" scoped>
+.relation-value-field-data__table {
+  min-width: 100%;
+}
+</style>

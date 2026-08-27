@@ -44,6 +44,9 @@ Resolve unclear items before editing.
 ## Component communication rules
 
 - Use props down, emits up, and slots for composition.
+- Function-valued props are allowed only when the function is genuinely downward data/strategy input, such as a pure formatter, predicate, key resolver, comparator, or an explicitly documented dependency owned by the child contract.
+- Do not pass parent-owned commands, mutation callbacks, permission checks, confirmation functions, async gates, or `before*`/`resolve*` orchestration downward as component props. Those are upward interaction intents: emit a typed event and let the parent update controlled props/model state after any async work succeeds.
+- If opening/rendering a child surface requires asynchronous parent approval, the requesting component emits intent; the parent owns the pending decision and the controlled open/configuration state. Do not await a parent callback prop and then mutate child-local visibility state.
 - Do not use `dispatchEvent` or custom DOM events for component-to-component communication.
 - Do not use `querySelector` or `querySelectorAll` to coordinate siblings or children.
 - Template refs and direct DOM access are allowed only for real browser API needs such as focus, measurement, scrolling, or third-party integration.
@@ -98,16 +101,19 @@ Reject or return for rework when:
 6. Template logic builds an ad hoc state machine where computed derivation is sufficient.
 7. The root contract is unstable.
 8. Event bindings use anonymous functions or inline mutations.
+9. A function prop is used to invoke parent-owned orchestration, request permission, or perform an upward mutation instead of a typed emit plus controlled parent state.
 
 Pass condition:
 
 - attribute forwarding is absent or documented as a transparent host/adaptor contract;
-- event bindings use named handlers or named handler calls with local context.
+- event bindings use named handlers or named handler calls with local context;
+- function-valued props, when present, are true downward strategy/data inputs rather than callback channels to the parent.
 
 ## Forbidden
 
 - Treating attribute forwarding as a default allowed pattern.
 - Passing the whole props object into shared UI composables.
+- Passing parent commands, async gates, or permission callbacks as component props.
 - Using `defineExpose` as a normal component API.
 - Suppressing focus visuals.
 - Using non-scoped CSS in shared UI without a documented family contract.
@@ -132,6 +138,49 @@ Right — typed emit:
 const emit = defineEmits<{ save: [] }>();
 const onSave = () => emit('save');
 </script>
+```
+
+Wrong — parent permission callback as a prop:
+
+```vue
+<script setup lang="ts">
+const props = defineProps<{ beforeOpen: () => Promise<boolean> }>();
+const isOpen = ref(false);
+const onOpen = async () => {
+  if (await props.beforeOpen()) {
+    isOpen.value = true;
+  }
+};
+</script>
+```
+
+Right — upward request with parent-controlled state:
+
+```vue
+<!-- Child.vue -->
+<script setup lang="ts">
+defineProps<{ open: boolean }>();
+const emit = defineEmits<{ requestOpen: []; close: [] }>();
+const onOpen = () => emit('requestOpen');
+const onClose = () => emit('close');
+</script>
+
+<!-- Parent.vue -->
+<script setup lang="ts">
+const isOpen = ref(false);
+const onRequestOpen = async () => {
+  if (await canOpen()) {
+    isOpen.value = true;
+  }
+};
+const onClose = () => {
+  isOpen.value = false;
+};
+</script>
+
+<template>
+  <Child :open="isOpen" @request-open="onRequestOpen" @close="onClose" />
+</template>
 ```
 
 Wrong — selector coordination:

@@ -100,10 +100,10 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(applicationSpecs.length).toBeGreaterThan(0);
     expect(behaviorSpecs.length).toBeGreaterThan(0);
     expect(visualSpecs.length).toBeGreaterThan(0);
-    // Exactly the twenty-three target E2E specs (see
+    // Exactly the twenty-four target E2E specs (see
     // scripts/lib/e2eProjectApplicability.ts's E2E_PROJECT_APPLICABILITY),
     // including the three productionArtifact/ specs.
-    expect(applicationSpecs).toHaveLength(23);
+    expect(applicationSpecs).toHaveLength(24);
     // Exactly the eleven appUpdate managed-update/artifact specs plus the one
     // generic owner-local browser-integration spec.
     expect(browserIntegrationSpecs).toHaveLength(12);

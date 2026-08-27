@@ -306,13 +306,12 @@ test('uses default relation view inline and switches to a selected relation view
   const relationField = page.getByRole('group', {
     name: new RegExp(`^${relationPropertyName}$`, 'i'),
   });
+  const relationRows = relationField.locator('tbody > tr:not([aria-hidden="true"])');
 
   await expect(relationField.getByRole('button', { name: /^default view$/i })).toHaveClass(
     /md-chip_selected/,
   );
-  await expect
-    .poll(() => expectDatabaseValuesInOrder(relationField, [alphaValue, betaValue]))
-    .toBeUndefined();
+  await expect(relationRows).toContainText([alphaValue, betaValue]);
 
   await relationField
     .getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') })
@@ -320,9 +319,7 @@ test('uses default relation view inline and switches to a selected relation view
   await expect(
     relationField.getByRole('button', { name: new RegExp(`^${descendingViewName}$`, 'i') }),
   ).toHaveClass(/md-chip_selected/);
-  await expect
-    .poll(() => expectDatabaseValuesInOrder(relationField, [betaValue, alphaValue]))
-    .toBeUndefined();
+  await expect(relationRows).toContainText([betaValue, alphaValue]);
 });
 
 test('uses the default related view in filter settings and persists an explicit relation view override', async ({

@@ -72,6 +72,10 @@ export const E2E_PROJECT_APPLICABILITY: readonly E2EProjectApplicabilityEntry[] 
     applicability: 'desktop',
   },
   {
+    spec: 'tests/e2e/widgets/DocumentView/databaseVirtualizationFlows.e2e.spec.ts',
+    applicability: 'both',
+  },
+  {
     spec: 'tests/e2e/widgets/DocumentView/reorderSurfaceCancellation.e2e.spec.ts',
     applicability: 'desktop',
   },
