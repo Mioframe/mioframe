@@ -1,9 +1,9 @@
 # ADR: Unified `pnpm verify` architecture
 
-- **Status:** Accepted; implementation pending
+- **Status:** Accepted; implemented on `architecture/verify-redesign` / PR #218
 - **Project:** Mioframe
 - **Date:** 2026-08-24
-- **Scope:** Accepted verification architecture. The canonical project policy in `docs/testing/architecture.md` is synchronized with this decision; executable migration state and sequencing are tracked in `docs/testing/migration-plan.md`.
+- **Scope:** Accepted verification architecture. The canonical project policy in `docs/testing/architecture.md` is synchronized with this decision; `docs/testing/migration-plan.md` records the executable state and merge-readiness gate.
 
 ## Context
 
@@ -126,7 +126,7 @@ Behavior specs use:
 
 They are colocated with their real UI owner. One file is preferred when small; a dedicated local directory next to that owner is allowed when several behavior specs are genuinely needed. There is no repository-wide behavior dumping ground.
 
-Existing behavior specs using legacy browser-oriented naming are migrated to the new suffix when this redesign is implemented.
+Existing behavior specs using legacy browser-oriented naming were migrated to the new suffix as part of this redesign.
 
 ### 4. Visual
 
@@ -140,7 +140,7 @@ Visual specs use:
 
 They are colocated with the UI owner they render. A local owner-specific directory is allowed only when several visual specs are required.
 
-There is no global visual directory containing unrelated owners in the target architecture.
+There is no global visual directory containing unrelated owners in the implemented architecture.
 
 ### 5. Browser integration
 
@@ -217,7 +217,7 @@ page:Settings
 widget:RepositoryExplorerWidget
 ```
 
-A large global production-path → E2E-spec registry is not part of the target architecture and must be removed after migration.
+A large global production-path → E2E-spec registry is not part of the architecture and was removed during migration.
 
 ### Additional owners
 
@@ -353,7 +353,7 @@ Every verification type represented by standalone test-spec files has a unique d
 
 Static and mutation are verification types but are not standalone test-spec file types and therefore have no spec suffix.
 
-Legacy test names and locations are migrated to this contract; compatibility naming should not remain indefinitely after migration.
+Legacy test names and locations were migrated to this contract; removed compatibility naming is not part of the current executable model.
 
 ## Structural invariants
 
@@ -405,7 +405,7 @@ Therefore:
 
 ## Agent-safety requirements
 
-The target architecture must be difficult for coding agents to misuse.
+The architecture must be difficult for coding agents to misuse.
 
 Required properties:
 
@@ -417,24 +417,24 @@ Required properties:
 - the verifier explains why a type is skipped, focused, full, or invalid;
 - normal implementation does not require agents to remember a separate mapping document.
 
-## Migration implications
+## Migration record
 
-Adopting this ADR requires a coordinated migration rather than running old and new ownership models indefinitely in parallel.
+Implementing this ADR required a coordinated migration rather than retaining old and new ownership models indefinitely in parallel.
 
-The migration must include, where applicable:
+The migration included:
 
-- public `--only` type names replacing low-level labels as the normal CLI surface;
+- public `--only` type names replacing low-level labels as the public CLI surface;
 - unique spec suffixes and corresponding test discovery configuration;
 - migration of legacy behavior/visual/E2E/browser-related names and locations;
 - owner-structured E2E directories;
-- removal of the current manual E2E source-to-scenario registry after equivalent owner-based selection is active;
+- removal of the previous manual E2E source-to-scenario registry after equivalent owner-based selection became active;
 - `dependency-cruiser` integration for E2E affected-owner discovery;
 - status-aware validation for add/remove/move cases;
 - mutation participation in `--full`;
-- reclassification of current release-oriented checks into static, behavior, browser-integration, E2E, or performance according to the contract they prove;
-- synchronization of testing documentation, verification skills, verifier tests, and CI with the new public contract.
+- reclassification of release-oriented checks into static, behavior, browser-integration, E2E, or performance according to the contract they prove;
+- synchronization of testing documentation, verification skills, verifier tests, and CI with the public contract.
 
-The migration should preserve proven verifier orchestration that is not part of this redesign, including useful process execution, locks, timeouts, diagnostics, and CI ownership, unless a concrete incompatibility requires change.
+The migration preserved verifier orchestration outside the redesign, including process execution, locks, timeouts, diagnostics, and CI ownership except where the accepted architecture required wiring changes.
 
 ## Non-goals
 
@@ -452,7 +452,7 @@ This ADR does not require:
 
 ## Acceptance criteria
 
-The redesign is architecture-ready for implementation when the implementation can satisfy all of the following:
+The implemented redesign is expected to preserve all of the following architectural criteria:
 
 1. `pnpm verify` is the normal project verification entry point.
 2. Default verification is status-aware relative to `develop`.
@@ -470,20 +470,20 @@ The redesign is architecture-ready for implementation when the implementation ca
 14. Unknown relevant E2E impact widens to all E2E, not the whole project.
 15. Structural violations fail instead of silently widening or skipping.
 16. Added, modified, removed, and moved paths are handled explicitly.
-17. The current large manual E2E mapping registry is removed after migration.
+17. The previous large manual E2E mapping registry remains removed.
 18. The implementation does not create a generic graph framework or parallel ownership system.
 
-## Remaining implementation decisions
+## Implementation details resolved during migration
 
-The architecture decisions that affect ownership and safety are resolved above. Remaining choices should be made from the current repository during implementation preflight and should not redefine this model:
+The architecture intentionally left several mechanism-level choices to repository-aware implementation preflight. Those choices are now represented by the executable code, tests, migration plan, and implementation records rather than being open architecture questions:
 
-- exact local directory name used when one colocated owner requires several specs of the same type;
-- exact Playwright tag/annotation syntax for additional owners;
-- exact `dependency-cruiser` configuration/API wiring and Vue/TypeScript resolution settings;
-- exact static subchecks grouped under `static`;
-- exact mutation target registration representation;
-- exact cross-system performance directory convention if such a test currently exists or is introduced;
+- local directory shape when one colocated owner requires several specs of the same type;
+- Playwright annotation syntax for exceptional additional owners;
+- `dependency-cruiser` configuration/API wiring and Vue/TypeScript resolution settings;
+- static subchecks grouped under `static`;
+- mutation target registration representation;
+- cross-system performance directory convention if such a test is introduced;
 - migration pass order and temporary compatibility boundaries;
-- CI job wiring and internal labels after the public type-based CLI is introduced.
+- CI job wiring and private internal labels behind the public type-based CLI.
 
-If any of these implementation details would require changing ownership, public semantics, fallback safety, or the verification taxonomy, the ADR must be revisited before implementation continues.
+Any future change to these implementation details that would alter ownership, public semantics, fallback safety, or the verification taxonomy requires revisiting this ADR before implementation proceeds.
