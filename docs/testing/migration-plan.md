@@ -4,30 +4,28 @@
 
 ## Status
 
-On `architecture/verify-redesign` / PR #218, the verify redesign implementation, workflow topology, and documentation migration are architect-accepted. The branch has also incorporated current `develop` (`9dd19ed320ce227e915a824b5552af16108a5a10`) through merge commit `b6125cf2ce3c976402e269b117546a923eaa654f`.
+On `architecture/verify-redesign` / PR #218, the verify redesign implementation, workflow topology, documentation migration, current `develop` integration, and post-merge correction are architect-accepted.
 
-Scripts implementation history includes:
+Current `develop` integration:
 
-- first correction implementation: `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`;
-- second correction implementation: `8911f44078676ccaceb19c8de8c05364b5ec6698`;
+- merged `develop`: `9dd19ed320ce227e915a824b5552af16108a5a10`;
+- two-parent integration merge: `b6125cf2ce3c976402e269b117546a923eaa654f`;
+- post-merge Firefox configuration-contract correction: `69e28e631a4a634817210e22a87a43a7095c6dd5`.
+
+Relevant scripts/workflow implementation history includes:
+
+- first correction: `ab4efa5dbb822bc1a1d1e4b2a2def60e3a65e67f`;
+- second correction: `8911f44078676ccaceb19c8de8c05364b5ec6698`;
 - first architecture-revision implementation: `ccd2bc0842428b3fde973afa9caf2f1a44b2aa53`;
 - revision-02 implementation: `c42cc1a09bdfee2c07f88412ee4c87951dfb3a43`;
 - develop workflow browser-integration correction: `32af5521b271de1fca4f94740572afa70b4900ec`.
 
-The latest `develop` integration preserved the accepted verifier architecture while incorporating the database virtualization/product proof changes and the new mandatory coding-agent branch-diff handoff rule.
+The post-merge review findings are resolved:
 
-Post-merge review is currently **blocked** by root `REVIEW.md`:
+- the dedicated Firefox database-virtualization Storybook project is now protected by the existing root Playwright configuration contract test;
+- the final coding pass completed `pnpm verify --base origin/develop` cleanly: all 20 selected checks passed with no retry/flaky acceptance.
 
-- required cumulative coding-agent handoff proof `pnpm verify --base origin/develop` has not yet executed successfully because the merge agent's sandbox failed inside pnpm before verifier execution;
-- the dedicated Firefox database-virtualization Storybook project exists and currently executes, but its exact engine-specific membership is not yet protected by the root Playwright configuration contract test.
-
-The active bounded correction assignment is:
-
-- `docs/testing/verify-redesign-post-merge-correction-agent-task.md`.
-
-That task is intentionally narrow: the expected tracked code change is only the existing root Playwright lane contract test, followed by the mandatory cumulative branch handoff gate. The accepted verifier architecture and runtime Storybook topology are not reopened. Coding starts from the latest prepared `architecture/verify-redesign` head.
-
-The migration is therefore not merge-ready yet even if an intermediate exact-head CI run is green.
+No active `REVIEW.md` finding remains. The migration is waiting only for green exact-head GitHub CI and the PR readiness transition.
 
 ## Current executable public contract
 
@@ -65,7 +63,7 @@ pnpm verify --fix-only
 - **Static:** release-sensitive artifact planning covers production `src/**`, application Vite harness inputs, package/lock/build-entry handling, and neutral local-command execution ownership; dependent build/artifact proof is selected truthfully.
 - **Unit:** Vitest is the only affected/dependency engine with accepted safe fallback and zero-match behavior.
 - **Storybook static:** shared Vite build inputs and neutral local-command execution widen the Storybook static build when its real runtime/build can change.
-- **Behavior:** discovery is owner-local `*.behavior.spec.ts`, with `.storybook/**/*.behavior.spec.ts` reserved for truthful Storybook infrastructure ownership; legacy ordinary `*.browser.spec.ts` and central ordinary Storybook behavior discovery have no current consumer. The database native-table virtualization behavior proof additionally runs in the dedicated Firefox project because its dynamic table measurement is an audited engine-specific risk.
+- **Behavior:** discovery is owner-local `*.behavior.spec.ts`, with `.storybook/**/*.behavior.spec.ts` reserved for truthful Storybook infrastructure ownership; legacy ordinary `*.browser.spec.ts` and central ordinary Storybook behavior discovery have no current consumer. The database native-table virtualization behavior proof additionally runs in the dedicated Firefox project because its dynamic table measurement is an audited engine-specific risk. The root Playwright lane contract test machine-validates the project name, exact spec membership, Firefox engine, normal Chromium inheritance, and non-broad Firefox scope.
 - **Visual:** discovery is owner-local `*.visual.spec.ts` with colocated baselines; central ordinary visual-spec discovery has no current consumer.
 - **Browser integration:** generic and exceptional runners remain disjoint; exceptional membership is centrally validated; shared Playwright execution, application Vite harness inputs, and runtime-relevant `package.json` widen the complete public browser-integration type; confirmed version-only package changes stay narrow.
 - **Performance:** the public type remains valid with an intentionally empty persistent inventory.
@@ -104,18 +102,15 @@ Internal release-named commands/files remain where required by built-artifact, s
 - fail-closed structural validation when the owning type is relevant;
 - central exceptional release-proof inventory/full/direct validation;
 - known flaky behavior remains failed proof;
-- ordinary coding-agent PR handoff requires one clean cumulative `pnpm verify --base origin/<base>` result unless the repository rules explicitly permit the narrow non-code/read-only exception.
+- ordinary coding-agent PR handoff requires one clean cumulative `pnpm verify --base origin/<base>` result unless repository rules explicitly permit the narrow non-code/read-only exception.
 
 ## Completion gate
 
-The architecture migration may move to merge-ready only after:
+The implementation/migration work is complete. PR #218 may move to merge-ready only after:
 
-1. the coding agent completes `docs/testing/verify-redesign-post-merge-correction-agent-task.md` from the latest prepared branch head;
-2. root `REVIEW.md` is clean and removed, including the deterministic test guard for the dedicated Firefox virtualization project;
-3. the final coding pass has a clean, non-flaky `pnpm verify --base origin/develop` branch-handoff result from a valid coding environment;
-4. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
-5. the exact final head still has no active semantic review finding;
-6. PR #218 is moved out of draft;
-7. merge into `develop` uses squash merge.
+1. GitHub CI is green on the exact final head, including the independent browser-integration lane and aggregate `verify` gate;
+2. the exact final head still has no active semantic review finding;
+3. PR #218 is moved out of draft;
+4. merge into `develop` uses squash merge.
 
-Current merge readiness: **should not merge until blockers are fixed**.
+Current merge readiness: **should not merge until blockers are fixed** — the remaining blocker is exact-head CI / draft readiness, not implementation or documentation.
