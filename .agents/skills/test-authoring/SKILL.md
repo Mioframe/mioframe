@@ -98,15 +98,32 @@ Any additional new or materially changed assertion-bearing proof required later 
 
 ## Completion
 
-The pass is complete only when:
+Completion is phase-specific. Do not require post-implementation artifacts from a pre-implementation visual pass.
 
-- every new/materially changed proof maps to an accepted contract/`TEST IMPACT` item;
+A new/materially changed **non-visual** proof-authoring pass is complete only when:
+
+- the proof maps to an accepted contract/`TEST IMPACT` item;
 - the oracle is independent from the production implementation;
 - `Must reject` is concrete and the assertions are sensitive to it;
 - the selected environment and owner remain faithful to the accepted proof type;
 - meaningful RED evidence exists when required, or the no-red reason is explicit;
-- intentional visual baseline changes are independently inspected/accepted after rendering exists rather than approved by the production implementation context;
 - no production behavior was implemented by the test-author merely to make proof pass.
+
+An intentional visual **pre-implementation** pass is complete when:
+
+- the accepted visible contract, truthful proof owner, bounded visual-spec intent, and expected reason for baseline change are established independently from production rendering;
+- `Must reject` identifies a concrete visible regression or incompatible result;
+- the no-RED reason is explicit when target pixels do not yet exist;
+- no baseline is created, regenerated, or accepted in this pass when doing so would require the not-yet-implemented rendering.
+
+That pass hands control to production implementation; it does not claim that the changed baseline is already accepted.
+
+An intentional visual **post-implementation** acceptance pass is complete only when:
+
+- it consumes the previously established visible contract/spec intent rather than inferring the target from production output;
+- the baseline is created or updated, inspected, and accepted in this fresh test-author context under `visual-regression-testing`;
+- focused verifier-managed `visual` proof is GREEN;
+- the production implementation context did not create, regenerate, or approve the accepted baseline.
 
 ## Forbidden
 
