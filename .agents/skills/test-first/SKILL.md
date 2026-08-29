@@ -9,7 +9,7 @@ Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycl
 
 For Storybook-owned UI proof, use `docs/testing/storybook.md` for current ownership and `docs/testing/migration-plan.md` for executable verification state.
 
-When automated behavioral proof is new or materially changes its oracle, expectations, assertions, failure semantics, or accepted visual baseline, author that proof first in a separate test-author context using `test-authoring`. Production implementation consumes the accepted proof; it does not author its own acceptance oracle.
+When automated contract proof is new or materially changes its oracle, expectations, assertions, failure semantics, or accepted visual baseline, author that proof first in a separate test-author context using `test-authoring`. Production implementation consumes the accepted proof; it does not author its own acceptance oracle.
 
 A separate test-author pass is not required for proof-only renames/moves, formatting, comment changes, mechanical ownership migration with unchanged assertions, or other edits that do not alter the proof oracle.
 
