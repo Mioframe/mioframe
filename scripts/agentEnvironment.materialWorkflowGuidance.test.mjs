@@ -39,12 +39,8 @@ describe('Material workflow guidance consistency', () => {
 
     const result = checkMaterialWorkflowGuidance(root);
 
-    expect(result.errors).toContainEqual(
-      expect.stringContaining('.agents/skills/architect-handoff/SKILL.md'),
-    );
-    expect(result.errors).not.toContainEqual(
-      expect.stringContaining('.agents/skills/material-component/SKILL.md'),
-    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain('.agents/skills/architect-handoff/SKILL.md');
   });
 
   it('accepts the current three-contract Material handoff', () => {
