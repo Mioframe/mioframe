@@ -60,7 +60,7 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 
 Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, token-driven appearance/geometry, non-tokenized layout relationships, RTL, states, token effects, composition/cascade, and motion.
 
-When standalone implementation requires new or materially changed behavioral proof, author that proof first in a separate test-author context following root `test-first`, `test-authoring`, and the selected proof-type skill. The implementation context treats the accepted oracle/expectations/assertions as read-only and routes a genuine proof/contract conflict back to the test-author or architect instead of rewriting proof to fit m3e/runtime behavior. This changes test authorship only; it does not alter Material owner order, contract sequencing, or workflow state.
+When standalone implementation requires new or materially changed automated contract proof, author that proof first in a separate test-author context following root `test-first`, `test-authoring`, and the selected proof-type skill. The implementation context treats the accepted oracle/expectations/assertions as read-only and routes a genuine proof/contract conflict back to the test-author or architect instead of rewriting proof to fit m3e/runtime behavior. This changes test authorship only; it does not alter Material owner order, contract sequencing, or workflow state.
 
 When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
