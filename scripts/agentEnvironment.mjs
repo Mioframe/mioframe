@@ -71,9 +71,7 @@ const IGNORED_DIRS = new Set([
   '.claude',
 ]);
 
-const ARCHITECT_HANDOFF_PATH = '.agents/skills/architect-handoff/SKILL.md';
 const MATERIAL_LEGACY_BRIDGE_OWNER = '.agents/skills/material-component/SKILL.md';
-const CURRENT_MATERIAL_READY_ARTIFACTS = ['`contract.ts`', '`tokens.css`', '`BEHAVIOR.md`'];
 
 /**
  * Find matching files below a root while excluding generated and local state.
@@ -123,9 +121,9 @@ function findClaudeMd(root) {
 
 /**
  * Validate the narrow cross-file contract between active agent guidance and
- * the canonical Material workflow. Legacy staged artifact names are allowed
- * only in the Material orchestrator that owns the temporary conversion bridge;
- * generic active rules must use the current three-contract ready gate.
+ * the canonical Material workflow. Legacy staged ready-artifact guidance is
+ * allowed only in the Material orchestrator that owns the temporary conversion
+ * bridge; other active rules must not restore that superseded contract.
  * @param root Repository root.
  * @returns Material workflow guidance validation result.
  */
@@ -155,23 +153,7 @@ export function checkMaterialWorkflowGuidance(root) {
     if (namesLegacyMaterialReadyPair) {
       errors.push(
         `${guidancePath} references the superseded Material ready-artifact pair \`DESIGN.md\` + \`ARCHITECTURE.md\`. ` +
-          `Legacy staged artifacts are owned only by ${MATERIAL_LEGACY_BRIDGE_OWNER}; active generic guidance must use the current three-contract workflow.`,
-      );
-    }
-  }
-
-  const architectHandoffAbsPath = path.join(root, ARCHITECT_HANDOFF_PATH);
-
-  if (fs.existsSync(architectHandoffAbsPath)) {
-    const architectHandoff = fs.readFileSync(architectHandoffAbsPath, 'utf8');
-    const missingReadyArtifacts = CURRENT_MATERIAL_READY_ARTIFACTS.filter(
-      (artifact) => !architectHandoff.includes(artifact),
-    );
-
-    if (missingReadyArtifacts.length > 0) {
-      errors.push(
-        `${ARCHITECT_HANDOFF_PATH} must name the current Material ready artifacts ${CURRENT_MATERIAL_READY_ARTIFACTS.join(', ')}; ` +
-          `missing ${missingReadyArtifacts.join(', ')}.`,
+          `Legacy staged artifacts are owned only by ${MATERIAL_LEGACY_BRIDGE_OWNER}; active generic guidance must use the current Material workflow.`,
       );
     }
   }
