@@ -54,7 +54,8 @@ describe('Material workflow guidance consistency', () => {
 
   it('rejects the superseded Material ready contract in AGENTS.md guidance', () => {
     const root = makeTempRepo({
-      'AGENTS.md': '# Rules\n\nMaterial requires `DESIGN.md` and `ARCHITECTURE.md` before implementation.\n',
+      'AGENTS.md':
+        '# Rules\n\nMaterial requires `DESIGN.md` and `ARCHITECTURE.md` before implementation.\n',
     });
 
     const result = checkMaterialWorkflowGuidance(root);
