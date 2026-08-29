@@ -49,10 +49,28 @@ Record compactly:
 - implementation passes and pass order;
 - consumer migration scope when applicable;
 - required removal of replaced logic;
+- bounded mechanism audit when applicable;
 - `TEST IMPACT`;
 - final verification.
 
 Do not repeat workspace-wide policy or the complete upstream definition.
+
+## Bounded mechanism audit
+
+When correctness, ownership, classification, discovery, migration, or coverage depends on **all members of a finite executable mechanism**, do not infer completeness from a few known examples.
+
+Before implementation:
+
+1. identify the authoritative roots/sources that define the population;
+2. define the inclusion/exclusion rule and completion boundary;
+3. enumerate or mechanically derive the complete bounded population;
+4. map every member to its required owner/consumer/result;
+5. include at least one negative/boundary case where omission or over-classification would be plausible;
+6. verify that the chosen mechanism remains fail-closed when a new member appears outside the represented contract, when the surrounding architecture requires fail-closed behavior.
+
+Examples include a finite command/check inventory, config/discovery family, migration population, public surface inventory, or another bounded registry/mechanism whose architecture claims complete coverage.
+
+Do not create a registry merely to satisfy this audit. Prefer the existing authoritative mechanism or deterministic local ownership. Sampling is sufficient only when the requirement itself is representative rather than exhaustive.
 
 ## TEST IMPACT
 
@@ -61,10 +79,14 @@ For each materially changed contract or user scenario, record:
 ```text
 TEST IMPACT
 - Contract/scenario:
+  - Oracle source:
+  - Must reject:
   - Primary proof owner:
   - Additional proof:
   - Existing proof:
   - New/updated proof:
+  - Test author: required | not required — <reason>
+  - Red phase: required | not applicable — <reason>
   - Risk or platform matrix:
   - Durable ownership/impact updates:
 ```
@@ -74,13 +96,21 @@ Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow 
 Resolve:
 
 - the stable contract/scenario being changed;
+- an oracle source independent from the production implementation under test;
+- at least one plausible incorrect observable result the proof must reject;
 - the lowest faithful primary proof;
+- whether a separate `test-authoring` context is required because automated behavioral proof is new or materially changes its oracle/expectations/assertions/failure semantics/accepted baseline;
+- whether a meaningful red phase is possible under `test-first`;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
 - new, moved, renamed, or removed proof files;
 - required durable ownership/impact updates;
 - applicable browser/mobile/accessibility/visual/release/data-safety/performance risks;
-- exact metric/budget when making a performance claim.
+- exact metric/budget, scenario/data size, and environment when making a performance claim.
+
+The implementation's current output is not an oracle. Do not change an existing expectation/baseline solely because the proposed implementation otherwise fails.
+
+A separate test-author pass is not required for proof-only renames/moves, formatting, comment changes, mechanical ownership migration with unchanged assertions, or other changes that do not alter the proof oracle.
 
 Do not add explicit registry metadata when deterministic local ownership already expresses the relation. Do not list a proof merely because a lane exists.
 
@@ -113,7 +143,7 @@ Use the domain workflow as the execution contract:
 - diagnostics: `diagnostic-events`;
 - ordinary Vue mechanics: `vue-component-implementation`.
 
-Use testing skills according to selected proof: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
+Use testing skills according to selected proof: `test-first`, `test-authoring` when required, `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
 ## Breadth control
 
