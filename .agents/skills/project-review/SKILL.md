@@ -37,30 +37,32 @@ Do not use a generic best-practice link to manufacture a project requirement.
 
 ## Independent proof review
 
-When production code and automated contract proof changed in the same work, treat them as two potentially correlated implementations of the same mistaken assumption. Agreement between changed code and changed tests is not independent evidence by itself.
+When production code and assertion-bearing tests/specs or accepted visual baselines changed in the same work, treat them as potentially correlated implementations of the same mistaken assumption. Agreement between changed code and changed proof is not independent evidence by itself.
 
-Before using changed proof as correctness evidence:
+Before using changed assertion-bearing proof as correctness evidence:
 
 1. reconstruct the expected observable behavior from the accepted architecture/product/public contract, reproducible defect, persisted/protocol contract, authoritative platform/dependency contract, or independently accepted visual contract;
 2. identify the truthful primary proof owner and faithful environment under `docs/testing/architecture.md`;
-3. inspect the test oracle independently from the changed production implementation;
+3. inspect the test/spec/baseline oracle independently from the changed production implementation;
 4. identify at least one plausible incorrect observable result that the assertions must reject;
 5. only then compare the implementation with both the independent contract and the proof.
 
-When `test-first` required a meaningful red phase, review the available red evidence. A setup error, timeout, missing fixture, wrong environment, unrelated exception, or infrastructure failure is not evidence that the test detected the behavioral defect.
+When `TEST IMPACT` required a meaningful red phase for new/materially changed proof, review the test-author RED evidence. A setup error, timeout, missing fixture, wrong environment, unrelated exception, or infrastructure failure is not evidence that the proof detected the behavioral defect.
 
-Treat changed proof as defective when applicable if:
+Treat changed assertion-bearing proof as defective when applicable if:
 
 - expected values are computed by the production helper/algorithm being tested or by a copied implementation algorithm;
 - mocks/fixtures are programmed so the assertion merely confirms the value injected by the test rather than an independent boundary contract;
 - assertions observe an internal proxy that can remain correct while the required public result is wrong;
 - an existing assertion/scenario/baseline was weakened, deleted, or regenerated only because the changed implementation otherwise failed;
-- a changed test no longer rejects a realistic incorrect result relevant to its claimed contract;
+- a changed test/spec no longer rejects a realistic incorrect result relevant to its claimed contract;
 - test-only production APIs or architecture-boundary violations were introduced solely to make proof convenient.
 
 When an existing expectation changes, require independent evidence that the accepted contract changed or the old proof was invalid. The new implementation's observed output is not sufficient basis for changing the expected result.
 
-A separate `test-authoring` pass is required only where the current workflow says the proof oracle materially changed; do not manufacture an extra pass for mechanical test moves/renames or unchanged assertions.
+A separate `test-authoring` pass is required when the architecture says a new assertion-bearing test/spec/baseline is added or an existing oracle materially changes. Do not manufacture an extra pass for static verifier/check implementation, mutation-target registration, ownership/applicability metadata, mechanical proof moves/renames, formatting, comments, or unchanged assertions.
+
+Test authorship is an execution-context boundary, not proof ownership. Review must still use the verification type, placement, owner, and affected-selection rules from `docs/testing/architecture.md`.
 
 ## Review standard
 
@@ -252,7 +254,7 @@ Use repository verification only when it materially strengthens or resolves revi
 
 Missing or self-confirming proof is itself a finding when the project requires reliable proof. Do not replace missing browser/E2E/visual/mutation or other risk-specific proof with green unit tests or CI.
 
-When tests changed with production code, a green run is only execution evidence. Review the test oracle, failure sensitivity, environment fidelity, and any weakened/deleted previous proof before accepting it as contract evidence.
+When assertion-bearing tests/specs/baselines changed with production code, a green run is only execution evidence. Review the proof oracle, failure sensitivity, environment fidelity, and any weakened/deleted previous proof before accepting it as contract evidence.
 
 ## Report
 
@@ -280,7 +282,7 @@ Then list only the findings that need the user's/implementer's attention. The `R
 
 - Fixing production code while performing the review.
 - Reviewing only the latest patch when the verdict depends on surrounding/current behavior.
-- Treating agreement between changed tests and changed production code as independent evidence without checking the contract/oracle.
+- Treating agreement between changed tests/specs/baselines and changed production code as independent evidence without checking the contract/oracle.
 - Inventing project requirements from personal preference or generic style advice.
 - Creating a finding without linked evidence and linked basis.
 - Using external best practices to override an explicit Mioframe rule or contract.
