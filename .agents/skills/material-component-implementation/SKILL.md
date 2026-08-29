@@ -172,7 +172,7 @@ Use focused `pnpm verify --only ...` commands only when useful as implementation
 Implementation may return `complete` only when all four are true:
 
 1. runtime satisfies all three fixed contracts and the root-default token cascade model;
-2. every required observable contract/cascade path has faithful proof in the repository, including any required independent test-author or visual-baseline acceptance pass;
+2. every required observable contract/cascade path has faithful proof in the repository, including any required independent test-author or visual-baseline acceptance subcontext;
 3. any narrow implementation-specific verification needed to establish a concrete risk has been completed or its exact blocker is reported;
 4. no known in-scope coding blocker remains.
 
@@ -220,6 +220,7 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Treating source CSS wiring or selector state as rendered proof.
 - Authoring or weakening a required acceptance oracle in the production implementation context when `test-authoring` is required.
 - Creating/regenerating/approving an intentional changed visual baseline in the production implementation context.
+- Treating delegated `test-authoring` as another Material owner/stage rather than a subcontext of implementation-owned proof work.
 - Asking the operator to run verifier commands.
 - Claiming `complete` with required task-specific proof unrun or failing.
 - Rewriting already-correct work on resume without an exact defect.
