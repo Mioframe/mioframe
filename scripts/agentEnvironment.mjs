@@ -71,7 +71,10 @@ const IGNORED_DIRS = new Set([
   '.claude',
 ]);
 
-const MATERIAL_LEGACY_BRIDGE_OWNER = '.agents/skills/material-component/SKILL.md';
+const MATERIAL_LEGACY_GUIDANCE_OWNERS = new Set([
+  '.agents/skills/material-component/SKILL.md',
+  '.agents/skills/material-component-migration/SKILL.md',
+]);
 
 /**
  * Find matching files below a root while excluding generated and local state.
@@ -122,8 +125,8 @@ function findClaudeMd(root) {
 /**
  * Validate the narrow cross-file contract between active agent guidance and
  * the canonical Material workflow. Legacy staged ready-artifact guidance is
- * allowed only in the Material orchestrator that owns the temporary conversion
- * bridge; other active rules must not restore that superseded contract.
+ * allowed only in the Material workflow owners that route or remove legacy
+ * artifacts; other active rules must not restore that superseded contract.
  * @param root Repository root.
  * @returns Material workflow guidance validation result.
  */
@@ -140,7 +143,7 @@ export function checkMaterialWorkflowGuidance(root) {
   );
 
   for (const guidancePath of activeGuidancePaths) {
-    if (guidancePath === MATERIAL_LEGACY_BRIDGE_OWNER) {
+    if (MATERIAL_LEGACY_GUIDANCE_OWNERS.has(guidancePath)) {
       continue;
     }
 
@@ -153,7 +156,8 @@ export function checkMaterialWorkflowGuidance(root) {
     if (namesLegacyMaterialReadyPair) {
       errors.push(
         `${guidancePath} references the superseded Material ready-artifact pair \`DESIGN.md\` + \`ARCHITECTURE.md\`. ` +
-          `Legacy staged artifacts are owned only by ${MATERIAL_LEGACY_BRIDGE_OWNER}; active generic guidance must use the current Material workflow.`,
+          `Legacy staged artifact guidance is owned only by ${[...MATERIAL_LEGACY_GUIDANCE_OWNERS].join(', ')}; ` +
+          `other active guidance must use the current Material workflow.`,
       );
     }
   }
@@ -437,6 +441,11 @@ export function checkSkillsSymlink(root, fix) {
   return { errors, fixes };
 }
 
+/**
+ * Resolve the platform-specific directory symlink type for managed skill links.
+ * @param platform Node platform identifier.
+ * @returns `junction` on Windows; `undefined` elsewhere.
+ */
 export function getDirectorySymlinkType(platform) {
   return platform === 'win32' ? 'junction' : undefined;
 }
