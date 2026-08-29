@@ -1,6 +1,6 @@
 ---
 name: architect-handoff
-description: 'Use for non-trivial work that requires an explicit architecture decision. It defines the handoff contract linking architecture discussion, implementation preflight, coding, and final implementation review. Skip only when a workspace policy provides a deterministic authoring path and all required decisions are source-resolved.'
+description: 'Use for non-trivial work that requires an explicit architecture decision. It defines the handoff contract linking architecture discussion, implementation readiness, coding, and final implementation review. Skip only when a workspace policy provides a deterministic authoring path and all required decisions are source-resolved.'
 ---
 
 # Architecture handoff
@@ -82,7 +82,7 @@ Record:
   - accessibility, browser, visual, data-safety, performance, release, and platform risks that apply
   - named metric/budget when the task makes a performance or optimization claim
   - whether existing persistent mutation or performance protection may be affected
-  - exact test/spec paths, impact metadata updates, and task-specific measurements are deferred to implementation preflight
+  - exact test/spec paths, impact metadata updates, and task-specific measurements are deferred to the applicable generic `implementation-preflight` or deterministic scoped proof-planning gate
 - Required verification
 - Forbidden
 - Implementation readiness:
@@ -115,7 +115,7 @@ When blocked, resolve the handoff first. Do not patch forward and expect review 
 
 ## Implementation contract
 
-- Treat the ready handoff as upstream input for tasking, preflight, coding, and review.
+- Treat the ready handoff as upstream input for tasking, applicable implementation readiness/preflight, coding, and review.
 - When the skill is legitimately skipped, treat the workspace-backed deterministic workflow and its ready artifacts as the equivalent implementation contract.
 - Do not implement while the applicable contract is `not ready` or `blocked`.
 - Do not ask the coding worker to resolve product, architecture, test-ownership, or performance-evidence decisions left open by the contract.
@@ -130,7 +130,7 @@ Review the full implementation against the applicable handoff or deterministic w
 - Do not review only the latest fix or latest changed files.
 - Check goal, non-goals, scenarios, ownership, dependency direction, state shape, API, public contracts, shared UI blast radius, test proof, performance evidence, verification, simplicity, proportionality, and future safety.
 - Confirm every added concept is justified and nothing can be removed without losing an acceptance criterion or invariant.
-- Confirm implementation preflight resolved task-specific `TEST IMPACT`, durable impact metadata was maintained, and resulting tests and measurements still match changed contracts.
+- Confirm the applicable generic `implementation-preflight` or deterministic scoped proof-planning gate resolved task-specific `TEST IMPACT`, durable impact metadata was maintained, and resulting tests and measurements still match changed contracts.
 - Preserve unresolved findings in one consolidated list.
 - If repeated rounds add concepts, protocols, conditions, configuration, recovery paths, or abstractions, stop patching and simplify the architecture.
 - If repeated rounds show ownership drift or mixed responsibilities, stop patching and redo the architecture decision.
