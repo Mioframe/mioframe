@@ -47,7 +47,9 @@ Before using changed assertion-bearing proof as correctness evidence:
 4. identify at least one plausible incorrect observable result that the assertions must reject;
 5. only then compare the implementation with both the independent contract and the proof.
 
-When `TEST IMPACT` required a meaningful red phase for new/materially changed proof, review the test-author RED evidence. A setup error, timeout, missing fixture, wrong environment, unrelated exception, or infrastructure failure is not evidence that the proof detected the behavioral defect.
+When `TEST IMPACT` required a meaningful red phase for new/materially changed non-visual proof, review the test-author RED evidence. A setup error, timeout, missing fixture, wrong environment, unrelated exception, or infrastructure failure is not evidence that the proof detected the behavioral defect.
+
+For an intentional visual-baseline change, do not require impossible pre-implementation target pixels. Instead verify that the visible contract and visual-spec intent were established independently before implementation, and that baseline creation/inspection/acceptance happened afterward in a fresh test-author context following `visual-regression-testing`. A baseline created or approved by the production implementation context is not independent proof.
 
 Treat changed assertion-bearing proof as defective when applicable if:
 
@@ -56,11 +58,12 @@ Treat changed assertion-bearing proof as defective when applicable if:
 - assertions observe an internal proxy that can remain correct while the required public result is wrong;
 - an existing assertion/scenario/baseline was weakened, deleted, or regenerated only because the changed implementation otherwise failed;
 - a changed test/spec no longer rejects a realistic incorrect result relevant to its claimed contract;
+- an intentional changed visual baseline was inferred from production output without an independent visible contract or independently accepted by the same implementation context;
 - test-only production APIs or architecture-boundary violations were introduced solely to make proof convenient.
 
 When an existing expectation changes, require independent evidence that the accepted contract changed or the old proof was invalid. The new implementation's observed output is not sufficient basis for changing the expected result.
 
-A separate `test-authoring` pass is required when the architecture says a new assertion-bearing test/spec/baseline is added or an existing oracle materially changes. Do not manufacture an extra pass for static verifier/check implementation, mutation-target registration, ownership/applicability metadata, mechanical proof moves/renames, formatting, comments, or unchanged assertions.
+A separate `test-authoring` pass is required when the architecture says a new assertion-bearing test/spec is added, an existing oracle materially changes, or an intentional visual baseline requires independent acceptance. Do not manufacture an extra pass for static verifier/check implementation, mutation-target registration, ownership/applicability metadata, mechanical proof moves/renames, formatting, comments, or unchanged assertions.
 
 Test authorship is an execution-context boundary, not proof ownership. Review must still use the verification type, placement, owner, and affected-selection rules from `docs/testing/architecture.md`.
 
@@ -254,7 +257,7 @@ Use repository verification only when it materially strengthens or resolves revi
 
 Missing or self-confirming proof is itself a finding when the project requires reliable proof. Do not replace missing browser/E2E/visual/mutation or other risk-specific proof with green unit tests or CI.
 
-When assertion-bearing tests/specs/baselines changed with production code, a green run is only execution evidence. Review the proof oracle, failure sensitivity, environment fidelity, and any weakened/deleted previous proof before accepting it as contract evidence.
+When assertion-bearing tests/specs/baselines changed with production code, a green run is only execution evidence. Review the proof oracle, failure sensitivity, environment fidelity, authoring boundary, and any weakened/deleted previous proof before accepting it as contract evidence.
 
 ## Report
 
@@ -283,6 +286,7 @@ Then list only the findings that need the user's/implementer's attention. The `R
 - Fixing production code while performing the review.
 - Reviewing only the latest patch when the verdict depends on surrounding/current behavior.
 - Treating agreement between changed tests/specs/baselines and changed production code as independent evidence without checking the contract/oracle.
+- Accepting an intentional changed visual baseline that was generated or approved by the production implementation context instead of an independent test-author/visual pass.
 - Inventing project requirements from personal preference or generic style advice.
 - Creating a finding without linked evidence and linked basis.
 - Using external best practices to override an explicit Mioframe rule or contract.
