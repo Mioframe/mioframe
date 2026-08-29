@@ -24,6 +24,8 @@ The truthful UI owner owns visual proof:
 
 Current visual proof is explicit owner-local `*.visual.spec.ts` with deterministic colocated snapshots. Central `tests/e2e/visual/**` discovery has no remaining consumer and must not be restored.
 
+Test authorship does not change this ownership. When an intentional baseline change is part of production work, the separate `test-authoring` context owns independent baseline acceptance while the same truthful UI owner continues to own the visual spec and snapshot.
+
 ## Canonical references
 
 Use the smallest useful set:
@@ -44,19 +46,33 @@ For each materially distinct scenario, record the canonical baseline that displa
 
 A new baseline does not approve a changed result by itself. Current Mioframe compatibility changes require an explicit decision.
 
+## Intentional baseline changes
+
+An intentional baseline change must be derived from an independently accepted visible contract, not from whatever pixels the changed implementation happens to produce.
+
+When the target pixels cannot exist before production implementation:
+
+1. before implementation, `TEST IMPACT` and the test-author context establish the visible contract, truthful owner, bounded visual-spec intent, and why the current baseline is expected to change;
+2. production implementation may change rendering but must not create, regenerate, or approve the expected baseline;
+3. after the new rendering exists, a fresh test-author context follows this skill to create/update the baseline, inspect it against the accepted visible contract, and run focused `visual` verification;
+4. only that independently inspected baseline becomes accepted proof.
+
+When an existing accepted baseline is supposed to remain unchanged, it stays read-only and may provide ordinary failing/green regression proof through the implementation cycle.
+
 ## Workflow
 
 1. Name the stable visible invariant and truthful owner.
 2. Confirm it belongs to the current Mioframe contract or a deliberate new public capability.
-3. Use a deterministic canonical Storybook story and bounded root.
-4. Settle animation without claiming to test transition behavior.
-5. Wait for fonts, icons, and fixture readiness.
-6. Capture the smallest readable surface.
-7. Keep spec and snapshot ownership colocated with the truthful UI owner.
-8. Confirm add/move/remove/rename of specs/baselines preserves deterministic ownership or safe full-visual fallback.
-9. Inspect every intentional baseline change.
-10. Run focused verifier-managed visual proof and return to the top-level task.
-11. Prepare operator evidence only when the owning Material workflow requires it for a concrete visual/motion concern.
+3. For an intentional changed result, confirm the visible oracle was established independently from the production rendering; do not infer the target appearance from generated pixels.
+4. Use a deterministic canonical Storybook story and bounded root.
+5. Settle animation without claiming to test transition behavior.
+6. Wait for fonts, icons, and fixture readiness.
+7. Capture the smallest readable surface.
+8. Keep spec and snapshot ownership colocated with the truthful UI owner.
+9. Confirm add/move/remove/rename of specs/baselines preserves deterministic ownership or safe full-visual fallback.
+10. Inspect every intentional baseline change in the independent test-author context when the baseline changes with production implementation.
+11. Run focused verifier-managed visual proof and return to the top-level task.
+12. Prepare operator evidence only when the owning Material workflow requires it for a concrete visual/motion concern.
 
 ## Strict boundary
 
@@ -100,7 +116,7 @@ Focused accepted proof:
 pnpm verify --only visual --files <readable-source-story-or-spec-paths...>
 ```
 
-Intentional baseline update remains an explicit write operation through the repository visual update command and must be followed by verifier-managed visual proof.
+Intentional baseline update remains an explicit write operation through the repository visual update command and must be performed/accepted by the applicable test-author visual pass when it accompanies production rendering changes. It must be followed by verifier-managed visual proof.
 
 Preserve applicable `--profile` and `--files` scope when rerunning visual verification. For PR work, required GitHub CI on the exact published head owns the broad repository gate; this skill adds no separate broad local completion run.
 
@@ -110,6 +126,8 @@ Preserve applicable `--profile` and `--files` scope when rerunning visual verifi
 - central visual ownership or restored `tests/e2e/visual/**` discovery;
 - screenshots broader than the named visible contract;
 - unexplained baseline changes;
+- production implementation context creating, regenerating, or approving an intentional changed baseline it is expected to satisfy;
+- target appearance inferred solely from changed implementation output;
 - token-table or implementation-detail matrices;
 - equivalent combinations that create snapshot bloat;
 - forced states presented as motion proof;
