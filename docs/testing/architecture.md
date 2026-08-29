@@ -35,11 +35,13 @@ Valid oracle sources include an accepted architecture/product/public contract, a
 
 For every materially changed contract, proof planning names at least one plausible incorrect observable result the primary proof must reject.
 
-When a new assertion-bearing automated test/spec or accepted visual baseline is required, or an existing one materially changes its oracle, expectations, assertions, or failure semantics, author that proof in a separate test-author context before production implementation. This is an authoring-context boundary only: it does not create a verification type, proof owner, placement rule, registry, or affected-selection relation.
+When a new assertion-bearing automated test/spec is required, or an existing test/spec materially changes its oracle, expectations, assertions, or failure semantics, author that proof in a separate test-author context before production implementation. This is an authoring-context boundary only: it does not create a verification type, proof owner, placement rule, registry, or affected-selection relation.
+
+Intentional visual-baseline changes follow the same independence rule but different timing. Before production implementation, the test-author context establishes the accepted visible contract and visual-spec intent. When the new pixels cannot exist until after implementation, baseline creation and acceptance happen in a fresh test-author/visual pass after production rendering is available. The production implementation context must not regenerate or approve the baseline it is expected to satisfy.
 
 Test-authoring does not apply merely because verification work changes. Static verifier/check implementation, mutation-target registration, ownership/applicability metadata, proof-only moves/renames, formatting, comments, or other mechanical proof maintenance with an unchanged assertion oracle stay in their existing owner/workflow. Assertion-bearing tests/specs added for such mechanisms still follow their truthful proof type.
 
-When a meaningful pre-fix failure exists, the test-author context owns the RED evidence for new/materially changed proof. Production implementation consumes the accepted proof read-only until the first GREEN result. A setup error, wrong environment, unrelated exception, timeout, missing fixture, or infrastructure failure is not valid RED evidence.
+When a meaningful pre-fix failure exists, the test-author context owns the RED evidence for new/materially changed proof. Production implementation consumes accepted non-visual proof and existing accepted baselines read-only until the first GREEN result. A setup error, wrong environment, unrelated exception, timeout, missing fixture, or infrastructure failure is not valid RED evidence.
 
 If implementation exposes a genuine defect in the accepted proof or contract, return to the test-author/architect. Do not rewrite an accepted oracle in the production implementation context merely to make changed code pass.
 
@@ -419,7 +421,7 @@ TEST IMPACT
   - Durable ownership/impact updates:
 ```
 
-`Oracle source` is independent from the changed production implementation. `Must reject` is one plausible incorrect observable result the primary proof must catch. `Test author` records whether a separate assertion-authoring context is required; it does not change proof ownership. `Red phase` is required only when the pre-fix implementation can fail the focused proof for the contract-relevant reason.
+`Oracle source` is independent from the changed production implementation. `Must reject` is one plausible incorrect observable result the primary proof must catch. `Test author` records whether a separate assertion-authoring context is required; it does not change proof ownership. `Red phase` is required only when the pre-fix implementation can fail the focused proof for the contract-relevant reason. For intentional visual changes whose new baseline cannot exist before implementation, record the pre-implementation visible contract/spec intent and route baseline creation/acceptance to a post-implementation test-author visual pass.
 
 `verify` never consumes agent prose or this preflight artifact.
 
