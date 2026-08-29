@@ -137,8 +137,8 @@ export function checkMaterialWorkflowGuidance(root) {
         path.posix.join('.agents/skills', skillRelPath),
       )
     : [];
-  const activeGuidancePaths = [...new Set([...findAgentsMd(root), ...skillPaths])].sort((left, right) =>
-    left.localeCompare(right),
+  const activeGuidancePaths = [...new Set([...findAgentsMd(root), ...skillPaths])].sort(
+    (left, right) => left.localeCompare(right),
   );
 
   for (const guidancePath of activeGuidancePaths) {
