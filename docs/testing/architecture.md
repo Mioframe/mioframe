@@ -41,9 +41,7 @@ Intentional visual-baseline changes follow the same independence rule but differ
 
 Test-authoring does not apply merely because verification work changes. Static verifier/check implementation, mutation-target registration, ownership/applicability metadata, proof-only moves/renames, formatting, comments, or other mechanical proof maintenance with an unchanged assertion oracle stay in their existing owner/workflow. Assertion-bearing tests/specs added for such mechanisms still follow their truthful proof type.
 
-When a meaningful pre-fix failure exists, the test-author context owns the RED evidence for new/materially changed proof. Production implementation consumes accepted non-visual proof and existing accepted baselines read-only until the first GREEN result. A setup error, wrong environment, unrelated exception, timeout, missing fixture, or infrastructure failure is not valid RED evidence.
-
-If implementation exposes a genuine defect in the accepted proof or contract, return to the test-author/architect. Do not rewrite an accepted oracle in the production implementation context merely to make changed code pass.
+When a meaningful pre-fix failure exists, the test-author context owns the RED evidence for new/materially changed proof. Production implementation consumes accepted non-visual proof and existing accepted baselines read-only until the first GREEN result. RED is valid only when the failure is caused by the missing/incorrect contract under test; a deterministic failure caused exactly by an absent required public seam may therefore be valid, while unrelated compilation/setup errors, wrong environment, unrelated exceptions, timeouts, missing fixtures, or infrastructure failures are not. If implementation exposes a genuine defect in the accepted proof or contract, return to the test-author/architect. Do not rewrite an accepted oracle in the production implementation context merely to make changed code pass.
 
 ### One contract has one primary proof owner
 
