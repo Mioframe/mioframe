@@ -17,7 +17,7 @@ Use this skill when the task changes or clarifies any of these and no determinis
 - cross-layer ownership or FSD boundaries;
 - shared UI primitives or consumer-visible blast radius;
 - storage, service, worker, diagnostics, performance, or workflow contracts;
-- Material patterns or UI composition with unresolved architecture consequences outside the staged Material workflow;
+- Material patterns or UI composition with unresolved architecture consequences outside the scoped Material workflow;
 - task scope spanning more than one owner or requiring pass order;
 - an escalation condition from a deterministic authoring workflow.
 
@@ -31,9 +31,9 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic policy when the worker can derive a ready workspace-backed contract from authoritative sources and no escalation condition is present.
 
-For one official Material family, deterministic architecture is a current complete `DESIGN.md` plus ready `ARCHITECTURE.md`, created by the staged Material workflow. Use the Material implementation worker without a separate generic handoff only when those artifacts resolve renderer viability, implementation ownership, public Vue/token contracts, proof, and migration plan. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or product behavior outside that family architecture.
+For one official Material family, `material-component` is the deterministic authoring path. Its architecture-ready gate is current ready `contract.ts`, `tokens.css`, and `BEHAVIOR.md`; standalone implementation and any required consumer migration then continue under the scoped Material owners. Do not create a separate generic handoff merely to restate that workflow. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, product behavior outside that family, or when the scoped Material workflow escalates an unresolved architecture decision.
 
-If this skill is skipped, implementation preflight must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains.
+If this skill is skipped, the applicable implementation owner must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains. Generic implementation records that in `implementation-preflight`; deterministic scoped workflows such as official Material use their own owner-local readiness checks instead and must not invoke generic preflight when their workspace rules forbid it.
 
 ## Input scope
 
