@@ -37,7 +37,7 @@ Do not use a generic best-practice link to manufacture a project requirement.
 
 ## Independent proof review
 
-When production code and automated behavioral proof changed in the same work, treat them as two potentially correlated implementations of the same mistaken assumption. Agreement between changed code and changed tests is not independent evidence by itself.
+When production code and automated contract proof changed in the same work, treat them as two potentially correlated implementations of the same mistaken assumption. Agreement between changed code and changed tests is not independent evidence by itself.
 
 Before using changed proof as correctness evidence:
 
