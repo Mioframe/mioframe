@@ -43,25 +43,23 @@ describe('Material workflow guidance consistency', () => {
     expect(result.errors[0]).toContain('.agents/skills/architect-handoff/SKILL.md');
   });
 
-  it('accepts the current three-contract Material handoff', () => {
+  it('accepts current Material guidance without duplicating the canonical ready contract', () => {
     const root = makeTempRepo({
       '.agents/skills/architect-handoff/SKILL.md':
-        '# Architecture handoff\n\nThe Material ready gate is `contract.ts`, `tokens.css`, and `BEHAVIOR.md`.\n',
+        '# Architecture handoff\n\nUse `material-component` as the deterministic Material workflow.\n',
     });
 
     expect(checkMaterialWorkflowGuidance(root).errors).toHaveLength(0);
   });
 
-  it('fails closed when architect-handoff stops naming the current ready artifacts', () => {
+  it('rejects the superseded Material ready contract in AGENTS.md guidance', () => {
     const root = makeTempRepo({
-      '.agents/skills/architect-handoff/SKILL.md':
-        '# Architecture handoff\n\nUse the current Material workflow when it is ready.\n',
+      'AGENTS.md': '# Rules\n\nMaterial requires `DESIGN.md` and `ARCHITECTURE.md` before implementation.\n',
     });
 
     const result = checkMaterialWorkflowGuidance(root);
 
-    expect(result.errors).toContainEqual(
-      expect.stringContaining('must name the current Material ready artifacts'),
-    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain('AGENTS.md');
   });
 });
