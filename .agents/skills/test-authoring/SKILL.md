@@ -73,7 +73,7 @@ Detailed unit/component/browser/E2E/visual/mutation mechanics remain owned by th
 
 When `TEST IMPACT` marks a meaningful red phase as required for new/materially changed non-visual assertion-bearing proof, the test-author context owns that RED evidence before production implementation begins.
 
-Run the smallest faithful verifier-managed proof selected by the owning proof-type workflow. The red result is meaningful only when it fails for the expected contract reason. Setup errors, wrong-environment failures, unrelated exceptions, timeouts, missing fixtures, or broken infrastructure do not demonstrate that the proof detects the defect.
+Run the smallest faithful verifier-managed proof selected by the owning proof-type workflow. RED is meaningful only when it fails for the expected contract reason. A deterministic compile/import failure caused exactly by an absent required public seam may be valid RED when that absence is the contract defect. Unrelated compilation/setup errors, wrong-environment failures, unrelated exceptions, timeouts, missing fixtures, or broken infrastructure do not demonstrate that the proof detects the defect.
 
 If a faithful red phase is impossible or would require brittle/duplicative proof, mark it `not applicable` with the reason and return that correction to the preflight/test-first decision. Do not manufacture a ceremonial failure.
 
