@@ -99,7 +99,7 @@ Resolve:
 - an oracle source independent from the production implementation under test;
 - at least one plausible incorrect observable result the proof must reject;
 - the lowest faithful primary proof;
-- whether a separate `test-authoring` context is required because automated behavioral proof is new or materially changes its oracle/expectations/assertions/failure semantics/accepted baseline;
+- whether a separate `test-authoring` context is required because automated contract proof is new or materially changes its oracle/expectations/assertions/failure semantics/accepted baseline;
 - whether a meaningful red phase is possible under `test-first`;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
