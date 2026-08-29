@@ -99,7 +99,7 @@ Resolve:
 - an oracle source independent from the production implementation under test;
 - at least one plausible incorrect observable result the proof must reject;
 - the lowest faithful primary proof;
-- whether a separate `test-authoring` context is required because an assertion-bearing automated test/spec or accepted visual baseline is new, or an existing one materially changes its oracle/expectations/assertions/failure semantics;
+- whether a separate `test-authoring` context is required because an assertion-bearing automated test/spec is new or materially changes its oracle/expectations/assertions/failure semantics, or because an intentional visual baseline needs independent acceptance;
 - whether a meaningful red phase can fail against the pre-fix implementation for the contract-relevant reason;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
@@ -111,6 +111,8 @@ Resolve:
 `Test author` is an authoring-context decision only; it does not change the primary proof owner, verification type, placement, or affected-selection rules.
 
 Static verifier/check implementation, mutation-target registration, ownership/applicability metadata, and mechanical proof moves/renames with unchanged assertions do not require `test-authoring` merely because they are verification work. Any assertion-bearing tests/specs added for those mechanisms follow their own truthful proof type.
+
+For an intentional visual change whose target pixels cannot exist before implementation, `Oracle source`/`Must reject` and visual-spec intent are resolved before production edits, `Red phase` is normally `not applicable`, and baseline creation/inspection/acceptance is routed to a fresh post-implementation `test-authoring` + `visual-regression-testing` pass. The production implementation context must not create or approve that baseline.
 
 The implementation's current output is not an oracle. Do not change an existing expectation/baseline solely because the proposed implementation otherwise fails.
 
