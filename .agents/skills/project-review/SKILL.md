@@ -47,7 +47,7 @@ Before using changed assertion-bearing proof as correctness evidence:
 4. identify at least one plausible incorrect observable result that the assertions must reject;
 5. only then compare the implementation with both the independent contract and the proof.
 
-When `TEST IMPACT` required a meaningful red phase for new/materially changed non-visual proof, review the test-author RED evidence. A setup error, timeout, missing fixture, wrong environment, unrelated exception, or infrastructure failure is not evidence that the proof detected the behavioral defect.
+When `TEST IMPACT` required a meaningful red phase for new/materially changed non-visual proof, review the test-author RED evidence. A deterministic compile/import failure caused exactly by an absent required public seam may be valid when that absence is the contract defect. Unrelated compilation/setup errors, timeouts, missing fixtures, wrong environment, unrelated exceptions, or infrastructure failures are not evidence that the proof detected the behavioral defect.
 
 For an intentional visual-baseline change, do not require impossible pre-implementation target pixels. Instead verify that the visible contract and visual-spec intent were established independently before implementation, and that baseline creation/inspection/acceptance happened afterward in a fresh test-author context following `visual-regression-testing`. A baseline created or approved by the production implementation context is not independent proof.
 
