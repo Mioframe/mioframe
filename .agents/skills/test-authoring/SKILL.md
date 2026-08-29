@@ -1,6 +1,6 @@
 ---
 name: test-authoring
-description: 'Use in a separate test-author context when automated behavioral proof is added or materially changes its oracle, expectations, assertions, or accepted visual baseline.'
+description: 'Use in a separate test-author context when automated contract proof is added or materially changes its oracle, expectations, assertions, or accepted visual baseline.'
 ---
 
 # Test authoring workflow
@@ -11,7 +11,7 @@ This skill owns **proof quality and oracle independence**. It does not choose pr
 
 Use a separate test-author context from the production implementation context when:
 
-- a new automated behavioral proof is required; or
+- a new automated contract proof is required; or
 - an existing proof materially changes expected behavior, assertions, oracle data, failure semantics, or an accepted visual baseline.
 
 A separate test-author pass is not required for proof-only renames/moves, formatting, comment changes, mechanical ownership migration with unchanged assertions, or other changes that do not alter the proof oracle.
