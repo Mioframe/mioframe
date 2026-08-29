@@ -29,12 +29,14 @@ afterEach(() => {
 });
 
 describe('Material workflow guidance consistency', () => {
-  it('rejects legacy staged ready-contract guidance outside the transition owner', () => {
+  it('rejects legacy staged ready-contract guidance outside the transition owners', () => {
     const root = makeTempRepo({
       '.agents/skills/architect-handoff/SKILL.md':
         '# Architecture handoff\n\nFor Material, require current `DESIGN.md` and ready `ARCHITECTURE.md`.\n',
       '.agents/skills/material-component/SKILL.md':
         '# Material component\n\nTemporary legacy bridge: old `DESIGN.md` and `ARCHITECTURE.md` may remain during conversion.\n',
+      '.agents/skills/material-component-migration/SKILL.md':
+        '# Material migration\n\nRemove old `DESIGN.md` and `ARCHITECTURE.md` after conversion.\n',
     });
 
     const result = checkMaterialWorkflowGuidance(root);
