@@ -30,7 +30,7 @@ Owner order is:
 api-contract → token-contract → behavior-contract → implementation → migration
 ```
 
-`test-authoring` does not add another Material owner or persisted workflow stage. When implementation-owned proof needs a new/materially changed assertion oracle, the implementation owner delegates only proof authorship/RED evidence to a fresh test-author context under the root testing architecture. The proof remains owned by the Material family and implementation owner; production implementation and proof authorship remain separate contexts.
+`test-authoring` does not add another Material owner or persisted workflow stage. When implementation-owned proof needs a new/materially changed assertion oracle, the implementation owner delegates only proof authorship/RED evidence to a fresh test-author subcontext under the root testing architecture. The proof remains owned by the Material family and implementation owner; production implementation and proof authorship remain separate contexts.
 
 The semantic marker stores exactly:
 
@@ -81,7 +81,7 @@ Migration removes replaced legacy staged artifacts after successful conversion. 
 5. Run only that owner in a fresh context. Pass only family, owner, exact finding/scope when one exists, and relevant operator observations.
 6. If the worker returns a semantic correction, persist or replace the marker before routing elsewhere. If it resolves the active semantic correction without replacement, clear the marker.
 7. Rerun the resolver after every completed owner and recalculate the earliest owner. Do not pre-plan a correction chain and do not rerun unaffected owners, except for the explicitly accepted repeated token derivation when resuming the temporary legacy boundary.
-8. When all three contracts are ready, no earlier route exists, and no contract correction is pending, run or resume `material-component-implementation` as the `implementation` owner until its completion gate returns `complete`. Inside that owner, follow the root independent-proof rule: fresh `test-authoring` contexts may author/validate required assertion-bearing proof or independently accept an intentional visual baseline, but they do not become Material owners, alter resolver order, or create `.material-correction.json` workflow state merely because proof authorship was delegated.
+8. When all three contracts are ready, no earlier route exists, and no contract correction is pending, run or resume `material-component-implementation` as the `implementation` owner until its completion gate returns `complete`. Inside that owner, follow the root independent-proof rule: fresh `test-authoring` subcontexts may author/validate required assertion-bearing proof or independently accept an intentional visual baseline, but they do not become Material owners, alter resolver order, or create `.material-correction.json` workflow state merely because proof authorship was delegated.
 9. Run `material-component-migration` only when current consumers or replaced legacy ownership actually require migration. A correction with unchanged public usage/defaults and no legacy ownership does not require another migration pass.
 10. When contracts, implementation/proof, and required migration are complete, the resolver is clean, and no semantic marker remains, inspect only active current review state:
     - no active current review artifact: normal architect handoff;
@@ -97,7 +97,7 @@ After two unsuccessful correction rounds for the same underlying problem, or whe
 - `material-component-api-contract`: owns only `contract.ts`; Material facts from Material3 MCP.
 - `material-component-token-contract`: owns only `tokens.css`; Material facts from Material3 MCP.
 - `material-component-behavior-contract`: owns only `BEHAVIOR.md`; Material facts from Material3 MCP.
-- `material-component-implementation`: owns standalone Vue/m3e adaptation and responsibility for complete component-owned proof; no consumers. New/materially changed assertion-bearing proof may be authored in a separate `test-authoring` context without moving repository ownership away from this implementation owner/family.
+- `material-component-implementation`: owns standalone Vue/m3e adaptation and responsibility for complete component-owned proof; no consumers. New/materially changed assertion-bearing proof may be authored in a separate `test-authoring` subcontext without moving repository ownership away from this implementation owner/family.
 - `material-component-migration`: owns consumers and removal of replaced legacy ownership; does not redefine Material or inspect m3e internals.
 - Architect: owns final semantic review, `REVIEW.md`, roadmap/PR metadata, exact-head CI review, and merge readiness.
 
@@ -119,7 +119,7 @@ The coding workflow is complete only when:
 
 - `contract.ts`, `tokens.css`, and `BEHAVIOR.md` are ready and the resolver has no contract route;
 - no semantic correction remains;
-- implementation returned `complete` for runtime and required component-owned proof, including any required independent test-author/baseline pass;
+- implementation returned `complete` for runtime and required component-owned proof, including any required independent test-author/baseline subcontext;
 - migration returned `complete` or `not-required`;
 - no known in-scope coding blocker remains.
 
