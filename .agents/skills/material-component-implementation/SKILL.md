@@ -148,11 +148,13 @@ GOOD: override the public token or trigger the real state in a browser and asser
 
 Determine only proof required by the fixed contracts and materially distinct renderer/cascade paths. Repository proof remains component/family-owned under this implementation owner, but **acceptance-oracle authorship is separate from production implementation when the root testing architecture requires `test-authoring`**.
 
-Before production edits, identify the required proof from the fixed contracts:
+Before production edits, record a scoped `TEST IMPACT` item for each materially changed standalone contract using the canonical fields from `docs/testing/architecture.md`: independent `Oracle source`, `Must reject`, primary/additional proof, existing/new proof, `Test author`, `Red phase`, risk/platform matrix, and durable ownership updates. This is the Material implementation owner's narrow equivalent proof-planning record; it does not invoke generic `implementation-preflight`, create persisted workflow state, or change proof ownership.
+
+Then handle required proof from those fixed decisions:
 
 - if an existing proof already owns the contract with unchanged oracle/assertions, preserve it and use it normally;
-- if a new assertion-bearing test/spec is required or an existing test/spec materially changes its oracle/expectations/assertions/failure semantics, delegate that proof to a fresh `test-authoring` context using the truthful proof-type skill; consume its accepted proof and RED evidence before production edits;
-- if an intentional visual baseline must change and target pixels cannot exist yet, establish the visible contract/spec intent before production edits, implement rendering without creating/approving the baseline, then delegate baseline creation/inspection/acceptance to a fresh test-author context under `visual-regression-testing`;
+- if `Test author` is required for a new assertion-bearing test/spec or materially changed oracle/expectation/assertion/failure semantic, delegate that exact `TEST IMPACT` item to a fresh `test-authoring` context using the truthful proof-type skill; consume its accepted proof and RED evidence before production edits;
+- if an intentional visual baseline must change and target pixels cannot exist yet, delegate the pre-implementation visible contract/spec intent through `test-authoring`, implement rendering without creating/approving the baseline, then delegate post-implementation baseline creation/inspection/acceptance to a fresh test-author context under `visual-regression-testing`;
 - do not create a Material workflow owner/stage or `.material-correction.json` entry merely for delegated proof authorship.
 
 The production implementation context must not edit test-author-accepted non-visual proof before its first GREEN result and must not create, regenerate, or approve an intentional changed visual baseline. A genuine proof/contract conflict returns to the test-author or architect rather than being resolved by weakening proof here.
