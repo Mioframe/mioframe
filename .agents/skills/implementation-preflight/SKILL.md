@@ -70,7 +70,7 @@ Before implementation:
 
 Examples include a finite command/check inventory, config/discovery family, migration population, public surface inventory, or another bounded registry/mechanism whose architecture claims complete coverage.
 
-Do not create a registry merely to satisfy this audit. Prefer the existing authoritative mechanism or deterministic local ownership. Sampling is sufficient only when the requirement itself is representative rather than exhaustive.
+This audit is preflight evidence, not a reason to create persistent registry metadata. Prefer the existing authoritative mechanism or deterministic local ownership. Sampling is sufficient only when the requirement itself is representative rather than exhaustive.
 
 ## TEST IMPACT
 
@@ -99,8 +99,8 @@ Resolve:
 - an oracle source independent from the production implementation under test;
 - at least one plausible incorrect observable result the proof must reject;
 - the lowest faithful primary proof;
-- whether a separate `test-authoring` context is required because automated contract proof is new or materially changes its oracle/expectations/assertions/failure semantics/accepted baseline;
-- whether a meaningful red phase is possible under `test-first`;
+- whether a separate `test-authoring` context is required because an assertion-bearing automated test/spec or accepted visual baseline is new, or an existing one materially changes its oracle/expectations/assertions/failure semantics;
+- whether a meaningful red phase can fail against the pre-fix implementation for the contract-relevant reason;
 - additional proof required by cross-contract risk;
 - affected existing tests/stories/snapshots/browser specs/consumer flows/performance evidence/mutation targets;
 - new, moved, renamed, or removed proof files;
@@ -108,9 +108,11 @@ Resolve:
 - applicable browser/mobile/accessibility/visual/release/data-safety/performance risks;
 - exact metric/budget, scenario/data size, and environment when making a performance claim.
 
-The implementation's current output is not an oracle. Do not change an existing expectation/baseline solely because the proposed implementation otherwise fails.
+`Test author` is an authoring-context decision only; it does not change the primary proof owner, verification type, placement, or affected-selection rules.
 
-A separate test-author pass is not required for proof-only renames/moves, formatting, comment changes, mechanical ownership migration with unchanged assertions, or other changes that do not alter the proof oracle.
+Static verifier/check implementation, mutation-target registration, ownership/applicability metadata, and mechanical proof moves/renames with unchanged assertions do not require `test-authoring` merely because they are verification work. Any assertion-bearing tests/specs added for those mechanisms follow their own truthful proof type.
+
+The implementation's current output is not an oracle. Do not change an existing expectation/baseline solely because the proposed implementation otherwise fails.
 
 Do not add explicit registry metadata when deterministic local ownership already expresses the relation. Do not list a proof merely because a lane exists.
 
