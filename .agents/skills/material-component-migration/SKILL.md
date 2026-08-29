@@ -32,6 +32,19 @@ Run in a fresh context separate from implementation.
 
 You may inspect consumers and legacy implementation because they are the migration subject. Do not inspect m3e internals or renderer-private API.
 
+## Proof planning gate
+
+Before consumer production edits, record a scoped `TEST IMPACT` item for each materially affected consumer/product contract using the canonical fields from `docs/testing/architecture.md`: independent `Oracle source`, `Must reject`, primary/additional proof, existing/new proof, `Test author`, `Red phase`, risk/platform matrix, and durable ownership updates. This is the migration owner's narrow equivalent proof-planning record; it does not invoke generic `implementation-preflight`, create persisted workflow state, or move proof ownership into Material.
+
+Use the current product/public contract and required preserved behavior as the oracle; the finished canonical Material component or the migration's eventual output is not an independent oracle for product behavior.
+
+Before editing a consumer:
+
+- if existing owning proof remains valid with unchanged oracle/assertions, preserve and use it normally;
+- if a new assertion-bearing test/spec is required or an existing proof materially changes its oracle/expectations/assertions/failure semantics, delegate that exact `TEST IMPACT` item to a fresh `test-authoring` context using the truthful proof-type skill, and consume accepted non-visual proof/RED evidence before the corresponding consumer production edit;
+- if an intentional consumer visual baseline must change and target pixels cannot exist yet, establish its independent visible contract/spec intent in a pre-implementation test-author pass, perform the consumer migration without creating/approving the baseline, then use a fresh post-implementation test-author/`visual-regression-testing` pass for baseline acceptance and GREEN visual proof;
+- do not duplicate standalone Material proof at the product layer merely because the consumer changes.
+
 ## Migration
 
 1. Inventory every applicable current/legacy consumer before editing.
@@ -72,6 +85,8 @@ As applicable prove in the repository:
 
 Do not duplicate standalone Material behavior/token tests at the product layer.
 
+Any new/materially changed assertion-bearing consumer proof or intentional changed visual baseline must complete the independent `test-authoring` boundary established by the proof-planning gate. The migration context must not weaken accepted non-visual proof before first GREEN or create/approve an intentional changed baseline it is expected to satisfy.
+
 Follow the root rules and `.agents/skills/verification/SKILL.md`; verifier invocation/environment handling is owned only by that skill, and exact-head GitHub CI is the architect-owned final automatic repository gate. Do not add Material-specific verifier environment handling or ask the operator to run verifier commands.
 
 ## Report
@@ -97,6 +112,8 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Preserving legacy aliases by default.
 - Moving product/business behavior into Material.
 - Migrating unrelated families for cleanup.
+- Authoring or weakening a required consumer acceptance oracle in the migration context when `test-authoring` is required.
+- Creating/regenerating/approving an intentional changed consumer visual baseline in the migration context.
 - Asking the operator to run verifier commands.
 - Updating roadmap, PR, CI, review, or merge status.
 - Running a final broad local verification gate solely to duplicate CI.
