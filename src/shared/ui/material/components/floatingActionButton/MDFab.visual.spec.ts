@@ -43,7 +43,7 @@ test('MDFab renders visible renderer-owned focus feedback on real keyboard focus
   const surface = page.getByTestId('visual-md-fab-real-interaction');
 
   // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
-  // (`MDFab.browser.spec.ts`). This visual spec only establishes focus state and captures the
+  // (`MDFab.behavior.spec.ts`). This visual spec only establishes focus state and captures the
   // settled screenshot.
   await page.keyboard.press('Tab');
 

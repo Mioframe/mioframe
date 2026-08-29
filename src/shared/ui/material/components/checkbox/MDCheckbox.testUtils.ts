@@ -6,7 +6,7 @@
  * test mounts it. This provides just enough surface for those mixins to run without throwing; it
  * intentionally does not reimplement real browser form participation, validity UI,
  * accessibility-tree behavior, or focus emulation — those remain real-browser
- * (`MDCheckbox.browser.spec.ts`) responsibilities.
+ * (`MDCheckbox.behavior.spec.ts`) responsibilities.
  *
  * Installed/restored only around Checkbox's own tests (see `MDCheckbox.test.ts`), not globally in
  * `src/setupVitest.ts` and not promoted to a shared Material test-support helper, per

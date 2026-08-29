@@ -24,4 +24,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/shared` and its descend
 ## Constraints
 
 - A module with one current consumer may remain in `shared` when its responsibility is genuinely upper-layer-independent and its API does not encode that consumer's business context.
-- Minimum verification: run the type-check gate through `pnpm verify --only type-check`, plus focused verify-managed tests or smoke checks for the specific shared contract that changed.
+- Minimum verification: run the static gate through `pnpm verify --only static`, plus focused verify-managed tests or smoke checks for the specific shared contract that changed.

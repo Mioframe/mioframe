@@ -3,24 +3,73 @@ import { describe, expect, it } from 'vitest';
 import {
   formatVerifyInvocationCommand,
   isResolvedVerifyInvocation,
+  isVerificationType,
   resolveVerifyInvocation,
+  VERIFICATION_TYPES,
 } from './verifyInvocation.ts';
+
+describe('VERIFICATION_TYPES', () => {
+  it('contains exactly the eight canonical verification types', () => {
+    expect(VERIFICATION_TYPES).toEqual([
+      'static',
+      'unit',
+      'behavior',
+      'visual',
+      'browser-integration',
+      'performance',
+      'mutation',
+      'e2e',
+    ]);
+  });
+
+  it('has no duplicate entries', () => {
+    expect(new Set(VERIFICATION_TYPES).size).toBe(VERIFICATION_TYPES.length);
+  });
+});
+
+describe('isVerificationType', () => {
+  it('accepts every canonical verification type', () => {
+    for (const type of VERIFICATION_TYPES) {
+      expect(isVerificationType(type)).toBe(true);
+    }
+  });
+
+  it('rejects a legacy low-level label', () => {
+    expect(isVerificationType('artifact')).toBe(false);
+    expect(isVerificationType('managed-updates')).toBe(false);
+    expect(isVerificationType('eslint')).toBe(false);
+    expect(isVerificationType('unit-tests')).toBe(false);
+    expect(isVerificationType('storybook-behavior')).toBe(false);
+    expect(isVerificationType('storybook-build')).toBe(false);
+  });
+
+  it('rejects a would-be ninth type such as release or setup', () => {
+    expect(isVerificationType('release')).toBe(false);
+    expect(isVerificationType('setup')).toBe(false);
+    expect(isVerificationType('prerequisite')).toBe(false);
+  });
+
+  it('rejects non-string values', () => {
+    expect(isVerificationType(null)).toBe(false);
+    expect(isVerificationType(undefined)).toBe(false);
+    expect(isVerificationType(42)).toBe(false);
+  });
+});
 
 describe('resolveVerifyInvocation', () => {
   it('makes GitHub base and profile explicit in one structured invocation', () => {
     expect(
-      resolveVerifyInvocation(['--only', 'unit-tests'], {
+      resolveVerifyInvocation(['--only', 'unit'], {
         GITHUB_ACTIONS: 'true',
         GITHUB_BASE_REF: 'develop',
       }),
     ).toEqual({
-      version: 4,
+      version: 5,
       scope: { kind: 'github-base', baseRef: 'origin/develop' },
       profile: 'github-actions',
-      onlyLabel: 'unit-tests',
+      onlyType: 'unit',
       verbose: false,
       fixMode: 'none',
-      storybookBuildCiFallback: false,
       repeat: null,
     });
   });
@@ -33,7 +82,7 @@ describe('resolveVerifyInvocation', () => {
 
   it('treats explicit files as the effective focused scope and drops an ignored base', () => {
     const invocation = resolveVerifyInvocation(
-      ['--base', 'origin/wrong', '--files', 'src/path with space.ts', '--only', 'eslint'],
+      ['--base', 'origin/wrong', '--files', 'src/path with space.ts', '--only', 'static'],
       { GITHUB_ACTIONS: 'true', GITHUB_BASE_REF: 'develop' },
     );
 
@@ -42,7 +91,7 @@ describe('resolveVerifyInvocation', () => {
       files: ['src/path with space.ts'],
     });
     expect(formatVerifyInvocationCommand(invocation)).toBe(
-      "pnpm verify --files 'src/path with space.ts' --profile github-actions --only eslint",
+      "pnpm verify --files 'src/path with space.ts' --profile github-actions --only static",
     );
   });
 
@@ -54,13 +103,12 @@ describe('resolveVerifyInvocation', () => {
         VERIFY_BASE: 'origin/other',
       }),
     ).toEqual({
-      version: 4,
+      version: 5,
       scope: { kind: 'full' },
       profile: 'github-actions',
-      onlyLabel: null,
+      onlyType: null,
       verbose: false,
       fixMode: 'none',
-      storybookBuildCiFallback: false,
       repeat: null,
     });
   });
@@ -74,42 +122,64 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
-  it('requires full mode for release-only labels', () => {
-    expect(() => resolveVerifyInvocation(['--only', 'artifact'], {})).toThrow(
-      '--only artifact requires --full',
-    );
-    expect(resolveVerifyInvocation(['--full', '--only', 'artifact'], {}).onlyLabel).toBe(
-      'artifact',
+  it('rejects --only with --full for every canonical type', () => {
+    for (const type of VERIFICATION_TYPES) {
+      expect(() => resolveVerifyInvocation(['--full', '--only', type], {})).toThrow(
+        '--full cannot be combined with --only.',
+      );
+    }
+  });
+
+  it('rejects --fix-only with --full', () => {
+    expect(() => resolveVerifyInvocation(['--full', '--fix-only'], {})).toThrow(
+      '--full cannot be combined with --fix-only.',
     );
   });
 
-  it('accepts storybook-build as a focused label without requiring --full', () => {
-    expect(resolveVerifyInvocation(['--only', 'storybook-build'], {}).onlyLabel).toBe(
-      'storybook-build',
+  it('rejects --repeat with --full', () => {
+    expect(() => resolveVerifyInvocation(['--full', '--repeat', '10'], {})).toThrow(
+      '--repeat cannot be combined with --full.',
     );
   });
 
-  it('accepts storybook-build alongside --full, unlike release-only labels', () => {
-    expect(resolveVerifyInvocation(['--full', '--only', 'storybook-build'], {}).onlyLabel).toBe(
-      'storybook-build',
-    );
+  it('allows --fix with --full', () => {
+    expect(resolveVerifyInvocation(['--full', '--fix'], {}).fixMode).toBe('fix');
   });
 
-  it('rejects mutation in full mode', () => {
-    expect(() => resolveVerifyInvocation(['--full', '--only', 'mutation'], {})).toThrow(
-      '--only mutation is not available with --full',
-    );
-  });
-
-  it('limits fix-only labels to checks that actually run in fix-only mode', () => {
-    expect(resolveVerifyInvocation(['--fix-only', '--only', 'eslint'], {}).onlyLabel).toBe(
+  it('rejects a legacy low-level label through --only', () => {
+    for (const legacyLabel of [
       'eslint',
+      'unit-tests',
+      'storybook-behavior',
+      'storybook-build',
+      'artifact',
+      'managed-updates',
+      'release',
+    ]) {
+      expect(() => resolveVerifyInvocation(['--only', legacyLabel], {})).toThrow(
+        `Invalid value for --only: ${legacyLabel}`,
+      );
+    }
+  });
+
+  it('accepts every canonical verification type through --only', () => {
+    for (const type of VERIFICATION_TYPES) {
+      expect(resolveVerifyInvocation(['--only', type], {}).onlyType).toBe(type);
+    }
+  });
+
+  it('accepts --only mutation outside --full, unlike the legacy full-forbidden rule', () => {
+    expect(resolveVerifyInvocation(['--only', 'mutation'], {}).onlyType).toBe('mutation');
+  });
+
+  it('limits fix mode narrowing to --only static', () => {
+    expect(resolveVerifyInvocation(['--fix-only', '--only', 'static'], {}).onlyType).toBe('static');
+    expect(resolveVerifyInvocation(['--fix', '--only', 'static'], {}).onlyType).toBe('static');
+    expect(() => resolveVerifyInvocation(['--fix-only', '--only', 'unit'], {})).toThrow(
+      'Fix modes are supported only with --only static.',
     );
-    expect(() => resolveVerifyInvocation(['--fix-only', '--only', 'type-check'], {})).toThrow(
-      'Accepted fix-only labels',
-    );
-    expect(() => resolveVerifyInvocation(['--fix-only', '--only', 'e2e'], {})).toThrow(
-      'Accepted fix-only labels',
+    expect(() => resolveVerifyInvocation(['--fix', '--only', 'e2e'], {})).toThrow(
+      'Fix modes are supported only with --only static.',
     );
   });
 
@@ -119,59 +189,16 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
-  it('resolves --storybook-build-ci-fallback to true with --only storybook-build', () => {
-    expect(
-      resolveVerifyInvocation(['--only', 'storybook-build', '--storybook-build-ci-fallback'], {})
-        .storybookBuildCiFallback,
-    ).toBe(true);
-  });
-
-  it('resolves storybookBuildCiFallback to false for an ordinary invocation', () => {
-    expect(
-      resolveVerifyInvocation(['--only', 'storybook-build'], {}).storybookBuildCiFallback,
-    ).toBe(false);
-    expect(resolveVerifyInvocation([], {}).storybookBuildCiFallback).toBe(false);
-  });
-
-  it('rejects --storybook-build-ci-fallback without --only storybook-build', () => {
+  it('rejects the removed --storybook-build-ci-fallback flag as an unknown argument', () => {
     expect(() => resolveVerifyInvocation(['--storybook-build-ci-fallback'], {})).toThrow(
-      '--storybook-build-ci-fallback requires --only storybook-build',
+      'Unknown verify argument: --storybook-build-ci-fallback',
     );
   });
 
-  it('rejects --storybook-build-ci-fallback with another --only label', () => {
-    expect(() =>
-      resolveVerifyInvocation(['--only', 'visual', '--storybook-build-ci-fallback'], {}),
-    ).toThrow('--storybook-build-ci-fallback requires --only storybook-build');
-  });
-
-  it('rejects --storybook-build-ci-fallback with --full', () => {
-    expect(() =>
-      resolveVerifyInvocation(
-        ['--full', '--only', 'storybook-build', '--storybook-build-ci-fallback'],
-        {},
-      ),
-    ).toThrow('cannot be combined with --full');
-  });
-
-  it('rejects a duplicate --storybook-build-ci-fallback flag', () => {
-    expect(() =>
-      resolveVerifyInvocation(
-        [
-          '--only',
-          'storybook-build',
-          '--storybook-build-ci-fallback',
-          '--storybook-build-ci-fallback',
-        ],
-        {},
-      ),
-    ).toThrow('Duplicate verify option: --storybook-build-ci-fallback');
-  });
-
-  it('resolves --repeat 10 to repeat: 10 with --only storybook-behavior and --files', () => {
+  it('resolves --repeat 10 to repeat: 10 with --only behavior and --files', () => {
     expect(
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '10'],
         {},
       ).repeat,
     ).toBe(10);
@@ -179,13 +206,13 @@ describe('resolveVerifyInvocation', () => {
 
   it('resolves repeat to null for an ordinary invocation', () => {
     expect(resolveVerifyInvocation([], {}).repeat).toBeNull();
-    expect(resolveVerifyInvocation(['--only', 'storybook-behavior'], {}).repeat).toBeNull();
+    expect(resolveVerifyInvocation(['--only', 'behavior'], {}).repeat).toBeNull();
   });
 
   it('rejects a missing value for --repeat', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat'],
         {},
       ),
     ).toThrow('Missing value for --repeat');
@@ -194,13 +221,13 @@ describe('resolveVerifyInvocation', () => {
   it('rejects a non-integer --repeat value', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10.5'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '10.5'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: 10.5');
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', 'abc'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', 'abc'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: abc');
@@ -209,13 +236,13 @@ describe('resolveVerifyInvocation', () => {
   it('rejects --repeat values of zero or one', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '0'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '0'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: 0');
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '1'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '1'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: 1');
@@ -224,7 +251,7 @@ describe('resolveVerifyInvocation', () => {
   it('rejects a negative --repeat value', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '-1'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '-1'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: -1');
@@ -233,7 +260,7 @@ describe('resolveVerifyInvocation', () => {
   it('rejects a --repeat value above the bound of 20', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '21'],
+        ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '21'],
         {},
       ),
     ).toThrow('Invalid value for --repeat: 21');
@@ -244,9 +271,9 @@ describe('resolveVerifyInvocation', () => {
       resolveVerifyInvocation(
         [
           '--only',
-          'storybook-behavior',
+          'behavior',
           '--files',
-          'src/foo.browser.spec.ts',
+          'src/foo.behavior.spec.ts',
           '--repeat',
           '10',
           '--repeat',
@@ -257,81 +284,70 @@ describe('resolveVerifyInvocation', () => {
     ).toThrow('Duplicate verify option: --repeat');
   });
 
-  it('rejects --repeat without --only storybook-behavior', () => {
+  it('rejects --repeat without --only behavior', () => {
     expect(() =>
-      resolveVerifyInvocation(['--files', 'src/foo.browser.spec.ts', '--repeat', '10'], {}),
-    ).toThrow('--repeat requires --only storybook-behavior');
+      resolveVerifyInvocation(['--files', 'src/foo.behavior.spec.ts', '--repeat', '10'], {}),
+    ).toThrow('--repeat requires --only behavior');
   });
 
-  it('rejects --repeat with another --only label', () => {
+  it('rejects --repeat with another --only type', () => {
     expect(() =>
       resolveVerifyInvocation(
-        ['--only', 'visual', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+        ['--only', 'visual', '--files', 'src/foo.behavior.spec.ts', '--repeat', '10'],
         {},
       ),
-    ).toThrow('--repeat requires --only storybook-behavior');
+    ).toThrow('--repeat requires --only behavior');
   });
 
   it('rejects --repeat without --files', () => {
-    expect(() =>
-      resolveVerifyInvocation(['--only', 'storybook-behavior', '--repeat', '10'], {}),
-    ).toThrow('--repeat requires --files');
-  });
-
-  it('rejects --repeat with --full', () => {
-    expect(() =>
-      resolveVerifyInvocation(['--full', '--only', 'storybook-behavior', '--repeat', '10'], {}),
-    ).toThrow('--repeat cannot be combined with --full.');
+    expect(() => resolveVerifyInvocation(['--only', 'behavior', '--repeat', '10'], {})).toThrow(
+      '--repeat requires --files',
+    );
   });
 });
 
 describe('formatVerifyInvocationCommand', () => {
-  it('renders a read-only full rerun without changed-path arguments', () => {
+  it('renders a read-only rerun with an overridden type and profile', () => {
     const invocation = resolveVerifyInvocation(
-      ['--fix-only', '--verbose', '--full', '--profile', 'local', '--only', 'format'],
+      ['--fix-only', '--verbose', '--profile', 'local', '--only', 'static'],
       {},
     );
 
     expect(
       formatVerifyInvocationCommand(invocation, {
         readOnly: true,
-        onlyLabel: 'artifact',
+        onlyType: 'e2e',
         profile: 'github-actions',
       }),
-    ).toBe('pnpm verify --verbose --full --profile github-actions --only artifact');
+    ).toBe('pnpm verify --verbose --profile github-actions --only e2e');
+  });
+
+  it('renders a read-only full rerun without a --only override', () => {
+    const invocation = resolveVerifyInvocation(['--verbose', '--full'], {});
+
+    expect(formatVerifyInvocationCommand(invocation, { readOnly: true })).toBe(
+      'pnpm verify --verbose --full --profile local',
+    );
   });
 
   it('rejects an override that is invalid for the resolved mode', () => {
     const invocation = resolveVerifyInvocation(['--full'], {});
 
-    expect(() => formatVerifyInvocationCommand(invocation, { onlyLabel: 'mutation' })).toThrow(
-      '--only mutation is not available with --full',
-    );
-  });
-
-  it('preserves --storybook-build-ci-fallback in the rendered rerun command', () => {
-    const invocation = resolveVerifyInvocation(
-      ['--verbose', '--only', 'storybook-build', '--storybook-build-ci-fallback'],
-      {},
-    );
-    const command = formatVerifyInvocationCommand(invocation);
-
-    expect(command.startsWith('pnpm verify')).toBe(true);
-    expect(command).toBe(
-      'pnpm verify --verbose --profile local --only storybook-build --storybook-build-ci-fallback',
+    expect(() => formatVerifyInvocationCommand(invocation, { onlyType: 'mutation' })).toThrow(
+      '--full cannot be combined with --only.',
     );
   });
 
   it('preserves --repeat 10 in the rendered command, including a read-only rerun', () => {
     const invocation = resolveVerifyInvocation(
-      ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+      ['--only', 'behavior', '--files', 'src/foo.behavior.spec.ts', '--repeat', '10'],
       {},
     );
     const command = formatVerifyInvocationCommand(invocation);
 
     expect(command.startsWith('pnpm verify')).toBe(true);
     expect(command).toBe(
-      'pnpm verify --files src/foo.browser.spec.ts --profile local --only storybook-behavior --repeat 10',
+      'pnpm verify --files src/foo.behavior.spec.ts --profile local --only behavior --repeat 10',
     );
 
     const rerunCommand = formatVerifyInvocationCommand(invocation, { readOnly: true });
@@ -354,10 +370,10 @@ describe('formatVerifyInvocationCommand', () => {
 
 describe('isResolvedVerifyInvocation', () => {
   it('rejects corrupted and legacy persisted metadata', () => {
-    expect(isResolvedVerifyInvocation({ version: 4, scope: { kind: 'local' } })).toBe(false);
+    expect(isResolvedVerifyInvocation({ version: 5, scope: { kind: 'local' } })).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: null,
@@ -369,137 +385,103 @@ describe('isResolvedVerifyInvocation', () => {
     ).toBe(false);
   });
 
-  it('rejects persisted invalid mode and label combinations', () => {
+  it('rejects a stale version-4 shape even when it otherwise carries an onlyType field', () => {
     expect(
       isResolvedVerifyInvocation({
         version: 4,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyType: null,
+        verbose: false,
+        fixMode: 'none',
+        repeat: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects persisted invalid mode and type combinations', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 5,
         scope: { kind: 'full' },
         profile: 'local',
-        onlyLabel: 'mutation',
+        onlyType: 'mutation',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: null,
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
+        version: 5,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: 'type-check',
+        onlyType: 'unit',
         verbose: false,
         fixMode: 'fix-only',
-        storybookBuildCiFallback: false,
         repeat: null,
       }),
     ).toBe(false);
   });
 
-  it('rejects a missing or mistyped storybookBuildCiFallback field', () => {
+  it('rejects a legacy low-level label as onlyType', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
+        version: 5,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: null,
+        onlyType: 'eslint',
         verbose: false,
         fixMode: 'none',
         repeat: null,
       }),
     ).toBe(false);
-    expect(
-      isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'local' },
-        profile: 'local',
-        onlyLabel: null,
-        verbose: false,
-        fixMode: 'none',
-        storybookBuildCiFallback: 'true',
-        repeat: null,
-      }),
-    ).toBe(false);
-  });
-
-  it('rejects a persisted storybookBuildCiFallback that requires --only storybook-build', () => {
-    expect(
-      isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'local' },
-        profile: 'local',
-        onlyLabel: 'visual',
-        verbose: false,
-        fixMode: 'none',
-        storybookBuildCiFallback: true,
-        repeat: null,
-      }),
-    ).toBe(false);
-  });
-
-  it('accepts a persisted storybookBuildCiFallback with --only storybook-build', () => {
-    expect(
-      isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'local' },
-        profile: 'local',
-        onlyLabel: 'storybook-build',
-        verbose: false,
-        fixMode: 'none',
-        storybookBuildCiFallback: true,
-        repeat: null,
-      }),
-    ).toBe(true);
   });
 
   it('rejects a missing or mistyped repeat field', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        version: 5,
+        scope: { kind: 'explicit-files', files: ['src/foo.behavior.spec.ts'] },
         profile: 'local',
-        onlyLabel: 'storybook-behavior',
+        onlyType: 'behavior',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        version: 5,
+        scope: { kind: 'explicit-files', files: ['src/foo.behavior.spec.ts'] },
         profile: 'local',
-        onlyLabel: 'storybook-behavior',
+        onlyType: 'behavior',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: '10',
       }),
     ).toBe(false);
   });
 
-  it('rejects a persisted repeat that requires --only storybook-behavior and --files', () => {
+  it('rejects a persisted repeat that requires --only behavior and --files', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
+        version: 5,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: 'visual',
+        onlyType: 'visual',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: 10,
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
+        version: 5,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: 'storybook-behavior',
+        onlyType: 'behavior',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: 10,
       }),
     ).toBe(false);
@@ -508,30 +490,44 @@ describe('isResolvedVerifyInvocation', () => {
   it('rejects a persisted repeat outside the bound of 2-20', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        version: 5,
+        scope: { kind: 'explicit-files', files: ['src/foo.behavior.spec.ts'] },
         profile: 'local',
-        onlyLabel: 'storybook-behavior',
+        onlyType: 'behavior',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: 21,
       }),
     ).toBe(false);
   });
 
-  it('accepts a persisted repeat with --only storybook-behavior and --files', () => {
+  it('accepts a persisted repeat with --only behavior and --files', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 4,
-        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        version: 5,
+        scope: { kind: 'explicit-files', files: ['src/foo.behavior.spec.ts'] },
         profile: 'local',
-        onlyLabel: 'storybook-behavior',
+        onlyType: 'behavior',
         verbose: false,
         fixMode: 'none',
-        storybookBuildCiFallback: false,
         repeat: 10,
       }),
     ).toBe(true);
+  });
+
+  it('accepts a valid current-version invocation for every canonical type', () => {
+    for (const type of VERIFICATION_TYPES) {
+      expect(
+        isResolvedVerifyInvocation({
+          version: 5,
+          scope: { kind: 'local' },
+          profile: 'local',
+          onlyType: type,
+          verbose: false,
+          fixMode: 'none',
+          repeat: null,
+        }),
+      ).toBe(true);
+    }
   });
 });

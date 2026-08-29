@@ -497,12 +497,12 @@ Required proof includes:
   - Risk or platform matrix: Node-only (publisher) and Vitest-only (runtime schema); no browser risk.
   - Persistent impact metadata: none — schema values and publisher output are unchanged, only proof ownership moved.
 - Contract/scenario: publisher / plain-Node import seam — the repository-supported Node 24 runtime (`>=24.12.0 <25`) must execute `scripts/pages/lib/releaseDescriptor.mjs`'s direct import of `releaseWireContract.ts` (erasable-TypeScript syntax only) with no TypeScript loader.
-  - Primary proof owner: `scripts/release/publisherWireContractImportProof.mjs`, run by the verifier as the `publisher-node-import` label (`pnpm verify --full --only publisher-node-import`) via a real `node scripts/release/publisherWireContractImportProof.mjs` child process — genuinely plain Node, not Vitest/Vite/tsx/ts-node. It exercises one representative case: importing the production publisher module (`scripts/pages/lib/releasePublish.mjs`) and, through the same module graph, building and validating one descriptor via `buildReleaseDescriptor`/`isValidReleaseDescriptor`.
+  - Primary proof owner: `scripts/release/publisherWireContractImportProof.mjs`, run by the verifier internally as the `publisher-node-import` proof leaf (part of `pnpm verify --full`) via a real `node scripts/release/publisherWireContractImportProof.mjs` child process — genuinely plain Node, not Vitest/Vite/tsx/ts-node. It exercises one representative case: importing the production publisher module (`scripts/pages/lib/releasePublish.mjs`) and, through the same module graph, building and validating one descriptor via `buildReleaseDescriptor`/`isValidReleaseDescriptor`.
   - Additional proof: none; the direct Node execution is the only proof needed for this import seam.
   - Existing proof: none — this seam previously had no real plain-Node execution proof. The prior claim that `scripts/pages/lib/releaseDescriptor.test.mjs` proved plain-Node execution was inaccurate: that file has always run under Vitest.
   - New/updated proof: `scripts/release/publisherWireContractImportProof.mjs` and the `publisher-node-import` label wiring in `scripts/verify.ts`, `scripts/lib/verifyInvocation.ts`, `scripts/lib/commandWeight.ts`.
   - Risk or platform matrix: Node `>=24.12.0 <25`, resolved by CI from the applicable `package.json`; no browser risk. A future `releaseWireContract.ts` construct outside Node's erasable-TypeScript-syntax support would fail this check, not silently degrade at publish time.
-  - Persistent impact metadata: `publisher-node-import` added to `FULL_ONLY_LABELS`/`VERIFY_LABELS`, release-only like `release-version`/`release-config`/`build`; runs under `pnpm verify --full` and `pnpm verify:release`.
+  - Persistent impact metadata: `publisher-node-import` added to `FULL_ONLY_LABELS`/`VERIFY_LABELS`, release-only like `release-version`/`release-config`/`build`; runs under `pnpm verify --full`.
 - Contract/scenario: watchdog/runtime protocol wire contract — one canonical implementation in `src/shared/service/appUpdate/workerProtocolWireContract.ts`, imported directly by `protocol.ts`, `bootConfirmation.ts`, and the Node publisher's `scripts/pages/lib/watchdogInject.mjs` (interpolated into the generated inline watchdog script). Unchanged by this correction round.
   - Primary proof owner: `scripts/pages/lib/watchdogInject.test.mjs` — genuinely executes the generated watchdog script's own runtime behavior via `new Function(buildWatchdogScript(...))()`, not merely its source text.
   - Additional proof: `protocol.test.ts` (schema-level).
@@ -565,8 +565,7 @@ Browser matrix (see `docs/testing/architecture.md`): Chromium owns the complete 
 Final unchanged workspace verification:
 
 ```text
-pnpm verify --full --only managed-updates
-pnpm verify:release
+pnpm verify --full
 ```
 
 The exact final head also requires the ordinary GitHub workflow and operator UI/accessibility acceptance.

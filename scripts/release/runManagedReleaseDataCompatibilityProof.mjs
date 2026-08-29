@@ -1,9 +1,9 @@
 /**
  * Runs the managed-release data-compatibility browser proof
- * (`tests/e2e/release/managedReleaseDataCompatibility.spec.ts`) against a
+ * (`tests/e2e/widgets/DocumentView/productionArtifact/managedReleaseDataCompatibility.e2e.spec.ts`) against a
  * given staged retained-release work directory, in its own fresh Playwright
  * container via `scripts/e2eReleaseContainer.mjs` — the same mechanism
- * `scripts/release/managedUpdatesProof.mjs` uses for its own groups.
+ * `scripts/release/managedUpdatesProof.ts` uses for its own groups.
  *
  * The single seam `scripts/pages/lib/managedCompatibilityPreflight.mjs`
  * calls to actually execute the browser proof, kept separate from the
@@ -14,14 +14,17 @@
 import { relative } from 'node:path';
 
 import { runLocalCommand } from '../lib/runLocalCommand.ts';
+import {
+  MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+  MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC,
+} from '../lib/releaseProofInventory.ts';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
-/** Verifier/container label for this proof's own isolated Playwright run. */
-export const MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL = 'managed-updates-data-compatibility';
-/** The single spec this proof runs. */
-export const MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC =
-  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts';
+// Re-exported for this proof's own consumers/tests; the label and spec are
+// owned by scripts/lib/releaseProofInventory.ts, the sole owner of every
+// exceptional release-proof membership constant.
+export { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL, MANAGED_RELEASE_DATA_COMPATIBILITY_SPEC };
 
 const defaultDeps = { runLocalCommand };
 

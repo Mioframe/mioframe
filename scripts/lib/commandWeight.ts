@@ -32,6 +32,7 @@ export function classifyCommandWeight({
     case 'eslint':
       return classifyFileScopedWeight(commandWeightConfig.eslint, fileCount, isFullRepo);
     case 'unit-tests':
+    case 'unit-related':
       return classifyFileScopedWeight(commandWeightConfig.vitest, fileCount, isFullRepo);
     case 'type-check':
       return 'medium';
@@ -44,7 +45,14 @@ export function classifyCommandWeight({
     case 'playwright-container':
     case 'artifact':
     case 'release-smoke':
-    case 'managed-updates':
+    case 'managed-updates-browser-integration':
+    case 'managed-updates-e2e':
+    case 'browser-integration-local':
+    // Two real `vite build` invocations (see
+    // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts);
+    // must route through the same expensive-command lock boundary the
+    // historical `managed-updates` aggregate used.
+    case 'managed-updates-static':
       return 'expensive';
     case 'release-version':
     case 'release-config':
@@ -52,6 +60,7 @@ export function classifyCommandWeight({
       return 'light';
     case 'build':
     case 'storybook-build':
+    case 'artifact-static':
       return 'medium';
     default:
       return 'medium';

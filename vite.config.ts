@@ -14,7 +14,8 @@ import {
 } from './config/plugins';
 
 // Release-test-only escape hatch for the managed pinned application updates
-// migration proof (tests/e2e/release/managedUpdatesMigration.spec.ts): builds
+// migration proof
+// (src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts): builds
 // the exact frozen pre-feature generateSW worker instead of the live managed
 // controller. No normal dev/build/deploy path ever sets this env var, so this
 // top-level dynamic import is never resolved outside that one release test —

@@ -7,10 +7,98 @@ vi.mock('./lib/packageJsonImpact.ts', () => ({
   isPackageJsonRuntimeRelevantChange: vi.fn(),
 }));
 
+// Structural E2E planning's real dependencies spawn Playwright/dependency-cruiser
+// child processes; every buildCommands() call in this file that does not pass
+// its own `structuralE2EPlan` override must still get fast, deterministic
+// input instead of paying that real subprocess cost per test.
+vi.mock('./lib/e2eOwnerInventoryCollector.ts', () => ({
+  collectE2EOwnerInventory: vi.fn(() => []),
+}));
+
+// Kept consistent (empty) with the mocked collector above so the default
+// filesystem/Playwright completeness check trivially passes for tests that
+// do not pass their own `structuralE2EPlan` override; otherwise the real
+// current `tests/e2e/**` tree (non-empty) would never match the empty
+// mocked inventory.
+vi.mock('./lib/e2eOwnerTree.ts', () => ({
+  validateE2ETargetTree: vi.fn(() => ({ valid: true, errors: [], targetPaths: [] })),
+}));
+
+vi.mock('./lib/e2eGraph.ts', () => ({
+  acquireProductionReverseGraph: vi.fn(() => ({ ok: true, graph: {} })),
+}));
+
+// Wraps (rather than replaces) the real resolver so every existing mutation
+// test still exercises real registry logic; only tests in this file that
+// explicitly inspect `.mock.calls` care about the wrapping.
+vi.mock('./lib/mutationTargets.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/mutationTargets.ts')>();
+  return { ...actual, resolveMutationPlan: vi.fn(actual.resolveMutationPlan) };
+});
+
+// The following wrap (rather than replace) their real resolvers/validators,
+// purely so the `--fix-only` planning-order seam tests below can assert
+// non-invocation; every other existing test in this file still exercises
+// real planner logic.
+vi.mock('./lib/unitRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/unitRisk.ts')>();
+  return { ...actual, resolveUnitPlan: vi.fn(actual.resolveUnitPlan) };
+});
+vi.mock('./lib/storybookBehaviorRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/storybookBehaviorRisk.ts')>();
+  return { ...actual, resolveStorybookBehaviorPlan: vi.fn(actual.resolveStorybookBehaviorPlan) };
+});
+vi.mock('./lib/storybookBuildRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/storybookBuildRisk.ts')>();
+  return { ...actual, resolveStorybookBuildPlan: vi.fn(actual.resolveStorybookBuildPlan) };
+});
+vi.mock('./lib/visualRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/visualRisk.ts')>();
+  return { ...actual, resolveVisualPlan: vi.fn(actual.resolveVisualPlan) };
+});
+vi.mock('./lib/e2eProjectApplicability.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/e2eProjectApplicability.ts')>();
+  return {
+    ...actual,
+    validateE2EProjectApplicability: vi.fn(actual.validateE2EProjectApplicability),
+  };
+});
+vi.mock('./lib/browserIntegrationRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/browserIntegrationRisk.ts')>();
+  return {
+    ...actual,
+    resolveBrowserIntegrationPlan: vi.fn(actual.resolveBrowserIntegrationPlan),
+    resolveGenericBrowserIntegrationPlan: vi.fn(actual.resolveGenericBrowserIntegrationPlan),
+  };
+});
+vi.mock('./lib/releaseStaticRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/releaseStaticRisk.ts')>();
+  return { ...actual, resolveReleaseStaticPlan: vi.fn(actual.resolveReleaseStaticPlan) };
+});
+vi.mock('./lib/e2eRisk.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/e2eRisk.ts')>();
+  return { ...actual, resolveStructuralE2EPlan: vi.fn(actual.resolveStructuralE2EPlan) };
+});
+
 import {
   isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChangeImport,
   isVisualRelevantPackageJsonChange as isVisualRelevantPackageJsonChangeImport,
 } from './lib/packageJsonImpact.ts';
+import { collectE2EOwnerInventory as collectE2EOwnerInventoryImport } from './lib/e2eOwnerInventoryCollector.ts';
+import { acquireProductionReverseGraph as acquireProductionReverseGraphImport } from './lib/e2eGraph.ts';
+import { resolveMutationPlan as resolveMutationPlanImport } from './lib/mutationTargets.ts';
+import { resolveUnitPlan as resolveUnitPlanImport } from './lib/unitRisk.ts';
+import { resolveStorybookBehaviorPlan as resolveStorybookBehaviorPlanImport } from './lib/storybookBehaviorRisk.ts';
+import { resolveStorybookBuildPlan as resolveStorybookBuildPlanImport } from './lib/storybookBuildRisk.ts';
+import { resolveVisualPlan as resolveVisualPlanImport } from './lib/visualRisk.ts';
+import { validateE2EProjectApplicability as validateE2EProjectApplicabilityImport } from './lib/e2eProjectApplicability.ts';
+import {
+  resolveBrowserIntegrationPlan as resolveBrowserIntegrationPlanImport,
+  resolveGenericBrowserIntegrationPlan as resolveGenericBrowserIntegrationPlanImport,
+} from './lib/browserIntegrationRisk.ts';
+import { resolveStructuralE2EPlan as resolveStructuralE2EPlanImport } from './lib/e2eRisk.ts';
+import { validateE2ETargetTree as validateE2ETargetTreeImport } from './lib/e2eOwnerTree.ts';
+import { resolveReleaseStaticPlan as resolveReleaseStaticPlanImport } from './lib/releaseStaticRisk.ts';
 import { resolveVerifyInvocation } from './lib/verifyInvocation.ts';
 import {
   buildCommandEnv,
@@ -21,7 +109,6 @@ import {
   getBlockingLogIssue,
   getCliFilesOverride,
   getVerifyProcessEnv,
-  getAllSiblingTestFiles,
   getExtraEnvForEntry,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
@@ -29,6 +116,8 @@ import {
   resolvePlaywrightCommandTimeoutMs,
   resolveVerifyChangedPathContext,
   runVerifyCli,
+  selectOnlyCommands,
+  withVerificationType,
   type CommandEntry,
   type ExecutedCommandResult,
   type RunCommandEntry,
@@ -44,6 +133,21 @@ import toolingConfig from '../config/tooling.json' with { type: 'json' };
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
 const isVisualRelevantPackageJsonChange = vi.mocked(isVisualRelevantPackageJsonChangeImport);
+const collectE2EOwnerInventory = vi.mocked(collectE2EOwnerInventoryImport);
+const acquireProductionReverseGraph = vi.mocked(acquireProductionReverseGraphImport);
+const resolveMutationPlanSpy = vi.mocked(resolveMutationPlanImport);
+const resolveUnitPlanSpy = vi.mocked(resolveUnitPlanImport);
+const resolveStorybookBehaviorPlanSpy = vi.mocked(resolveStorybookBehaviorPlanImport);
+const resolveStorybookBuildPlanSpy = vi.mocked(resolveStorybookBuildPlanImport);
+const resolveVisualPlanSpy = vi.mocked(resolveVisualPlanImport);
+const validateE2EProjectApplicabilitySpy = vi.mocked(validateE2EProjectApplicabilityImport);
+const resolveBrowserIntegrationPlanSpy = vi.mocked(resolveBrowserIntegrationPlanImport);
+const resolveGenericBrowserIntegrationPlanSpy = vi.mocked(
+  resolveGenericBrowserIntegrationPlanImport,
+);
+const resolveReleaseStaticPlanSpy = vi.mocked(resolveReleaseStaticPlanImport);
+const resolveStructuralE2EPlanSpy = vi.mocked(resolveStructuralE2EPlanImport);
+const validateE2ETargetTreeSpy = vi.mocked(validateE2ETargetTreeImport);
 
 function requireRunEntry(commands: readonly CommandEntry[], label: string): RunCommandEntry {
   const entry = commands.find((item) => item.label === label);
@@ -172,6 +276,8 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     mutation: 20 * 60 * 1000,
     build: 10 * 60 * 1000,
     artifact: 8 * 60 * 1000,
+    'artifact-static': 10 * 60 * 1000,
+    'managed-updates-static': 8 * 60 * 1000,
     'storybook-build': 10 * 60 * 1000,
   };
 
@@ -198,75 +304,40 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     }
   });
 
-  it('sizes the managed-updates aggregate timeout for exactly four sequential container sessions', () => {
+  it('sizes the split managed-updates browser-integration and E2E leaf timeouts for their own fresh-container sessions', () => {
     const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
 
-    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
-  });
-});
-
-describe('getAllSiblingTestFiles', () => {
-  it('maps scripts production .mjs files to sibling .test.mjs', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.mjs');
-
-    expect(result).toContain('scripts/agentEnvironment.test.mjs');
-  });
-
-  it('maps scripts production .ts files to sibling .test.ts', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.ts');
-
-    expect(result).toContain('scripts/lib/commandLock.test.ts');
-  });
-
-  it('returns already-test scripts .test.mjs files', () => {
-    const result = getAllSiblingTestFiles('scripts/agentEnvironment.test.mjs');
-
-    expect(result).toEqual(['scripts/agentEnvironment.test.mjs']);
-  });
-
-  it('returns already-test scripts .test.ts files', () => {
-    const result = getAllSiblingTestFiles('scripts/lib/commandLock.test.ts');
-
-    expect(result).toEqual(['scripts/lib/commandLock.test.ts']);
-  });
-
-  it('still discovers src/ sibling tests', () => {
-    const result = getAllSiblingTestFiles('src/shared/lib/cache/index.ts');
-
-    expect(result).toContain('src/shared/lib/cache/index.test.ts');
-  });
-
-  it('returns empty for non-src non-scripts files', () => {
-    const result = getAllSiblingTestFiles('config/tooling.json');
-
-    expect(result).toEqual([]);
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates-browser-integration']).toBe(
+      3 * singleSessionTimeoutMs,
+    );
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates-e2e']).toBe(2 * singleSessionTimeoutMs);
   });
 });
 
 describe('getCliFilesOverride', () => {
   it('rejects bare --files with no paths', () => {
     expect(() => getCliFilesOverride(['--files'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('rejects --only with an empty --files list', () => {
-    expect(() => getCliFilesOverride(['--only', 'eslint', '--files'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+    expect(() => getCliFilesOverride(['--only', 'static', '--files'])).toThrow(
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('rejects empty comma-delimited --files values', () => {
     expect(() => getCliFilesOverride(['--files=,'])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
     expect(() => getCliFilesOverride(['--files= , '])).toThrow(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
+      'Missing value for --files. Example: pnpm verify --only static --files src/foo.ts',
     );
   });
 
   it('keeps explicit file lists working', () => {
-    expect(getCliFilesOverride(['--only', 'eslint', '--files', 'scripts/verify.ts'])).toEqual([
+    expect(getCliFilesOverride(['--only', 'static', '--files', 'scripts/verify.ts'])).toEqual([
       'scripts/verify.ts',
     ]);
   });
@@ -302,11 +373,13 @@ describe('buildCommands full mode', () => {
     expect(runByLabel.visual).toBe('run');
   });
 
-  it('does not run mutation testing in full/release mode', () => {
+  it('runs the complete registered mutation inventory in full mode, with no affected -m override', () => {
     const commands = buildCommands([], { fullMode: true });
-    const labels = commands.map((entry) => entry.label);
+    const entry = requireRunEntry(commands, 'mutation');
 
-    expect(labels).not.toContain('mutation');
+    expect(entry.command).toBe('pnpm');
+    expect(entry.args).toEqual(['exec', 'stryker', 'run']);
+    expect(entry.verificationType).toBe('mutation');
   });
 
   it('targets the whole project instead of a changed-file list', () => {
@@ -334,44 +407,514 @@ describe('buildCommands full mode', () => {
       'scripts/release/validateReleaseConfig.mjs',
     ]);
     expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
     expect(requireRunEntry(commands, 'artifact').args).toEqual([
       'e2e:release',
       '--label',
       'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
+      'src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts',
     ]);
     expect(requireRunEntry(commands, 'release-smoke').args).toEqual([
       'e2e:release',
       '--label',
       'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+      'tests/e2e/pages/HomePane/productionArtifact/firstUserAndReturningUserSmoke.e2e.spec.ts',
     ]);
-    expect(requireRunEntry(commands, 'managed-updates').command).toBe('node');
-    expect(requireRunEntry(commands, 'managed-updates').args).toEqual([
-      'scripts/release/managedUpdatesProof.mjs',
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').command).toBe('node');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
+      'scripts/release/managedUpdatesProof.ts',
+      '--kind',
+      'browser-integration',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-e2e').command).toBe('node');
+    expect(requireRunEntry(commands, 'managed-updates-e2e').args).toEqual([
+      'scripts/release/managedUpdatesProof.ts',
+      '--kind',
+      'e2e',
     ]);
   });
 
-  it('runs the managed-updates label through the aggregate proof runner, not a direct eight-file Playwright command', () => {
+  it('runs each production-artifact E2E leaf exactly once in full mode (no duplication with structural focused routing)', () => {
     const commands = buildCommands([], { fullMode: true });
-    const managedUpdates = requireRunEntry(commands, 'managed-updates');
 
-    expect(managedUpdates.command).not.toBe('pnpm');
-    expect(managedUpdates.args).not.toContain('e2e:release');
-    expect(managedUpdates.args).not.toContain('tests/e2e/release/managedUpdatesLifecycle.spec.ts');
+    expect(commands.filter((entry) => entry.label === 'release-smoke')).toHaveLength(1);
+    expect(commands.filter((entry) => entry.label === 'managed-updates-e2e')).toHaveLength(1);
   });
 
-  it('does not add release-only checks outside full mode', () => {
+  it('runs both split managed-updates leaves through the proof runner, not a direct Playwright command', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const browserIntegration = requireRunEntry(commands, 'managed-updates-browser-integration');
+    const e2e = requireRunEntry(commands, 'managed-updates-e2e');
+
+    for (const entry of [browserIntegration, e2e]) {
+      expect(entry.command).not.toBe('pnpm');
+      expect(entry.args).not.toContain('e2e:release');
+      expect(entry.args).not.toContain(
+        'src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts',
+      );
+    }
+  });
+
+  it('assigns exactly one verification type to every runnable release-only leaf, and null to the setup-only build prerequisite', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'release-version').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'release-config').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'publisher-node-import').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact').verificationType).toBe('browser-integration');
+    expect(requireRunEntry(commands, 'release-smoke').verificationType).toBe('e2e');
+    expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').verificationType).toBe(
+      'browser-integration',
+    );
+    expect(requireRunEntry(commands, 'managed-updates-e2e').verificationType).toBe('e2e');
+  });
+
+  it('routes managed-updates-static through the existing expensive-command lock boundary', () => {
+    // Two real `vite build` invocations (see
+    // scripts/release/managedUpdatesControllerArtifactIdentityProof.ts)
+    // must use the same expensive-command coordination the historical
+    // `managed-updates` aggregate used, not a weaker `medium` weight that
+    // bypasses withExpensiveCommandLock in scripts/verify.ts.
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'managed-updates-static').weight).toBe('expensive');
+  });
+
+  it('does not add release-sensitive static/browser-integration/E2E leaves for an empty changed-file set outside full mode', () => {
     const commands = buildCommands([], { fullMode: false });
     const labels = commands.map((entry) => entry.label);
 
     expect(labels).not.toContain('release-version');
     expect(labels).not.toContain('release-config');
     expect(labels).not.toContain('build');
+    expect(labels).not.toContain('artifact-static');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
-    expect(labels).not.toContain('managed-updates');
+    expect(labels).not.toContain('managed-updates-static');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+    expect(labels).not.toContain('managed-updates-e2e');
   });
+});
+
+describe('buildCommands release-sensitive static lane (releaseStaticRisk integration)', () => {
+  it('does not select release-version outside full mode for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const commands = buildCommands(['package.json'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('release-version');
+    expect(labels).not.toContain('build');
+  });
+
+  it('selects build, artifact-static, and managed-updates-static, but not release-version, outside full mode for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+    const commands = buildCommands(['package.json'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
+    ]);
+    expect(labels).not.toContain('release-version');
+  });
+
+  it.each([
+    'scripts/release/validateVersion.mjs',
+    'scripts/release/versionPolicy.mjs',
+    'docs/release.md',
+    'docs/release-checklist.md',
+    'docs/releases/2026-08-27.md',
+  ])(
+    'does not select release-version, or any other release-sensitive static leaf, outside full mode for a version-policy input: %s',
+    (filePath) => {
+      const commands = buildCommands([filePath], { fullMode: false });
+      const labels = commands.map((entry) => entry.label);
+
+      expect(labels).not.toContain('release-version');
+      expect(labels).not.toContain('release-config');
+      expect(labels).not.toContain('build');
+      expect(labels).not.toContain('artifact-static');
+      expect(labels).not.toContain('managed-updates-static');
+      expect(labels).not.toContain('publisher-node-import');
+    },
+  );
+
+  it('selects release-config outside full mode for a config/tooling.json change', () => {
+    const commands = buildCommands(['config/tooling.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'release-config').args).toEqual([
+      'scripts/release/validateReleaseConfig.mjs',
+    ]);
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+  });
+
+  it('selects publisher-node-import outside full mode for a publisher implementation change', () => {
+    const commands = buildCommands(['scripts/pages/lib/releasePublish.mjs'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'publisher-node-import').args).toEqual([
+      'scripts/release/publisherWireContractImportProof.mjs',
+    ]);
+  });
+
+  it('selects build, artifact-static, and managed-updates-static outside full mode for a src/sw.ts change', () => {
+    const commands = buildCommands(['src/sw.ts'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-static').args).toEqual([
+      'scripts/release/managedUpdatesControllerArtifactIdentityProof.ts',
+    ]);
+  });
+
+  it('does not select any release-sensitive static leaf outside full mode for an unrelated change', () => {
+    const commands = buildCommands(['docs/testing/architecture.md'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('release-version');
+    expect(labels).not.toContain('release-config');
+    expect(labels).not.toContain('build');
+    expect(labels).not.toContain('artifact-static');
+    expect(labels).not.toContain('managed-updates-static');
+    expect(labels).not.toContain('publisher-node-import');
+  });
+
+  it('selects build and artifact-static outside full mode, and under --only static, for an ordinary production src/** change', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').args).toEqual(['scripts/release/buildArtifact.mjs']);
+    expect(requireRunEntry(commands, 'artifact-static').args).toEqual([
+      'scripts/release/productionArtifactStaticProof.ts',
+    ]);
+
+    const selectedStatic = selectOnlyCommands(commands, 'static');
+    expect(selectedStatic.map((entry) => entry.label)).toEqual(
+      expect.arrayContaining(['build', 'artifact-static']),
+    );
+  });
+
+  it('stamps every selected release-sensitive static leaf with the static verification type', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+    const commands = buildCommands(['src/sw.ts', 'package.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    expect(commands.map((entry) => entry.label)).not.toContain('release-version');
+  });
+
+  it('still runs the complete static leaf set unconditionally in literal --full mode', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: true });
+
+    expect(requireRunEntry(commands, 'release-version').kind).toBe('run');
+    expect(requireRunEntry(commands, 'release-config').kind).toBe('run');
+    expect(requireRunEntry(commands, 'build').kind).toBe('run');
+    expect(requireRunEntry(commands, 'publisher-node-import').kind).toBe('run');
+    expect(requireRunEntry(commands, 'artifact-static').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-static').kind).toBe('run');
+  });
+
+  it('lets --only static select a release-sensitive leaf without requiring --full', () => {
+    const commands = buildCommands(['src/sw.ts'], { fullMode: false });
+    const selected = selectOnlyCommands(commands, 'static');
+
+    expect(selected.some((entry) => entry.label === 'artifact-static')).toBe(true);
+    expect(selected.every((entry) => entry.verificationType === 'static')).toBe(true);
+  });
+});
+
+describe('buildCommands browser-integration lane (browserIntegrationRisk integration)', () => {
+  it('selects only the artifact leaf outside full mode for a direct productionArtifactSmoke spec change', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'artifact').args).toEqual([
+      'e2e:release',
+      '--label',
+      'artifact',
+      'src/shared/service/appUpdate/productionArtifactSmoke.browser-integration.spec.ts',
+    ]);
+    expect(commands.map((entry) => entry.label)).not.toContain(
+      'managed-updates-browser-integration',
+    );
+  });
+
+  it('selects only the managed-updates-browser-integration leaf outside full mode for a direct managed-update spec change', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').args).toEqual([
+      'scripts/release/managedUpdatesProof.ts',
+      '--kind',
+      'browser-integration',
+    ]);
+    expect(commands.map((entry) => entry.label)).not.toContain('artifact');
+  });
+
+  it('selects both leaves outside full mode for an appUpdate production source change', () => {
+    const commands = buildCommands(['src/shared/service/appUpdate/workerInstall.ts'], {
+      fullMode: false,
+    });
+
+    expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+  });
+
+  it('leaves both labels entirely absent outside full mode for an unrelated change', () => {
+    const commands = buildCommands(['src/features/documentCreate/index.ts'], { fullMode: false });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('artifact');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+  });
+
+  it('makes --only browser-integration select the relevant leaf without requiring --full', () => {
+    const commands = buildCommands(
+      ['src/shared/service/appUpdate/managedUpdatesLifecycle.browser-integration.spec.ts'],
+      { fullMode: false },
+    );
+    const selected = selectOnlyCommands(commands, 'browser-integration');
+
+    expect(selected.map((entry) => entry.label)).toEqual(['managed-updates-browser-integration']);
+  });
+});
+
+// Additional proof for the complete public browser-integration package
+// ownership (primary proof owner: scripts/lib/browserIntegrationRisk.test.ts):
+// prove that buildCommands() passes the same packageJsonOldRef context to
+// both browser-integration execution paths, so a runtime-relevant
+// package.json change selects the exceptional and generic leaves together.
+describe('buildCommands complete browser-integration package.json composition', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('selects both the exceptional and generic browser-integration leaves for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+
+    expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+    expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+    expect(requireRunEntry(commands, 'browser-integration-local').kind).toBe('run');
+  });
+
+  it('does not widen either browser-integration leaf for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels).not.toContain('artifact');
+    expect(labels).not.toContain('managed-updates-browser-integration');
+    expect(labels).not.toContain('browser-integration-local');
+  });
+});
+
+// Additional proof for the complete application Vite harness capability
+// (primary proof owner: scripts/lib/viteBuildRisk.test.ts): prove that an
+// ownerless application Vite/PWA input widens full E2E and complete
+// browser-integration through the real (unmocked) planner wiring, without
+// requiring page/widget metadata.
+describe('buildCommands application Vite harness composition', () => {
+  it.each(['index.html', 'pwa-assets.config.ts', 'postcss.config.js'])(
+    'selects full e2e and both browser-integration leaves for %s',
+    (filePath) => {
+      const commands = buildCommands([filePath], { fullMode: false });
+
+      expect(requireRunEntry(commands, 'e2e').args).toEqual(['e2e:container']);
+      expect(requireRunEntry(commands, 'artifact').kind).toBe('run');
+      expect(requireRunEntry(commands, 'managed-updates-browser-integration').kind).toBe('run');
+      expect(requireRunEntry(commands, 'browser-integration-local').kind).toBe('run');
+    },
+  );
+});
+
+describe('buildCommands verification type composition', () => {
+  it('assigns exactly one verification type to every non-release runnable/skipped leaf', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const typeByLabel = {
+      'agent-environment': 'static',
+      format: 'static',
+      oxlint: 'static',
+      eslint: 'static',
+      'type-check': 'static',
+      'storybook-build': 'static',
+      'unit-tests': 'unit',
+      e2e: 'e2e',
+      'storybook-behavior': 'behavior',
+      visual: 'visual',
+    };
+
+    for (const [label, expectedType] of Object.entries(typeByLabel)) {
+      const entry = commands.find((candidate) => candidate.label === label);
+
+      expect(entry).toBeDefined();
+      expect(entry?.verificationType).toBe(expectedType);
+    }
+  });
+
+  it('leaves the pure execution prerequisite without a verification type', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const e2eInstall = commands.find((entry) => entry.label === 'e2e-install');
+
+    expect(e2eInstall?.verificationType).toBeNull();
+  });
+
+  it('owns Storybook buildability as static proof, distinct from behavior/visual artifact reuse', () => {
+    // storybook-build is a `static` proof leaf in its own right: behavior/
+    // visual reusing the identical build artifact is only an execution
+    // optimization and must not merge Storybook buildability's proof
+    // ownership into either lane's type.
+    const commands = buildCommands([], { fullMode: true });
+    const storybookBuild = commands.find((entry) => entry.label === 'storybook-build');
+    const storybookBehavior = commands.find((entry) => entry.label === 'storybook-behavior');
+    const visual = commands.find((entry) => entry.label === 'visual');
+
+    expect(storybookBuild?.verificationType).toBe('static');
+    expect(storybookBehavior?.verificationType).toBe('behavior');
+    expect(visual?.verificationType).toBe('visual');
+  });
+
+  it('throws for an unregistered command label', () => {
+    expect(() =>
+      withVerificationType({ kind: 'run', label: 'not-a-real-label', command: 'node', args: [] }),
+    ).toThrow('No verification type registered for verify command label: not-a-real-label');
+  });
+});
+
+describe('selectOnlyCommands', () => {
+  it('selects every leaf owned by the static type, including release-only static leaves in full mode', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'static');
+
+    expect(selected.every((entry) => entry.verificationType === 'static')).toBe(true);
+    expect(selected.map((entry) => entry.label)).toEqual(
+      expect.arrayContaining([
+        'agent-environment',
+        'format',
+        'oxlint',
+        'eslint',
+        'type-check',
+        'storybook-build',
+        'release-version',
+        'release-config',
+        'build',
+        'publisher-node-import',
+        'artifact-static',
+        'managed-updates-static',
+      ]),
+    );
+    expect(selected.map((entry) => entry.label)).not.toContain('unit-tests');
+  });
+
+  it('includes the browser-integration release-only leaves under --only browser-integration', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'browser-integration');
+
+    expect(selected.map((entry) => entry.label)).toEqual([
+      'artifact',
+      'managed-updates-browser-integration',
+      'browser-integration-local',
+    ]);
+  });
+
+  it('includes the e2e-install prerequisite alongside the selected e2e proof leaf, in planned order', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const selected = selectOnlyCommands(commands, 'e2e');
+
+    expect(selected.map((entry) => entry.label)).toEqual([
+      'e2e-install',
+      'e2e',
+      'release-smoke',
+      'managed-updates-e2e',
+    ]);
+  });
+
+  it('never selects a proof leaf owned by another type', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    for (const type of ['static', 'unit', 'behavior', 'visual', 'mutation'] as const) {
+      const selected = selectOnlyCommands(commands, type);
+
+      expect(
+        selected.every((entry) => entry.label === 'e2e-install' || entry.verificationType === type),
+      ).toBe(true);
+    }
+  });
+
+  it('returns a valid, non-failing empty selection for performance, which has no current inventory', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(selectOnlyCommands(commands, 'performance')).toEqual([]);
+  });
+
+  it('returns every command unchanged when onlyType is null', () => {
+    const commands = buildCommands([], { fullMode: true });
+
+    expect(selectOnlyCommands(commands, null)).toEqual(commands);
+  });
+});
+
+// Additional proof for the broadened release-static production-artifact
+// capability (primary proof owner: scripts/lib/releaseStaticRisk.test.ts):
+// prove selected real `build` + `artifact-static` leaves under default
+// composition for representative current Vite config dependency classes,
+// through the real (unmocked) resolveReleaseStaticPlan wiring.
+describe('buildCommands release-static production-artifact composition', () => {
+  it.each([
+    'config/alias.ts',
+    'config/plugins/base.ts',
+    'config/vueCustomElements.ts',
+    '.browserslistrc',
+    'tsconfig.app.json',
+    'postcss.config.js',
+    'pwa-assets.config.ts',
+  ])('selects build and artifact-static for a real %s change', (filePath) => {
+    const commands = buildCommands([filePath]);
+
+    expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+    expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+  });
+
+  it.each([
+    'scripts/lib/localCommandGuard.ts',
+    'scripts/lib/commandLock.ts',
+    'scripts/lib/runLocalCommand.ts',
+    'scripts/lib/processResult.ts',
+    'scripts/lib/signalForward.ts',
+  ])(
+    'selects build, artifact-static, and managed-updates-static for a shared local-command execution change: %s',
+    (filePath) => {
+      const commands = buildCommands([filePath]);
+
+      expect(requireRunEntry(commands, 'build').verificationType).toBe('static');
+      expect(requireRunEntry(commands, 'artifact-static').verificationType).toBe('static');
+      expect(requireRunEntry(commands, 'managed-updates-static').verificationType).toBe('static');
+    },
+  );
 });
 
 describe('buildCommands visual compatibility', () => {
@@ -390,6 +933,7 @@ describe('buildCommands visual compatibility', () => {
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'invalid visual impact plan: broken visual impact metadata',
+      verificationType: 'visual',
     });
   });
 });
@@ -409,14 +953,15 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       command: 'pnpm e2e:container',
       reason:
-        'invalid app e2e scenario registry state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
+        'invalid target E2E ownership state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
+      verificationType: 'e2e',
     });
   });
 
   it('combines an invalid app e2e scenario registry and an invalid project applicability registry', () => {
     const commands = buildCommands([], {
       fullMode: false,
-      appE2EPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
+      structuralE2EPlan: { mode: 'invalid', reasons: ['broken scenario registry'] },
       projectApplicabilityValidation: {
         valid: false,
         errors: ['broken applicability registry'],
@@ -428,14 +973,15 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       command: 'pnpm e2e:container',
       reason:
-        'invalid app e2e scenario registry state: broken scenario registry; broken applicability registry',
+        'invalid target E2E ownership state: broken scenario registry; broken applicability registry',
+      verificationType: 'e2e',
     });
   });
 
   it('runs e2e normally when the project applicability registry is valid', () => {
     const commands = buildCommands([], {
       fullMode: false,
-      appE2EPlan: { mode: 'skip', specs: [], reasons: ['empty e2e scope'] },
+      structuralE2EPlan: { mode: 'skip', reasons: ['empty e2e scope'] },
       projectApplicabilityValidation: { valid: true, errors: [] },
     });
 
@@ -444,6 +990,260 @@ describe('buildCommands e2e project applicability', () => {
       label: 'e2e',
       reason: 'empty e2e scope',
     });
+  });
+});
+
+describe('buildCommands structural production-artifact E2E routing', () => {
+  it('routes a focused productionArtifact selection through its special leaf, without running the ordinary e2e leaf', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: [],
+        releaseSmokeSelected: true,
+        managedUpdatesE2ESelected: false,
+        reasons: ['selected'],
+      },
+    });
+
+    expect(requireSkippedEntry(commands, 'e2e').reason).toBe(
+      'no ordinary target E2E specs selected',
+    );
+    expect(requireRunEntry(commands, 'release-smoke')).toBeTruthy();
+    expect(commands.find((entry) => entry.label === 'managed-updates-e2e')).toBeUndefined();
+  });
+
+  it('routes both ordinary and productionArtifact selections together in one focused plan', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: ['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'],
+        releaseSmokeSelected: false,
+        managedUpdatesE2ESelected: true,
+        reasons: ['selected'],
+      },
+    });
+
+    expect(requireRunEntry(commands, 'e2e').args).toEqual([
+      'e2e:container',
+      'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts',
+    ]);
+    expect(requireRunEntry(commands, 'managed-updates-e2e')).toBeTruthy();
+    expect(commands.find((entry) => entry.label === 'release-smoke')).toBeUndefined();
+  });
+
+  it('widens a structural full-E2E fallback to include both production-artifact leaves exactly once', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      structuralE2EPlan: { mode: 'full', reasons: ['relevant change with no safe owner'] },
+    });
+
+    expect(requireRunEntry(commands, 'e2e').args).toEqual(['e2e:container']);
+    expect(commands.filter((entry) => entry.label === 'release-smoke')).toHaveLength(1);
+    expect(commands.filter((entry) => entry.label === 'managed-updates-e2e')).toHaveLength(1);
+  });
+});
+
+describe('buildCommands E2E acquisition seams (cheap classifier gates expensive acquisition)', () => {
+  beforeEach(() => {
+    collectE2EOwnerInventory.mockClear();
+    acquireProductionReverseGraph.mockClear();
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('acquires neither the Playwright owner inventory nor the dependency-cruiser graph for a docs-only default invocation', () => {
+    buildCommands(['docs/testing/architecture.md']);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for an empty changed-file set', () => {
+    buildCommands([]);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for --fix-only with no --only, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { fixMode: 'fix-only' });
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('acquires neither for --only <non-e2e>, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { onlyType: 'unit' });
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('acquires the Playwright owner inventory for a default invocation with relevant production source', () => {
+    buildCommands(['src/entities/repository/index.ts']);
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('acquires the Playwright owner inventory for --only e2e with a direct target E2E spec change', () => {
+    buildCommands(['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'], { onlyType: 'e2e' });
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('acquires for a runtime-relevant package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    buildCommands(['package.json']);
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not acquire for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    buildCommands(['package.json']);
+
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+  });
+
+  it('always acquires in literal --full mode regardless of the cheap classifier', () => {
+    buildCommands(['docs/testing/architecture.md'], { fullMode: true });
+
+    expect(collectE2EOwnerInventory).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Target-tree/project-applicability structural validation must sit behind
+// the same E2E relevance decision as the expensive Playwright/dependency-
+// cruiser acquisition above, not run unconditionally after it: an
+// E2E-irrelevant invocation must not fail on unrelated `tests/e2e/**`
+// structural drift it never selected.
+describe('buildCommands E2E structural validation relevance gate', () => {
+  beforeEach(() => {
+    validateE2ETargetTreeSpy.mockClear();
+    validateE2EProjectApplicabilitySpy.mockClear();
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('calls neither validator for a docs-only default invocation', () => {
+    buildCommands(['docs/testing/architecture.md']);
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls neither validator for an empty changed-file set', () => {
+    buildCommands([]);
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls neither validator for --only <non-e2e>, even for a production-source change', () => {
+    buildCommands(['src/entities/repository/index.ts'], { onlyType: 'unit' });
+
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+  });
+
+  it('calls both validators for a default invocation with relevant production source', () => {
+    buildCommands(['src/entities/repository/index.ts']);
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls both validators for --only e2e with a direct target E2E spec change', () => {
+    buildCommands(['tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts'], { onlyType: 'e2e' });
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('always calls both validators in literal --full mode regardless of the cheap classifier', () => {
+    buildCommands(['docs/testing/architecture.md'], { fullMode: true });
+
+    expect(validateE2ETargetTreeSpy).toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// A fixer-only build must construct and return its fixer command plan
+// without invoking any non-static proof planner/validator dependency at
+// all, not merely without the expensive Playwright/dependency-cruiser
+// acquisition those planners may trigger: `--fix-only` never runs a proof
+// leaf, so paying any planner's acquisition cost for it would be pure waste.
+describe('buildCommands --fix-only planning-order seams', () => {
+  beforeEach(() => {
+    resolveUnitPlanSpy.mockClear();
+    resolveStorybookBehaviorPlanSpy.mockClear();
+    resolveStorybookBuildPlanSpy.mockClear();
+    resolveVisualPlanSpy.mockClear();
+    resolveMutationPlanSpy.mockClear();
+    validateE2EProjectApplicabilitySpy.mockClear();
+    resolveBrowserIntegrationPlanSpy.mockClear();
+    resolveGenericBrowserIntegrationPlanSpy.mockClear();
+    resolveReleaseStaticPlanSpy.mockClear();
+    resolveStructuralE2EPlanSpy.mockClear();
+    validateE2ETargetTreeSpy.mockClear();
+    collectE2EOwnerInventory.mockClear();
+    acquireProductionReverseGraph.mockClear();
+  });
+
+  it('calls no non-static proof planner/validator for a docs-only --fix-only invocation', () => {
+    buildCommands(['docs/testing/architecture.md'], { fixMode: 'fix-only' });
+
+    expect(resolveUnitPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBehaviorPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBuildPlanSpy).not.toHaveBeenCalled();
+    expect(resolveVisualPlanSpy).not.toHaveBeenCalled();
+    expect(resolveMutationPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+    expect(resolveBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveGenericBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveReleaseStaticPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStructuralE2EPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+    expect(collectE2EOwnerInventory).not.toHaveBeenCalled();
+    expect(acquireProductionReverseGraph).not.toHaveBeenCalled();
+  });
+
+  it('calls no non-static proof planner/validator for --fix-only with a broad production/release-sensitive change', () => {
+    buildCommands(
+      [
+        'src/entities/repository/index.ts',
+        'src/sw.ts',
+        'package.json',
+        'stryker.config.mjs',
+        'tests/e2e/pages/HomePane/appSmoke.e2e.spec.ts',
+      ],
+      { fixMode: 'fix-only' },
+    );
+
+    expect(resolveUnitPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBehaviorPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStorybookBuildPlanSpy).not.toHaveBeenCalled();
+    expect(resolveVisualPlanSpy).not.toHaveBeenCalled();
+    expect(resolveMutationPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2EProjectApplicabilitySpy).not.toHaveBeenCalled();
+    expect(resolveBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveGenericBrowserIntegrationPlanSpy).not.toHaveBeenCalled();
+    expect(resolveReleaseStaticPlanSpy).not.toHaveBeenCalled();
+    expect(resolveStructuralE2EPlanSpy).not.toHaveBeenCalled();
+    expect(validateE2ETargetTreeSpy).not.toHaveBeenCalled();
+  });
+
+  it('still constructs the fixer-only command plan for --fix-only', () => {
+    const commands = buildCommands(['src/entities/repository/index.ts'], {
+      fixMode: 'fix-only',
+    });
+
+    expect(commands.map((entry) => entry.label)).toEqual([
+      'agent-environment',
+      'format',
+      'oxlint',
+      'eslint',
+    ]);
   });
 });
 
@@ -461,9 +1261,11 @@ describe('buildCommands type-check applicability', () => {
   });
 });
 
-describe('buildCommands mutation scope', () => {
-  it('still adds a scoped mutation run outside full mode when mutation scope is non-empty', () => {
-    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+describe('buildCommands mutation registry scope', () => {
+  it('selects exactly the registered target when its exact source changes', () => {
+    const commands = buildCommands(['src/shared/lib/changeObject/deepPatchJsonObject.ts'], {
+      fullMode: false,
+    });
     const mutationEntry = requireRunEntry(commands, 'mutation');
 
     expect(mutationEntry.args).toEqual([
@@ -471,14 +1273,85 @@ describe('buildCommands mutation scope', () => {
       'stryker',
       'run',
       '-m',
-      'src/shared/lib/cache/index.ts',
+      'src/shared/lib/changeObject/deepPatchJsonObject.ts',
     ]);
+  });
+
+  it('selects exactly the registered target when its exact owning test changes', () => {
+    const commands = buildCommands(['src/shared/lib/migrations/defineVersion.test.ts'], {
+      fullMode: false,
+    });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      'src/shared/lib/migrations/defineVersion.ts',
+    ]);
+  });
+
+  it('does not register an unrelated production source merely because it has a sibling unit test', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+
+    requireSkippedEntry(commands, 'mutation');
   });
 
   it('skips mutation outside full mode when mutation scope is empty', () => {
     const commands = buildCommands([], { fullMode: false });
 
     requireSkippedEntry(commands, 'mutation');
+  });
+
+  it('selects the complete registered inventory for a mutation-infrastructure change', () => {
+    const commands = buildCommands(['stryker.config.mjs'], { fullMode: false });
+    const mutationEntry = requireRunEntry(commands, 'mutation');
+
+    expect(mutationEntry.args).toEqual([
+      'exec',
+      'stryker',
+      'run',
+      '-m',
+      [
+        'src/shared/lib/changeObject/deepPatchJsonObject.ts',
+        'src/shared/lib/changeObject/deepPutJsonObject.ts',
+        'src/shared/lib/migrations/defineMigrations.ts',
+        'src/shared/lib/migrations/defineVersion.ts',
+      ].join(','),
+    ]);
+  });
+
+  it('fails closed for an invalid mutation registry state', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      mutationPlan: { mode: 'invalid', sources: [], reasons: ['registered source does not exist'] },
+    });
+
+    expect(commands.find((entry) => entry.label === 'mutation')).toEqual({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: 'invalid mutation registry state: registered source does not exist',
+      verificationType: 'mutation',
+    });
+  });
+
+  // Literal --full must not bypass registry structural invalidity before
+  // Stryker execution.
+  it('fails closed for an invalid mutation registry state in literal full mode, without a runnable Stryker child', () => {
+    const commands = buildCommands([], {
+      fullMode: true,
+      mutationPlan: { mode: 'invalid', sources: [], reasons: ['registered source does not exist'] },
+    });
+
+    expect(commands.find((entry) => entry.label === 'mutation')).toEqual({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: 'invalid mutation registry state: registered source does not exist',
+      verificationType: 'mutation',
+    });
   });
 
   describe('deleted production path', () => {
@@ -494,6 +1367,26 @@ describe('buildCommands mutation scope', () => {
         const args = entry.kind === 'run' ? entry.args : [];
         expect(JSON.stringify(args)).not.toContain(deletedProductionPath);
       }
+    });
+
+    // Deleted/renamed-away mutation infrastructure must still reach
+    // resolveMutationPlan()'s changed-file classification; it must not be
+    // erased by filesystem-existence filtering before mutation planning,
+    // which would silently drop the mutation proof its removal should
+    // trigger.
+    it('passes a deleted/renamed-away path through to the mutation planner instead of filtering it by filesystem existence', () => {
+      resolveMutationPlanSpy.mockClear();
+      const deletedInfraPath = 'stryker.config.mjs';
+      const deletedUnrelatedPath = 'src/shared/lib/verifyMutationScopeDeletedFixture.ts';
+
+      expect(fs.existsSync(deletedUnrelatedPath)).toBe(false);
+
+      buildCommands([deletedInfraPath, deletedUnrelatedPath], { fullMode: false });
+
+      expect(resolveMutationPlanSpy).toHaveBeenCalledWith(
+        expect.arrayContaining([deletedInfraPath, deletedUnrelatedPath]),
+        expect.anything(),
+      );
     });
   });
 });
@@ -588,28 +1481,30 @@ describe('buildCommands package.json app e2e relevance', () => {
     const e2eEntry = requireRunEntry(commands, 'e2e');
 
     expect(e2eEntry.triggerReason).toContain(
-      'unmapped application-E2E-relevant path src/shared/service/serviceWorker.ts',
+      'relevant production change src/shared/service/serviceWorker.ts has no safely established E2E product owner',
     );
   });
 });
 
 describe('buildCommands removed/renamed spec safety', () => {
-  it('runs full app e2e for a deleted app e2e spec without passing it as a command argument', () => {
-    const commands = buildCommands(['tests/e2e/removedFlow.spec.ts'], { fullMode: false });
+  it('runs full app e2e for a deleted target E2E spec whose owner no longer exists, without passing it as a command argument', () => {
+    const removedSpec = 'tests/e2e/pages/GoneOwner/removedFlow.e2e.spec.ts';
+    const commands = buildCommands([removedSpec], { fullMode: false });
     const e2eEntry = requireRunEntry(commands, 'e2e');
 
-    expect(e2eEntry.triggerReason).toContain('removed or renamed app e2e spec');
-    expect(e2eEntry.args).not.toContain('tests/e2e/removedFlow.spec.ts');
+    expect(e2eEntry.triggerReason).toContain('removed/moved target E2E spec');
+    expect(e2eEntry.args).not.toContain(removedSpec);
   });
 
   it('runs the full storybook-behavior lane for a deleted behavior spec without passing it as a command argument', () => {
-    const commands = buildCommands(['tests/e2e/storybook/removedFlow.spec.ts'], {
+    const removedSpec = 'src/shared/ui/Snackbar/RemovedFlow.behavior.spec.ts';
+    const commands = buildCommands([removedSpec], {
       fullMode: false,
     });
     const behaviorEntry = requireRunEntry(commands, 'storybook-behavior');
 
-    expect(behaviorEntry.triggerReason).toContain('removed or renamed Storybook behavior spec');
-    expect(behaviorEntry.args).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
+    expect(behaviorEntry.triggerReason).toContain('removed or renamed colocated behavior spec');
+    expect(behaviorEntry.args).not.toContain(removedSpec);
   });
 });
 
@@ -646,15 +1541,15 @@ describe('buildCommands storybook-behavior lane', () => {
     requireRunEntry(commands, 'storybook-behavior');
   });
 
-  it('runs a focused lane for a changed existing central behavior spec', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+  it('runs a focused lane for a changed existing owner-local behavior spec', () => {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
     });
     const entry = requireRunEntry(commands, 'storybook-behavior');
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
     ]);
   });
 
@@ -683,7 +1578,7 @@ describe('buildCommands storybook-behavior lane', () => {
 
 describe('buildCommands storybook-behavior repeat', () => {
   it('appends exactly one Playwright repeat argument to a focused storybook-behavior command', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
       repeat: 10,
     });
@@ -691,14 +1586,14 @@ describe('buildCommands storybook-behavior repeat', () => {
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
       '--repeat-each',
       '10',
     ]);
   });
 
   it('leaves an ordinary storybook-behavior command without a repeat argument', () => {
-    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+    const commands = buildCommands(['src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts'], {
       fullMode: false,
       repeat: null,
     });
@@ -706,7 +1601,7 @@ describe('buildCommands storybook-behavior repeat', () => {
 
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'src/shared/ui/Snackbar/MDSnackbar.behavior.spec.ts',
     ]);
   });
 
@@ -772,6 +1667,16 @@ describe('buildCommands storybook-build lane', () => {
     requireRunEntry(commands, 'storybook-build');
   });
 
+  it('selects storybook-build for a shared Vite build input', () => {
+    const commands = buildCommands(['postcss.config.js'], { fullMode: false });
+    requireRunEntry(commands, 'storybook-build');
+  });
+
+  it('selects storybook-build for a shared local-command execution change', () => {
+    const commands = buildCommands(['scripts/lib/runLocalCommand.ts'], { fullMode: false });
+    requireRunEntry(commands, 'storybook-build');
+  });
+
   it('skips storybook-build for a confirmed version-only package.json change', () => {
     isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
 
@@ -832,17 +1737,6 @@ describe('buildCommands storybook-build lane', () => {
     const entry = requireRunEntry(commands, 'storybook-build');
 
     expect(entry.triggerReason).toContain('visual lane requires a Storybook static build');
-  });
-
-  it('does not select storybook-build merely because storybook-behavior is invalid', () => {
-    const commands = buildCommands([], {
-      fullMode: false,
-      storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
-      storybookBehaviorPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
-      visualPlan: { mode: 'skip', specs: [], reasons: ['empty visual scope'] },
-    });
-
-    requireSkippedEntry(commands, 'storybook-build');
   });
 
   it('does not select storybook-build merely because visual is invalid', () => {
@@ -1036,8 +1930,8 @@ describe('buildCommands visual lane (visualRisk integration)', () => {
     ]);
   });
 
-  it('produces the full test:visual command for a legacy central visual change', () => {
-    const commands = buildCommands(['tests/e2e/visual/shared-ui/md-button.spec.ts'], {
+  it('produces the full test:visual command for the cross-owner visual helper change', () => {
+    const commands = buildCommands(['tests/e2e/visual/storybook.ts'], {
       fullMode: false,
     });
     const entry = requireRunEntry(commands, 'visual');
@@ -1063,6 +1957,143 @@ describe('buildCommands visual lane (visualRisk integration)', () => {
   });
 });
 
+describe('buildCommands unit planning', () => {
+  it('produces native vitest --changed with the resolved diff base for a unit-relevant git-diff scope', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'src/shared/lib/cache/index.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+      '--changed',
+      'origin/develop',
+    ]);
+    expect(commands.find((entry) => entry.label === 'unit-related')).toBeUndefined();
+  });
+
+  it('widens a git-diff scope to full unit for a removed unit-relevant source path', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'deleted', path: 'src/shared/lib/cache/index.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('widens a git-diff scope to full unit for a unit-global infrastructure change', () => {
+    const commands = buildCommands(['vitest.config.ts'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'vitest.config.ts' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('skips unit for a deterministically unit-irrelevant git-diff scope', () => {
+    const commands = buildCommands(['docs/testing/architecture.md'], {
+      fullMode: false,
+      changedPathsInput: {
+        kind: 'git-diff',
+        changedPaths: [{ status: 'modified', path: 'docs/testing/architecture.md' }],
+      },
+      packageJsonOldRef: 'origin/develop',
+    });
+
+    requireSkippedEntry(commands, 'unit-tests');
+  });
+
+  it('produces native vitest related --run for an explicit non-test source path', () => {
+    const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });
+
+    const relatedEntry = requireRunEntry(commands, 'unit-related');
+
+    expect(relatedEntry.args).toEqual([
+      'exec',
+      'vitest',
+      'related',
+      '--run',
+      '--reporter=verbose',
+      'src/shared/lib/cache/index.ts',
+    ]);
+    expect(commands.find((entry) => entry.label === 'unit-tests')).toBeUndefined();
+  });
+
+  it('preserves both a direct test and a related source path as two unit leaves without full-unit widening', () => {
+    const commands = buildCommands(
+      ['src/shared/lib/cache/index.test.ts', 'src/shared/lib/changeObject/deepPatchJsonObject.ts'],
+      { fullMode: false },
+    );
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+      'src/shared/lib/cache/index.test.ts',
+    ]);
+    expect(requireRunEntry(commands, 'unit-related').args).toEqual([
+      'exec',
+      'vitest',
+      'related',
+      '--run',
+      '--reporter=verbose',
+      'src/shared/lib/changeObject/deepPatchJsonObject.ts',
+    ]);
+  });
+
+  it('widens an explicit scope to full unit for a removed/moved unit-relevant path', () => {
+    const removedPath = 'src/shared/lib/verifyUnitPlanRemovedFixture.ts';
+
+    expect(fs.existsSync(removedPath)).toBe(false);
+
+    const commands = buildCommands([removedPath], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+
+  it('widens an explicit scope to full unit for a unit-global infrastructure path', () => {
+    const commands = buildCommands(['package.json'], { fullMode: false });
+
+    expect(requireRunEntry(commands, 'unit-tests').args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+    ]);
+  });
+});
+
 describe('getExtraEnvForEntry', () => {
   it('does not set the skip flag for unrelated labels', () => {
     expect(getExtraEnvForEntry({ label: 'build' }, [{ label: 'build', status: 'passed' }])).toEqual(
@@ -1080,8 +2111,22 @@ describe('getExtraEnvForEntry', () => {
     ).toEqual({});
   });
 
-  it('sets RELEASE_ARTIFACT_SKIP_BUILD once build has passed, for artifact and release-smoke', () => {
+  it('sets RELEASE_ARTIFACT_SKIP_BUILD once build has passed, for artifact-static, artifact, and release-smoke', () => {
     const priorResults = [{ label: 'build', status: 'passed' }];
+
+    expect(getExtraEnvForEntry({ label: 'artifact-static' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'artifact' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+    expect(getExtraEnvForEntry({ label: 'release-smoke' }, priorResults)).toEqual({
+      RELEASE_ARTIFACT_SKIP_BUILD: '1',
+    });
+  });
+
+  it('also treats a passed artifact-static leaf as a fresh-artifact source for artifact and release-smoke', () => {
+    const priorResults = [{ label: 'artifact-static', status: 'passed' }];
 
     expect(getExtraEnvForEntry({ label: 'artifact' }, priorResults)).toEqual({
       RELEASE_ARTIFACT_SKIP_BUILD: '1',
@@ -1194,6 +2239,44 @@ describe('getBlockingLogIssue', () => {
     expect(getBlockingLogIssue('e2e', vueWarnLog)).toBeNull();
     expect(getBlockingLogIssue('type-check', vueWarnLog)).toBeNull();
   });
+
+  // Vitest's own --changed/related passWithNoTests-implicit-true diagnostic
+  // exits 0, so a unit-relevant scope with zero matching tests must still
+  // fail closed through this same blocking-log mechanism.
+  const noTestFilesLog = [
+    'RUN  v4.1.10 /home/mioframe',
+    '',
+    'No test files found, exiting with code 0',
+    'filter: src/app/router.ts',
+  ].join('\n');
+
+  it('flags a unit-tests log with the Vitest zero-match diagnostic', () => {
+    const issue = getBlockingLogIssue('unit-tests', noTestFilesLog);
+
+    expect(issue).toEqual({
+      reason: 'Vitest found no matching unit test files for this affected scope',
+      warningSummary: 'No test files found, exiting with code 0',
+    });
+  });
+
+  it('flags a unit-related log with the Vitest zero-match diagnostic', () => {
+    const issue = getBlockingLogIssue('unit-related', noTestFilesLog);
+
+    expect(issue).toEqual({
+      reason: 'Vitest found no matching unit test files for this related scope',
+      warningSummary: 'No test files found, exiting with code 0',
+    });
+  });
+
+  it('does not flag the zero-match diagnostic for an unrelated label', () => {
+    expect(getBlockingLogIssue('e2e', noTestFilesLog)).toBeNull();
+  });
+
+  it('ignores the zero-match marker mid-line', () => {
+    const log = 'this test asserts the message "No test files found, exiting with code 0"';
+
+    expect(getBlockingLogIssue('unit-tests', log)).toBeNull();
+  });
 });
 
 describe('resolveCommandStatus', () => {
@@ -1217,6 +2300,29 @@ describe('resolveCommandStatus', () => {
 
   it('keeps non-zero exit codes failed', () => {
     expect(resolveCommandStatus('unit-tests', 1, 'Tests  1 failed (12)').status).toBe('failed');
+  });
+
+  it('fails a zero-exit unit-tests command whose log reports no matching test files', () => {
+    const { status, blockingLogIssue } = resolveCommandStatus(
+      'unit-tests',
+      0,
+      'No test files found, exiting with code 0',
+    );
+
+    expect(status).toBe('failed');
+    expect(blockingLogIssue?.reason).toBe(
+      'Vitest found no matching unit test files for this affected scope',
+    );
+  });
+
+  it('fails a zero-exit unit-related command whose log reports no matching test files', () => {
+    const { status } = resolveCommandStatus(
+      'unit-related',
+      0,
+      'No test files found, exiting with code 0',
+    );
+
+    expect(status).toBe('failed');
   });
 });
 
@@ -1250,6 +2356,52 @@ describe('getActionRequired', () => {
       expect.stringContaining('Vue runtime warnings were emitted during unit tests'),
     );
     expect(actions).toContainEqual(expect.stringContaining('[Vue warn]: Invalid watch source: 0'));
+  });
+
+  it('retains a valid full-scope rerun for a failed leaf in full mode, instead of an invalid --full --only combination', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    const actions = getActionRequired(
+      [
+        makeExecutedResult({
+          label: 'artifact-static',
+          command: 'node scripts/release/productionArtifactStaticProof.ts',
+          status: 'failed',
+          exitCode: 1,
+        }),
+      ],
+      { invocation: fullInvocation },
+    );
+
+    expect(actions).toContainEqual(expect.stringContaining('Fix failed artifact-static errors'));
+    expect(actions).toContainEqual(expect.stringContaining('pnpm verify --full'));
+    expect(actions.some((action) => action.includes('--only'))).toBe(false);
+  });
+
+  it('retains a valid full-scope rerun for every split managed-updates leaf, never narrowing by type', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    for (const label of [
+      'managed-updates-static',
+      'managed-updates-browser-integration',
+      'managed-updates-e2e',
+    ]) {
+      const actions = getActionRequired(
+        [
+          makeExecutedResult({
+            label,
+            command: 'node scripts/release/managedUpdatesProof.ts',
+            status: 'failed',
+            exitCode: 1,
+          }),
+        ],
+        { invocation: fullInvocation },
+      );
+
+      expect(actions).toContainEqual(expect.stringContaining(`Fix failed ${label} errors`));
+      expect(actions).toContainEqual(expect.stringContaining('pnpm verify --full'));
+      expect(actions.some((action) => action.includes('--only'))).toBe(false);
+    }
   });
 
   it('still reports None. when nothing failed or warned', () => {
@@ -1296,6 +2448,34 @@ describe('getActionRequired', () => {
         'pnpm verify --base origin/develop --profile github-actions --only e2e',
       ),
     );
+  });
+
+  it('never narrows the CI-profile rerun by type during a full invocation', () => {
+    const fullInvocation = resolveVerifyInvocation(['--full'], { GITHUB_ACTIONS: 'false' });
+
+    const actions = getActionRequired(
+      [
+        makeExecutedResult({
+          label: 'visual',
+          command: 'pnpm test:visual',
+          status: 'passed',
+        }),
+      ],
+      {
+        ciProfileRisk: {
+          affectedChecks: ['visual'],
+          activeProfile: makeProfile({ name: 'local' }),
+          githubActionsProfile: makeProfile({ name: 'github-actions' }),
+          differences: [],
+        },
+        invocation: fullInvocation,
+      },
+    );
+
+    expect(actions).toContainEqual(
+      expect.stringContaining('pnpm verify --full --profile github-actions'),
+    );
+    expect(actions.some((action) => action.includes('--only'))).toBe(false);
   });
 
   it('reports a zero-exit blocked unit-tests result through the normal VERIFY RESULT summary', () => {
@@ -1359,6 +2539,38 @@ describe('getActionRequired', () => {
       expect(output).toContain('e2e: low-level path scripts/verify.ts -> full app e2e');
       expect(output).toContain('ci profile risk:');
       expect(output).toContain('- none');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('reports the selected verification type on the summary "only" line', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      printSummary([], 'local-changes', [], {
+        invocation: resolveVerifyInvocation(['--only', 'unit'], { GITHUB_ACTIONS: 'false' }),
+        totalDurationMs: 0,
+      });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(output).toContain('only: unit');
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('reports "all" on the summary "only" line for an unfocused invocation', () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      printSummary([], 'local-changes', [], {
+        invocation: resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' }),
+        totalDurationMs: 0,
+      });
+
+      const output = logSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(output).toContain('only: all');
     } finally {
       logSpy.mockRestore();
     }
@@ -1428,6 +2640,35 @@ describe('verify help output', () => {
       'Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
     );
   });
+
+  it('lists exactly the eight canonical verification types for --only and no legacy labels', () => {
+    const result = spawnSync(process.execPath, ['scripts/verify.ts', '--help'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: { ...process.env },
+    });
+
+    expect(result.status).toBe(0);
+
+    for (const type of [
+      'static',
+      'unit',
+      'behavior',
+      'visual',
+      'browser-integration',
+      'performance',
+      'mutation',
+      'e2e',
+    ]) {
+      expect(result.stdout).toContain(`\n  ${type}\n`);
+    }
+
+    expect(result.stdout).not.toContain('--storybook-build-ci-fallback');
+    expect(result.stdout).not.toContain('--full --only');
+    expect(result.stdout).not.toContain('--only eslint');
+    expect(result.stdout).not.toContain('--only unit-tests');
+    expect(result.stdout).not.toContain('--only storybook-behavior');
+  });
 });
 
 describe('runVerifyCli', () => {
@@ -1464,8 +2705,34 @@ describe('resolveVerifyChangedPathContext', () => {
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
+      input: null,
     });
     expect(resolveScope).not.toHaveBeenCalled();
     expect(projectChangedFiles).not.toHaveBeenCalled();
+  });
+
+  it('preserves the resolved git-diff scope input for a focused invocation', () => {
+    const gitDiffInput = {
+      kind: 'git-diff' as const,
+      changedPaths: [{ status: 'modified' as const, path: 'src/foo.ts' }],
+    };
+    const resolveScope = vi.fn(() => ({
+      input: gitDiffInput,
+      scope: 'local-changes',
+      baseRef: null,
+      packageJsonOldRef: 'HEAD',
+    }));
+    const projectChangedFiles = vi.fn(() => ['src/foo.ts']);
+    const invocation = resolveVerifyInvocation([], { GITHUB_ACTIONS: 'false' });
+
+    expect(
+      resolveVerifyChangedPathContext(invocation, { resolveScope, projectChangedFiles }),
+    ).toEqual({
+      changedFiles: ['src/foo.ts'],
+      scope: 'local-changes',
+      baseRef: null,
+      packageJsonOldRef: 'HEAD',
+      input: gitDiffInput,
+    });
   });
 });

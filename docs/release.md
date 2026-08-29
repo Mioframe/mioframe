@@ -287,23 +287,29 @@ focused and the full gate, and tag pushes never rerun the full gate:
     `scripts/release/materializePrVersion.mjs` before its existing fixer
     pipeline (`pnpm ci:autofix`) — see `Same-repository CI materialization`
     above;
-  - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
-    and mutation through verifier-managed focused lanes, then invokes
-    `pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback`.
-    That narrow verifier-owned fallback performs a real static Storybook build only
-    when the ordinary build plan requires one and neither Storybook browser lane
-    will run; otherwise it skips inside the already-provisioned static job. It
-    produces no cross-job Storybook artifact;
+  - `verification-static` runs the public focused `static`, `unit`, and
+    `mutation` verification types sequentially. The `static` planner owns
+    format, Oxlint, ESLint, type-check, and Storybook buildability; its
+    duplicate-build fallback is internal planner behavior and runs only when
+    the ordinary Storybook build plan requires it and neither Storybook browser
+    lane will provide the equivalent build proof. No private leaf label or
+    fallback flag is part of the public CLI;
   - `verification-browser (e2e)` remains an independent application E2E job
     that depends only on `autofix`;
+  - `verification-browser (browser-integration)` is an independent job that
+    depends only on `autofix` and runs the public focused `browser-integration`
+    verification type (`pnpm verify --verbose --only browser-integration`),
+    proving isolated browser/runtime contracts (service-worker lifecycle,
+    browser storage, managed-update runtime behavior, and similar boundaries)
+    that the E2E and Storybook lanes do not cover;
   - Storybook behavior and visual are independent, self-contained parallel
     `verification-browser (...)` jobs that also depend only on `autofix`.
     Each runs its own verifier-selected Playwright proof and builds the
     Storybook it needs in that job; neither waits for nor consumes output from
     `verification-static`;
   - aggregate `verification` succeeds only when static verification,
-    application E2E, and the complete Storybook browser matrix succeed, and
-    owns whether deployable PR source is valid;
+    application E2E, browser-integration, and the complete Storybook browser
+    matrix succeed, and owns whether deployable PR source is valid;
   - PR-only `release-version` enforces the exact label-selected version for an
     ordinary `develop` PR and the exact inherited direct-base version for an
     intermediate dependent PR;
@@ -320,7 +326,7 @@ focused and the full gate, and tag pushes never rerun the full gate:
 
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
-  (`pnpm verify:release`, full-project scope, see below), which includes
+  (`pnpm verify --full`, full-project scope, see below), which includes
   version/build metadata and release-config validation. Stable deploy
   (`deploy-stable`, `/`) runs only after this gate passes on a push to
   `main`.
@@ -361,36 +367,47 @@ focused and the full gate, and tag pushes never rerun the full gate:
 `pnpm verify` remains the normal development command: it scopes checks to
 changed files and is meant for fast PR feedback on `develop`.
 
-`pnpm verify:release` (= `node scripts/verify.ts --full`) is the release
-gate. It ignores changed-file scope and always runs, for the whole project:
+`pnpm verify --full` is the release gate. It ignores changed-file scope and
+runs every public verification type for the whole project, with no affected
+narrowing:
 
-- format check (`oxfmt`) across the full supported file set;
-- `oxlint` across the full project;
-- `eslint` across the full project;
-- full TypeScript type-check;
-- the full `vitest run` unit/component suite;
-- full app Playwright E2E smoke coverage;
-- full approved visual regression coverage;
-- managed pinned-update lifecycle proof across publisher, worker, client,
-  activation/rollback, migration, isolation, and Firefox/WebKit lifecycle;
-- production build and artifact validation (`docs/release.md#production-artifact-validation`);
-- release smoke coverage (`docs/release.md#release-smoke-coverage`);
-- release/version metadata validation (`scripts/release/validateVersion.mjs`);
-- release config validation (`scripts/release/validateReleaseConfig.mjs`, see
-  `docs/release.md#release-config-validation`).
+- `static`: full format, Oxlint, ESLint, TypeScript type-check, Storybook
+  buildability, release/version/config/build and other registered static
+  invariants;
+- `unit`: the full `vitest run` unit/component suite;
+- `behavior`: the complete isolated real-browser behavior inventory;
+- `visual`: the complete approved visual regression inventory;
+- `browser-integration`: the complete registered browser/runtime integration
+  inventory, including generic owner-local browser integration, production
+  artifact validation, and managed-update browser/runtime proof;
+- `performance`: every registered persistent performance target (the current
+  persistent inventory is intentionally empty);
+- `mutation`: the complete registered mutation inventory;
+- `e2e`: the complete application/product E2E inventory, including release
+  smoke and managed-update end-to-end proof.
+
+The full gate also runs the release-sensitive internal prerequisites and
+static checks owned by those types, including production build/artifact
+preparation, publisher plain-Node import proof, release/version metadata
+validation, and release config validation. See
+`docs/release.md#production-artifact-validation`,
+`docs/release.md#release-smoke-coverage`, and
+`docs/release.md#release-config-validation`.
 
 Full mode never reports a check as skipped because there were no changed
-files. Use `pnpm verify --full --only <label>` to focus on a single release
-check while keeping the release-scope framing. For managed-update changes,
-run `pnpm verify --full --only managed-updates` without flaky classification
-before the final `pnpm verify:release` gate.
+files. `--full` is incompatible with `--only`/`--files`; it always runs the
+complete inventory above as one gate. For managed-update changes, focused
+implementation feedback/proof uses the owning public `static`,
+`browser-integration`, and `e2e` types as applicable, for example:
 
-Mutation testing (`pnpm test:mutate`, or scoped mutation inside ordinary
-`pnpm verify`) remains available for test design and PR-quality work, but it
-is not part of the release gate: it is slow, and it validates test
-robustness rather than the published artifact. `pnpm verify --full` and
-`pnpm verify:release` do not run it, and `pnpm verify --full --only
-mutation` is not a valid release check.
+```bash
+pnpm verify --only static --files <managed-update paths...>
+pnpm verify --only browser-integration --files <managed-update paths...>
+pnpm verify --only e2e --files <managed-update paths...>
+```
+
+The final release gate remains `pnpm verify --full` and must pass without
+flaky classification.
 
 ## Organization Pages deployment model
 
@@ -704,16 +721,17 @@ The `build` check (`scripts/release/buildArtifact.mjs`) always builds a
 fresh production artifact and fails fast before the more expensive `artifact`
 and `release-smoke` Playwright checks run. Those checks each spin up their
 own Playwright webServer, which normally builds its own artifact too — so
-without deduplication, one `pnpm verify:release` run would build the same
+without deduplication, one `pnpm verify --full` run would build the same
 production artifact three times.
 
 `scripts/verify.ts` avoids this: once `build` has passed in the same run,
 it sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact` and
 `release-smoke` checks (forwarded through `scripts/e2eReleaseContainer.mjs`
 into the Podman container), and `buildArtifact.mjs` reuses the existing
-`dist/` instead of rebuilding. Standalone invocations
-(`pnpm e2e:release`, `pnpm verify --full --only artifact`) never set this
-flag, so they remain self-sufficient and always build their own artifact.
+`dist/` instead of rebuilding. Standalone invocations (`pnpm e2e:release`,
+or the internal `artifact` proof leaf run outside a full pass) never set
+this flag, so they remain self-sufficient and always build their own
+artifact.
 
 ## Release config validation
 
@@ -748,7 +766,7 @@ presence/absence and mode consistency.
 
 The `Full release verification` step in `.github/workflows/release.yml`
 (`release-gate` job) does not pass `VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`,
-or `SENTRY_AUTH_TOKEN` at all, since `pnpm verify:release` does not require
+or `SENTRY_AUTH_TOKEN` at all, since `pnpm verify --full` does not require
 them — so in practice these keys are simply absent from that step's
 environment, not empty. The GitHub Actions empty-value notice above exists
 as a safety net for any other invocation (e.g. `deploy-stable`'s build step,
@@ -770,7 +788,7 @@ tolerates), fails the job before it can produce a managed artifact.
 runtime error reporting. This exists because the managed Service Worker must remain
 capable of reporting activation/rollback diagnostics (see
 `docs/managed-pinned-updates.md`), which requires runtime Sentry configuration to
-actually be built in. Every other invocation of this check (`pnpm verify:release`'s
+actually be built in. Every other invocation of this check (`pnpm verify --full`'s
 `release-config` check, local development, PR previews, unmanaged branch deploys,
 and hermetic compatibility-test builds) keeps the default, fully-optional behavior
 described above.
@@ -810,9 +828,10 @@ apply these manually in the GitHub UI):
 
 ## What blocks a release
 
-- Any failing check inside `pnpm verify:release` (format, lint, type-check,
-  unit, e2e, visual, managed updates, build, artifact, release smoke,
-  version metadata, release config).
+- Any failing check inside `pnpm verify --full`, which runs all eight public
+  verification types (`static`, `unit`, `behavior`, `visual`,
+  `browser-integration`, `performance`, `mutation`, `e2e`) plus their
+  release-sensitive internal prerequisites/checks.
 - A flaky classification in the focused managed-update gate for a release
   containing managed-update changes.
 - A missing or non-monotonic version bump.
@@ -832,8 +851,9 @@ same build script and base-path contract the release gate validates.
 - In GitHub Actions: the failing step's inline log. For the ordinary `verify`
   workflow, failed/cancelled static verification — including the Storybook
   build fallback when it actually runs — uploads `verify-static-logs`,
-  application E2E uploads `verify-e2e-logs`, and failed/cancelled Storybook
-  browser lanes upload `verify-<lane>-logs`; the `release` workflow uploads
+  application E2E uploads `verify-e2e-logs`, browser-integration uploads
+  `verify-browser-integration-logs`, and failed/cancelled Storybook browser
+  lanes upload `verify-<lane>-logs`; the `release` workflow uploads
   `release-logs` on failure or cancellation (Actions run page -> Summary ->
   Artifacts).
 

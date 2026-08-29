@@ -8,8 +8,8 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Read the root and applicable nested `AGENTS.md` files before editing. Use relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect task-relevant files and direct dependencies first. Expand only when evidence shows wider impact.
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
-- `docs/testing/architecture.md` is the canonical project-wide testing policy.
-- `docs/testing/storybook.md` is the canonical Storybook ownership, authoring, and target-placement policy; `docs/testing/migration-plan.md` records which target locations and verifier mechanisms are currently executable.
+- `docs/testing/architecture.md` is the canonical project-wide testing and verification policy, including verification type names, test-spec suffixes, affected ownership, fallback, and E2E ownership.
+- `docs/testing/storybook.md` is the canonical Storybook workbench, story-authoring, fixture-isolation, and catalogue policy. `docs/testing/migration-plan.md` records the current executable verification state and merge-readiness/completion status.
 - `src/shared/ui/material/docs/component-workflow.md`, `component-contract.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
@@ -88,9 +88,9 @@ For Material-specific worker roles, source authority, resume/correction routing,
 - Separate behavior-preserving extraction from behavior changes when practical. Remove obsolete paths, exports, tests, and comments when their replacement is introduced unless compatibility is explicitly required.
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc.
 - Keep validation, parsing, and extraction close to the defining boundary.
-- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, and proportional coverage.
-- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook-owned browser/visual proof. Colocate `*.stories.ts` now; place browser/visual Playwright specs only where `docs/testing/migration-plan.md` says the current runner can discover them. Do not treat target colocation as already implemented.
-- Keep complete cross-owner product scenarios centralized in application E2E; do not move them into Storybook fixtures.
+- Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, proportional coverage, current test-spec suffixes, and affected-test ownership.
+- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook workbench/fixture rules. Use `docs/testing/migration-plan.md` for the current executable verification state; removed legacy suffix/location compatibility must not be restored unless a new architecture decision explicitly requires it.
+- Keep complete product scenarios in application E2E. E2E primary/additional ownership, directory structure, and affected-owner discovery follow `docs/testing/architecture.md`; do not move product flows into Storybook fixtures.
 - Keep unit tests and helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels.
 - Split tests by behavior when setup becomes conditional or failures no longer identify one contract.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.
@@ -99,6 +99,7 @@ For Material-specific worker roles, source authority, resume/correction routing,
 ## Naming and workspace conventions
 
 - Use `pnpm` for package management and project commands.
+- Prefer TypeScript for new or task-touched Node/tooling scripts when the current runtime/toolchain can execute TypeScript directly. Use `.js`/`.mjs` only when a concrete loader/runtime requires JavaScript; verify that requirement instead of choosing JavaScript by default. Do not mass-convert untouched legacy scripts solely for extension consistency.
 - `pages` and `widgets` directories use PascalCase; other submodules use lower camel case.
 - Vue components and class-centric files use PascalCase; other TypeScript files use lower camel case or lowercase.
 - Feature modules use user-action names; entity modules use stable domain concepts.
@@ -112,9 +113,9 @@ For Material-specific worker roles, source authority, resume/correction routing,
 
 ## Verification ownership
 
-- Coding agents own implementation feedback and the pre-handoff verification of the complete cumulative PR diff. Use focused `pnpm verify --only ...` checks while iterating when useful.
-- Before final handoff of ordinary PR code work, run one branch-diff gate against the PR base using the agent's normal local verifier profile. For normal `develop` PRs: `pnpm verify --base origin/develop`.
-- This branch gate is diff-aware and intentionally broader than the latest coding task. If it reports a PR-caused failure that remains within the accepted architecture and ownership, fix that failure and use the smallest relevant focused verifier command for fast feedback. Then rerun the complete branch gate. Repeat this cycle until the branch gate passes cleanly.
+- Coding agents own code and the proof they need to implement or diagnose it. Use focused verifier-managed checks such as `pnpm verify --only <type> --files ...` when those checks materially help the implementation loop or when an assigned coding task explicitly requires a narrow risk-specific proof.
+- Before final handoff of ordinary PR code work, run one branch-diff gate against the PR base using the agent's normal local verifier profile. For normal `develop` PRs: `pnpm verify --base origin/develop`. For a PR with another target base, use `origin/<base>` instead.
+- This branch gate is diff-aware and intentionally broader than the latest coding task. If it reports a PR-caused failure that remains within the accepted architecture and ownership, fix that failure and use the smallest relevant focused `pnpm verify --only <type> --files ...` command for fast feedback. Then rerun the complete branch gate. Repeat this cycle until the branch gate passes cleanly.
 - If a branch-gate failure is unrelated to the PR or requires material ownership/architecture expansion, stop and report it instead of patching around it.
 - Do not force the GitHub Actions verifier profile for local agent work. CI owns its controlled `github-actions` profile; the local branch gate should use the agent environment's normal verifier profile unless a task explicitly requires another profile for diagnosis.
 - Do not use `pnpm verify --full` as the ordinary PR handoff gate. `--full` is full-project/release scope, ignores changed-file selection, and cannot be combined with `--base`.

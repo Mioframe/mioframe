@@ -1,567 +1,78 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the durable testing target. `docs/testing/storybook.md` defines Storybook ownership, developer-workbench behavior, and target placement. This document records the current executable repository state and the safe order for reaching those targets without reducing protection.
+`docs/testing/architecture.md` is the canonical testing and verification contract. `docs/testing/verify-redesign-architecture.md` records the accepted design rationale. This document records only the durable executable migration state; implementation passes, coding-agent tasks, review handoffs, and correction history belong in Git history and the completed PR, not in the long-lived documentation set.
 
-## Migration constraints
+## Status
 
-- Every migration PR must be independently safe to merge into `develop`.
-- Preserve production behavior unless the PR explicitly changes a product contract.
-- Preserve or strengthen current proof before narrowing execution or deleting legacy paths.
-- Keep broad fail-closed fallback until a deterministic replacement is implemented and tested.
-- Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
-- Do not redesign proof ownership inside resolver implementation; architecture must already be resolved.
-- Do not move a spec before the owning runner/configuration can discover it.
-- A canonical Material family migration may establish final owner-local Storybook browser/visual ownership in the same family workflow once mixed discovery can execute that convention; do not require a separate later S4 move.
-- Do not remove old discovery, mappings, or baselines until replacement ownership is proven on the same repository state.
-- Add/move/remove/rename behavior must remain deterministic and must never silently skip relevant proof.
-- Do not satisfy Storybook usability by importing product bootstrap, product routing, stores, persistence, services, or business behavior into stories.
-- Do not satisfy Storybook theme or preview needs by copying production token/style ownership into `.storybook`.
+The verify redesign migration is complete. The current repository implements the target ownership and public command model. No transitional public compatibility path remains.
 
-## Current executable state
+## Public executable contract
 
-### Completed foundation
+Public verification types are exactly:
 
-- Git-backed changed-path planning preserves deletion and both sides of rename through `scripts/lib/changedPaths.ts`.
-- Existing consumers receive a compatibility projection and must avoid passing removed files to child commands.
-- Storybook stories are already colocated with source owners.
-- Vue component-contract tests are already colocated as `*.test.ts`.
-- Material library family ownership is established under `src/shared/ui/material`.
-- Storybook Essentials provides Controls and other built-in workbench tools.
-- Storybook currently configures representative desktop/mobile viewports and app/surface Material-token backgrounds, freely selectable; the default is the semantic `App` background, never checkerboard.
-- Storybook preview isolates Canvas styling through `src/app/styles/base.css`, the same low-level entrypoint the application shell composes; the application shell (`src/app/styles/styles.css`) owns only `html`/`body`/`#app` layout on top of it.
-- Material foundation owns an explicit `data-md-color-scheme="light"`/`"dark"` seam (`src/shared/ui/material/foundation/theme.css`); no attribute preserves the production `prefers-color-scheme` default. Storybook exposes this through a `System`/`Light`/`Dark` toolbar global that only sets/removes the attribute.
-- Storybook installs a per-story Vue Router memory-history instance (`.storybook/router/routerHarness.ts`) through a small typed `parameters.router` shape (routes, initial location); a fresh app/router is created on every story remount, so route/history state does not leak between stories. Existing shared overlay primitives continue to work through the deterministic default `/` route.
-- Storybook's native `storySort` gives the documented top-level namespaces (`Material 3`, `Shared`, `Entities`, `Features`, `Widgets`, `Pages`) deterministic ordering, case-insensitively matching already-colocated legacy titles, without renaming any existing story address.
-- `MDCheckbox` is the representative args-driven controlled Playground: Controls and direct interaction stay synchronized through `useArgs`. This convention originated on the now-removed legacy `src/shared/ui/Checkbox/MDCheckbox.stories.ts`; the canonical Material `checkbox` family that replaced it (`src/shared/ui/material/components/checkbox/MDCheckbox.stories.ts`) preserves the same `useArgs` round-trip convention on its own `Default` story.
-- `MDButton` (`src/shared/ui/material/components/button/MDButton.stories.ts`) is the representative public Material component with selective Autodocs (`tags: ['autodocs']`) generated from the existing `vue-component-meta` docgen.
-- A dedicated verifier label `storybook-build` runs `pnpm storybook:build` for changed `*.stories.*`, `.storybook/**`, and other Storybook-relevant configuration; it is selectable through `pnpm verify --only storybook-build`, not full-only, and runs in full verification.
-- Storybook static-build reuse is executable without merging proof ownership: automatic `pnpm verify` also selects the same `storybook-build` prerequisite whenever Storybook behavior or visual proof is runnable, schedules it before those lanes, and passes `STORYBOOK_STATIC_SKIP_BUILD=1` only after that build has passed. Explicit reuse requires both `storybook-static/index.html` and `storybook-static/iframe.html` and fails closed if either is missing; standalone focused behavior/visual commands remain self-contained when no prebuilt contract is supplied. GitHub implementation verification keeps Storybook behavior and visual as self-contained parallel lanes that both depend only on `autofix` and build the Storybook they need in their own bounded Playwright execution. The verifier's narrow `pnpm verify --only storybook-build --storybook-build-ci-fallback` invocation runs inside the already-provisioned `verification-static` job and performs the static build only when ordinary `storybook-build` planning requires proof and neither browser lane will run. No verification Storybook artifact is transferred between jobs; application E2E stays independent; PR preview Storybook remains a separate base-specific build.
-- A bounded verifier-managed Storybook behavior stability mode is executable for risk-specific diagnosis: `pnpm verify --only storybook-behavior --files <spec...> --repeat <2..20>` maps to Playwright repeated execution inside one behavior invocation. It is explicit, file-scoped, unavailable in `--full`, and does not change automatic planning or normal CI execution.
-- Vue component metadata is available to Storybook through the current docgen configuration.
-- The Storybook behavior Playwright lane supports mixed discovery through one configuration: legacy `tests/e2e/storybook/**/*.spec.ts` plus owner-local `src/**/*.browser.spec.ts`.
-- Owner-local browser selection is filesystem-derived from existing colocated specs, selects every applicable spec for an owner path, is independent of discovery order, and fails closed to the full behavior lane for removed/renamed colocated specs.
-- Application and Storybook source TypeScript exclude `src/**/*.browser.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
-- The visual Playwright lane supports mixed discovery through one configuration: legacy `tests/e2e/visual/**/*.spec.ts` plus owner-local `src/**/*.visual.spec.ts`.
-- Loading Indicator is the authorized and completed owner-local visual pilot: `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated under `src/shared/ui/material/components/loadingIndicator/`, using the documented `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention. Its legacy-surface screenshot now opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned story.
-- Owner-local visual selection is filesystem-derived: source/story changes under an owner directory select every applicable visual spec in that directory; baseline changes resolve to their exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker; add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved.
-- Application and Storybook source TypeScript exclude `src/**/*.visual.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
-- All other visual specs/baselines remain in the legacy central location (`tests/e2e/visual/**`) with full-lane fallback until a later S4 group or the owning canonical Material migration moves or removes them directly.
-- Unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve safe full visual fallback rather than silently losing visual coverage.
-- Application E2E project applicability is implemented in `scripts/lib/e2eProjectApplicability.ts`: every root `tests/e2e/*.spec.ts` application spec is explicitly `desktop`, `mobile`, or `both`; verifier validation fails closed for missing, stale, duplicate, or invalid metadata, while direct Playwright leaves an unclassified spec eligible for both projects.
+- `static`;
+- `unit`;
+- `behavior`;
+- `visual`;
+- `browser-integration`;
+- `performance`;
+- `mutation`;
+- `e2e`.
 
-### Still transitional
-
-- Playground/Controls authoring and controlled args round-trip are established as a convention on one representative component (`MDCheckbox`); repository-wide normalization across other reusable UI stories remains later migration work.
-- Selective Autodocs usage is established as a convention on one representative public Material component (`MDButton`); broader selective adoption across other public reusable UI remains later migration work.
-- Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
-- Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
-- Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, `DialogForm`, and Material `MDSwitch` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete, and later Material migrations (such as `MDSwitch`) may establish local browser ownership independently of the original S2 groups. The legacy `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` this S2-A entry originally migrated no longer exists: the `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`) removed the legacy component and its owner-local proof. The Material `checkbox` family's own owner-local browser spec (`src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts`) independently satisfies the general S2 owner-local convention for a new Material family; it was never itself an S2 migration target.
-- Loading Indicator, Chips, MarkdownContent, MDSwitch, the canonical Material `checkbox` family, and (formerly) legacy MDCheckbox use the owner-local visual convention (Stage S3 complete; Stage S4-A through S4-D complete; Stage S4-B complete, now historical — see S4-B below). The canonical Material `checkbox` family established its own owner-local visual ownership (`src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts`, colocated `MDCheckbox.visual.spec.ts-snapshots/`) directly through its own Material family migration workflow, mirroring the Stage S4-D (MDSwitch) precedent, not through a separate S4 group. All other visual specs/baselines still use the current central visual execution structure until later S4 groups or their canonical Material migration establishes final ownership directly.
-- App E2E uses centralized scenario mappings and remains centralized by design.
-- Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere. V3C/S5 cleans these owner-by-owner without requiring unrelated S4 visual-colocation groups to finish first.
-- Persistent mutation and release-impact migration remain separate work.
-
-The current mixed browser location is executable: migrated owners use colocated `src/**/*.browser.spec.ts`, while unmigrated owners retain the legacy central location. Agents must follow the stage authorization below rather than migrating additional specs merely because the generic discovery mechanism can execute them. A canonical Material family migration is an explicit authorization path for that family once owner-local discovery is executable and must not defer surviving family proof to a separate later S4 ownership-only move.
-
-## Storybook ownership and workbench migration
-
-Storybook migration is deliberately separated from the broader verifier migration. Do not combine these steps into one large PR.
-
-### Stage S0 — architecture and rules
-
-Owner: architecture/documentation.
-
-Deliverables:
-
-- canonical testing policy recognizes deterministic owner-local relations;
-- `docs/testing/storybook.md` defines owner, developer workbench, story usage, proof boundaries, target placement, and current executable state;
-- repository rules and testing skills route to the same contract;
-- Material family workflow is referenced, not duplicated.
-
-Acceptance:
-
-- no contradiction remains between `docs/testing/architecture.md`, Storybook rules, `AGENTS.md`, or testing skills;
-- no Storybook runtime or Playwright discovery behavior changes in this stage;
-- target colocated specs and target workbench capabilities are not described as already executable;
-- Storybook is explicitly a developer workbench with catalogue navigation, Playground/Controls, visual sandbox, generated documentation, isolated preview styling, and isolated routing responsibilities.
-
-### Stage S0.5 — Storybook workbench foundation
-
-Implement the interactive developer-workbench behavior before moving Playwright specs.
-
-Scope:
-
-- keep Storybook's native manager/sidebar as the catalogue navigation surface;
-- isolate Canvas styling from the application shell while preserving the real normalization, fonts/icons, Material foundation/theme/tokens, and shared low-level styles required by reusable UI;
-- retain Vue docgen-driven Controls and establish the args-driven Playground convention on a small representative set rather than mass-rewriting stories;
-- for a representative controlled component, round-trip its public update event back into Storybook args so Controls and direct UI interaction stay synchronized;
-- configure representative viewport, background, measure/outline, and layout behavior for manual appearance inspection;
-- add explicit `System`, `Light`, and `Dark` Storybook theme modes through the production Material/theme owner rather than a Storybook token copy;
-- keep the normal Playground on a truthful semantic surface; checkerboard/transparency backdrops remain specialized visual fixtures only;
-- replace the current minimal `/` memory-router setup with one small Storybook-owned routing harness;
-- allow a story to provide deterministic initial location and the minimum story-owned route records needed for path/query/hash/params and `RouterLink`/`useRoute`/`useRouter` behavior;
-- isolate/reset router state between stories;
-- keep copied Storybook URLs useful for story address and serializable args;
-- configure deterministic native story ordering for the documented top-level namespaces without opportunistically renaming existing story addresses;
-- prove selective Autodocs on representative public Material/reusable shared UI without making Autodocs mandatory for every FSD story;
-- add one verifier-owned Storybook build check for relevant story/configuration changes, reusing the existing Storybook build entrypoint;
-- add focused Storybook infrastructure proof for the workbench foundation where needed.
-
-Architecture constraints:
-
-- use real `vue-router` memory history rather than a fake router API;
-- do not import the production application router, route guards, stores, auth, persistence, services, network setup, or product bootstrap;
-- do not keep the complete application shell stylesheet as the permanent Storybook preview environment merely to obtain shared styling;
-- reuse existing production-owned low-level style entrypoints or expose the smallest correctly owned entrypoint when one is missing; do not duplicate declarations in `.storybook`;
-- Material/theme foundation owns Material theme mode application. `System` preserves the current production system-following behavior;
-- if deterministic `Light`/`Dark` inspection requires a new override seam, implement the minimum foundation-owned seam while preserving the current production default; do not copy light/dark token values into Storybook configuration or fixture CSS;
-- do not create a generic story DSL, theme DSL, or a second component catalogue;
-- do not mirror public Vue props manually in a global Controls registry;
-- do not create a global Storybook state store merely to synchronize controlled args;
-- do not add production props merely for Storybook;
-- do not make Autodocs a global requirement for feature/widget/page stories;
-- do not create another Storybook build runner when `storybook:build` already owns the build operation;
-- do not combine this stage with browser/visual spec relocation or catalogue title normalization.
-
-Acceptance:
-
-- Storybook Canvas no longer inherits unrelated application-shell viewport/layout/scroll/transition behavior while required shared production styling remains present;
-- `System`, `Light`, and `Dark` are usable from the Storybook workbench, use one foundation-owned theme implementation, and do not change the application's existing default theme behavior;
-- a representative configurable component has a useful args-driven Playground with inferred Controls and only minimal explicit `argTypes` where inference is insufficient;
-- a representative controlled public value stays synchronized after either a Controls change or direct component interaction without a global story state store;
-- a representative routing-aware reusable surface can start at a deterministic route, read route state, navigate, and use back/forward without product bootstrap;
-- switching stories does not leak previous route state;
-- viewport/background/layout/theme controls remain usable for free manual inspection;
-- normal Playgrounds use a semantic surface, while checkerboard/transparency fixtures are opt-in specialized cases;
-- native Storybook navigation has deterministic top-level ordering without changing existing story IDs merely for ordering;
-- representative public Material/reusable shared UI can expose useful Autodocs from the real Vue metadata without a duplicated handwritten API catalogue;
-- Storybook configuration and changed `*.stories.*` files select a verifier-managed static Storybook build check even when no browser/visual lane is otherwise selected;
-- canonical visual stories may still pin deterministic globals independently from the free Playground;
-- Storybook build and relevant focused verification pass;
-- no browser/visual Playwright spec migration occurs in this stage.
-
-### Stage S1 — Storybook browser discovery pilot
-
-Status: **complete**.
-
-Authorized and completed pilot: Loading Indicator Material family only.
-
-Why:
-
-- narrow family owner;
-- existing colocated story/component proof;
-- lower mixed-owner risk than Button;
-- current Storybook browser spec has a clear family owner once its fixtures are local to that owner.
-
-Final executable S1 state:
-
-- one Storybook behavior Playwright configuration discovers both legacy central specs and owner-local `src/**/*.browser.spec.ts`, so discovery is mixed legacy plus colocated;
-- `MDLoadingIndicator.browser.spec.ts` is colocated beside the Loading Indicator owner, and its Storybook fixtures are owner-local (the assertion opens the Loading Indicator-owned `LegacySurfaceIsolation` story rather than the Button-family `LegacySurfaceColorOwnership` story), so focused owner impact cannot silently omit the proof;
-- production/Storybook TypeScript excludes colocated browser specs while tooling type-check includes them;
-- resolver ownership is derived from the filesystem rather than a colocated-spec registry;
-- an owner path selects every applicable matching owner-local colocated browser spec, including same-directory and nested-owner cases;
-- changed existing specs select themselves;
-- add, remove, and rename of colocated specs fail closed to the full Storybook behavior lane;
-- colocated browser specs (`src/**/*.browser.spec.ts`) are excluded from Vitest's unit-tests scope, so a colocated-spec-only change does not run unit-tests and still selects the focused `storybook-behavior` lane;
-- the old explicit Loading Indicator central mapping is removed; legacy centralized specs and mappings for all other owners remain intact and unaffected;
-- Storybook behavior full-lane impact includes the production-owned Storybook preview style dependency closure imported by `.storybook/preview.ts` via `src/app/styles/base.css`:
-  - `src/app/styles/base.css`
-  - `src/app/styles/fonts.css`
-  - `src/shared/ui/material/foundation/index.css`
-  - `src/shared/ui/material/foundation/tokens.css`
-  - `src/shared/ui/material/foundation/theme.css`
-  - `src/shared/lib/md/index.css`
-  - `src/shared/lib/md/typography.css`
-  - `src/shared/lib/md/space.css`
-
-Forbidden during S1:
-
-- migrating another browser owner;
-- visual migration;
-- broad behavior-spec moves;
-- generic Storybook runner/DSL;
-- app E2E changes;
-- Storybook catalogue normalization.
-
-### Stage S2 — remaining Storybook browser migration
-
-Status: **complete; S2-A, S2-B, S2-C, S2-D, and S2-E complete**.
-
-S2 migrates ordinary component/family/module-owned behavior to the owner-local convention established by S1. It does not force genuinely cross-owner or Storybook-infrastructure proof into a false local owner. Central discovery remains while such central consumers exist.
-
-#### Inventory and final ownership
-
-- `mdCheckboxControlledArgs.spec.ts`
-  - Contract: real pointer interaction round-trips controlled `checked` state through the MDCheckbox Storybook args contract.
-  - Final owner: `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` (historical — the legacy component and this owner-local spec were removed by the `checkbox` Material family migration; see the note after the S2 migration groups list below).
-  - Current state: complete — migrated owner-local and the legacy registry mapping is removed.
-- `navigationPath.spec.ts`
-  - Contract: small Button geometry inside Navigation Path, horizontal overflow/scrolling, and final segment selection.
-  - Final owner: `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`.
-  - Current state: complete — migrated owner-local and the legacy registry mapping is removed.
-- `mdBottomSheetContainerKeyboardScroll.spec.ts`
-  - Contract: Tab/Shift+Tab wrap keeps the focused control visible; non-Tab focus does not perform the keyboard-only scroll correction.
-  - Final owner: `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`.
-  - Current state: complete — migrated owner-local under the existing cohesive `Sheets` module, with conservative module-wide selection and no duplicate registry mapping.
-- `reorderSelfScrollableContainer.spec.ts`
-  - Contract: pointer activation/recovery plus self-scroll, clipped-surface reveal, scroll-snap suppression/restoration, autoscroll lifecycle and release behavior.
-  - Final owner: `src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as a distinct spec; Reorder module changes conservatively select all four colocated Reorder browser specs.
-- `reorderDocumentViewportFallback.spec.ts`
-  - Contract: container → ancestor → document viewport autoscroll progression, visibility-first stopping, and release stopping every level.
-  - Final owner: `src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as a distinct spec; the replaced Reorder registry mapping is removed.
-- `reorderFixedBoundary.spec.ts`
-  - Contract: transformed-ancestor/fixed-surface autoscroll and release stopping.
-  - Final owner: `src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as a distinct spec; the replaced Reorder registry mapping is removed.
-- `reorderWrapLayout.spec.ts`
-  - Contract: forward/backward cross-row reorder and direct-parent drag bounds in wrapping layout.
-  - Final owner: `src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as a distinct spec; Reorder ownership is now filesystem-derived with no duplicate mapping.
-- `storybook.smoke.spec.ts`
-  - Contract: MDButton Default renders an enabled, focusable interactive Button.
-  - Final owner: `src/shared/ui/material/components/button/MDButton.browser.spec.ts`.
-  - Current state: complete — this was not Storybook infrastructure proof. The assertion is preserved under the Material Button owner-local spec; the misleading central smoke classification and file no longer exist.
-- `md-button-family.spec.ts`
-  - Contract: mixed Material MDButton, legacy Button-module, and shared focus-indicator behavior.
-  - Final ownership: split by truthful owner.
-  - Current state: complete — MDButton-only contracts moved to `src/shared/ui/material/components/button/MDButton.browser.spec.ts`; MDIconButton-only contracts moved to `src/shared/ui/Button/LegacyButton.browser.spec.ts` (no legacy `MDFab`-only browser contract was ever added to that file); the shared focus-indicator integration remains central as `tests/e2e/storybook/focusIndicator.spec.ts` with one explicit cross-owner mapping. The stale/non-existent `src/shared/ui/LoadingButton/` mapping is removed. The file no longer exists. **Historical note:** the legacy `MDFab` component this line's original wording referenced no longer exists — it was removed in full, including its `focusIndicator.spec.ts` cross-owner test and its `tests/e2e/visual/shared-ui/md-fab-family.spec.ts` legacy-only proof, by the `floatingActionButton` Material family migration (see `src/shared/ui/material/components/floatingActionButton/MIGRATION.md`).
-- `dialogFormFallbackFocus.spec.ts`
-  - Contract: real focus-trap activation with zero tabbable action controls uses the form fallback target and keeps Tab/Shift+Tab focus inside the dialog.
-  - Final owner: `src/shared/ui/Dialog/DialogForm.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving the story ID and focus-trap assertion; the replaced explicit DialogForm mapping is removed. `tests/e2e/storybook/dialogFormFallbackFocus.spec.ts` no longer exists.
-- `colorOwnership.spec.ts`
-  - Contract: Snackbar inverse surface/message/action/close color behavior across Snackbar-owned contextual values and Material Button public contextual tokens.
-  - Final owner: keep `tests/e2e/storybook/colorOwnership.spec.ts`.
-  - Decision: justified cross-owner proof. Keep the explicit Snackbar + Button-token mapping rather than assigning false local ownership.
-- `overlayLifecycle.spec.ts`
-  - Contract: outside-interaction lifecycle across `onInteractionOutside`, Menu and Tooltips using the composed Overlay regression fixture.
-  - Final owner: keep `tests/e2e/storybook/overlayLifecycle.spec.ts`.
-  - Decision: justified cross-owner proof. Keep explicit mapping. Existing appearance assertions are preserved in S2 and may be reconsidered only in S5 proof cleanup.
-- `routerHarness.spec.ts`
-  - Contract: Storybook-owned memory-router initial state, RouterLink/push/back/forward behavior, and per-story route isolation.
-  - Final owner: keep `tests/e2e/storybook/routerHarness.spec.ts`.
-  - Decision: Storybook infrastructure regression proof, not a `src/shared/lib/router` production owner. `.storybook/**` remains full-lane impact and fixture-source mapping stays explicit.
-
-`storybook.testUtils.ts` remains the current central mechanical Storybook behavior helper. Colocated specs may continue importing it as the S1 pilot does. Moving or replacing that helper is not required by S2 and would only add migration infrastructure without changing proof ownership.
-
-#### Migration groups
-
-Implement S2 as independently mergeable groups from current `develop`:
-
-1. **S2-A — simple owner-local UI (complete):** `mdCheckboxControlledArgs.spec.ts` and `navigationPath.spec.ts` are now `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` and `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`; their replaced registry entries are removed. The generic owner-local resolver contract remains the only ownership mechanism; no owner-specific metadata was added.
-2. **S2-B — Sheets module (complete):** `mdBottomSheetContainerKeyboardScroll.spec.ts` is now `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`; its replaced registry entry is removed. The local resolver intentionally treats `Sheets/` as the owner root, so no second mapping was added to recover the old narrower exact-file selection.
-3. **S2-C — Reorder module (complete):** all four Reorder browser specs are now distinct colocated `*.browser.spec.ts` files under `src/shared/lib/reorder`; the two replaced Reorder registry mappings are removed. The owner-local resolver intentionally selects all four for module-local changes rather than recreating the former narrower mapping split.
-4. **S2-D — Button decomposition (complete):** `md-button-family.spec.ts` is split by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; the old `storybook.smoke.spec.ts` assertion is folded into the Material Button local proof (`src/shared/ui/material/components/button/MDButton.browser.spec.ts`); legacy Button-module contracts moved to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; the shared focus-indicator integration remains one central explicit spec, `tests/e2e/storybook/focusIndicator.spec.ts`. `storybook.smoke.spec.ts` and `md-button-family.spec.ts` no longer exist, and the stale `src/shared/ui/LoadingButton/` mapping is removed. Icon Button/FAB remain outside the canonical Material `button` family, as its architecture explicitly excludes those contracts. **Historical note:** the legacy plain `MDFab` component this group's Icon Button/FAB exclusion applied to no longer exists — the `floatingActionButton` Material family migration removed it in full, including its `focusIndicator.spec.ts` cross-owner test and `tests/e2e/visual/shared-ui/md-fab-family.spec.ts` legacy-only proof (see `src/shared/ui/material/components/floatingActionButton/MIGRATION.md`). The subsequent Extended FAB family migration similarly removed `MDExtendedFab`, its central focus-indicator case, and its legacy visual proof after replacing consumers with `MDExtendedFloatingActionButton`.
-5. **S2-E — DialogForm migration and final ownership audit (complete):** `dialogFormFallbackFocus.spec.ts` is now `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving its real focus-trap browser contract and story address; the replaced explicit DialogForm mapping is removed. The remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper (`storybook.testUtils.ts`). Central discovery remains because these are real consumers.
-
-S2-A through S2-E are complete. Stage S2 is complete. Each group started from the then-current `develop` and preserved the assertions and story addresses it migrated. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
-
-**Post-S2 note (legacy MDCheckbox removal):** the S2-A entry above migrated `mdCheckboxControlledArgs.spec.ts` to `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts`, colocated with the then-current legacy `MDCheckbox` (`src/shared/ui/Checkbox/MDCheckbox.vue`). The `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`) subsequently replaced every confirmed consumer of that legacy component with the canonical `MDCheckbox` (`src/shared/ui/material/components/checkbox/`) and removed the legacy component together with its owner-local proof, including this S2-A-migrated spec. This is legacy-ownership removal following an already-completed Material family implementation, not a Stage S2 regression: the canonical Material `checkbox` family's own owner-local browser spec (`src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts`) independently satisfies the general Stage S2 owner-local convention documented above for any new ordinary component/family, and required no Stage S2 migration step of its own.
-
-#### S2 architecture constraints
-
-- Ordinary local ownership is expressed only by `*.browser.spec.ts` placement; do not add duplicate registry entries for migrated owners.
-- The owner root for a colocated spec is its containing directory. Conservative same-module over-selection is acceptable when that directory is the truthful cohesive owner; do not introduce narrower metadata solely to reduce test count.
-- Multiple browser specs in one owner directory are valid and are all selected. Reorder therefore keeps its four distinct specs.
-- A central spec is valid only for a real cross-owner or Storybook-infrastructure contract. Its explicit source mapping must remain the smallest truthful relation supported by the existing resolver.
-- `routerHarness.spec.ts` proves `.storybook/router/routerHarness.ts`; the `src/shared/lib/router` story files are fixtures, not a reason to claim shared-lib ownership.
-- Material `button` owns `MDButton`; Icon Button and FAB contracts are explicitly outside that family architecture and remain owned by the existing `src/shared/ui/Button` module until their own Material migrations occur.
-- Focus-indicator integration remains cross-owner in S2 because one State foundation is exercised against hosts from both the Material Button family and the legacy Button module. Consolidating that foundation proof is S5 work, not a prerequisite for file placement.
-- `DialogForm` fallback-focus is an ordinary component-owned browser contract, now colocated as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`; no explicit mapping remains for it.
-- `colorOwnership.spec.ts` and `overlayLifecycle.spec.ts` remain central. Creating a local copy plus a cross-owner mapping would add metadata without reducing ownership complexity.
-- Keep the current `openStory` helper and one Playwright Storybook runner; no new runner, generic registry DSL, mapping layer, or test helper framework.
-- Do not change browser project coverage, screenshots, visual baselines, story titles/IDs, app E2E, or production behavior in S2.
-- Do not use S2 to remove computed-style/appearance assertions or other existing proof merely because S5 may later choose a lower or different owner. S2 first preserves coverage while fixing physical and impact ownership.
-
-#### Acceptance
-
-S2 is complete:
-
-- every ordinary component/family/module browser contract listed above, including `DialogForm` fallback-focus, is colocated with its truthful owner;
-- the old `storybook.smoke.spec.ts` infrastructure classification no longer exists and its MDButton assertion remains protected;
-- the mixed Button suite no longer gives Material Button, legacy Button, and focus-indicator foundation one false owner;
-- local owners have no duplicate explicit registry mapping;
-- `dialogFormFallbackFocus.spec.ts` is removed from the central directory after its assertion moved to `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, and its explicit mapping is removed;
-- the remaining central specs are only `colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, and `routerHarness.spec.ts`, each with truthful explicit or infrastructure ownership;
-- the stale `src/shared/ui/LoadingButton/` behavior mapping is gone;
-- coverage and story addresses are preserved during migration; proof cleanup remains deferred to S5;
-- add/modify/delete/rename behavior for colocated specs remains fail closed as established by S1;
-- complete `storybook-behavior` passes after every group and after the final ownership audit;
-- legacy central discovery remains enabled while the justified central specs above exist.
-
-The next authorized Storybook migration stage is **S3 — visual discovery and snapshot pilot**.
-
-### Stage S3 — visual discovery and snapshot pilot
-
-Status: **complete**.
-
-Authorized and completed pilot: Loading Indicator Material family only.
-
-Final executable S3 state:
-
-- one visual Playwright configuration discovers both legacy central specs (`tests/e2e/visual/**/*.spec.ts`) and owner-local `src/**/*.visual.spec.ts`, so discovery is mixed legacy plus colocated;
-- `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated beside the Loading Indicator owner under `src/shared/ui/material/components/loadingIndicator/`, using the `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention; the `sizes` and `colors` baselines moved byte-for-byte unchanged from their prior central location; the `legacy-surface` baseline was intentionally reaccepted because the owner-local `LegacySurfaceIsolation` fixture removes the incidental Button-owned `visual-checker-backdrop` composition present in the old central fixture — the changed pixels are incidental background composition, not a Loading Indicator production-color change, and the Loading Indicator visual contract itself remains standalone primary-color isolation inside a legacy Material surface; no production Loading Indicator behavior, token, or API changed;
-- the legacy-surface screenshot opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned `LegacySurfaceColorOwnership` story, so no Button-owned visual fixture dependency remains;
-- production/Storybook TypeScript excludes colocated visual specs while tooling type-check includes them; Vitest automatic scope also excludes them;
-- resolver ownership (`scripts/lib/visualRisk.ts`) is derived from the filesystem rather than a registry: an owner path selects every applicable colocated visual spec, a baseline resolves to its exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker, and add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved;
-- the old central Loading Indicator visual spec and snapshot directory are removed; legacy centralized specs/baselines for all other owners remain intact and unaffected, with full-lane fallback;
-- unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve full visual fallback so S3 does not cause visual checks to disappear;
-- global theme/font/Storybook/visual infrastructure (`playwright.visual.config.ts`, `.storybook/**`, base/font styling, the shared Playwright container runner, `scripts/lib/visualRisk.ts` itself) remains full-lane fallback.
-
-Forbidden during S3:
-
-- migrating another visual owner;
-- Stage S4 work;
-- changing accepted screenshot bytes merely because paths moved;
-- renaming stories/titles;
-- changing Loading Indicator production behavior/API/tokens;
-- changing Button behavior or Button visual proof;
-- removing legacy central visual discovery.
-
-The next authorized Storybook migration stage is **S4 — remaining visual migration**.
-
-### Stage S4 — remaining visual migration
-
-Status: **in progress**.
-
-Move remaining UI-owned visual specs and baselines after S3 is proven.
-
-Rules:
-
-- ordinary owner-local visual relations use colocation convention;
-- non-local/cross-cutting impact uses explicit mapping or full fallback;
-- do not rename stories/titles merely as part of file movement;
-- preserve exact intended screenshot coverage before deleting old baseline paths;
-- do not create an S4 ownership-only move into a legacy Material owner that is expected to be replaced by its canonical Material family migration;
-- canonical Material migration must rehome surviving family proof directly to the final owner and remove obsolete legacy proof in the same workflow; S4 handles durable owners or already-migrated families with leftover central proof.
-
-#### S4-A — Chips visual ownership (complete)
-
-Authorized and completed group: Chips shared UI module only.
-
-Final executable S4-A state:
-
-- `MDChip visual states match baseline` and `MDChip interaction states match baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/Chips/MDChip.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
-- both baselines (`md-chip-states-linux.png`, `md-chip-interaction-states-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/Chips/MDChip.visual.spec.ts-snapshots/`;
-- `src/shared/ui/Chips/MDChip.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
-- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDCheckbox, MDSwitch, MDCard, MDStateLayer, MarkdownContent);
-- no new resolver mapping, registry, or Chips-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
-
-#### S4-B — MDCheckbox visual ownership (complete, historical — legacy component removed)
-
-Authorized and completed group: MDCheckbox shared UI module only. **Historical note:** the legacy `src/shared/ui/Checkbox` module this group covered, including the owner-local visual spec and baselines below, was subsequently removed in full by the `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`), which replaced every confirmed consumer with the canonical `MDCheckbox` (`src/shared/ui/material/components/checkbox/`). The canonical Material `checkbox` family was never itself one of the Stage S3/S4 owner-local-authorized visual groups (only Loading Indicator, Chips, and this now-removed legacy MDCheckbox were authorized here). Instead, mirroring the Stage S4-D (MDSwitch) precedent, the canonical Material `checkbox` family established its own owner-local visual ownership directly through its own Material family migration workflow — `src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts` with colocated `MDCheckbox.visual.spec.ts-snapshots/` — not through a separate S4 authorization step. The legacy central `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` and its snapshot directory are removed. The S4-B record below remains as the historical account of the legacy component's now-removed owner-local visual proof; it does not describe current executable state for `checkbox`.
-
-Final executable S4-B state:
-
-- `MDCheckbox visual states match baseline` and `MDCheckbox interaction states match baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/Checkbox/MDCheckbox.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
-- both active baselines (`md-checkbox-states-linux.png`, `md-checkbox-interaction-states-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/Checkbox/MDCheckbox.visual.spec.ts-snapshots/`;
-- `src/shared/ui/Checkbox/MDCheckbox.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
-- three orphan baselines with no current visual assertion (`md-checkbox-interaction-states-default-linux.png`, `md-checkbox-interaction-states-pressed-linux.png`, `md-checkbox-interaction-states-readonly-linux.png`) are deleted rather than migrated;
-- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDSwitch, MDCard, MDStateLayer, MarkdownContent);
-- no new resolver mapping, registry, or Checkbox-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
-
-#### S4-C — MarkdownContent visual ownership (complete)
-
-Authorized and completed group: MarkdownContent shared UI module only.
-
-Final executable S4-C state:
-
-- `MarkdownContent wide table matches baseline` and `MarkdownContent variants overview matches baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
-- both active baselines (`markdown-content-wide-table-linux.png`, `markdown-content-variants-overview-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts-snapshots/`;
-- `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
-- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDCard, MDStateLayer);
-- MDSwitch remains centrally executed in `tests/e2e/visual/shared-ui/md-switch.spec.ts` after its Material migration; S4-C does not migrate or reclassify that proof;
-- the MDCard dependency present in some MarkdownContent stories remains covered by the existing broad visual fallback; no MDCard-specific mapping or resolver change was made;
-- no new resolver mapping, registry, or MarkdownContent-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
-
-#### S4-D — MDSwitch visual ownership (complete)
-
-Authorized and completed group: Material Switch family only.
-
-Final executable S4-D state:
-
-- `MDSwitch selected, disabled, and presentation states match the canonical baseline` moved from `tests/e2e/visual/shared-ui/md-switch.spec.ts` to `src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts`, unchanged in test title, story ID, selector, screenshot name, and visual meaning;
-- the active baseline `md-switch-states-linux.png` moved byte-for-byte unchanged to `src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts-snapshots/`;
-- `MDSwitch.visual.spec.ts` imports the existing central visual `openStory` helper directly rather than duplicating it;
-- the replaced central MDSwitch visual spec and its snapshot directory are removed;
-- the existing `MDSwitch.browser.spec.ts` remains the owner of interaction, accessibility, presentation, and hit-area browser behavior and is unchanged by S4-D;
-- no production Switch file, story, resolver, registry, or explicit mapping changed; owner-local selection resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
-
-#### S4-E — MDButton visual ownership (complete)
-
-Authorized and completed group: canonical Material `button` family only.
-
-Final executable S4-E state:
-
-- canonical Material `MDButton` (`src/shared/ui/material/components/button/`) is the owner; the central Button visual spec moved from `tests/e2e/visual/shared-ui/md-button.spec.ts` to `src/shared/ui/material/components/button/MDButton.visual.spec.ts`, unchanged in test titles, story IDs, and screenshot assertions;
-- eleven baselines (`md-button-states-linux.png`, `md-button-size-geometry-linux.png`, `md-button-loading-linux.png`, `md-button-hover-linux.png`, `md-button-focus-linux.png`, `md-button-pointer-pressed-linux.png`, `md-button-space-pressed-linux.png`, `md-button-contextual-resting-linux.png`, `md-button-contextual-hover-linux.png`, `md-button-contextual-focus-linux.png`, `md-button-contextual-pressed-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/material/components/button/MDButton.visual.spec.ts-snapshots/`;
-- `md-button-legacy-surface-linux.png` was intentionally reaccepted because the Button-owned `LegacySurfaceColorOwnership` screenshot target now excludes the standalone `MDLoadingIndicator` dependency while the same story retains that fixture outside the screenshot target for cascade browser proof; the remaining Button-owned pixels, including Button's own `Surface loading` composition, are unchanged;
-- Button's own internal Loading Indicator composition (`MDButton loading`) remains covered by `md-button-loading-linux.png`, unaffected by the legacy-surface fixture cleanup;
-- `src/shared/ui/material/components/button/MDButton.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
-- the replaced central Button visual spec and its snapshot directory are removed;
-- no new resolver mapping, registry, or Button-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
-
-Later S4 groups remain pending. Stage S4 as a whole is not complete.
-
-Acceptance before removing legacy visual discovery:
-
-- every visual spec/baseline has deterministic ownership or justified broad fallback;
-- add/modify/delete/rename cases are covered by resolver tests;
-- complete visual lane passes with the new ownership model;
-- no behavior success criteria remain necessary to keep a baseline meaningful.
-
-### Stage S5 — proof ownership cleanup
-
-Status: **in progress; V3C-A Lists is the current authorized group**.
-
-Proof cleanup may proceed owner-by-owner once the proof types needed by that owner are executable and ownership can be represented truthfully. Completion of unrelated S4 visual-colocation groups is not a prerequisite. This does not authorize opportunistic visual colocation: an owner without explicit S4/Material visual migration authorization keeps surviving visual proof in the current central visual location.
-
-For each authorized owner:
-
-- move reusable browser interaction out of visual specs;
-- move deterministic/component contracts to the lowest faithful Vitest owner;
-- move complete product outcomes to application E2E only when product composition owns them;
-- remove proven duplicate assertions;
-- consolidate generic foundation behavior at foundation owners when the contract is actually foundation-owned;
-- make browser helpers strict rather than recovery-oriented;
-- keep surviving visual assertions as screenshot-only proof in the owner's currently authorized visual location.
-
-This stage changes proof ownership, not resolver architecture.
-
-#### V3C-A — Lists proof ownership cleanup (authorized)
-
-Architecture: `docs/testing/v3c-visual-proof-ownership.md`.
-
-Scope:
-
-- `tests/e2e/visual/shared-ui/md-list.spec.ts`;
-- `tests/e2e/visual/shared-ui/md-list-material-contract.ts`;
-- active `md-list.spec.ts-snapshots`;
-- existing `src/shared/ui/Lists/*.test.ts` owners;
-- Lists stories/fixtures required by surviving proof.
-
-Final ownership:
-
-- reusable real-browser Lists behavior -> `src/shared/ui/Lists/MDList.browser.spec.ts` using existing filesystem-derived owner-local Storybook behavior discovery, with no explicit central mapping;
-- Vue/native/ARIA/component contracts -> existing colocated Lists component tests;
-- distinct accepted stable appearance -> surviving screenshot assertions in the current central `tests/e2e/visual/shared-ui/md-list.spec.ts` location;
-- complete product scenarios -> application E2E only when a real cross-product scenario is actually being proved; Storybook fixtures that resemble Settings, Repository Explorer, EntryAddSheet, or Home are not product proof by naming alone.
-
-Constraints:
-
-- production behavior and public APIs do not change for proof migration;
-- do not move Lists visual proof to `src/**/*.visual.spec.ts` in V3C-A;
-- do not add verifier/resolver modes, registries, mappings, jobs, workers, retries, sleeps, timeout inflation, or weaker assertions;
-- do not preserve private implementation assertions or Material value tables merely to retain legacy test volume;
-- do not delete a unique required contract until its correct primary owner exists and passes;
-- do not include `md-icon-button`, MDCard/StateLayer, MDMenu, FabContainer, or other V3C candidates in the Lists batch.
-
-Acceptance:
-
-- the remaining Lists visual spec contains only deterministic screenshot preparation and screenshot assertions;
-- every surviving non-visual Lists contract has one correct primary component/browser/product owner;
-- no duplicate central mapping is introduced for `MDList.browser.spec.ts`;
-- surviving baselines are the minimal distinct accepted visual set after explicit duplicate review;
-- required task-specific component, Storybook behavior, and visual proof is present and any risk-specific focused verification required by the V3C-A architecture passes; exact-head GitHub CI is the final automatic repository gate;
-- before/after visual and Storybook behavior counts/timings plus aggregate browser execution impact are recorded against the V3 baseline.
-
-### Stage S6 — Storybook catalogue normalization
-
-Normalize titles only after spec/baseline ownership is stable.
-
-Target hierarchy:
+Supported public entry points are:
 
 ```text
-Material 3/Components/<Family>/<Component>
-Material 3/Patterns/<Pattern>
-Shared/<Slice>/<Owner>
-Entities/<Slice>/<Owner>
-Features/<Slice>/<Owner>
-Widgets/<Slice>/<Owner>
-Pages/<Slice>/<Owner>
+pnpm verify
+pnpm verify --base origin/develop
+pnpm verify --only <type>
+pnpm verify --files <paths...>
+pnpm verify --only <type> --files <paths...>
+pnpm verify --full
+pnpm verify:status
+pnpm verify:resume
+pnpm verify --fix-only
 ```
 
-Treat title/export renames as address changes because they may alter story IDs, URLs, and visual baselines.
+`--only` accepts verification types, never private planner leaves. `--full` is complete release-grade full-project verification and rejects narrowing combinations such as `--full --only` and `--full --files`. There is no public `release` type and no `verify:release` alias.
 
-## Other testing migration work
+## Current ownership
 
-The Storybook sequence does not replace the remaining project-wide migration.
+- **Static:** formatting, linting, type-checking, Storybook buildability, release/build/config/artifact invariants, and other deterministic repository checks. PR release-version policy is not affected/default static planning: the independent PR-only `release-version` CI job owns that merge policy, while literal `pnpm verify --full` retains version validation as a private static leaf.
+- **Unit:** Vitest owns related/affected dependency selection, with safe full-unit fallback when the relation cannot be represented reliably.
+- **Behavior:** owner-local `*.behavior.spec.ts` Playwright proof for isolated interactive UI behavior. Storybook infrastructure behavior may live under `.storybook/**/*.behavior.spec.ts`.
+- **Visual:** owner-local `*.visual.spec.ts` proof with colocated baselines.
+- **Browser integration:** owner-local `*.browser-integration.spec.ts` plus the explicitly bounded exceptional release/runtime inventory. Verifier-managed Playwright remains container-only.
+- **Performance:** a valid public type with an intentionally empty persistent inventory until a concrete measurable requirement is registered.
+- **Mutation:** one explicit four-target registry is the sole automatic mutation ownership source; `stryker.config.mjs` derives the mutation inventory from it.
+- **E2E:** ordinary application proof uses structural `tests/e2e/pages/<Owner>/**` and `tests/e2e/widgets/<Owner>/**` ownership. Production reachability uses `dependency-cruiser`; there is no manual production-path -> ordinary-E2E mapping registry.
 
-### Common lane-plan contract
+## Verification ownership
 
-Migrate resolvers to the small mechanical result shape:
+Verification has three distinct execution purposes:
 
-- `skip` with reasons;
-- `focused` with non-empty exact inputs and reasons;
-- `full` with reasons;
-- `invalid` with blocking errors.
+1. focused verifier-managed checks are implementation and diagnostic feedback;
+2. ordinary PR code work ends with one cumulative coding-agent branch handoff gate against the PR base, for example `pnpm verify --base origin/develop`;
+3. GitHub CI on the exact published head is the architect-owned repository merge gate.
 
-Do not add product semantics to the shared helper.
+The branch handoff gate is diff-aware and is not `pnpm verify --full`. A clean branch handoff does not replace exact-head CI, and green CI does not replace architecture/ownership review.
 
-### Static verification
+## Removed compatibility
 
-Status-aware static planning must ensure:
+Do not restore:
 
-- removed files never become formatter/linter targets;
-- typed add/modify/delete/rename cannot silently skip required type-check;
-- instruction-tree changes validate agent compatibility;
-- shared static config selects the complete owning check.
+- public low-level `--only` labels;
+- `verify:release` or a public `release` type;
+- ordinary `*.browser.spec.ts` discovery;
+- central ordinary Storybook behavior/visual ownership;
+- root-level ordinary application E2E ownership;
+- `E2E_SCENARIO_SCOPES` or another production-path -> ordinary-E2E registry;
+- host Playwright execution for verifier-managed discovery/proof;
+- unit adjacency or a second dependency graph for unit selection;
+- mutation adjacency or duplicate mutation registries;
+- compatibility layers whose only purpose is preserving a removed migration-era command/location.
 
-### Unit selection
+Internal release-named scripts and private proof leaves remain where they own real build, artifact, service-worker, fresh-container, cross-engine, publication, logging, timeout, or lock semantics.
 
-Durable target:
+## Maintenance
 
-1. directly changed tests;
-2. deterministic snapshot ownership;
-3. changed source/test-support passed to supported Vitest related resolution;
-4. full fallback for deleted/renamed/dynamic/global relations that cannot be represented safely.
-
-Do not build a second persistent dependency graph.
-
-### Application E2E
-
-Application E2E stays centralized by design.
-
-- changed app spec selects itself;
-- stable product source-to-scenario impact remains explicit;
-- bootstrap, cross-cutting service/worker protocols, E2E infrastructure, and unknown relevant product source use full fallback;
-- common helpers default to full E2E unless every consumer is explicit and validated;
-- project applicability is persistent spec-level metadata, independent from source-impact selection; every root application E2E spec is classified as `desktop`, `mobile`, or `both`; verifier validation fails closed on inventory/metadata drift, while direct Playwright leaves an unclassified spec eligible for both projects;
-- changing an existing spec's applicability requires a dedicated audited reclassification that preserves its required platform semantics and explicit mobile-risk coverage.
-
-### Release impact
-
-Focused release selection remains separate work. It must eventually select exact build/artifact/release-smoke proof for known release-sensitive changes while retaining `pnpm verify:release` as the unconditional release-sensitive final gate when required.
-
-### Mutation
-
-Persistent mutation ownership requires explicit high-risk source/test targets and validation. Preserve current legacy mutation behavior until its replacement is complete.
-
-### Performance
-
-Do not create a performance registry without a durable named budget. One-off optimization claims remain task-specific reproducible measurements.
-
-## Completion criteria
-
-The testing migration is complete when:
-
-- changed-path planning preserves add/modify/delete/rename status;
-- migrated resolvers use inspectable `skip | focused | full | invalid` plans;
-- static checks handle removed/moved files safely;
-- unit selection uses direct tests, snapshot ownership, supported related resolution, and safe fallbacks;
-- Storybook provides the documented Playground/Controls round-trip, isolated preview styling, `System`/`Light`/`Dark` visual sandbox, deterministic navigation, selective public Autodocs, and isolated reusable routing workbench without product bootstrap;
-- relevant Storybook story/config changes have verifier-owned static-build proof independent of whether a browser/visual lane is otherwise selected;
-- equivalent deterministic Storybook static compilation is reused within one automatic verification run without merging behavior/visual proof ownership; explicit prebuilt reuse fails closed, while standalone focused browser/visual commands remain autonomous;
-- Storybook browser/visual proof is owned by the truthful UI owner and physically colocated after its lane supports discovery;
-- ordinary colocated Storybook relations do not require duplicate registry metadata;
-- explicit mappings remain only for truthful non-local/cross-cutting relations and centralized product scenarios;
-- Storybook infrastructure proof is explicitly justified, and component-owned proof is not mislabeled as infrastructure smoke;
-- visual baseline ownership handles add/modify/delete/rename safely;
-- application E2E remains centralized and fail closed for unknown relevant product impact;
-- application E2E project applicability remains explicit, validated, and independent from source-impact selection;
-- proof ownership contains no known behavior-in-visual or product-in-component duplication;
-- focused release proof, persistent mutation ownership, and any later project-applicability narrowing satisfy their own acceptance gates;
-- target and current executable state are no longer different, allowing transitional Storybook location notes to be removed.
+Future verification changes start from `docs/testing/architecture.md`, current repository rules, and current implementation/tests. Do not add new migration-pass documents for routine maintenance. If a future architectural change requires staged migration, create only the minimum temporary control artifacts needed for that active change and remove them when the migration closes.

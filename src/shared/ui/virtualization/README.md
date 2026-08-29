@@ -268,7 +268,7 @@ Product-level responsiveness must be measured in the real consumer; the shared c
 The colocated capability proof is:
 
 - `VirtualCollectionCapabilityFixture.vue`;
-- `VirtualCollectionCapability.browser.spec.ts`;
+- `VirtualCollectionCapability.behavior.spec.ts`;
 - `VirtualCollectionCapability.stories.ts`.
 
 It covers bounded mounted work, item mapping, grow/shrink measurement, stable-key remapping, non-zero `surfaceOffset`, deep extents, valid `undefined` values, remount behavior, and reactive same-root `surfaceOffset` changes while deeply scrolled.

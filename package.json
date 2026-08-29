@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.3.33",
+  "version": "0.3.34",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -18,7 +18,6 @@
     "prepare": "node .husky/install.mjs",
     "setup:git-hooks": "node .husky/install.mjs",
     "verify": "node scripts/verify.ts",
-    "verify:release": "node scripts/verify.ts --full",
     "verify:status": "node scripts/verifyStatus.ts",
     "verify:resume": "node scripts/verifyResume.ts",
     "ci:autofix": "node scripts/ciAutofix.ts",
@@ -38,6 +37,7 @@
     "test:visual": "node scripts/visual.mjs test",
     "test:visual:update": "node scripts/visual.mjs update",
     "test:storybook-behavior": "node scripts/storybookBehavior.mjs",
+    "test:browser-integration": "node scripts/browserIntegration.ts",
     "test": "vitest",
     "test:run": "node scripts/vitestRun.mjs",
     "test:coverage": "node scripts/vitestRun.mjs --coverage",
@@ -129,6 +129,7 @@
     "@vue/tsconfig": "^0.9.1",
     "browserslist": "^4.28.7",
     "browserslist-to-esbuild": "^2.1.1",
+    "dependency-cruiser": "^18.2.0",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^63.3.0",

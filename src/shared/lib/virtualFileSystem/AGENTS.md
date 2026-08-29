@@ -20,4 +20,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/v
 ## Constraints
 
 - Event and lock changes affect every filesystem-backed flow.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed VFS tests for the touched path, lock, and event behavior, plus browser-level checks when concurrency or event delivery changed.
+- Minimum verification: run `pnpm verify --only static`, then run focused verify-managed VFS tests for the touched path, lock, and event behavior, plus browser-level checks when concurrency or event delivery changed.

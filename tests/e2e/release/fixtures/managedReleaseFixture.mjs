@@ -7,7 +7,7 @@
  * (`scripts/release/artifactServer.mjs`).
  *
  * Never used by the real application build or deploy pipeline — only by
- * `tests/e2e/release/managedUpdates*.spec.ts`.
+ * `src/shared/service/appUpdate/managedUpdates*.browser-integration.spec.ts`.
  *
  * Running a real `vite build` for every logical "release" these specs need
  * would make the whole `managed-updates` suite prohibitively slow (real
@@ -326,7 +326,8 @@ export async function buildAndPublishBrokenManagedRelease({
  * artifact as an ordinary unmanaged stable publish — no retained release
  * tree, no watchdog — matching exactly what a real installed user's
  * browser already has before the managed pinned application updates
- * feature. Only for `tests/e2e/release/managedUpdatesMigration.spec.ts`.
+ * feature. Only for
+ * `src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts`.
  *
  * Clones the cached legacy template before applying it: the template
  * itself must remain an exact, unmodified frozen production build across

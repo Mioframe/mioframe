@@ -96,7 +96,11 @@ export default defineConfigWithVueTs(
 
   {
     ...pluginPlaywright.configs['flat/recommended'],
-    files: ['tests/e2e/**/*.ts', 'src/**/*.browser.spec.ts'],
+    files: [
+      'tests/e2e/**/*.ts',
+      'src/**/*.behavior.spec.ts',
+      'src/**/*.browser-integration.spec.ts',
+    ],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.node.json'],
@@ -115,8 +119,9 @@ export default defineConfigWithVueTs(
       '**/*.test.{ts,mts,tsx}',
       '**/*.testUtils.{ts,mts,tsx}',
       '**/*.stories.{ts,mts,tsx}',
-      '**/*.browser.spec.{ts,mts,tsx}',
-      '**/*.visual.spec.{ts,mts,tsx}',
+      '**/*.behavior.spec.ts',
+      '**/*.visual.spec.ts',
+      '**/*.browser-integration.spec.ts',
     ],
     name: 'app/vue-ui-imperative-dom-communication',
     rules: {

@@ -78,7 +78,7 @@ describe('resumeVerification', () => {
     const metadata: LockMetadata = {
       kind: 'verify',
       label: 'verify',
-      activeCommand: 'pnpm verify --only unit-tests',
+      activeCommand: 'pnpm verify --only unit',
       command: 'pnpm verify --base origin/develop',
       cwd: '/repo',
       heartbeatAt: new Date().toISOString(),
@@ -105,7 +105,7 @@ describe('resumeVerification', () => {
 
     expect(exitCode).toBe(1);
     expect(fs.existsSync(stateDir)).toBe(true);
-    expect(errorLogs.join('\n')).toContain('pnpm verify --only unit-tests');
+    expect(errorLogs.join('\n')).toContain('pnpm verify --only unit');
     expect(forbiddenTermsIn(errorLogs.join('\n'))).toEqual([]);
   });
 

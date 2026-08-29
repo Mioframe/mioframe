@@ -10,7 +10,7 @@ const viteBin = './node_modules/.bin/vite';
 // Firefox is required only for the database native-table virtualization capability because dynamic
 // table-row measurement is the confirmed engine-specific risk.
 const DATABASE_VIRTUALIZATION_CAPABILITY_SPECS = [
-  'src/entities/databaseData/DatabaseVirtualizationCapability.browser.spec.ts',
+  'src/entities/databaseData/DatabaseVirtualizationCapability.behavior.spec.ts',
 ];
 
 const sharedUse = {
@@ -28,6 +28,13 @@ const sharedUse = {
 
 export default defineConfig({
   testDir: '.',
+  // Owner-local behavior discovery (see docs/testing/architecture.md):
+  // `*.behavior.spec.ts` is colocated with its truthful UI owner under
+  // `src/`, plus Storybook-infrastructure owners such as the router harness
+  // under `.storybook/`. The legacy `*.browser.spec.ts` suffix and the
+  // central `tests/e2e/storybook/**` spec location have no remaining
+  // consumer.
+  testMatch: ['src/**/*.behavior.spec.ts', '.storybook/**/*.behavior.spec.ts'],
   respectGitIgnore: true,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -39,7 +46,6 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testMatch: ['tests/e2e/storybook/**/*.spec.ts', 'src/**/*.browser.spec.ts'],
       use: { ...devices['Desktop Chrome'], ...sharedUse, channel: 'chromium' },
     },
     {

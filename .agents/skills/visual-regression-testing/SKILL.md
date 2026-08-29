@@ -5,7 +5,7 @@ description: 'Use for canonical Storybook visual references, bounded screenshots
 
 # Visual regression testing
 
-Follow `docs/testing/architecture.md`. For Storybook ownership, story authoring, and target placement also follow `docs/testing/storybook.md` and the current executable state in `docs/testing/migration-plan.md`.
+Follow `docs/testing/architecture.md`. For Storybook ownership, story authoring, and current placement also follow `docs/testing/storybook.md` and the executable state in `docs/testing/migration-plan.md`.
 
 Visual regression detects unintended changes in accepted stable appearance. It does not prove component API, browser interaction, accessibility behavior, motion lifecycle, or Material correctness.
 
@@ -22,9 +22,7 @@ The truthful UI owner owns visual proof:
 - Material: the Material family selected by family architecture;
 - other UI: the current FSD component or cohesive local UI module.
 
-The durable target is an explicit owner-local `*.visual.spec.ts` with deterministic owner-local snapshots. Physical placement must follow `docs/testing/migration-plan.md`.
-
-Owners explicitly authorized/migrated by `docs/testing/migration-plan.md` use owner-local `*.visual.spec.ts` and colocated snapshots. Every other visual owner remains in the current central visual location with the current resolver relation until its own migration stage authorizes it. Do not create a colocated visual spec for an owner the migration plan has not authorized, and do not migrate another owner opportunistically.
+Current visual proof is explicit owner-local `*.visual.spec.ts` with deterministic colocated snapshots. Central `tests/e2e/visual/**` discovery has no remaining consumer and must not be restored.
 
 ## Canonical references
 
@@ -54,8 +52,8 @@ A new baseline does not approve a changed result by itself. Current Mioframe com
 4. Settle animation without claiming to test transition behavior.
 5. Wait for fonts, icons, and fixture readiness.
 6. Capture the smallest readable surface.
-7. Maintain current ownership metadata: local convention when implemented, otherwise the smallest truthful explicit/transitional relation.
-8. Confirm add/move/remove/rename of specs/baselines preserves deterministic ownership or full visual fallback.
+7. Keep spec and snapshot ownership colocated with the truthful UI owner.
+8. Confirm add/move/remove/rename of specs/baselines preserves deterministic ownership or safe full-visual fallback.
 9. Inspect every intentional baseline change.
 10. Run focused verifier-managed visual proof and return to the top-level task.
 11. Prepare operator evidence only when the owning Material workflow requires it for a concrete visual/motion concern.
@@ -79,14 +77,12 @@ Do not create forced visual states and present them as proof of inaccessible pri
 For `visual`:
 
 - a changed visual spec selects itself;
-- use deterministic owner-local relation when the current resolver supports it, for owners `docs/testing/migration-plan.md` records as authorized/migrated;
-- use explicit mapping only for truthful non-local family/module/cross-cutting visible impact;
-- for unmigrated owners, changes remain in the legacy central location and select the full visual lane rather than a false local relation;
-- do not put visual spec paths into source prefixes merely to group tests;
-- theme, fonts, icons, Storybook renderer/config, and broad shared visual helpers default to full visual unless all consumers are explicit, small, stable, and validated;
-- unresolved added/modified/removed/moved baseline ownership selects full visual rather than silently skipping.
+- ordinary local source/story/spec/baseline relations derive from current owner-local placement;
+- theme, fonts, icons, Storybook renderer/config, shared Playwright/Vite execution inputs, and broad shared visual helpers widen to full visual unless all consumers are explicit, small, stable, and validated;
+- unresolved added/modified/removed/moved ownership widens safely or fails structural validation rather than silently skipping;
+- do not add explicit mapping metadata for an ordinary relation already expressed by colocation.
 
-The colocated snapshot convention is documented in `docs/testing/storybook.md`. Use it for owners `docs/testing/migration-plan.md` has already authorized/migrated; preserve the current central executable convention for every other owner.
+The colocated snapshot convention is documented in `docs/testing/storybook.md`.
 
 ## Operator Material review
 
@@ -111,13 +107,13 @@ Preserve applicable `--profile` and `--files` scope when rerunning visual verifi
 ## Forbidden
 
 - behavior assertions in visual specs;
-- a colocated visual spec for an owner `docs/testing/migration-plan.md` has not authorized/migrated;
+- central visual ownership or restored `tests/e2e/visual/**` discovery;
 - screenshots broader than the named visible contract;
 - unexplained baseline changes;
 - token-table or implementation-detail matrices;
 - equivalent combinations that create snapshot bloat;
 - forced states presented as motion proof;
 - ceremonial matrices for simple components;
-- duplicate registry metadata for a relation already expressed by supported local ownership;
+- duplicate registry metadata for a relation already expressed by current local ownership;
 - stale or semantically overloaded impact mappings;
 - exhaustive coverage of unchanged third-party renderer surface.

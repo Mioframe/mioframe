@@ -1,17 +1,17 @@
 ---
 name: unit-testing
-description: 'Use for deterministic pure, domain, service, storage, CRDT, validation, migration, normalization, filtering, sorting, matching, transformation, and module-boundary tests in the unit-tests lane.'
+description: 'Use for deterministic pure, domain, service, storage, CRDT, validation, migration, normalization, filtering, sorting, matching, transformation, and module-boundary tests in the unit verification type.'
 ---
 
 # Unit testing workflow
 
-Follow `docs/testing/architecture.md`. This skill creates deterministic proof in the `unit-tests` lane. Use `component-contract-testing` for Vue public contracts and `ui-browser-behavior` for real browser semantics.
+Follow `docs/testing/architecture.md`. This skill creates deterministic proof in the `unit` verification type. Use `component-contract-testing` for Vue public contracts and `ui-browser-behavior` for real browser semantics.
 
 ## Activation
 
 Use when accepted behavior can be proved without browser rendering or a complete product flow, including pure helpers, schemas, state transitions, migrations, deterministic services/storage/CRDT/worker boundaries, and multi-module deterministic outcomes.
 
-Do not describe service, storage, or CRDT boundary tests as pure behavior when they depend on owned state or collaboration. They remain deterministic behavior in the same execution lane.
+Do not describe service, storage, or CRDT boundary tests as pure behavior when they depend on owned state or collaboration. They remain deterministic behavior in the same verification type.
 
 ## Workflow
 
@@ -22,7 +22,7 @@ Do not describe service, storage, or CRDT boundary tests as pure behavior when t
 5. Mock only external or nondeterministic boundaries such as time, network, browser capability, provider client, process environment, or storage adapter.
 6. Keep fixtures local and minimal.
 7. Add imports that truthfully connect the test to the owned source; do not add artificial imports only for resolver selection.
-8. Run focused `unit-tests` and return to the top-level workflow.
+8. Run focused `unit` verification and return to the top-level workflow.
 9. Use `mutation-testing` only for registered or explicitly audited high-risk logic.
 
 ## Assertions
@@ -34,10 +34,10 @@ Avoid private methods, incidental call order, broad non-contractual snapshots, f
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <exact-owning-test-paths...>
+pnpm verify --only unit --files <exact-owning-test-or-source-paths...>
 ```
 
-Until unit-impact migration is implemented, prefer exact owning test files. A production source path is valid only when the current relation is confirmed.
+The current unit planner uses Vitest-native related/affected resolution for truthful source-to-test relationships and safe full-unit fallback when a relation cannot be established. Prefer exact owning paths for focused feedback; do not add artificial imports or a second graph to influence selection.
 
 After focused proof is complete, return the implementation to its owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate. Do not require a broad local `pnpm verify` merely to complete this skill.
 

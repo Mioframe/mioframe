@@ -35,6 +35,31 @@ describe('isStorybookBuildRelevantFile', () => {
     expect(isStorybookBuildRelevantFile('src/shared/ui/Checkbox/MDCheckbox.test.ts')).toBe(false);
     expect(isStorybookBuildRelevantFile('README.md')).toBe(false);
   });
+
+  it('matches the shared Vite build inputs', () => {
+    expect(isStorybookBuildRelevantFile('postcss.config.js')).toBe(true);
+    expect(isStorybookBuildRelevantFile('.browserslistrc')).toBe(true);
+    expect(isStorybookBuildRelevantFile('tsconfig.app.json')).toBe(true);
+    expect(isStorybookBuildRelevantFile('config/vueCustomElements.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('public/favicon.svg')).toBe(true);
+  });
+
+  it('excludes a proof-only file under config/**', () => {
+    expect(isStorybookBuildRelevantFile('config/plugins/base.test.ts')).toBe(false);
+  });
+
+  it('does not require the application-harness-only inputs to widen the Storybook build', () => {
+    expect(isStorybookBuildRelevantFile('index.html')).toBe(false);
+    expect(isStorybookBuildRelevantFile('pwa-assets.config.ts')).toBe(false);
+  });
+
+  it('matches the shared local-command execution boundary', () => {
+    expect(isStorybookBuildRelevantFile('scripts/lib/localCommandGuard.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('scripts/lib/commandLock.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('scripts/lib/runLocalCommand.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('scripts/lib/processResult.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('scripts/lib/signalForward.ts')).toBe(true);
+  });
 });
 
 describe('resolveStorybookBuildPlan', () => {
@@ -65,6 +90,18 @@ describe('resolveStorybookBuildPlan', () => {
 
   it('selects the full lane for a removed/renamed story file without requiring it to exist', () => {
     const plan = resolveStorybookBuildPlan(['src/shared/ui/Removed/Removed.stories.ts']);
+
+    expect(plan.mode).toBe('full');
+  });
+
+  it('selects the full lane for a shared Vite build input', () => {
+    expect(resolveStorybookBuildPlan(['postcss.config.js']).mode).toBe('full');
+    expect(resolveStorybookBuildPlan(['.browserslistrc']).mode).toBe('full');
+    expect(resolveStorybookBuildPlan(['public/favicon.svg']).mode).toBe('full');
+  });
+
+  it('selects the full lane for a shared local-command execution change', () => {
+    const plan = resolveStorybookBuildPlan(['scripts/lib/runLocalCommand.ts']);
 
     expect(plan.mode).toBe('full');
   });

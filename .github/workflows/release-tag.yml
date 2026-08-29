@@ -3,7 +3,7 @@ name: release-tag
 # Lightweight validation for vX.Y.Z tag pushes: confirms the tag matches
 # package.json's version. main was already validated by the `release` workflow
 # before the tag was created, so this does not rerun the full release gate
-# (pnpm verify:release) — no e2e, visual, mutation, artifact, or deploy steps.
+# (pnpm verify --full) — no e2e, visual, mutation, artifact, or deploy steps.
 # See docs/release.md.
 
 on:

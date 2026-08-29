@@ -11,8 +11,11 @@
     "eslint.config.*",
     "tests/**/*.ts",
     "**/*.d.mts",
-    "src/**/*.browser.spec.ts",
     "src/**/*.visual.spec.ts",
+    "src/**/*.behavior.spec.ts",
+    "src/**/*.browser-integration.spec.ts",
+    "src/**/*.performance.spec.ts",
+    ".storybook/**/*.behavior.spec.ts",
     // The canonical channel/cache/path pure contract (see its own doc
     // comment): deliberately owned by `src/` alongside its other
     // `appUpdate` runtime consumers, but has zero imports of its own, so
@@ -23,7 +26,10 @@
     // playwright.config.ts resolves per-project testIgnore from this
     // verifier-owned module; explicit entry needed for the same reason as
     // channelContract.ts above.
-    "scripts/lib/e2eProjectApplicability.ts"
+    "scripts/lib/e2eProjectApplicability.ts",
+    // MDIconButton.behavior.spec.ts's own colocated Playwright test helper;
+    // explicit entry needed for the same reason as channelContract.ts above.
+    "src/shared/ui/Button/MDIconButton.testUtils.ts"
   ],
   "compilerOptions": {
     "composite": true,

@@ -5,7 +5,7 @@ description: 'Use for narrow Vue component tests covering public render, props, 
 
 # Component contract testing
 
-Follow `docs/testing/architecture.md`. Component-contract proof runs in the `unit-tests` execution lane through Vue Test Utils.
+Follow `docs/testing/architecture.md`. Component-contract proof runs in the `unit` verification type through Vue Test Utils.
 
 For UI owners that also have Storybook stories, follow `docs/testing/storybook.md`: stories document or prepare deterministic isolated states; component assertions remain in `*.test.ts` rather than stories.
 
@@ -37,7 +37,7 @@ Use for applicable:
 8. Stub only direct dependencies whose public wiring is the assertion.
 9. Assert public output or explicit child wiring.
 10. If a Storybook story is also needed, keep it assertion-free and deterministic; do not duplicate the component contract in `play` or story code.
-11. Run focused unit/type-check feedback and return to the top-level task.
+11. Run focused unit/static feedback and return to the top-level task.
 
 ## Controlled custom-element state
 
@@ -62,7 +62,7 @@ A framework declaration may add only integration glue that the dependency cannot
 - Do not duplicate dependency literal unions or manually synchronize a complete `*Props` interface.
 - When the dependency exports no usable public type, document the exact gap and keep the local shim minimal with compile-time drift detection.
 
-Runtime unit tests do not prove type ownership. Type-check must fail when an incompatible dependency change breaks the adapter boundary.
+Runtime unit tests do not prove type ownership. Static/type-check proof must fail when an incompatible dependency change breaks the adapter boundary.
 
 ## Test-environment ownership
 
@@ -89,10 +89,10 @@ This proof type owns native semantics, explicit ARIA ownership, accessible name,
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <exact-component-or-test-paths...>
+pnpm verify --only unit --files <exact-component-or-test-paths...>
 ```
 
-Until unit-impact migration is complete, prefer the exact owning component test path when a production source path would rely on an unconfirmed relation. After focused proof is complete, return to the owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate; do not require a broad local final verification solely to complete this skill.
+The current unit planner uses Vitest-native related/affected resolution for truthful source-to-test relationships with safe fallback. Prefer exact component/test paths for focused feedback; do not add artificial relations solely to influence selection. After focused proof is complete, return to the owning workflow. For PR work, GitHub CI on the exact PR head is the authoritative repository gate; do not require a broad local final verification solely to complete this skill.
 
 ## Forbidden
 

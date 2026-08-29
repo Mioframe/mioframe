@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - Filter contract changes affect both persistence and row matching.
-- Minimum verification: run `pnpm verify --only type-check`, then save a touched filter, reopen the same view, and confirm the rendered filter structure still matches the resulting row set. Use focused verify-managed coverage where available.
+- Minimum verification: run `pnpm verify --only static`, then save a touched filter, reopen the same view, and confirm the rendered filter structure still matches the resulting row set. Use focused verify-managed coverage where available.

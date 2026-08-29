@@ -13,7 +13,6 @@ import {
   isBroadVisualRelevantPath,
   isColocatedVisualSpecPath,
   isFullVisualLanePath,
-  isLegacyVisualPath,
   isSafeVisualExclusionPath,
   resolveVisualPlan,
 } from './visualRisk.ts';
@@ -24,12 +23,12 @@ const LOADING_INDICATOR_OWNER_DIR = 'src/shared/ui/material/components/loadingIn
 const LOADING_INDICATOR_VISUAL_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.visual.spec.ts`;
 const LOADING_INDICATOR_SNAPSHOT_DIR = `${LOADING_INDICATOR_VISUAL_SPEC}-snapshots`;
 const LOADING_INDICATOR_TEST = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.test.ts`;
-const LOADING_INDICATOR_BROWSER_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.browser.spec.ts`;
+const LOADING_INDICATOR_BEHAVIOR_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.behavior.spec.ts`;
 const LOADING_INDICATOR_DOC = `${LOADING_INDICATOR_OWNER_DIR}/README.md`;
 
 const BUTTON_OWNER_DIR = 'src/shared/ui/material/components/button';
 const BUTTON_TEST = `${BUTTON_OWNER_DIR}/MDButton.test.ts`;
-const BUTTON_BROWSER_SPEC = `${BUTTON_OWNER_DIR}/MDButton.browser.spec.ts`;
+const BUTTON_BEHAVIOR_SPEC = `${BUTTON_OWNER_DIR}/MDButton.behavior.spec.ts`;
 const BUTTON_DOC = `${BUTTON_OWNER_DIR}/README.md`;
 const BUTTON_VUE = `${BUTTON_OWNER_DIR}/MDButton.vue`;
 
@@ -41,31 +40,16 @@ describe('isColocatedVisualSpecPath', () => {
     expect(isColocatedVisualSpecPath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(true);
   });
 
-  it('does not flag legacy centralized specs or non-visual src files', () => {
-    expect(isColocatedVisualSpecPath('tests/e2e/visual/shared-ui/md-button.spec.ts')).toBe(false);
+  it('does not flag non-visual src files or paths outside src/', () => {
+    expect(isColocatedVisualSpecPath('tests/e2e/visual/storybook.ts')).toBe(false);
     expect(isColocatedVisualSpecPath(`${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`)).toBe(
       false,
     );
     expect(
       isColocatedVisualSpecPath(
-        `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.browser.spec.ts`,
+        `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.behavior.spec.ts`,
       ),
     ).toBe(false);
-  });
-});
-
-describe('isLegacyVisualPath', () => {
-  it('flags any path under tests/e2e/visual/', () => {
-    expect(isLegacyVisualPath('tests/e2e/visual/shared-ui/md-button.spec.ts')).toBe(true);
-    expect(isLegacyVisualPath('tests/e2e/visual/storybook.ts')).toBe(true);
-    expect(
-      isLegacyVisualPath('tests/e2e/visual/shared-ui/md-button.spec.ts-snapshots/md-button.png'),
-    ).toBe(true);
-  });
-
-  it('does not flag colocated or unrelated paths', () => {
-    expect(isLegacyVisualPath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(false);
-    expect(isLegacyVisualPath('tests/e2e/storybook/colorOwnership.spec.ts')).toBe(false);
   });
 });
 
@@ -87,6 +71,14 @@ describe('isFullVisualLanePath', () => {
     expect(isFullVisualLanePath('.storybook/main.ts')).toBe(true);
   });
 
+  it('flags the shared Playwright command/lock/result/signal execution infrastructure', () => {
+    expect(isFullVisualLanePath('scripts/lib/localCommandGuard.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/commandLock.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/runLocalCommand.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/processResult.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/lib/signalForward.ts')).toBe(true);
+  });
+
   it('flags global app/base fonts and visual styling', () => {
     expect(isFullVisualLanePath('src/app/styles/base.css')).toBe(true);
     expect(isFullVisualLanePath('src/app/styles/fonts.css')).toBe(true);
@@ -96,17 +88,30 @@ describe('isFullVisualLanePath', () => {
     expect(isFullVisualLanePath(APP_STYLES_CSS)).toBe(false);
   });
 
-  it('flags the entire legacy central visual subtree', () => {
+  it('flags the remaining cross-owner visual openStory/stabilization helper', () => {
     expect(isFullVisualLanePath('tests/e2e/visual/storybook.ts')).toBe(true);
-    expect(isFullVisualLanePath('tests/e2e/visual/shared-ui/md-button.spec.ts')).toBe(true);
-    expect(
-      isFullVisualLanePath('tests/e2e/visual/shared-ui/md-button.spec.ts-snapshots/md-button.png'),
-    ).toBe(true);
   });
 
   it('does not flag unrelated source paths', () => {
     expect(isFullVisualLanePath('src/features/documentCreate/index.ts')).toBe(false);
     expect(isFullVisualLanePath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(false);
+  });
+
+  it('flags the shared Vite build inputs', () => {
+    expect(isFullVisualLanePath('postcss.config.js')).toBe(true);
+    expect(isFullVisualLanePath('.browserslistrc')).toBe(true);
+    expect(isFullVisualLanePath('tsconfig.app.json')).toBe(true);
+    expect(isFullVisualLanePath('config/alias.ts')).toBe(true);
+    expect(isFullVisualLanePath('public/favicon.svg')).toBe(true);
+  });
+
+  it('excludes a proof-only file under config/**', () => {
+    expect(isFullVisualLanePath('config/plugins/base.test.ts')).toBe(false);
+  });
+
+  it('does not require the application-harness-only inputs to widen the visual lane', () => {
+    expect(isFullVisualLanePath('index.html')).toBe(false);
+    expect(isFullVisualLanePath('pwa-assets.config.ts')).toBe(false);
   });
 });
 
@@ -129,12 +134,12 @@ describe('isBroadVisualRelevantPath', () => {
 
 describe('isSafeVisualExclusionPath', () => {
   it.each([
-    ['migrated owner *.test.ts', LOADING_INDICATOR_TEST],
-    ['migrated owner *.browser.spec.ts', LOADING_INDICATOR_BROWSER_SPEC],
-    ['migrated owner .md', LOADING_INDICATOR_DOC],
-    ['unmigrated shared UI *.test.ts', BUTTON_TEST],
-    ['unmigrated shared UI *.browser.spec.ts', BUTTON_BROWSER_SPEC],
-    ['unmigrated shared UI .md', BUTTON_DOC],
+    ['owner *.test.ts', LOADING_INDICATOR_TEST],
+    ['owner *.behavior.spec.ts', LOADING_INDICATOR_BEHAVIOR_SPEC],
+    ['owner .md', LOADING_INDICATOR_DOC],
+    ['another shared UI owner *.test.ts', BUTTON_TEST],
+    ['another shared UI owner *.behavior.spec.ts', BUTTON_BEHAVIOR_SPEC],
+    ['another shared UI owner .md', BUTTON_DOC],
     ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
   ])('flags %s: %s', (_description, filePath) => {
     expect(isSafeVisualExclusionPath(filePath)).toBe(true);
@@ -340,26 +345,12 @@ describe('resolveVisualPlan colocated baseline ownership', () => {
   });
 });
 
-describe('resolveVisualPlan legacy central visual execution', () => {
-  it('runs the full lane for a changed legacy central visual spec', () => {
-    const plan = resolveVisualPlan(['tests/e2e/visual/shared-ui/md-button.spec.ts']);
-
-    expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('visual infrastructure path');
-  });
-
-  it('runs the full lane for a changed legacy central visual snapshot', () => {
-    const plan = resolveVisualPlan([
-      'tests/e2e/visual/shared-ui/md-button.spec.ts-snapshots/md-button-states-linux.png',
-    ]);
-
-    expect(plan.mode).toBe('full');
-  });
-
-  it('runs the full lane for a changed legacy central visual helper', () => {
+describe('resolveVisualPlan cross-owner visual helper', () => {
+  it('runs the full lane for a changed openStory/stabilization helper', () => {
     const plan = resolveVisualPlan(['tests/e2e/visual/storybook.ts']);
 
     expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('visual infrastructure path');
   });
 });
 
@@ -388,20 +379,23 @@ describe('resolveVisualPlan global infrastructure', () => {
   it('runs the full lane for the verify planner entry point', () => {
     expect(resolveVisualPlan(['scripts/verify.ts']).mode).toBe('full');
   });
+
+  it('runs the full lane for a shared Vite build input', () => {
+    expect(resolveVisualPlan(['postcss.config.js']).mode).toBe('full');
+    expect(resolveVisualPlan(['public/favicon.svg']).mode).toBe('full');
+  });
 });
 
-describe('resolveVisualPlan unmigrated visual owners', () => {
+describe('resolveVisualPlan visual owners with no colocated spec', () => {
   it('runs the full lane for a visual-relevant shared UI change with no resolvable colocated owner', () => {
-    const plan = resolveVisualPlan(['src/shared/ui/material/components/button/MDButton.vue']);
+    const plan = resolveVisualPlan(['src/shared/ui/AppBar/MDAppBar.vue']);
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('has no resolvable colocated visual owner');
   });
 
-  it('runs the full lane for an unmigrated story change', () => {
-    const plan = resolveVisualPlan([
-      'src/shared/ui/material/components/button/MDButton.stories.ts',
-    ]);
+  it('runs the full lane for a story change with no resolvable colocated owner', () => {
+    const plan = resolveVisualPlan(['src/shared/ui/AppBar/MDAppBar.stories.ts']);
 
     expect(plan.mode).toBe('full');
   });
@@ -422,15 +416,12 @@ describe('resolveVisualPlan unmigrated visual owners', () => {
 
 describe('resolveVisualPlan safe non-visual proof/documentation exclusions', () => {
   it.each([
-    ['migrated owner *.test.ts, colocated with a visual spec', LOADING_INDICATOR_TEST],
-    [
-      'migrated owner *.browser.spec.ts, colocated with a visual spec',
-      LOADING_INDICATOR_BROWSER_SPEC,
-    ],
-    ['migrated owner .md, colocated with a visual spec', LOADING_INDICATOR_DOC],
-    ['unmigrated shared UI *.test.ts, otherwise fail-closed to full', BUTTON_TEST],
-    ['unmigrated shared UI *.browser.spec.ts, otherwise fail-closed to full', BUTTON_BROWSER_SPEC],
-    ['unmigrated shared UI .md, otherwise fail-closed to full', BUTTON_DOC],
+    ['owner *.test.ts, colocated with a visual spec', LOADING_INDICATOR_TEST],
+    ['owner *.behavior.spec.ts, colocated with a visual spec', LOADING_INDICATOR_BEHAVIOR_SPEC],
+    ['owner .md, colocated with a visual spec', LOADING_INDICATOR_DOC],
+    ['another shared UI owner *.test.ts', BUTTON_TEST],
+    ['another shared UI owner *.behavior.spec.ts', BUTTON_BEHAVIOR_SPEC],
+    ['another shared UI owner .md', BUTTON_DOC],
     ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
     ['the application-shell stylesheet Storybook does not import', APP_STYLES_CSS],
   ])('skips %s: %s', (_description, filePath) => {

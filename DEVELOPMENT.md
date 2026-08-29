@@ -1,7 +1,7 @@
 # Development
 
 > **Status**: `CURRENT`  
-> **Last Updated**: 2026-08-13  
+> **Last Updated**: 2026-08-27  
 > **Testing policy**: [`docs/testing/architecture.md`](./docs/testing/architecture.md)  
 > **Testing migration state**: [`docs/testing/migration-plan.md`](./docs/testing/migration-plan.md)
 
@@ -42,10 +42,10 @@ The default development server uses HTTPS and Vite HMR.
 Use verifier-managed focused checks that faithfully prove the changed contract:
 
 ```bash
-pnpm verify --only <label> --files <exact-readable-paths...>
+pnpm verify --only <type> --files <exact-readable-paths...>
 ```
 
-Examples include `unit-tests`, `storybook-behavior`, `e2e`, `visual`, `type-check`, `eslint`, `format`, and other labels documented by the verification skill.
+`<type>` is one of the eight canonical verification types: `static`, `unit`, `behavior`, `visual`, `browser-integration`, `performance`, `mutation`, `e2e`. See the verification skill for full usage.
 
 Use automatic fixes only when appropriate:
 
@@ -55,7 +55,7 @@ pnpm verify --fix-only --base <parent-ref>
 
 Inspect resulting changes. Raw Vitest, Playwright, lint, format, mutation, or other child commands are diagnostic interfaces only unless an applicable skill explicitly allows them; accepted proof returns through `pnpm verify`.
 
-A coding agent does **not** need to run a broad local `pnpm verify --base ...` or `pnpm verify:release` merely to declare its implementation task complete. Required task-specific proof must still exist and focused checks must cover the changed contracts and risks.
+A coding agent does **not** need to run a broad local `pnpm verify --base ...` or `pnpm verify --full` merely to declare its implementation task complete. Required task-specific proof must still exist and focused checks must cover the changed contracts and risks.
 
 ### Pull-request gate
 
@@ -84,25 +84,29 @@ Broad commands remain available when they materially help diagnosis or confidenc
 
 ```bash
 pnpm verify --base origin/develop
-pnpm verify:release
+pnpm verify --full
 ```
 
-Use the actual parent branch for stacked work. `pnpm verify:release` is the full release-verification command for build/release, routing/base-path, manifest/PWA/service-worker/channel, release-script, artifact-assembly, and other release-sensitive work. These commands are not unconditional coding-agent completion gates.
+Use the actual parent branch for stacked work. `pnpm verify --full` is the release-grade full-project verification entry point: it executes every verification type, every registered mutation/performance target, and all release-sensitive static/browser/E2E proof without affected narrowing. These commands are not unconditional coding-agent completion gates.
 
 `pnpm verify` is summary-first. Failed checks print the verifier label and relevant output; rerun through the verifier boundary rather than copying a raw child command.
 
 ## Testing
 
-Use the lowest faithful proof owner defined by [`docs/testing/architecture.md`](./docs/testing/architecture.md):
+Use the lowest faithful public proof type defined by [`docs/testing/architecture.md`](./docs/testing/architecture.md):
 
-- deterministic logic and component contracts → Vitest / `unit-tests`;
-- reusable browser behavior → Storybook Playwright / `storybook-behavior`;
-- complete product scenarios → application Playwright / `e2e`;
-- stable appearance → Storybook screenshot proof / `visual`;
-- release behavior → release verification;
-- mutation audits → only for applicable high-risk deterministic logic.
+- deterministic logic and component contracts → `unit`;
+- deterministic source, workspace, configuration, build, and artifact invariants → `static`;
+- isolated reusable UI interaction in a real browser → `behavior`;
+- isolated browser/service/worker/runtime contracts → `browser-integration`;
+- bounded accepted appearance → `visual`;
+- complete product/user scenarios → `e2e`;
+- measurable performance/stress invariants → `performance`;
+- mutation audits for explicitly registered high-risk deterministic logic → `mutation`.
 
-For Storybook ownership and placement, read [`docs/testing/storybook.md`](./docs/testing/storybook.md). Current owner-local/central migration state is defined only by [`docs/testing/migration-plan.md`](./docs/testing/migration-plan.md).
+Release-oriented proof does not form a separate public category: it belongs to `static`, `browser-integration`, `e2e`, `behavior`, `visual`, `performance`, or `mutation` according to the contract it verifies.
+
+For Storybook ownership and placement, read [`docs/testing/storybook.md`](./docs/testing/storybook.md). Current executable migration state is defined by [`docs/testing/migration-plan.md`](./docs/testing/migration-plan.md).
 
 ## Common manual commands
 
@@ -127,7 +131,7 @@ pnpm lint
 pnpm format
 ```
 
-Prefer focused verifier labels for coding-agent proof and `pnpm verify --fix-only` for supported automatic fixes.
+Prefer focused verifier types for coding-agent proof and `pnpm verify --fix-only` for supported automatic fixes.
 
 ## Production build
 

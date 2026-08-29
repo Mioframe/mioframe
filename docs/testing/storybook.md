@@ -1,218 +1,266 @@
 # Storybook architecture
 
-This document defines Storybook ownership, developer-workbench behavior, file placement, and authoring rules for Mioframe. `docs/testing/architecture.md` remains the canonical project-wide policy for proof types and execution lanes. `docs/testing/migration-plan.md` records which parts of this target are already executable in the repository.
+This document defines Storybook ownership, developer-workbench behavior, story authoring, fixture isolation, catalogue conventions, and visual sandbox rules for Mioframe.
+
+`docs/testing/architecture.md` is canonical for project-wide verification types, test-spec suffixes, affected ownership, E2E ownership, and fallback. `docs/testing/migration-plan.md` records the current executable verification state.
 
 ## Goal
 
-Make Storybook a predictable interactive UI workbench and proof surface:
+Storybook is Mioframe's predictable isolated UI workbench and fixture surface:
 
-- the owner is obvious from the repository path;
+- the UI owner is obvious from repository placement;
 - reusable UI can be found through a stable catalogue and URL;
-- configurable public inputs can be explored through Controls;
-- controlled public state stays synchronized between the rendered component and Controls;
-- visual appearance can be inspected in an isolated sandbox with useful viewport/background/layout/theme tools;
-- routing-aware UI can run against an isolated real `vue-router` memory history without bootstrapping the product application;
-- public reusable UI can expose useful generated documentation without maintaining a second API description;
-- Storybook configuration and stories cannot silently become unbuildable;
-- stories and owner-specific proof stay next to the truthful owner;
-- product scenarios remain separate from reusable UI proof;
-- impact selection is deterministic and fail closed;
-- no agent invents a parallel Storybook structure, registry, control system, router, theme copy, or test system.
+- public inputs can be explored through Controls;
+- controlled public state stays synchronized between component interaction and Controls;
+- viewport/background/layout/theme can be inspected without product bootstrap;
+- routing-aware reusable UI can use an isolated real `vue-router` memory history;
+- selected public reusable UI can expose generated documentation without a second handwritten API catalogue;
+- stories provide deterministic fixtures for behavior and visual proof;
+- product scenarios remain outside Storybook;
+- agents do not invent parallel registries, routers, theme copies, or test DSLs.
 
-## Storybook role
-
-Storybook is Mioframe's supported interactive isolated shared-UI development and demonstration
-surface. The legacy application playground has been removed. It provides:
-
-- a navigable catalogue of reusable UI owners and supported states;
-- a Playground surface for live public-API exploration through args and Controls;
-- deterministic browser fixtures;
-- a viewport/background/layout/theme sandbox for manual appearance inspection;
-- generated API documentation for selected public reusable UI;
-- visual-regression inputs;
-- an isolated routing context for routing-aware reusable UI.
+## Role
 
 Storybook is not an FSD layer, product runtime, state-management layer, service boundary, or product-scenario owner.
 
-Stories prepare deterministic state. Controls modify public inputs. Tests perform assertions and merge-proof interaction.
+It provides:
 
-## Ownership
+- a catalogue of reusable UI owners/states;
+- Playground/Controls for public API exploration;
+- deterministic browser fixtures;
+- a visual inspection sandbox;
+- selective generated API documentation;
+- canonical visual-regression inputs;
+- isolated reusable routing context.
 
-The current UI owner owns its stories and owner-specific browser/visual proof.
+Stories prepare deterministic initial state. Controls modify public inputs. Automated tests own assertions and merge proof.
 
-### Material library
+## Ownership and current placement
 
-For `src/shared/ui/material`, the Material family is the owner:
+The truthful UI owner owns its stories and ordinary owner-specific behavior/visual proof.
+
+### Material family
 
 ```text
 src/shared/ui/material/components/<family>/
 ├── <Component>.vue
 ├── <Component>.test.ts
 ├── <Component>.stories.ts
-├── <Family>.browser.spec.ts       # target, optional
-├── <Family>.visual.spec.ts        # target, optional
+├── <Family>.behavior.spec.ts      # optional behavior proof
+├── <Family>.visual.spec.ts        # optional visual proof
 └── local fixture files            # rare, optional
 ```
 
 A family-level spec is valid only when the observable contract belongs to the family. Do not create one spec per Vue file mechanically.
 
-Material workflow artifacts, renderer boundaries, public API, token ownership, and family proof selection remain governed by `src/shared/ui/material/AGENTS.md`, `src/shared/ui/material/docs/architecture.md`, and the family `ARCHITECTURE.md`. This document does not duplicate that workflow.
+Material workflow artifacts, renderer boundaries, public API, token ownership, and family proof selection remain governed by Material-specific repository rules and family architecture.
 
 ### Other FSD UI
 
-Outside the Material library, the truthful FSD component or cohesive local UI module is the owner:
+Colocate with the existing truthful component or cohesive local UI module; do not restructure a module only to match an example tree.
+
+Typical shape:
 
 ```text
 src/<layer>/<slice>/ui/
 ├── <Owner>.vue
 ├── <Owner>.test.ts
 ├── <Owner>.stories.ts
-├── <Owner>.browser.spec.ts        # target, optional
-├── <Owner>.visual.spec.ts         # target, optional
+├── <Owner>.behavior.spec.ts       # optional behavior proof
+├── <Owner>.visual.spec.ts         # optional visual proof
 └── <Owner>BrowserFixture.vue      # rare, optional
 ```
 
-Do not restructure a module only to create this exact shape. Colocate with the existing truthful owner.
-
 ### Product scenarios
 
-Complete scenarios crossing several owners remain centralized under `tests/e2e`.
+Complete product scenarios are E2E, not Storybook proof.
 
-Storybook infrastructure smoke may remain centralized because it has no component, family, or FSD owner.
+Their placement and ownership follow `docs/testing/architecture.md` under `tests/e2e/pages/<Owner>/` or `tests/e2e/widgets/<Owner>/` with `*.e2e.spec.ts`.
+
+Storybook infrastructure proof may remain non-local only when it truthfully has no single UI owner. Do not use central Storybook proof as a permanent mirror for ordinary component ownership.
 
 Stories, fixtures, specs, snapshots, and test helpers are never exported from production barrels.
 
 ## Current executable state
 
-The durable target is being migrated incrementally. Do not place a test where current Playwright discovery cannot execute it, and do not migrate an owner before the current migration stage authorizes it.
+Behavior discovery is target-only:
 
-| Capability                      | Current state                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Story discovery                 | colocated `src/**/*.stories.*` is already supported                                                                                                                                                                                                                                                                                                                |
-| Controls                        | Storybook Essentials controls are available; Vue metadata drives automatic controls                                                                                                                                                                                                                                                                                |
-| Controlled args round-trip      | established as a convention on one representative component (`MDCheckbox`, via `useArgs`); repository-wide normalization is later migration work                                                                                                                                                                                                                   |
-| Viewport/background sandbox     | global desktop/mobile viewports and app/surface Material-token backgrounds are configured and freely selectable; the default is the semantic `App` background, never checkerboard                                                                                                                                                                                  |
-| Preview style isolation         | Storybook imports `src/app/styles/base.css` (fonts, normalize, Material foundation, shared MD base); the application-shell stylesheet is no longer part of the Storybook preview                                                                                                                                                                                   |
-| Theme modes                     | Material foundation owns a `data-md-color-scheme="light"`/`"dark"` seam; Storybook exposes `System`/`Light`/`Dark` through a toolbar global that only sets/removes the attribute                                                                                                                                                                                   |
-| Catalogue ordering              | deterministic native `storySort` orders the target top-level namespaces case-insensitively; existing-title normalization remains Stage S6                                                                                                                                                                                                                          |
-| Autodocs                        | selective Autodocs established on one representative public Material component (`MDButton`); broader selective adoption is later migration work                                                                                                                                                                                                                    |
-| Vue router context              | a per-story memory-history harness (`.storybook/router/routerHarness.ts`) installs a fresh isolated router per story remount via a small typed `parameters.router` shape                                                                                                                                                                                           |
-| Storybook build gate            | the verifier-managed `storybook-build` label runs `pnpm storybook:build` for changed stories/configuration, selectable via `--only storybook-build` and included in full verification                                                                                                                                                                              |
-| Vue component contract          | colocated `*.test.ts`                                                                                                                                                                                                                                                                                                                                              |
-| Storybook browser behavior spec | mixed discovery is executable: ordinary component/family/module browser contracts use filesystem-derived owner-local `src/**/*.browser.spec.ts` ownership once migrated; genuine cross-owner/infrastructure contracts remain under `tests/e2e/storybook` with explicit or infrastructure mappings                                                                  |
-| Visual spec and baseline        | mixed discovery is executable: Loading Indicator (Stage S3), Chips (S4-A), MDCheckbox (S4-B), MarkdownContent (S4-C), and MDSwitch (S4-D) use filesystem-derived owner-local `src/**/*.visual.spec.ts` ownership with colocated snapshots; all other visual specs/baselines remain under `tests/e2e/visual` with full-lane fallback until their own Stage S4 group |
-| Product E2E                     | centralized under `tests/e2e`                                                                                                                                                                                                                                                                                                                                      |
+- owner-local UI proof: `src/**/*.behavior.spec.ts`;
+- Storybook infrastructure proof with no FSD UI owner: `.storybook/**/*.behavior.spec.ts`.
 
-Browser behavior discovery is mixed by design, not by incompleteness: the runner executes both owner-local `src/**/*.browser.spec.ts` and central `tests/e2e/storybook/**/*.spec.ts`. Owner-local selection is filesystem-derived and requires no duplicate registry relation. The remaining central specs (`colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, `routerHarness.spec.ts`) are intentionally central — each proves a genuine cross-owner or Storybook-infrastructure contract, not unmigrated component proof — and keep their explicit, intentional cross-owner/infrastructure mappings, not transitional ones. `docs/testing/migration-plan.md` determines which owners are authorized to migrate at each stage.
+Visual discovery is target-only and owner-local:
 
-Visual discovery is mixed by design, following the same pattern as browser behavior discovery: the runner executes both owner-local `src/**/*.visual.spec.ts` and central `tests/e2e/visual/**/*.spec.ts`. Loading Indicator (Stage S3, complete), Chips (Stage S4-A, complete), MDCheckbox (Stage S4-B, complete), MarkdownContent (Stage S4-C, complete), and MDSwitch (Stage S4-D, complete) are the owners authorized and migrated to the owner-local convention; conceptual ownership and physical execution location still differ for every other visual spec, which remains centrally executed with full-lane fallback. The owner still determines the contract and impact relation. `docs/testing/migration-plan.md` determines which owners are authorized to migrate at each stage.
+- `src/**/*.visual.spec.ts`.
 
-Never describe a later migration capability as implemented before the current repository state supports it. In particular, owner-local browser discovery is implemented for migrated ordinary component/family/module contracts, and owner-local visual discovery is implemented for the Loading Indicator pilot (Stage S3, complete) plus Chips, MDCheckbox, MarkdownContent, and MDSwitch through Stage S4-D; remaining visual-spec/baseline migration is later Stage S4 work and is not yet implemented.
+Legacy owner-local `*.browser.spec.ts`, central `tests/e2e/storybook/**/*.spec.ts`, and central `tests/e2e/visual/**/*.spec.ts` discovery have no remaining consumer and must not be restored. Current executable compatibility and any remaining migration state are recorded in `docs/testing/migration-plan.md`; they are not a second architecture.
 
 ## Developer workbench contract
 
-A reusable public component or Material family with meaningful configurable inputs should provide one primary **Playground** story unless its public surface is genuinely trivial or another existing story already provides the same exploration value.
+A reusable public component or Material family with meaningful configurable inputs should provide one primary **Playground** story unless the public surface is genuinely trivial or another story already provides equivalent exploration value.
 
-The Playground is for interactive inspection, not proof. It should make it easy to answer:
+The Playground should make it easy to inspect:
 
-- what public inputs does this component support;
-- what does each supported option look like;
-- how does controlled public state respond to both Controls and direct UI interaction;
-- how does it respond at useful viewport sizes, surfaces, and theme modes;
-- how does routing-aware UI behave in an isolated route context;
-- what URL can another developer open to reproduce the same selected story and serializable args.
+- supported public inputs;
+- controlled state;
+- direct interaction plus Controls synchronization;
+- useful viewport sizes;
+- semantic backgrounds/surfaces;
+- `System`, `Light`, and `Dark` theme modes;
+- reusable routing behavior when applicable;
+- a stable URL for reproducing the story and serializable args.
 
-Do not create a second component API exclusively for Storybook.
+The Playground is exploratory, not merge proof.
 
-### Args and Controls
+## Args and Controls
 
-Use Storybook `args` as the source for interactive public inputs. Let Vue component metadata generate controls by default and add `argTypes` only when needed to improve a public control's type, options, label, documentation, or serializable mapping.
+Use Storybook `args` for interactive public inputs. Let Vue metadata generate Controls by default and add `argTypes` only when needed to improve public typing/options/labels/docs/serializable mapping.
 
-Controls must represent the real public component API:
+When a public controlled value changes through interaction (`modelValue`, `checked`, `selected`, or equivalent), round-trip the emitted public update back into Storybook args with the smallest story-local Storybook-supported mechanism.
 
-- expose meaningful public props that a developer may reasonably vary;
-- use select/radio controls for bounded public unions/enums;
-- use boolean, number, text, color, and date controls when they truthfully match the public type;
-- expose emitted public actions through Storybook Actions when useful for manual inspection;
-- use a small story-local mapping when a serializable control value must select a public slot/example value;
-- use dedicated stories for complex slot compositions that are not honestly representable as args.
-
-When a public controlled value can change through component interaction (`modelValue`, `checked`, `selected`, toggle state, or an equivalent controlled contract), the Playground must round-trip the emitted public update back into Storybook args through the smallest Storybook-supported story-local mechanism. Controls and the rendered component must remain synchronized after either direct UI interaction or a Controls change.
-
-Do not create a global Storybook state store for controlled args. The story only adapts the component's existing public controlled contract.
+Controls and the rendered component must remain synchronized after either direct interaction or a Controls change.
 
 Do not:
 
-- expose private renderer inputs, internal refs, private CSS variables, implementation state, or test-only switches as Controls;
-- manually duplicate every prop definition in `argTypes` when docgen already expresses it correctly;
-- add a production prop solely because Storybook Controls cannot represent a slot or complex value;
-- use Controls state as automated proof.
-
-Serializable args are allowed to participate in Storybook's URL state. Keep control values stable enough that a copied Storybook URL is useful for reproducing the same interactive configuration.
+- expose private renderer inputs, refs, private CSS variables, implementation state, or test-only switches;
+- manually mirror every prop in `argTypes` when docgen is correct;
+- add production props solely for Storybook;
+- create a global Storybook state store to synchronize controlled args;
+- treat Controls state as automated proof.
 
 ## Documentation and Autodocs
 
-Autodocs is a convenience surface for public reusable UI, not another source of truth.
+Autodocs is a convenience surface, not another source of truth.
 
-Use it selectively when generated component metadata gives developers useful API documentation:
+Use it selectively for public Material adapters or reusable shared UI where generated component metadata is useful.
 
-- public Material Vue adapters are valid candidates;
-- reusable shared UI with a stable public contract is a valid candidate;
-- feature/widget/page stories do not require Autodocs merely because they exist in Storybook.
+Generated docs must derive from real Vue public types, props, events, slots, TSDoc, args, and narrowly justified `argTypes`.
 
-Generated API documentation must derive from the real Vue public types, props, events, slots, TSDoc, args, and narrowly justified `argTypes`. Do not maintain a second handwritten prop/event catalogue in stories merely to make docs look complete.
+Do not maintain a second handwritten public API catalogue inside stories.
 
-Component/family architecture and product documentation remain authoritative for behavior that cannot be inferred from the public Vue contract. Autodocs does not replace those sources.
+Feature/widget/page stories do not require Autodocs merely because they exist.
 
 ## Preview isolation and shared styling
 
-The Storybook Canvas must render reusable UI against the smallest faithful shared environment, not inside the application shell by accident.
+Storybook Canvas must render reusable UI against the smallest faithful shared environment, not the application shell by accident.
 
-The preview may consume production-owned low-level styling required for truthful component rendering, including:
+It may consume production-owned low-level styling required for truthful component rendering:
 
 - normalization/base browser styling;
-- project fonts and deterministic icon setup;
-- Material foundation/theme/token CSS;
-- shared low-level style primitives that the rendered owner actually depends on.
+- fonts/icons;
+- Material foundation/theme/tokens;
+- shared low-level style primitives actually required by the owner.
 
-Do not import the complete application shell stylesheet merely to obtain those dependencies when it also applies app layout, viewport sizing, scrolling, transition, or other `html`/`body`/`#app` behavior unrelated to isolated component rendering.
+Do not import the full application shell merely to obtain those dependencies when it also adds product viewport/layout/scrolling/transition behavior.
 
-If reusable shared styling is currently reachable only through an app-shell entrypoint, S0.5 should expose the smallest existing-owner stylesheet entrypoint rather than duplicate declarations in `.storybook`.
+Storybook-specific CSS owns fixture/sandbox presentation only. It must not recreate production component/theme styling.
 
-Storybook-specific CSS may own fixture/sandbox presentation only. It must not recreate production component/theme styling.
+## Theme and visual sandbox
 
-## Visual inspection sandbox
+The workbench should expose:
 
-Manual appearance review is a first-class Storybook use case distinct from visual-regression assertions.
+- representative desktop/mobile viewports;
+- semantic backgrounds/surfaces;
+- `System`, `Light`, and `Dark` theme modes;
+- Storybook measure/outline tools;
+- per-story `centered`, `padded`, or `fullscreen` layout where truthful.
 
-The global sandbox should provide the smallest useful set of controls for inspecting UI:
+`System` preserves the production system-following default. `Light` and `Dark` are deterministic inspection overrides through the production-owned Material/theme seam, not copied token sets.
 
-- viewport selection for representative desktop and mobile sizes;
-- background/surface selection;
-- explicit `System`, `Light`, and `Dark` theme modes;
-- Storybook's built-in measure/outline tools;
-- per-story `centered`, `padded`, or `fullscreen` layout selected according to the real surface being inspected;
-- the same project styles, fonts/icons, and public Material theme/token sources used by the application.
+Checkerboard/transparency backdrops are specialized fixtures only when transparency/container/elevation/state-layer visibility requires them; they are not the default Playground surface.
 
-`System` must preserve the application's normal system-following behavior. `Light` and `Dark` are deterministic inspection overrides, not separate token sets.
+A canonical visual story may pin deterministic globals independently from the freely adjustable Playground.
 
-Theme mode application belongs to the production Material/theme foundation owner. Storybook may expose a toolbar adapter to that owner, but must not copy light/dark token values or create a parallel theme implementation. If the current foundation lacks a deterministic override seam, implement the smallest foundation-owned seam that preserves the existing production default; do not hide that architecture change inside `.storybook` CSS.
+Manual inspection is exploratory. Accepted screenshot baselines remain owned by visual specs.
 
-A component Playground should remain freely adjustable. A canonical visual-regression story may pin viewport/background/layout/theme when determinism requires it.
+## Routing inside stories
 
-The normal Playground should render on a truthful semantic application/Material surface. Neutral checkerboard or transparency backdrops are specialized fixture tools only for scenarios where transparency, container ownership, elevation, or state-layer visibility actually requires them; they are not the default component-development surface.
+Routing-aware reusable UI uses a Storybook-owned Vue Router memory-history harness.
 
-Visual inspection is exploratory. Accepted screenshot baselines remain owned by explicit visual specs.
+The harness may support only reusable routing needs:
 
-## Routing and navigation
+- deterministic initial location;
+- explicit minimal story-owned route records;
+- path/query/hash/params;
+- `RouterLink`, `useRoute`, and `useRouter`;
+- push/replace/back/forward where required;
+- reset/isolation between story remounts.
 
-There are two separate routing concerns.
+Do not import product router configuration, guards, auth, stores, services, persistence, network setup, or product bootstrap into Storybook.
 
-### Storybook catalogue navigation
+If the contract is the application's actual route graph or a complete navigation/permission/persistence flow, it belongs to E2E.
 
-Storybook's own manager/sidebar is the normal navigation surface between UI owners and stories. Story titles follow the deterministic catalogue hierarchy defined below. Story URLs are stable addresses used by developers and tests; title/export renames therefore require deliberate migration.
+## Proof decision
 
-The manager should use deterministic global ordering rather than filesystem/import order. The target top-level order is:
+| Contract                                                                                                      | Primary proof                                          |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| props/emits/slots/native owner/ARIA ownership/controlled semantic state/non-browser wiring                    | colocated unit/component contract `*.test.ts`          |
+| interactive public API exploration                                                                            | Playground story; not merge proof                      |
+| isolated supported rendering state                                                                            | colocated `*.stories.ts`                               |
+| focus/keyboard/pointer/drag/geometry/scrolling/overlays/responsive interaction/reusable routing/public motion | owner-local `*.behavior.spec.ts`                       |
+| bounded accepted appearance                                                                                   | owner-local `*.visual.spec.ts` against canonical story |
+| complete product scenario                                                                                     | E2E per `docs/testing/architecture.md`                 |
+
+One observable contract has one primary proof owner. Higher-level proof may protect integration, but must not duplicate the complete lower-level contract.
+
+## Story roles
+
+Use only these roles:
+
+- **Playground** — interactive public API through args/Controls;
+- **catalog story** — materially distinct supported state/composition;
+- **visual story** — canonical bounded state tagged `visual` and referenced by visual proof;
+- **browser fixture** — deterministic initial state used by behavior proof.
+
+One story may serve several roles when responsibilities do not conflict.
+
+A story must not:
+
+- contain merge-proof assertions;
+- perform the behavior under test;
+- use `play` as a parallel verification system;
+- connect product stores, persistence, services, workers, diagnostics, accounts, network state, or product bootstrap;
+- reproduce business rules;
+- change production APIs for test convenience.
+
+## Behavior proof
+
+Use behavior proof only when real browser semantics cannot be faithfully modeled by unit/component tests.
+
+Behavior specs:
+
+- use real public input;
+- contain no screenshots;
+- assert owner-specific browser outcomes;
+- do not expand into complete product scenarios;
+- use deterministic stories/fixtures for initial state;
+- fail when required preconditions/outcomes are absent.
+
+Current naming is `*.behavior.spec.ts` beside the truthful owner, with `.storybook/**/*.behavior.spec.ts` reserved for truthful Storybook infrastructure ownership.
+
+A non-local fixture dependency must be truthful. Prefer the smallest owner-local fixture when the scenario actually belongs to the local owner.
+
+## Visual proof
+
+Visual specs:
+
+- open named canonical stories;
+- stabilize rendering through mechanical helpers only;
+- capture bounded screenshots;
+- contain no click/keyboard/pointer/focus/navigation/semantic/token-table/geometry success criteria;
+- own snapshots through deterministic local ownership.
+
+Current baseline convention:
+
+```text
+<Owner>.visual.spec.ts
+<Owner>.visual.spec.ts-snapshots/
+```
+
+A baseline detects change. It does not prove Material correctness, accessibility, behavior, or motion lifecycle.
+
+## Catalogue
+
+Target top-level order:
 
 1. `Material 3`;
 2. `Shared`;
@@ -221,178 +269,11 @@ The manager should use deterministic global ordering rather than filesystem/impo
 5. `Widgets`;
 6. `Pages`.
 
-Within an owner namespace, prefer stable alphabetical ordering unless a smaller explicit semantic order is clearly more useful. Implement this through Storybook's native sorting configuration; do not create a second catalogue registry.
-
-Do not build a second custom component catalogue or navigation shell inside stories.
-
-### Vue Router inside stories
-
-Routing-aware reusable UI must use a **Storybook-owned router harness** based on Vue Router memory history. It must exercise the real public Vue Router API while remaining isolated from product routing.
-
-The target harness must support only reusable routing needs:
-
-- a deterministic initial location;
-- path, query, hash, and route params through explicit minimal story-owned route records;
-- `RouterLink`, `useRoute`, and `useRouter` behavior;
-- `push`, `replace`, back, and forward navigation where the UI contract requires them;
-- reset/isolation when switching stories so route state cannot leak between stories.
-
-A story supplies only the minimum route records/current location required by its UI contract. Shared Storybook infrastructure may own the mechanical memory-router setup and reset behavior.
-
-Do not import the production app router, production guards, authentication, stores, service initialization, persistence, network setup, or product route orchestration into Storybook.
-
-If the behavior being inspected is the application's actual route graph, navigation workflow, permission redirect, persistence/reload route behavior, or another cross-owner product scenario, it belongs to application E2E rather than the Storybook router harness.
-
-## Proof decision
-
-| Contract                                                                                                                                         | Primary proof owner                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, non-browser wiring                            | colocated `*.test.ts`                                 |
-| Interactive public-API exploration                                                                                                               | Playground story with Controls; not merge proof       |
-| Isolated supported rendering state                                                                                                               | colocated `*.stories.ts`                              |
-| Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, reusable routing, motion lifecycle, browser APIs | Storybook browser behavior spec owned by the UI owner |
-| Bounded accepted appearance                                                                                                                      | visual spec against a canonical story tagged `visual` |
-| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, app router, or bootstrap boundaries      | `tests/e2e/*.spec.ts`                                 |
-
-One observable contract has one primary proof owner. Higher-level proof may cover an integration seam or complete user outcome, but must not duplicate the full lower-level contract.
-
-## How to author Storybook UI
-
-For each changed UI owner:
-
-1. identify the truthful component, local module, or Material family owner;
-2. decide whether an isolated story has Playground, documentation, fixture, or visual value;
-3. for configurable public UI, prefer one args-driven Playground instead of many stories that differ only by one controllable prop;
-4. keep controlled public values synchronized between args and direct component interaction;
-5. add dedicated named stories only for materially distinct compositions/states that improve documentation, browser fixtures, or canonical visual proof;
-6. create only deterministic initial state through the public UI contract;
-7. configure the minimum route fixture when routing context is required;
-8. select the truthful preview layout/surface/theme rather than relying on app-shell CSS;
-9. choose the lowest faithful proof type from `docs/testing/architecture.md`;
-10. keep the story title in the deterministic catalogue hierarchy;
-11. keep browser and visual assertions outside the story;
-12. use the current executable spec location from the migration state;
-13. update persistent impact metadata only when the current verifier requires a non-local or transitional relation;
-14. run verifier-managed focused proof, then the task-level final gate.
-
-Do not create stories mechanically for every `.vue` file.
-
-## Stories
-
-A story declares a deterministic initial rendering state. It may use owner-local fixture state required to operate the public UI contract.
-
-Use only these roles:
-
-- **Playground story** — interactive public API through args/Controls;
-- **catalog story** — materially distinct supported state/composition useful for development/documentation;
-- **visual story** — canonical bounded state tagged `visual` and referenced by visual proof;
-- **browser fixture** — deterministic initial state used by browser proof.
-
-One story may serve more than one role when the responsibilities do not conflict. Do not duplicate stories solely to attach a role label.
-
-A story must not:
-
-- contain assertions;
-- perform the behavior under test;
-- use `play` as merge proof;
-- connect product stores, persistence, services, workers, diagnostics, accounts, network state, or application bootstrap;
-- reproduce business rules;
-- change production APIs for test convenience.
-
-A browser fixture prepares state only. The browser spec performs real public input and assertions.
-
-## Browser proof
-
-Use browser proof only when real browser semantics cannot be faithfully modeled by Vitest.
-
-Browser specs:
-
-- use real public input;
-- contain no screenshots;
-- assert owner-specific browser outcomes only;
-- do not expand into complete product scenarios;
-- use a deterministic story or owner-local fixture as the initial surface;
-- fail when required preconditions or outcomes are absent.
-
-A family/module-level browser spec is allowed only when one shared observable contract truthfully belongs to that family/module. Otherwise split by owner.
-
-For owners already migrated by `docs/testing/migration-plan.md`, place the spec beside its truthful owner as `src/**/*.browser.spec.ts`; local owner changes select all applicable colocated specs. Specs for owners not yet migrated remain in the legacy `tests/e2e/storybook` location with their transitional mappings. A colocated spec should prefer owner-local stories/fixtures; a non-local fixture dependency requires a truthful explicit relation or, when the scenario belongs to the local owner, should be replaced by the smallest local fixture.
-
-## Visual proof
-
-Use explicit visual specs. A small repeated open-stabilize-screenshot sequence is preferable to a generated runner that hides story selection and baseline ownership.
-
-Visual specs:
-
-- open named canonical stories;
-- stabilize rendering through mechanical helpers only;
-- capture bounded screenshots;
-- contain no click, keyboard, pointer, focus, navigation, semantic, token-table, or geometry success criteria;
-- own snapshots through the documented snapshot convention.
-
-Do not snapshot every Playground configuration, story, or Cartesian combination of props.
-
-A baseline detects change. It does not prove Material correctness, accessibility, interaction, or motion lifecycle.
-
-## Owner naming and impact relations
-
-The target local relation uses one owner stem when truthful:
-
-```text
-MDLoadingIndicator.vue
-MDLoadingIndicator.stories.ts
-MDLoadingIndicator.browser.spec.ts
-MDLoadingIndicator.visual.spec.ts
-```
-
-A Material family or cohesive module may use a distinct owner stem when the family/module itself owns the contract:
-
-```text
-ButtonFamily.browser.spec.ts
-OverlayFoundation.browser.spec.ts
-ReorderSurface.visual.spec.ts
-```
-
-Relations are resolved in this order:
-
-1. direct spec ownership;
-2. deterministic local owner convention when the lane supports it;
-3. one explicit mapping for a truthful non-sibling family/module/cross-file relation;
-4. full owning-lane fallback for unresolved relevant impact.
-
-Agents must not infer non-local ownership from prose, Storybook titles, or directory similarity.
-
-Do not use spec paths as source prefixes merely to group tests.
-
-## Snapshot convention
-
-The colocated visual convention is:
-
-```text
-<Owner>.visual.spec.ts
-<Owner>.visual.spec.ts-snapshots/
-```
-
-Loading Indicator (Stage S3, complete), Chips (Stage S4-A, complete), MDCheckbox (Stage S4-B, complete), MarkdownContent (Stage S4-C, complete), and MDSwitch (Stage S4-D, complete) are executable through this convention. The visual resolver must handle added, modified, deleted, and renamed specs/baselines. If ownership cannot be determined exactly, select the full visual lane.
-
-Story titles and export names are part of the visual-test address. Rename them only together with the owning visual spec and affected baselines.
-
-Every other visual owner remains on the current central executable baseline convention until its own Stage S4 migration group.
-
-## Storybook catalogue
-
-File placement follows code ownership. Titles follow deterministic namespaces.
-
-Material:
+Target namespaces:
 
 ```text
 Material 3/Components/<Family>/<Component>
 Material 3/Patterns/<Pattern>
-```
-
-Other UI:
-
-```text
 Shared/<Slice>/<Owner>
 Entities/<Slice>/<Owner>
 Features/<Slice>/<Owner>
@@ -400,83 +281,67 @@ Widgets/<Slice>/<Owner>
 Pages/<Slice>/<Owner>
 ```
 
-Do not introduce `Project UI` or another arbitrary top-level namespace. A title may omit redundant path segments, but must not hide or contradict the owning FSD layer, slice, or Material family.
+Use Storybook's native manager/sidebar and sorting. Do not build another catalogue/navigation shell.
 
-Catalogue normalization is a separate migration because title changes can change story IDs, URLs, and baselines. Existing non-conforming titles remain migration debt until that stage; do not rename them opportunistically in unrelated PRs. S0.5 may add deterministic `storySort` for the target top-level namespaces without renaming existing story addresses; title normalization remains S6.
+Title/export renames can change story IDs, URLs, and visual baselines; migrate them deliberately rather than opportunistically.
 
-## TypeScript and Playwright boundaries
+## TypeScript and runner boundaries
 
-Production application type-checking must not treat Storybook stories or Playwright specs as application runtime source.
+Application/runtime type-checking and Vitest must not accidentally classify Playwright specs as production/unit inputs.
 
-Owner-local Storybook browser discovery is executable through the dedicated Storybook behavior Playwright configuration. Production application and Storybook source type-checking exclude `src/**/*.browser.spec.ts`; the Node/tooling type-check includes those specs. Legacy centralized behavior specs continue to execute through the same lane during migration.
+Current exclusions/discovery account for:
 
-Owner-local visual discovery is executable through the dedicated visual Playwright configuration for the migrated owners through Stage S4-D. Production application and Storybook source type-checking exclude `src/**/*.visual.spec.ts`; the Node/tooling type-check includes those specs, and Vitest's automatic unit-test scope excludes them. Legacy centralized visual specs continue to execute through the same lane until their Stage S4 migration.
+- `*.behavior.spec.ts`;
+- `*.visual.spec.ts`;
+- `*.browser-integration.spec.ts`;
+- `*.performance.spec.ts` where executed outside unit tooling.
 
 Do not create a mirrored central component-spec tree as permanent ownership metadata.
 
 ## Storybook build verification
 
-A valid story/configuration must be able to produce the repository's normal static Storybook build even when no browser or visual lane happens to select that story.
+Changed Storybook configuration/stories must remain buildable even when no behavior/visual spec is selected.
 
-The verifier should own one lightweight Storybook-build check for relevant changes, using the existing Storybook build entrypoint rather than introducing another runner. At minimum, Storybook configuration/runtime files, Storybook TypeScript configuration, and `*.stories.*` changes must select that build check. Other broad dependencies may select it when the verifier can justify their Storybook blast radius.
+The verifier owns the Storybook build as an internal prerequisite/check; it is not a separate public verification type.
 
-Avoid duplicate expensive work inside one verification plan when another selected lane has already produced the same build artifact under the same configuration. Optimization must not weaken the guarantee that a relevant story/configuration change is buildable.
+Reuse an equivalent deterministic Storybook static build inside one verify run when doing so removes duplicate compilation without merging proof ownership or hiding failures.
 
-A successful Storybook build proves configuration/module integrity only. It does not replace component, browser-behavior, visual, or application E2E proof.
+A successful Storybook build proves configuration/module integrity only. It does not replace unit, behavior, visual, browser-integration, or E2E proof.
 
 ## Shared Storybook infrastructure
 
-Storybook-wide infrastructure is valid when the need is genuinely cross-owner and mechanical. Current justified examples are:
+Shared Storybook infrastructure is valid only for genuinely cross-owner mechanical needs, such as:
 
-- an isolated preview style entrypoint composed from production-owned low-level styles;
-- deterministic icon/font setup;
+- preview style composition;
+- font/icon setup;
 - viewport/background/layout configuration;
-- the toolbar adapter for the foundation-owned theme mode seam;
-- automatic Vue docgen/Controls support;
-- deterministic native story sorting;
-- the Storybook-owned memory-router harness;
-- strict mechanical helpers for opening/stabilizing stories in Playwright.
+- theme-mode toolbar adapter;
+- Vue docgen/Controls support;
+- deterministic native sorting;
+- memory-router harness;
+- strict mechanical story-opening/stabilization helpers.
 
-Keep owner-specific setup local by default. Extract shared infrastructure only when unrelated owners need the same mechanism and extraction reduces total complexity.
+Keep owner-specific setup local by default. Extract shared infrastructure only when several unrelated owners need the same mechanism and total complexity decreases.
 
-Shared infrastructure must not select product behavior, silently recover from missing state, duplicate production architecture, or become a Storybook-specific DSL.
+Shared infrastructure must not select product behavior, silently recover missing state, duplicate production architecture, or become a Storybook DSL.
 
 ## Forbidden
 
 - treating Storybook as an FSD layer or product runtime;
 - central component-spec trees as permanent ownership mirrors;
-- a custom catalogue/navigation shell that duplicates Storybook manager navigation;
-- importing the complete application shell stylesheet as the permanent Storybook preview environment when only lower-level shared styles are required;
-- migrating a colocated Playwright spec for an owner before the current migration stage authorizes that owner;
-- assertions or behavior-under-test scripts in stories;
-- Storybook `play` as a parallel merge-proof system;
-- screenshots in browser-behavior specs;
-- browser behavior, computed token matrices, or geometry assertions in visual specs;
-- product stores, workers, persistence, network, production router/bootstrap, or business rules in stories;
+- a custom catalogue/navigation shell;
+- full product bootstrap inside Storybook;
+- assertions/behavior-under-test scripts in stories;
+- Storybook `play` as merge proof;
+- screenshots in behavior specs;
+- behavior/token matrices/geometry success criteria in visual specs;
+- product stores/workers/persistence/network/product router/business rules in stories;
 - Storybook-only production props or private renderer Controls;
-- duplicated manual `argTypes` mirrors of an already-correct public Vue API;
-- a global Storybook state store merely to synchronize controlled args;
-- Storybook-specific copies of production theme token values;
-- making Autodocs mandatory for every feature/widget/page story;
-- using checkerboard/transparency fixtures as the default component Playground surface;
+- a global Storybook state store for args;
+- Storybook copies of production theme tokens;
+- mandatory Autodocs for every story;
 - test-only exports from production barrels;
-- a generic Storybook registry/DSL/generated runner without demonstrated repeated need and an architecture decision;
-- arbitrary per-story taxonomy;
-- opportunistic story-title normalization before the dedicated catalogue migration;
-- moving product behavior into Storybook fixtures;
+- generic Storybook registry/DSL/generated runner without demonstrated need;
+- moving complete product behavior into Storybook fixtures;
+- restoring legacy `*.browser.spec.ts`, central Storybook behavior, or central visual discovery;
 - duplicating Material workflow policy here.
-
-## Migration sequence
-
-Migrate through independently safe PRs:
-
-1. architecture and repository rules;
-2. Storybook workbench foundation: isolate preview styling, add theme modes, router harness, Playground/Controls round-trip, deterministic sorting, selective Autodocs, visual sandbox behavior, and verifier-owned Storybook build proof without changing product scenarios;
-3. colocated Storybook browser discovery pilot using Loading Indicator;
-4. remaining Storybook browser-spec migration;
-5. colocated visual discovery and snapshot-ownership pilot;
-6. remaining visual-spec/baseline migration;
-7. proof-ownership cleanup after resolver stability;
-8. Storybook catalogue normalization.
-
-Every intermediate PR must preserve valid commands, current regression protection, safe full fallback, and deterministic add/modify/delete/rename handling before removing legacy execution paths.

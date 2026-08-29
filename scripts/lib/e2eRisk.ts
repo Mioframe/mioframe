@@ -1,337 +1,96 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 import { isPackageJsonRuntimeRelevantChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isApplicationViteHarnessInputPath } from './viteBuildRisk.ts';
+import {
+  formatOwnerId,
+  ownerDirectoryExists as defaultOwnerDirectoryExists,
+  parseE2ETargetPath,
+  type E2EOwnerRef,
+} from './e2eOwner.ts';
+import {
+  validateE2EOwnerInventory,
+  validateE2EOwnerInventoryCompleteness,
+  type RawE2ESpecInventoryEntry,
+  type ResolvedE2ESpecEntry,
+} from './e2eOwnerInventory.ts';
+import { validateE2ETargetTree, type E2ETargetTreeValidation } from './e2eOwnerTree.ts';
+import { traverseOwnersForChangedPath, type ReverseDependencyGraph } from './e2eOwnerTraversal.ts';
+import { acquireProductionReverseGraph } from './e2eGraph.ts';
+import { collectE2EOwnerInventory } from './e2eOwnerInventoryCollector.ts';
+import {
+  MANAGED_UPDATES_E2E_SPEC_SET,
+  RELEASE_SMOKE_SPEC,
+  validateProductionArtifactE2EMembership,
+  type ReleaseProofInventoryValidation,
+} from './releaseProofInventory.ts';
 
-const VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
-const RELEASE_SPEC_PREFIX = 'tests/e2e/release/';
-const STORYBOOK_BEHAVIOR_SPEC_PREFIX = 'tests/e2e/storybook/';
-const E2E_DIR_PREFIX = 'tests/e2e/';
-const APP_E2E_SPEC_DIR = 'tests/e2e';
-const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
-const PACKAGE_JSON_PATH = 'package.json';
+/**
+ * Structural, dependency-graph-driven application E2E planner. Replaces the
+ * historical `E2E_SCENARIO_SCOPES` manual production-path -> spec registry:
+ * primary E2E ownership comes only from `tests/e2e/pages/<Owner>/**` /
+ * `tests/e2e/widgets/<Owner>/**` target paths, and affected-owner discovery
+ * uses one `dependency-cruiser` reverse-dependency graph traversal instead of
+ * a maintained mapping table.
+ */
 
 const WORKFLOWS_PREFIX = '.github/workflows/';
+const PACKAGE_JSON_PATH = 'package.json';
+const NON_PRODUCTION_PATH_PATTERN = /\.(test|spec|stories|testUtils)\.(ts|tsx|vue|mjs|js|jsx)$/;
 
-// Full-lane E2E infrastructure/config/tooling: consumer set is intentionally
-// the complete application-E2E lane, regardless of scenario mapping.
+// Full-lane E2E infrastructure/config/tooling: a change here can affect
+// every target E2E spec's discovery, ownership resolution, or execution,
+// regardless of graph/inventory-derived scope. Also carries the shared
+// managed-release fixture/publisher/artifact build support the special
+// productionArtifact leaves exercise; widening the complete E2E type is a
+// safe superset of widening only the two special leaves. The shared
+// Playwright command/lock/result/signal execution boundary is a separate
+// authoritative source of truth, checked by
+// {@link isFullLaneE2EInfrastructurePath} below rather than duplicated here,
+// since it widens relevance across every Playwright-container-backed type,
+// not only e2e.
 const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
+  'playwright.release.config.ts',
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
-  'scripts/lib/e2eRisk.ts',
-  'scripts/lib/e2eProjectApplicability.ts',
-  'scripts/playwrightContainer.ts',
+  'scripts/e2eReleaseContainer.mjs',
   'scripts/verify.ts',
-  'vite.config.ts',
-  'pnpm-lock.yaml',
+  'scripts/lib/e2eRisk.ts',
+  'scripts/lib/e2eOwner.ts',
+  'scripts/lib/e2eOwnerTree.ts',
+  'scripts/lib/e2eOwnerInventory.ts',
+  'scripts/lib/e2eOwnerTraversal.ts',
+  'scripts/lib/e2eGraph.ts',
+  'scripts/lib/e2eGraphCollector.ts',
+  'scripts/lib/e2eOwnerInventoryCollector.ts',
+  'scripts/lib/e2eOwnerInventoryContainer.ts',
+  'scripts/lib/e2eOwnerInventoryReporter.ts',
+  'scripts/lib/e2eProjectApplicability.ts',
+  'scripts/lib/releaseProofInventory.ts',
+  'scripts/release/managedUpdatesProof.ts',
+  'scripts/release/artifactServer.mjs',
+  'tests/e2e/helpers.ts',
+  'tests/e2e/reorderSurface.testUtils.ts',
+  'tsconfig.src.json',
 ]);
+const FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES = ['tests/e2e/release/fixtures/', 'scripts/pages/lib/'];
 
-/** One explicit registry mapping of source path prefixes to app e2e specs. */
-export interface E2EScenarioScope {
-  name: string;
-  sourcePrefixes: string[];
-  specs: string[];
-}
-
-/**
- * App e2e specs that are intentionally not covered by {@link E2E_SCENARIO_SCOPES}.
- * Keep this list small; every entry must explain why it has no scenario mapping.
- * Adding a new `tests/e2e/*.spec.ts` file requires either a registry entry or an
- * explicit, justified addition here, or {@link validateE2EScenarioRegistry} fails.
- */
-export const APP_E2E_STANDALONE_SPECS: string[] = [];
-
-// Broad application-E2E-relevant domains: app bootstrap, background services,
-// proxy clients, shared infra, and shared UI interaction primitives reused
-// across scenarios. Paths here are never silently skipped, but a path with an
-// explicit E2E_SCENARIO_SCOPES mapping may resolve focused instead of full.
-const APP_E2E_RELEVANT_BROAD_DOMAINS = [
-  'src/app/',
-  'src/shared/service/',
-  'src/shared/serviceClient/',
-  'src/shared/lib/',
-  'src/shared/ui/',
-];
-
-/**
- * Explicit registry mapping product scenario source paths to the app e2e
- * specs that exercise them. Keep small and readable; unmapped `src/**`
- * paths fall back to full app e2e via {@link isUnmappedAppE2ERelevantPath}
- * so risk is never silently skipped.
- */
-export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
-  {
-    name: 'app smoke and settings toggles',
-    sourcePrefixes: [
-      'src/features/starterExamplesDismiss/',
-      'src/features/diagnosticsConsentRequest/',
-      'src/features/diagnosticsReporting/',
-      'src/widgets/StarterExamplesWidget/',
-      'src/pages/Settings/',
-    ],
-    specs: ['tests/e2e/appSmoke.spec.ts'],
-  },
-  {
-    name: 'browser storage persistence',
-    sourcePrefixes: [
-      'src/features/browserStoragePersistenceEnable/',
-      'src/features/mioframeStorageInfo/',
-      'src/entities/browserStoragePersistence/',
-    ],
-    specs: ['tests/e2e/browserStoragePersistenceSmoke.spec.ts'],
-  },
-  {
-    name: 'database persistence',
-    sourcePrefixes: ['src/entities/databaseData/'],
-    specs: ['tests/e2e/databasePersistenceSmoke.spec.ts'],
-  },
-  {
-    name: 'database item flows',
-    sourcePrefixes: [
-      'src/features/databaseItemEdit/',
-      'src/features/databaseItemRemove/',
-      'src/features/stringValueEdit/',
-      'src/features/numberValueEdit/',
-      'src/features/booleanValueEdit/',
-      'src/features/dateValueEdit/',
-      'src/features/relationValueEdit/',
-      'src/entities/databaseItem/',
-      'src/entities/databaseValue/',
-      'src/entities/databaseString/',
-      'src/entities/databaseNumber/',
-      'src/entities/databaseBoolean/',
-      'src/entities/databaseDate/',
-      'src/entities/databaseRelation/',
-    ],
-    specs: ['tests/e2e/databaseItemFlows.spec.ts'],
-  },
-  {
-    name: 'database inline relation selected view application',
-    sourcePrefixes: [
-      'src/features/relationValueEdit/RelationValueField.vue',
-      'src/features/relationValueEdit/RelationValueFieldData.vue',
-      'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
-    ],
-    specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
-  },
-  {
-    name: 'database virtualized table product behavior',
-    sourcePrefixes: [
-      'src/entities/databaseData/DatabaseDataTable.vue',
-      'src/entities/databaseRelation/RelationValueInline.vue',
-      'src/entities/databaseValue/useDatabaseStoredValue.ts',
-      'src/entities/databaseValue/useDatabaseValueWrite.ts',
-      'src/features/relationValueEdit/RelationValueField.vue',
-      'src/features/relationValueEdit/RelationValueFieldData.vue',
-      'src/widgets/DocumentView/Database/DatabasePropertyValueField.vue',
-      'src/widgets/DocumentView/Database/DatabaseRelationValueInline.vue',
-      'src/widgets/DocumentView/Database/DatabaseToolbar.vue',
-      'src/widgets/DocumentView/Database/DatabaseViewLayout.vue',
-      'src/widgets/DocumentView/Database/DatabaseViewWidget.vue',
-      'src/widgets/DocumentView/Database/useDatabaseViewSurfaceGeometry.ts',
-      'src/widgets/DocumentView/Database/EditableInlineValue.vue',
-      'src/features/databaseInlineValueEdit/',
-    ],
-    specs: ['tests/e2e/databaseItemFlows.spec.ts', 'tests/e2e/databaseVirtualizationFlows.spec.ts'],
-  },
-  {
-    name: 'database property flows',
-    sourcePrefixes: [
-      'src/features/databasePropertyEdit/',
-      'src/features/databasePropertyCreate/',
-      'src/features/databasePropertyRemove/',
-      'src/features/databaseRelationPropertyEdit/',
-      'src/features/databaseBooleanPropertyEdit/',
-      'src/features/numberPropertyEdit/',
-      'src/entities/databaseProperty/',
-    ],
-    specs: ['tests/e2e/databasePropertyFlows.spec.ts'],
-  },
-  {
-    name: 'database views and query flows',
-    sourcePrefixes: [
-      'src/features/databaseViewCreate/',
-      'src/features/databaseViewRename/',
-      'src/features/databaseViewMapEdit/',
-      'src/features/databaseFilterEdit/',
-      'src/features/databaseItemSorting/',
-      'src/entities/databaseView/',
-      'src/entities/databaseFilter/',
-      'src/entities/databaseSorting/',
-      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
-    ],
-    specs: [
-      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
-      'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
-      'tests/e2e/reorderSurfaceCancellation.spec.ts',
-      'tests/e2e/reorderSurfaceMouse.spec.ts',
-      'tests/e2e/reorderSurfacePersistence.spec.ts',
-      'tests/e2e/reorderSurfaceTouch.spec.ts',
-    ],
-  },
-  {
-    name: 'database sorting and query UI',
-    sourcePrefixes: ['src/shared/lib/sortable/', 'src/shared/ui/Query/'],
-    specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
-  },
-  {
-    name: 'repository explorer screen',
-    sourcePrefixes: ['src/widgets/RepositoryExplorerWidget/', 'src/pages/RepoExplorer/'],
-    specs: ['tests/e2e/repoExplorerScreen.spec.ts', 'tests/e2e/repositoryFlows.spec.ts'],
-  },
-  {
-    name: 'help navigation',
-    sourcePrefixes: ['src/pages/Help/'],
-    specs: ['tests/e2e/helpNavigation.spec.ts'],
-  },
-  {
-    name: 'app updates settings entry and pane',
-    sourcePrefixes: [
-      'src/pages/AppUpdatesPane/',
-      'src/widgets/AppUpdateSettings/',
-      'src/widgets/SettingsSections/',
-      'src/entities/appUpdate/',
-    ],
-    specs: ['tests/e2e/appUpdatesNavigation.spec.ts'],
-  },
-  {
-    name: 'directory and document flows',
-    sourcePrefixes: [
-      'src/features/directoryCreate/',
-      'src/features/documentCreate/',
-      'src/features/documentRename/',
-      'src/features/documentRemove/',
-      'src/features/entryRemove/',
-      'src/features/entryRename/',
-      'src/features/entryAdd/',
-      'src/features/entryManage/',
-      'src/entities/directory/',
-      'src/entities/fsEntry/',
-      'src/entities/repository/',
-    ],
-    specs: ['tests/e2e/repositoryFlows.spec.ts'],
-  },
-  {
-    name: 'document export',
-    sourcePrefixes: ['src/features/exportDocument/'],
-    specs: ['tests/e2e/exportDocumentBrowserStorage.spec.ts'],
-  },
-  {
-    name: 'ZIP export and import flows',
-    sourcePrefixes: [
-      'src/features/exportZip/',
-      'src/features/importZip/',
-      'src/features/documentManage/',
-      'src/features/entryAdd/',
-      'src/features/entryManage/',
-      'src/widgets/RepositoryExplorerWidget/',
-      'src/pages/RepoExplorer/',
-    ],
-    specs: ['tests/e2e/zipActionFlows.spec.ts'],
-  },
-];
-
-function uniqSorted(values: readonly string[]): string[] {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
-}
-
-function isStoriesFile(filePath: string): boolean {
-  return STORIES_PATTERN.test(filePath);
-}
-
-function isTestOnlyPath(filePath: string): boolean {
-  return (
-    filePath.endsWith('.test.ts') ||
-    filePath.endsWith('.spec.ts') ||
-    filePath.endsWith('.test.mjs') ||
-    filePath.endsWith('.spec.mjs') ||
-    filePath.endsWith('.testUtils.ts')
-  );
-}
-
-/**
- * Check whether a changed file is a visual-only e2e spec under
- * `tests/e2e/visual/`. Visual specs never feed app e2e selection.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is a visual e2e spec.
- */
-export function isVisualE2ESpecPath(filePath: string): boolean {
-  return filePath.startsWith(VISUAL_SPEC_PREFIX);
-}
-
-/**
- * Check whether a changed file is a release-only e2e spec under
- * `tests/e2e/release/`. Release specs run against the production artifact
- * via `playwright.release.config.ts` / `pnpm verify --full`, not the
- * focused dev app e2e resolved here.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is a release e2e spec.
- */
-export function isReleaseE2ESpecPath(filePath: string): boolean {
-  return filePath.startsWith(RELEASE_SPEC_PREFIX);
-}
-
-/**
- * Check whether a changed file belongs to the separately owned Storybook
- * browser-behavior lane under `tests/e2e/storybook/`. That lane has its own
- * risk resolver in `scripts/lib/storybookBehaviorRisk.ts`; app e2e must
- * never select these paths.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is a Storybook behavior lane path.
- */
-export function isStorybookBehaviorPath(filePath: string): boolean {
-  return filePath.startsWith(STORYBOOK_BEHAVIOR_SPEC_PREFIX);
-}
-
-/**
- * Check whether a changed file is a non-visual, non-release, non-Storybook-behavior
- * app e2e spec under `tests/e2e/`.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is an app e2e spec file.
- */
-export function isAppE2ESpecPath(filePath: string): boolean {
-  return (
-    filePath.startsWith(E2E_DIR_PREFIX) &&
-    !isVisualE2ESpecPath(filePath) &&
-    !isReleaseE2ESpecPath(filePath) &&
-    !isStorybookBehaviorPath(filePath) &&
-    filePath.endsWith('.spec.ts')
-  );
-}
-
-/**
- * Check whether a changed file is a non-spec e2e helper/fixture/page-object
- * under `tests/e2e/` (excluding visual, release, and Storybook behavior).
- * These are reverse-resolved conservatively to a full app e2e run by
- * {@link resolveAppE2EPlan}.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is an app e2e support file.
- */
-export function isAppE2ESupportPath(filePath: string): boolean {
-  return (
-    filePath.startsWith(E2E_DIR_PREFIX) &&
-    !isVisualE2ESpecPath(filePath) &&
-    !isReleaseE2ESpecPath(filePath) &&
-    !isStorybookBehaviorPath(filePath) &&
-    !isAppE2ESpecPath(filePath) &&
-    filePath.endsWith('.ts')
-  );
-}
-
-/**
- * Check whether a changed file is full-lane E2E infrastructure/config/tooling
- * whose consumer set is intentionally the complete application-E2E lane,
- * regardless of any scenario mapping.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is E2E infrastructure/tooling/CI configuration.
- */
-export function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
-  if (FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)) {
+function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
+  if (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isApplicationViteHarnessInputPath(filePath) ||
+    FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)
+  ) {
     return true;
   }
 
-  const baseName = path.posix.basename(filePath);
+  if (FULL_LANE_E2E_INFRASTRUCTURE_PREFIXES.some((prefix) => filePath.startsWith(prefix))) {
+    return true;
+  }
+
+  const baseName = filePath.split('/').pop() ?? filePath;
 
   if (baseName.startsWith('tsconfig') && baseName.endsWith('.json')) {
     return true;
@@ -340,22 +99,27 @@ export function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
   return filePath.startsWith(WORKFLOWS_PREFIX);
 }
 
-function getScenariosForPath(filePath: string): E2EScenarioScope[] {
-  if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
-    return [];
-  }
-
-  return E2E_SCENARIO_SCOPES.filter((scenario) =>
-    scenario.sourcePrefixes.some((prefix) => filePath.startsWith(prefix)),
-  );
+function isAppBootstrapPath(filePath: string): boolean {
+  return filePath.startsWith('src/app/') || filePath === 'src/pages/routes.ts';
 }
 
 /**
- * @param scenarios Scenario registry entries to flatten into a spec list.
- * @returns Sorted unique spec paths referenced by the scenario registry.
+ * Check whether a changed path is production `src/**` source relevant to
+ * E2E ownership: TypeScript/Vue source, excluding colocated test/story/
+ * behavior/visual/browser-integration/performance specs and helpers.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is relevant production source.
  */
-function getAllRegistrySpecs(scenarios: readonly E2EScenarioScope[]): string[] {
-  return uniqSorted(scenarios.flatMap((scenario) => scenario.specs));
+export function isRelevantProductionSourcePath(filePath: string): boolean {
+  if (!filePath.startsWith('src/')) {
+    return false;
+  }
+
+  if (NON_PRODUCTION_PATH_PATTERN.test(filePath)) {
+    return false;
+  }
+
+  return filePath.endsWith('.ts') || filePath.endsWith('.vue');
 }
 
 function isExistingFile(filePath: string): boolean {
@@ -366,243 +130,322 @@ function isExistingFile(filePath: string): boolean {
   }
 }
 
-function findAppE2ESpecFiles(specDir: string): string[] {
-  return uniqSorted(
-    fs
-      .readdirSync(specDir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.spec.ts'))
-      .map((entry) => `${specDir}/${entry.name}`),
-  );
+/** Resolved structural E2E plan, discriminated by `mode`. */
+export type StructuralE2EPlan =
+  | { mode: 'invalid'; reasons: string[] }
+  | { mode: 'full'; reasons: string[] }
+  | {
+      mode: 'focused';
+      ordinarySpecs: string[];
+      releaseSmokeSelected: boolean;
+      managedUpdatesE2ESelected: boolean;
+      reasons: string[];
+    }
+  | { mode: 'skip'; reasons: string[] };
+
+/** Test-only dependencies for {@link resolveStructuralE2EPlan}. */
+export interface ResolveStructuralE2EPlanDeps {
+  packageJsonOldRef?: string | null;
+  fileExists?: (filePath: string) => boolean;
+  ownerDirectoryExists?: (owner: E2EOwnerRef) => boolean;
+  acquireGraph?: () => ReturnType<typeof acquireProductionReverseGraph>;
+  collectOwnerInventory?: () => RawE2ESpecInventoryEntry[];
+  validateTargetTree?: () => E2ETargetTreeValidation;
+  validateProductionArtifactMembership?: () => ReleaseProofInventoryValidation;
 }
 
-/** Validation result for the app e2e scenario registry. */
-export interface E2ERegistryValidation {
-  valid: boolean;
-  errors: string[];
-}
+function selectedSpecsToPlan(
+  entryBySpecPath: Map<string, ResolvedE2ESpecEntry>,
+  selectedSpecPaths: ReadonlySet<string>,
+  reasons: string[],
+): StructuralE2EPlan {
+  const ordinarySpecs: string[] = [];
+  let releaseSmokeSelected = false;
+  let managedUpdatesE2ESelected = false;
 
-/** Test-only overrides for {@link validateE2EScenarioRegistry}. */
-export interface ValidateE2EScenarioRegistryOverrides {
-  scenarios?: E2EScenarioScope[];
-  standaloneSpecs?: string[];
-  specDir?: string;
+  for (const specPath of selectedSpecPaths) {
+    const entry = entryBySpecPath.get(specPath);
+
+    if (!entry) {
+      continue;
+    }
+
+    if (!entry.isProductionArtifact) {
+      ordinarySpecs.push(specPath);
+      continue;
+    }
+
+    // Routed by exact registered spec membership (see
+    // scripts/lib/releaseProofInventory.ts), not an owner-name heuristic:
+    // resolveStructuralE2EPlan already validated, before reaching this
+    // point, that the current filesystem productionArtifact inventory
+    // equals exactly {RELEASE_SMOKE_SPEC} ∪ MANAGED_UPDATES_E2E_SPEC_SET, so
+    // every `isProductionArtifact` entry here is necessarily one of the two.
+    if (specPath === RELEASE_SMOKE_SPEC) {
+      releaseSmokeSelected = true;
+    } else if (MANAGED_UPDATES_E2E_SPEC_SET.has(specPath)) {
+      managedUpdatesE2ESelected = true;
+    }
+  }
+
+  if (ordinarySpecs.length === 0 && !releaseSmokeSelected && !managedUpdatesE2ESelected) {
+    return { mode: 'skip', reasons: ['empty e2e scope'] };
+  }
+
+  return {
+    mode: 'focused',
+    ordinarySpecs: [...ordinarySpecs].sort((a, b) => a.localeCompare(b)),
+    releaseSmokeSelected,
+    managedUpdatesE2ESelected,
+    reasons,
+  };
 }
 
 /**
- * Validate the scenario registry and standalone exception list as a
- * verification contract: every referenced spec must exist, none may be a
- * visual spec, and every existing app e2e spec on disk must be covered by
- * the registry or the standalone list. A broken registry must fail
- * verification rather than degrade to a skipped app e2e run.
- * @param overrides Test-only overrides for the scenario registry, standalone
- * exception list, and app e2e spec directory. Production callers should omit
- * this argument so the real registry and exception list are validated.
- * @returns Validation result with `valid` and human-readable `errors`.
+ * Resolve the structural application E2E plan for a changed-file set, in
+ * priority order: invalid (a structural/ownership-inventory problem,
+ * including filesystem/Playwright inventory incompleteness, that must fail
+ * closed instead of silently widening), full (infrastructure,
+ * runtime-relevant `package.json`, `src/app`/routes, a removed/moved spec
+ * whose owner can no longer be validated, graph acquisition failure, or a
+ * relevant production path with no safely reachable owner), focused (a
+ * non-empty selected spec set), or skip (no relevant changes).
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [deps] Resolution options and test-only dependencies.
+ * @returns The resolved structural E2E plan.
  */
-export function validateE2EScenarioRegistry(
-  overrides: ValidateE2EScenarioRegistryOverrides = {},
-): E2ERegistryValidation {
-  const scenarios = overrides.scenarios ?? E2E_SCENARIO_SCOPES;
-  const standaloneSpecs = overrides.standaloneSpecs ?? APP_E2E_STANDALONE_SPECS;
-  const specDir = overrides.specDir ?? APP_E2E_SPEC_DIR;
-  const errors: string[] = [];
-  const registrySpecs = getAllRegistrySpecs(scenarios).map(String);
-
-  for (const spec of registrySpecs) {
-    if (isVisualE2ESpecPath(spec)) {
-      errors.push(`scenario registry must not reference visual spec ${spec}`);
-      continue;
-    }
-
-    if (!isExistingFile(spec)) {
-      errors.push(`scenario registry references missing spec ${spec}`);
-    }
-  }
-
-  for (const spec of standaloneSpecs) {
-    if (isVisualE2ESpecPath(spec)) {
-      errors.push(`APP_E2E_STANDALONE_SPECS must not reference visual spec ${spec}`);
-      continue;
-    }
-
-    if (!isExistingFile(spec)) {
-      errors.push(`APP_E2E_STANDALONE_SPECS references missing spec ${spec}`);
-    }
-  }
-
-  let appSpecFiles: string[];
+export function resolveStructuralE2EPlan(
+  changedFiles: readonly string[],
+  {
+    packageJsonOldRef = null,
+    fileExists = isExistingFile,
+    ownerDirectoryExists = defaultOwnerDirectoryExists,
+    acquireGraph = acquireProductionReverseGraph,
+    collectOwnerInventory = collectE2EOwnerInventory,
+    validateTargetTree = validateE2ETargetTree,
+    validateProductionArtifactMembership = validateProductionArtifactE2EMembership,
+  }: ResolveStructuralE2EPlanDeps = {},
+): StructuralE2EPlan {
+  let rawInventory: RawE2ESpecInventoryEntry[];
 
   try {
-    appSpecFiles = findAppE2ESpecFiles(specDir);
+    rawInventory = collectOwnerInventory();
   } catch (error) {
-    errors.push(
-      `unable to list ${specDir}/*.spec.ts: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    appSpecFiles = [];
-  }
-
-  const coveredSpecs = new Set([...registrySpecs, ...standaloneSpecs]);
-
-  for (const spec of appSpecFiles) {
-    if (!coveredSpecs.has(spec)) {
-      errors.push(
-        `app e2e spec ${spec} is not covered by E2E_SCENARIO_SCOPES or APP_E2E_STANDALONE_SPECS in scripts/lib/e2eRisk.ts`,
-      );
-    }
-  }
-
-  return { valid: errors.length === 0, errors: uniqSorted(errors) };
-}
-
-/**
- * Check whether a changed file is application-E2E-relevant product/shared
- * source: a path that must never be silently skipped, but may resolve to
- * focused specs when {@link E2E_SCENARIO_SCOPES} has an explicit mapping.
- * Every file under the broad app/shared runtime domains counts (so
- * non-TypeScript/Vue runtime files, e.g. CSS, stay protected); elsewhere
- * under `src/` only TypeScript/Vue source counts.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is relevant to application-E2E impact.
- */
-export function isAppE2ERelevantPath(filePath: string): boolean {
-  if (!filePath.startsWith('src/')) {
-    return false;
-  }
-
-  if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
-    return false;
-  }
-
-  if (APP_E2E_RELEVANT_BROAD_DOMAINS.some((prefix) => filePath.startsWith(prefix))) {
-    return true;
-  }
-
-  const extension = path.posix.extname(filePath);
-
-  return extension === '.ts' || extension === '.vue';
-}
-
-/**
- * Check whether an application-E2E-relevant path has no explicit scenario
- * mapping in {@link E2E_SCENARIO_SCOPES}. Unmapped relevant paths must not
- * silently skip e2e; {@link resolveAppE2EPlan} fails them closed to full.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is relevant and unmapped.
- */
-export function isUnmappedAppE2ERelevantPath(filePath: string): boolean {
-  return isAppE2ERelevantPath(filePath) && getScenariosForPath(filePath).length === 0;
-}
-
-/** Resolved app e2e lane plan, discriminated by `mode`. */
-export type AppE2EPlan =
-  | { mode: 'invalid'; specs: string[]; reasons: string[] }
-  | { mode: 'full'; specs: string[]; reasons: string[] }
-  | { mode: 'focused'; specs: string[]; reasons: string[] }
-  | { mode: 'skip'; specs: string[]; reasons: string[] };
-
-/** Resolution options for {@link resolveAppE2EPlan}. */
-export interface ResolveAppE2EPlanOptions {
-  /**
-   * Git ref to compare the current `package.json` against, for the
-   * version-only e2e impact refinement. Pass `null` when no reliable base
-   * ref is known; that fails closed to runtime-relevant (full app e2e).
-   */
-  packageJsonOldRef?: string | null;
-  /**
-   * Test-only override for the directly changed spec existence check,
-   * bypassing the real filesystem. Production callers should omit this so a
-   * deleted or renamed-away spec is detected against the real repository
-   * state.
-   */
-  fileExists?: (filePath: string) => boolean;
-}
-
-/**
- * Resolve the app e2e mode for the given changed files, in priority order:
- * invalid (scenario registry failed self-validation; fail closed instead of
- * silently skipping), full (full-lane infrastructure/unmapped-relevant/e2e-support/
- * package.json risk or a removed/renamed directly changed app spec), focused
- * (scenario registry matches and/or changed existing app e2e specs), or skip
- * (no app e2e relevant changes). Visual specs and visual-relevant paths never
- * feed this resolver; visual selection stays independent.
- * @param changedFiles Sorted unique list of repository-relative changed file paths.
- * @param [options] Resolution options.
- * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
- */
-export function resolveAppE2EPlan(
-  changedFiles: readonly string[],
-  { packageJsonOldRef = null, fileExists = isExistingFile }: ResolveAppE2EPlanOptions = {},
-): AppE2EPlan {
-  const registryValidation = validateE2EScenarioRegistry();
-
-  if (!registryValidation.valid) {
-    return { mode: 'invalid', specs: [], reasons: registryValidation.errors };
-  }
-
-  const infrastructureHit = changedFiles.find(isFullLaneE2EInfrastructurePath);
-  const unmappedRelevantHit = changedFiles.find(isUnmappedAppE2ERelevantPath);
-  const supportHit = changedFiles.find(isAppE2ESupportPath);
-  const missingSpecHit = changedFiles.find(
-    (filePath) => isAppE2ESpecPath(filePath) && !fileExists(filePath),
-  );
-  const isPackageJsonRuntimeRelevant =
-    changedFiles.includes(PACKAGE_JSON_PATH) &&
-    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef });
-  const fullReasons: string[] = [];
-
-  if (infrastructureHit) {
-    fullReasons.push(`full-lane infrastructure path ${infrastructureHit} -> full app e2e`);
-  }
-
-  if (isPackageJsonRuntimeRelevant) {
-    fullReasons.push(`runtime-relevant package.json change -> full app e2e`);
-  }
-
-  if (unmappedRelevantHit) {
-    fullReasons.push(
-      `unmapped application-E2E-relevant path ${unmappedRelevantHit} -> full app e2e (map it in scripts/lib/e2eRisk.ts or add e2e coverage)`,
-    );
-  }
-
-  if (supportHit) {
-    fullReasons.push(`e2e support file ${supportHit} changed -> full app e2e`);
-  }
-
-  if (missingSpecHit) {
-    fullReasons.push(`removed or renamed app e2e spec ${missingSpecHit} -> full app e2e`);
-  }
-
-  if (fullReasons.length > 0) {
-    return { mode: 'full', specs: [], reasons: fullReasons };
-  }
-
-  const focusedSpecs = new Set<string>();
-  const focusedReasons: string[] = [];
-
-  for (const filePath of changedFiles) {
-    const scenarios = getScenariosForPath(filePath);
-
-    for (const scenario of scenarios) {
-      for (const spec of scenario.specs) {
-        focusedSpecs.add(spec);
-      }
-
-      focusedReasons.push(`scenario ${scenario.name} -> ${scenario.specs.join(', ')}`);
-    }
-
-    if (isAppE2ESpecPath(filePath)) {
-      focusedSpecs.add(filePath);
-      focusedReasons.push(`changed app e2e spec ${filePath} -> ${filePath}`);
-    }
-  }
-
-  if (focusedSpecs.size > 0) {
     return {
-      mode: 'focused',
-      specs: uniqSorted([...focusedSpecs]),
-      reasons: uniqSorted(focusedReasons),
+      mode: 'invalid',
+      reasons: [
+        `target E2E ownership inventory could not be collected: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      ],
     };
   }
 
-  return { mode: 'skip', specs: [], reasons: ['empty e2e scope'] };
+  const inventoryValidation = validateE2EOwnerInventory(rawInventory, { ownerDirectoryExists });
+
+  if (!inventoryValidation.valid) {
+    return { mode: 'invalid', reasons: inventoryValidation.errors };
+  }
+
+  // The filesystem target E2E tree is the independent ground truth for
+  // "what must be proven"; the Playwright-collected inventory must be
+  // proven complete against it before any selection happens, so a
+  // testMatch/testIgnore/project drift can never silently drop a direct
+  // changed/added target E2E from the plan.
+  const targetTreeValidation = validateTargetTree();
+
+  if (!targetTreeValidation.valid) {
+    return { mode: 'invalid', reasons: targetTreeValidation.errors };
+  }
+
+  const completenessValidation = validateE2EOwnerInventoryCompleteness(
+    inventoryValidation.entries.map((entry) => entry.specPath),
+    targetTreeValidation.targetPaths,
+  );
+
+  if (!completenessValidation.valid) {
+    return { mode: 'invalid', reasons: completenessValidation.errors };
+  }
+
+  // The registered exceptional productionArtifact E2E inventory (see
+  // scripts/lib/releaseProofInventory.ts) must equal, exactly, the current
+  // filesystem productionArtifact/ target set before any spec is routed to
+  // the `release-smoke`/`managed-updates-e2e` leaves below: an unregistered
+  // productionArtifact target is structural invalidity, never a silent skip.
+  const productionArtifactMembershipValidation = validateProductionArtifactMembership();
+
+  if (!productionArtifactMembershipValidation.valid) {
+    return { mode: 'invalid', reasons: productionArtifactMembershipValidation.errors };
+  }
+
+  const entryBySpecPath = new Map(
+    inventoryValidation.entries.map((entry) => [entry.specPath, entry] as const),
+  );
+
+  const fullReasons: string[] = [];
+  const infrastructureHit = changedFiles.find(isFullLaneE2EInfrastructurePath);
+
+  if (infrastructureHit) {
+    fullReasons.push(`full-lane E2E infrastructure path ${infrastructureHit} -> full E2E`);
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    fullReasons.push('runtime-relevant package.json change -> full E2E');
+  }
+
+  const appBootstrapHit = changedFiles.find(isAppBootstrapPath);
+
+  if (appBootstrapHit) {
+    fullReasons.push(`app bootstrap/routing path ${appBootstrapHit} -> full E2E`);
+  }
+
+  // Direct target E2E spec changes (added/modified/removed-or-moved).
+  const invalidReasons: string[] = [];
+  const directSelectedSpecPaths = new Set<string>();
+  const widenedOwnerIds = new Set<string>();
+
+  for (const filePath of changedFiles) {
+    const parsed = parseE2ETargetPath(filePath);
+
+    if (!parsed) {
+      continue;
+    }
+
+    const ownerId = formatOwnerId(parsed.owner);
+
+    if (fileExists(filePath)) {
+      if (!ownerDirectoryExists(parsed.owner)) {
+        invalidReasons.push(
+          `target E2E spec ${filePath} references owner ${ownerId} with no matching production directory`,
+        );
+        continue;
+      }
+
+      directSelectedSpecPaths.add(filePath);
+      continue;
+    }
+
+    if (!ownerDirectoryExists(parsed.owner)) {
+      fullReasons.push(
+        `removed/moved target E2E spec ${filePath} had owner ${ownerId}, which no longer exists in production -> full E2E`,
+      );
+      continue;
+    }
+
+    widenedOwnerIds.add(ownerId);
+  }
+
+  if (invalidReasons.length > 0) {
+    return { mode: 'invalid', reasons: invalidReasons };
+  }
+
+  // Relevant production source impact via the reverse-dependency graph.
+  const relevantProductionPaths = changedFiles.filter(
+    (filePath) => isRelevantProductionSourcePath(filePath) && !isAppBootstrapPath(filePath),
+  );
+  const graphReachedOwnerIds = new Set<string>();
+
+  if (relevantProductionPaths.length > 0 && fullReasons.length === 0) {
+    const graphResult = acquireGraph();
+
+    if (!graphResult.ok) {
+      fullReasons.push(`production dependency graph acquisition failed: ${graphResult.error}`);
+    } else {
+      for (const filePath of relevantProductionPaths) {
+        const owners = traverseOwnersForChangedPath(filePath, graphResult.graph);
+
+        if (owners.size === 0) {
+          fullReasons.push(
+            `relevant production change ${filePath} has no safely established E2E product owner -> full E2E`,
+          );
+          continue;
+        }
+
+        for (const ownerId of owners) {
+          graphReachedOwnerIds.add(ownerId);
+        }
+      }
+    }
+  }
+
+  if (fullReasons.length > 0) {
+    return { mode: 'full', reasons: fullReasons };
+  }
+
+  const reachedOwnerIds = new Set<string>([...widenedOwnerIds, ...graphReachedOwnerIds]);
+  const selectedSpecPaths = new Set<string>(directSelectedSpecPaths);
+  const reasons: string[] = [];
+
+  for (const entry of entryBySpecPath.values()) {
+    if (entry.ownerIds.some((ownerId) => reachedOwnerIds.has(ownerId))) {
+      selectedSpecPaths.add(entry.specPath);
+    }
+  }
+
+  for (const specPath of directSelectedSpecPaths) {
+    reasons.push(`changed target E2E spec ${specPath} -> ${specPath}`);
+  }
+
+  for (const ownerId of reachedOwnerIds) {
+    reasons.push(`affected owner ${ownerId} -> owned target E2E specs`);
+  }
+
+  return selectedSpecsToPlan(entryBySpecPath, selectedSpecPaths, reasons.length > 0 ? reasons : []);
 }
+
+/** Resolution options for {@link canChangedPathsAffectE2E}. */
+export interface CanChangedPathsAffectE2EOptions {
+  packageJsonOldRef?: string | null;
+}
+
+/**
+ * Cheaply classify whether a changed-file set can plausibly affect E2E,
+ * without acquiring the expensive containerized Playwright ownership
+ * inventory or the dependency-cruiser reverse-dependency graph: relevance is
+ * resolved before {@link resolveStructuralE2EPlan}'s expensive acquisition,
+ * not merely inside it, so an E2E-irrelevant invocation never pays for
+ * acquisition it cannot use. Conservative by design: any path this
+ * classifier cannot cheaply rule out returns `true` (acquire), so a false
+ * positive is acceptable but a false negative is not.
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Resolution options.
+ * @returns `true` when {@link resolveStructuralE2EPlan}'s expensive
+ * acquisition may still be needed; `false` only when every changed path is
+ * cheaply provable E2E-irrelevant.
+ */
+export function canChangedPathsAffectE2E(
+  changedFiles: readonly string[],
+  { packageJsonOldRef = null }: CanChangedPathsAffectE2EOptions = {},
+): boolean {
+  if (changedFiles.length === 0) {
+    return false;
+  }
+
+  if (changedFiles.some(isFullLaneE2EInfrastructurePath)) {
+    return true;
+  }
+
+  if (changedFiles.some(isAppBootstrapPath)) {
+    return true;
+  }
+
+  if (
+    changedFiles.includes(PACKAGE_JSON_PATH) &&
+    isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef })
+  ) {
+    return true;
+  }
+
+  if (changedFiles.some((filePath) => parseE2ETargetPath(filePath) !== null)) {
+    return true;
+  }
+
+  return changedFiles.some(
+    (filePath) => isRelevantProductionSourcePath(filePath) && !isAppBootstrapPath(filePath),
+  );
+}
+
+export type { ReverseDependencyGraph };

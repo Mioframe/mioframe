@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isVisualRelevantPackageJsonChange } from './packageJsonImpact.ts';
+import { isSharedPlaywrightExecutionInfrastructurePath } from './playwrightExecutionRisk.ts';
+import { isSharedViteBuildInputPath } from './viteBuildRisk.ts';
 
-const LEGACY_VISUAL_SPEC_PREFIX = 'tests/e2e/visual/';
 const PACKAGE_JSON_PATH = 'package.json';
 
 /**
@@ -15,38 +16,38 @@ const COLOCATED_VISUAL_SPEC_ROOT_PREFIX = `${COLOCATED_VISUAL_SPEC_ROOT_DIR}/`;
 const COLOCATED_VISUAL_SPEC_SUFFIX = '.visual.spec.ts';
 const COLOCATED_VISUAL_SNAPSHOT_MARKER = `${COLOCATED_VISUAL_SPEC_SUFFIX}-snapshots/`;
 
-// Broad blast-radius paths: the visual Playwright config, the shared
-// container runner, this resolver's own module, the visual lane
-// execution/planning entry points, and the production-owned Storybook
-// preview style dependency closure. A change here can affect every visual
-// spec (legacy or colocated), so it always triggers a full lane run instead
-// of relying on owner-local ownership.
+// Broad blast-radius paths: the visual Playwright config, this resolver's
+// own module, the visual lane execution/planning entry points, and the
+// production-owned Storybook preview style dependency closure. A change here
+// can affect every visual spec (legacy or colocated), so it always triggers
+// a full lane run instead of relying on owner-local ownership. The shared
+// Playwright command/lock/result/signal execution boundary is a separate
+// authoritative source of truth, checked by {@link isFullVisualLanePath}
+// below rather than duplicated here, since it widens relevance across every
+// Playwright-container-backed type, not only visual.
 const FULL_LANE_EXACT_FILES = new Set([
-  'config/tooling.json',
   'playwright.visual.config.ts',
-  'pnpm-lock.yaml',
   'scripts/lib/visualRisk.ts',
-  'scripts/playwrightContainer.ts',
   'scripts/storybook.mjs',
   'scripts/visual.mjs',
   'scripts/verify.ts',
-  'tsconfig.storybook.json',
-  'vite.config.ts',
   'src/app/styles/base.css',
   'src/app/styles/fonts.css',
+  // Cross-owner `openStory()`/stabilization helper: every owner-local visual
+  // spec imports it, so a change here is not safely attributable to one
+  // owner.
+  'tests/e2e/visual/storybook.ts',
 ]);
 
 // Safe non-visual proof/documentation suffixes that cannot affect Storybook
-// rendering: colocated Vitest specs, Storybook browser-behavior specs, and
-// plain Markdown documentation. Checked ahead of owner-local and broad
+// rendering: colocated Vitest specs, Storybook behavior specs, and plain
+// Markdown documentation. Checked ahead of owner-local and broad
 // visual-relevant classification so these never select or force the visual
 // lane, but after global infrastructure/package.json/spec/snapshot
 // resolution, which stays independently authoritative.
-const SAFE_VISUAL_EXCLUSION_SUFFIXES = ['.test.ts', '.browser.spec.ts', '.md'];
+const SAFE_VISUAL_EXCLUSION_SUFFIXES = ['.test.ts', '.behavior.spec.ts', '.md'];
 
-// Legacy central visual execution remains full-fallback for its entire
-// subtree during S3: specs, snapshots, and shared visual helpers alike.
-const FULL_LANE_PREFIXES = ['.storybook/', LEGACY_VISUAL_SPEC_PREFIX];
+const FULL_LANE_PREFIXES = ['.storybook/'];
 
 function uniqSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
@@ -116,23 +117,17 @@ export function isColocatedVisualSpecPath(filePath: string): boolean {
 }
 
 /**
- * Check whether a changed file belongs to the legacy central visual location,
- * which remains full-fallback for its entire subtree during S3.
- * @param filePath Repository-relative changed file path.
- * @returns True when the path is under `tests/e2e/visual/`.
- */
-export function isLegacyVisualPath(filePath: string): boolean {
-  return filePath.startsWith(LEGACY_VISUAL_SPEC_PREFIX);
-}
-
-/**
  * Check whether a changed file is a broad blast-radius path that must
  * trigger the full visual lane regardless of owner-local ownership.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is visual/Playwright/Storybook infrastructure risk.
  */
 export function isFullVisualLanePath(filePath: string): boolean {
-  if (FULL_LANE_EXACT_FILES.has(filePath)) {
+  if (
+    isSharedPlaywrightExecutionInfrastructurePath(filePath) ||
+    isSharedViteBuildInputPath(filePath) ||
+    FULL_LANE_EXACT_FILES.has(filePath)
+  ) {
     return true;
   }
 
@@ -140,10 +135,10 @@ export function isFullVisualLanePath(filePath: string): boolean {
 }
 
 /**
- * Check whether a changed file is a currently visual-relevant shared
- * UI/story path. Unmigrated owners under this definition must preserve safe
- * full visual fallback when they resolve to no colocated visual owner, so
- * S3 does not cause visual checks to silently disappear.
+ * Check whether a changed file is a broad visual-relevant shared UI/story
+ * path with unknown rendering impact. An owner with no colocated visual spec
+ * still widens to the full visual lane here rather than silently skipping,
+ * per docs/testing/architecture.md's "broad unknown rendering impact" rule.
  * @param filePath Repository-relative changed file path.
  * @returns True when the path is a broad visual-relevant UI/story path.
  */

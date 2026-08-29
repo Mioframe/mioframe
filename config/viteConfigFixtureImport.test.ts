@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest';
 // Normal stable, develop, branch, PR, local, and Storybook builds must never
 // carry a static dependency on the frozen legacy PWA test fixture (see
 // tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts) — only
-// tests/e2e/release/managedUpdatesMigration.spec.ts, through the
-// RELEASE_TEST_LEGACY_PWA_FIXTURE-gated dynamic import, may resolve it.
+// src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts,
+// through the RELEASE_TEST_LEGACY_PWA_FIXTURE-gated dynamic import, may resolve it.
 describe('vite.config.ts has no static production dependency on the release-test fixture', () => {
   const source = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
 

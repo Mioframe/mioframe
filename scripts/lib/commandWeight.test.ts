@@ -20,13 +20,25 @@ describe('classifyCommandWeight', () => {
   it('treats release artifact and smoke checks as expensive', () => {
     expect(classifyCommandWeight({ label: 'artifact' })).toBe('expensive');
     expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
-    expect(classifyCommandWeight({ label: 'managed-updates' })).toBe('expensive');
   });
 
-  it('keeps release-version and release-config light, and build medium', () => {
+  it('treats the generic owner-local browser-integration leaf as expensive', () => {
+    expect(classifyCommandWeight({ label: 'browser-integration-local' })).toBe('expensive');
+  });
+
+  it('treats every managed-update leaf, including the static controller-identity build, as expensive', () => {
+    expect(classifyCommandWeight({ label: 'managed-updates-browser-integration' })).toBe(
+      'expensive',
+    );
+    expect(classifyCommandWeight({ label: 'managed-updates-e2e' })).toBe('expensive');
+    expect(classifyCommandWeight({ label: 'managed-updates-static' })).toBe('expensive');
+  });
+
+  it('keeps release-version and release-config light, and build/artifact-static medium', () => {
     expect(classifyCommandWeight({ label: 'release-version' })).toBe('light');
     expect(classifyCommandWeight({ label: 'release-config' })).toBe('light');
     expect(classifyCommandWeight({ label: 'build' })).toBe('medium');
+    expect(classifyCommandWeight({ label: 'artifact-static' })).toBe('medium');
   });
 });
 

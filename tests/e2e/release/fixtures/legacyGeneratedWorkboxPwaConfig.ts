@@ -2,7 +2,8 @@
  * Frozen, release-test-only snapshot of `config/plugins/pwa.ts` exactly as
  * it existed on `develop` immediately before the managed pinned application
  * updates feature (fully generated `generateSW` Workbox worker, no managed
- * controller). Used only by `tests/e2e/release/managedUpdatesMigration.spec.ts`
+ * controller). Used only by
+ * `src/shared/service/appUpdate/managedUpdatesMigration.browser-integration.spec.ts`
  * to build the "old" artifact a real user would already have installed, so
  * migration to the new `injectManifest` controller worker can be proven
  * against the exact previous generated behavior — not an approximation.

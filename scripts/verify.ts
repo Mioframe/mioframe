@@ -17,27 +17,47 @@ import {
   type CommandWeight,
 } from './lib/commandWeight.ts';
 import { createChildSignalForwarder } from './lib/signalForward.ts';
-import { resolveAppE2EPlan, type AppE2EPlan } from './lib/e2eRisk.ts';
+import {
+  canChangedPathsAffectE2E,
+  resolveStructuralE2EPlan,
+  type StructuralE2EPlan,
+} from './lib/e2eRisk.ts';
+import { resolveReleaseStaticPlan, type ReleaseStaticPlan } from './lib/releaseStaticRisk.ts';
+import { RELEASE_SMOKE_SPEC } from './lib/releaseProofInventory.ts';
 import {
   validateE2EProjectApplicability,
   type E2EProjectApplicabilityValidation,
 } from './lib/e2eProjectApplicability.ts';
+import { validateE2ETargetTree, type E2ETargetTreeValidation } from './lib/e2eOwnerTree.ts';
 import {
   resolveStorybookBehaviorPlan,
   type StorybookBehaviorPlan,
 } from './lib/storybookBehaviorRisk.ts';
 import { resolveStorybookBuildPlan, type StorybookBuildPlan } from './lib/storybookBuildRisk.ts';
 import { resolveVisualPlan, type VisualPlan } from './lib/visualRisk.ts';
-import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.ts';
 import {
-  FIX_ONLY_LABELS,
+  listGenericBrowserIntegrationSpecs,
+  PRODUCTION_ARTIFACT_SMOKE_SPEC,
+  resolveBrowserIntegrationPlan,
+  resolveGenericBrowserIntegrationPlan,
+  type BrowserIntegrationPlan,
+  type GenericBrowserIntegrationPlan,
+} from './lib/browserIntegrationRisk.ts';
+import {
+  getChangedFileProjection,
+  resolveChangedPathsScope,
+  type ChangedPathsScopeInput,
+} from './lib/changedPaths.ts';
+import { resolveUnitPlan, type UnitPlan } from './lib/unitRisk.ts';
+import { resolveMutationPlan, type MutationPlan } from './lib/mutationTargets.ts';
+import {
   formatShellCommand,
   formatVerifyInvocationCommand,
-  FULL_ONLY_LABELS,
   getCliFilesOverride,
   resolveVerifyInvocation,
-  VERIFY_LABELS,
+  VERIFICATION_TYPES,
   type FixMode,
+  type VerificationType,
   type VerifyInvocation,
 } from './lib/verifyInvocation.ts';
 import {
@@ -58,6 +78,13 @@ export interface RunCommandEntry {
   weight?: CommandWeight;
   note?: string | null;
   triggerReason?: string | null;
+  /**
+   * The single verification type this proof leaf belongs to, or `null` for
+   * a pure execution prerequisite. Stamped by {@link withVerificationType} as
+   * a final planning pass; individual command-building call sites do not
+   * set this themselves.
+   */
+  verificationType?: VerificationType | null;
 }
 
 /** Command entry the planner emits when a check is skipped. */
@@ -67,6 +94,8 @@ export interface SkippedCommandEntry {
   command: string;
   reason: string;
   triggerReason?: string | null;
+  /** See {@link RunCommandEntry.verificationType}. */
+  verificationType?: VerificationType | null;
 }
 
 /** Command entry the planner emits when a check fails closed before execution. */
@@ -76,6 +105,8 @@ export interface FailedCommandEntry {
   command: string;
   reason: string;
   triggerReason?: string | null;
+  /** See {@link RunCommandEntry.verificationType}. */
+  verificationType?: VerificationType | null;
 }
 
 /** One planned verify command, discriminated by `kind`. */
@@ -189,15 +220,104 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL: Partial<Record<string, number>> = {
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
+  // Two real `vite build` invocations; no Playwright container involved
+  // (see scripts/release/managedUpdatesControllerArtifactIdentityProof.ts
+  // and productionArtifactStaticProof.ts).
+  'artifact-static': 10 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  // Four sequential fresh-container sessions (see
-  // scripts/release/managedUpdatesProof.mjs), each bounded by the same
-  // derived Playwright container timeout as every other Playwright-backed
-  // lane.
-  'managed-updates': 4 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates-static': 8 * 60 * 1000,
+  // Managed-updates is split into its own container sessions rather than
+  // one aggregate run: three sequential fresh-container sessions
+  // (lifecycle, migration-isolation, cross-engine) for the
+  // browser-integration proof leaf, and two (activation-UI,
+  // data-compatibility) for the E2E proof leaf; each session is bounded by
+  // the same derived Playwright container timeout as every other
+  // Playwright-backed lane.
+  'managed-updates-browser-integration': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates-e2e': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  // The generic owner-local browser-integration leaf (see
+  // scripts/browserIntegration.ts / playwright.browserIntegration.config.ts):
+  // a single ordinary Playwright container run, same bound as every other
+  // Playwright-backed lane.
+  'browser-integration-local': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
-const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
+const cliOnlyType = currentVerifyInvocation?.onlyType ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
+
+// Internal verification-type ownership for every planner leaf label. The
+// public `--only` CLI selects by these types (see resolveVerificationType and
+// selectOnlyCommands); leaf labels themselves remain private identifiers for
+// logs, weights, timeouts, and locks. Every proof leaf label must appear
+// here with exactly one type; a label that is a pure execution prerequisite
+// (never itself a proof leaf) is listed in PREREQUISITE_LABELS instead of
+// being invented as a ninth type.
+const VERIFICATION_TYPE_BY_LABEL: Readonly<Partial<Record<string, VerificationType>>> = {
+  'agent-environment': 'static',
+  format: 'static',
+  oxlint: 'static',
+  eslint: 'static',
+  'type-check': 'static',
+  'storybook-build': 'static',
+  'unit-tests': 'unit',
+  'unit-related': 'unit',
+  e2e: 'e2e',
+  'storybook-behavior': 'behavior',
+  visual: 'visual',
+  mutation: 'mutation',
+  'release-version': 'static',
+  'release-config': 'static',
+  build: 'static',
+  'publisher-node-import': 'static',
+  'artifact-static': 'static',
+  artifact: 'browser-integration',
+  'release-smoke': 'e2e',
+  'managed-updates-static': 'static',
+  'managed-updates-browser-integration': 'browser-integration',
+  'managed-updates-e2e': 'e2e',
+  'browser-integration-local': 'browser-integration',
+};
+
+// Pure execution prerequisites: never a proof leaf on their own, so they
+// carry no verification type instead of inventing a ninth type for them
+// (see the implementation preflight's "pure execution prerequisites such as
+// e2e-install are not invented as a ninth verification type"). Storybook
+// buildability itself is a `static` proof leaf (see
+// VERIFICATION_TYPE_BY_LABEL); reuse of its build artifact by
+// storybook-behavior/visual is a separate execution optimization and does
+// not remove that static proof ownership.
+const PREREQUISITE_LABELS: ReadonlySet<string> = new Set(['e2e-install']);
+
+/**
+ * Resolve the single verification type a planner leaf label belongs to.
+ * @param label Verify command label.
+ * @returns The owning verification type, or `null` for a pure execution
+ * prerequisite label.
+ */
+function resolveVerificationType(label: string): VerificationType | null {
+  const type = VERIFICATION_TYPE_BY_LABEL[label];
+
+  if (type !== undefined) {
+    return type;
+  }
+
+  if (PREREQUISITE_LABELS.has(label)) {
+    return null;
+  }
+
+  throw new Error(`No verification type registered for verify command label: ${label}`);
+}
+
+/**
+ * Stamp one planned command entry with its single owning verification type
+ * (or `null` for a pure execution prerequisite). Applied as a final planning
+ * pass over the full command list so individual command-building call sites
+ * do not each need to repeat label -> type ownership.
+ * @param entry Planned command entry.
+ * @returns The same entry with `verificationType` resolved.
+ */
+export function withVerificationType<T extends CommandEntry>(entry: T): T {
+  return { ...entry, verificationType: resolveVerificationType(entry.label) };
+}
 
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
@@ -219,7 +339,6 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ]);
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx', '.vue']);
-const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
 function isFormatLintIgnored(filePath: string): boolean {
@@ -257,216 +376,6 @@ function isTypeCheckTarget(filePath: string): boolean {
     (baseName.startsWith('tsconfig') && baseName.endsWith('.json')) ||
     baseName.includes('.config.')
   );
-}
-
-/**
- * Find sibling test files for a production file path.
- *
- * For `src/` paths, maps `.ts` and `.vue` production files to colocated
- * `.test.ts` files using exact basename matching and directory scan.
- * For `scripts/` paths, maps `.mjs`/`.ts` production files to colocated
- * `.test.mjs`/`.test.ts` and `.spec.mjs` files using exact name match.
- * @param filePath Production file path relative to the repository root.
- * @returns Sorted unique list of existing sibling test file paths, or an
- * empty array when no tests are found.
- */
-export function getAllSiblingTestFiles(filePath: string): string[] {
-  if (filePath.startsWith('src/')) {
-    if (filePath.endsWith('.test.ts')) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    const extension = path.posix.extname(filePath);
-
-    if (!SOURCE_EXTENSIONS.includes(extension)) {
-      return [];
-    }
-
-    const baseName = path.posix.basename(filePath, extension);
-    const dirPath = path.posix.dirname(filePath);
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const exactMatch = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactMatch)) {
-      return [exactMatch];
-    }
-
-    const testCandidates: string[] = [];
-
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith('.test.ts')) {
-          continue;
-        }
-
-        const candidateBase = entry.name.slice(0, -'.test.ts'.length);
-        const parts = candidateBase.split('.');
-
-        if (parts.length < 2) {
-          continue;
-        }
-
-        if (parts[0] === baseName) {
-          testCandidates.push(path.posix.join(dirPath, entry.name));
-        }
-      }
-    } catch {
-      // Directory read failure falls through to an empty focused test scope.
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
-    if (
-      filePath.endsWith('.test.mjs') ||
-      filePath.endsWith('.spec.mjs') ||
-      filePath.endsWith('.test.ts')
-    ) {
-      return fileExists(filePath) ? [filePath] : [];
-    }
-
-    if (!filePath.endsWith('.mjs') && !filePath.endsWith('.ts')) {
-      return [];
-    }
-
-    const extension = filePath.endsWith('.mjs') ? '.mjs' : '.ts';
-    const nameWithoutExt = filePath.slice(0, -extension.length);
-    const testCandidates: string[] = [];
-
-    const exactTestMatchMjs = `${nameWithoutExt}.test.mjs`;
-
-    if (fileExists(exactTestMatchMjs)) {
-      testCandidates.push(exactTestMatchMjs);
-    }
-
-    const exactTestMatchTs = `${nameWithoutExt}.test.ts`;
-
-    if (fileExists(exactTestMatchTs)) {
-      testCandidates.push(exactTestMatchTs);
-    }
-
-    const exactSpecMatch = `${nameWithoutExt}.spec.mjs`;
-
-    if (fileExists(exactSpecMatch)) {
-      testCandidates.push(exactSpecMatch);
-    }
-
-    return uniqSorted(testCandidates);
-  }
-
-  return [];
-}
-
-function getVitestScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
-      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
-      // colocated `.test.mjs` fixture-logic test there is valid vitest
-      // scope and falls through to the checks below like any other file.
-      continue;
-    }
-
-    if (filePath.endsWith('.browser.spec.ts')) {
-      // Colocated browser specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (filePath.endsWith('.visual.spec.ts')) {
-      // Colocated visual specs belong to the visual Playwright lane; vitest.config.ts does not include them.
-      continue;
-    }
-
-    if (
-      (filePath.endsWith('.test.ts') ||
-        filePath.endsWith('.spec.ts') ||
-        filePath.endsWith('.test.mjs') ||
-        filePath.endsWith('.spec.mjs')) &&
-      fileExists(filePath)
-    ) {
-      scope.push(filePath);
-      continue;
-    }
-
-    const testFiles = getAllSiblingTestFiles(filePath);
-
-    for (const testFile of testFiles) {
-      scope.push(testFile);
-    }
-  }
-
-  return uniqSorted(scope);
-}
-
-function isSharedUiFile(filePath: string): boolean {
-  return filePath.startsWith('src/shared/ui/');
-}
-
-function getMutationSourceCandidate(testFilePath: string): string | null {
-  const basePath = testFilePath.slice(0, -'.test.ts'.length);
-  const dirPath = path.posix.dirname(testFilePath);
-  const baseName = path.posix.basename(basePath);
-
-  for (const extension of SOURCE_EXTENSIONS) {
-    const candidate = `${basePath}${extension}`;
-
-    if (fileExists(candidate)) {
-      return candidate;
-    }
-  }
-
-  const parts = baseName.split('.');
-
-  if (parts.length >= 2) {
-    const trimmedBaseName = parts.slice(0, -1).join('.');
-    const trimmedPath = `${dirPath}/${trimmedBaseName}`;
-
-    for (const extension of SOURCE_EXTENSIONS) {
-      const candidate = `${trimmedPath}${extension}`;
-
-      if (fileExists(candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return null;
-}
-
-function getMutationScope(changedFiles: readonly string[]): string[] {
-  const scope: string[] = [];
-
-  for (const filePath of changedFiles) {
-    if (filePath.startsWith('src/') && filePath.endsWith('.test.ts')) {
-      const candidate = getMutationSourceCandidate(filePath);
-
-      if (candidate && !isSharedUiFile(candidate)) {
-        scope.push(candidate);
-      }
-
-      continue;
-    }
-
-    if (!filePath.startsWith('src/') || isSharedUiFile(filePath)) {
-      continue;
-    }
-
-    if (!SOURCE_EXTENSIONS.includes(path.posix.extname(filePath))) {
-      continue;
-    }
-
-    const siblingTests = getAllSiblingTestFiles(filePath);
-
-    if (siblingTests.length > 0) {
-      scope.push(filePath);
-    }
-  }
-
-  return uniqSorted(scope);
 }
 
 function formatCommand(command: string, args: readonly string[]): string {
@@ -575,6 +484,26 @@ const BLOCKING_LOG_SIGNALS: readonly { label: string; marker: string; reason: st
     marker: '[Vue warn]',
     reason: 'Vue runtime warnings were emitted during unit tests',
   },
+  {
+    label: 'unit-related',
+    marker: '[Vue warn]',
+    reason: 'Vue runtime warnings were emitted during unit tests',
+  },
+  // Vitest's own no-test diagnostic (see printNoTestFound in the installed
+  // vitest CLI): `--changed`/`related` implicitly default passWithNoTests to
+  // true, so a unit-relevant scope with zero matching tests still exits 0.
+  // Blocking on this exact line keeps that a visible failure instead of a
+  // successful empty pass.
+  {
+    label: 'unit-tests',
+    marker: 'No test files found, exiting with code 0',
+    reason: 'Vitest found no matching unit test files for this affected scope',
+  },
+  {
+    label: 'unit-related',
+    marker: 'No test files found, exiting with code 0',
+    reason: 'Vitest found no matching unit test files for this related scope',
+  },
 ];
 
 // oxlint-disable-next-line no-control-regex -- ANSI color escapes start with the ESC control character by definition.
@@ -595,26 +524,30 @@ export interface BlockingLogIssue {
  * @returns Blocking issue with `reason` and `warningSummary`, or `null`.
  */
 export function getBlockingLogIssue(label: string, logOutput: string): BlockingLogIssue | null {
-  const signal = BLOCKING_LOG_SIGNALS.find((entry) => entry.label === label);
+  const signals = BLOCKING_LOG_SIGNALS.filter((entry) => entry.label === label);
 
-  if (!signal) {
+  if (signals.length === 0) {
     return null;
   }
 
-  const matchedLines = logOutput
-    .split('\n')
-    .map((line) => line.replace(ANSI_ESCAPE_PATTERN, ''))
-    .filter((line) => line.startsWith(signal.marker))
-    .map(trimWarningLine);
+  const lines = logOutput.split('\n').map((line) => line.replace(ANSI_ESCAPE_PATTERN, ''));
 
-  if (matchedLines.length === 0) {
-    return null;
+  for (const signal of signals) {
+    const matchedLines = lines
+      .filter((line) => line.startsWith(signal.marker))
+      .map(trimWarningLine);
+
+    if (matchedLines.length === 0) {
+      continue;
+    }
+
+    return {
+      reason: signal.reason,
+      warningSummary: uniqSorted(matchedLines).slice(0, 3).join(' | '),
+    };
   }
 
-  return {
-    reason: signal.reason,
-    warningSummary: uniqSorted(matchedLines).slice(0, 3).join(' | '),
-  };
+  return null;
 }
 
 /**
@@ -684,49 +617,33 @@ function printHelp(): void {
   console.log('  --verbose           Stream command output to stdout/stderr.');
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
-  console.log(
-    `                      With either fix mode and --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
-  );
+  console.log('                      With either fix mode, --only is valid only with `static`.');
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
   console.log('                      Cannot be combined with --full.');
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
-  console.log('  --only <label>      Run one focused verification check.');
-  console.log('  --storybook-build-ci-fallback');
-  console.log(
-    '                      With `--only storybook-build` (not `--full`): build only when the',
-  );
-  console.log(
-    '                      ordinary storybook-build plan requires it and neither storybook-behavior',
-  );
-  console.log('                      nor visual will run. See .github/workflows/verify.yml.');
+  console.log('  --only <type>       Run one focused verification type.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('                      Cannot be combined with --full.');
+  console.log('  --repeat <count>    With `--only behavior` and `--files` (integer 2-20): repeat');
+  console.log('                      the selected behavior tests this many times within one');
+  console.log('                      invocation, for deterministic flake diagnosis.');
   console.log(
-    '  --repeat <count>    With `--only storybook-behavior` and `--files` (integer 2-20):',
+    '  --full              Literal complete project verification: every verification type,',
   );
   console.log(
-    '                      repeat the selected Storybook behavior tests this many times within',
+    '                      every test/spec, and the complete registered mutation inventory, with',
   );
-  console.log('                      one invocation, for deterministic flake diagnosis.');
   console.log(
-    '  --full              Unconditional full-project release scope: do not resolve changed paths,',
+    '                      no affected-test narrowing. Cannot be combined with --only, --files,',
   );
-  console.log('                      run full proof plus release-version/release-config/build/');
-  console.log(
-    '                      publisher-node-import/artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
-  );
+  console.log('                      --base, --repeat, or --fix-only.');
   console.log('');
-  console.log('Labels for --only:');
+  console.log('Types for --only:');
 
-  for (const label of VERIFY_LABELS) {
-    const modeNote = FULL_ONLY_LABELS.has(label)
-      ? ' (requires --full)'
-      : label === 'mutation'
-        ? ' (not available with --full)'
-        : '';
-    console.log(`  ${label}${modeNote}`);
+  for (const type of VERIFICATION_TYPES) {
+    console.log(`  ${type}`);
   }
 
   console.log('');
@@ -737,17 +654,12 @@ function printHelp(): void {
   console.log('  pnpm verify --profile github-actions --only e2e');
   console.log('  .env.local: VERIFY_BASE=origin/develop');
   console.log(`  ${VERIFY_PROFILE_ENV}=github-actions pnpm verify --only visual`);
-  console.log('  pnpm verify --verbose --only type-check');
-  console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
-  console.log('  pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback');
-  console.log(
-    '  pnpm verify --only storybook-behavior --files src/foo.browser.spec.ts --repeat 10',
-  );
+  console.log('  pnpm verify --verbose --only static');
+  console.log('  pnpm verify --only static --files src/foo.ts src/bar.vue');
+  console.log('  pnpm verify --only behavior --files src/foo.behavior.spec.ts --repeat 10');
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
-  console.log('  pnpm verify --full --only artifact');
-  console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
   console.log('  - In GitHub Actions, focused verify scope is based on GITHUB_BASE_REF.');
@@ -758,9 +670,7 @@ function printHelp(): void {
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
 
-  for (const label of VERIFY_LABELS) {
-    const timeoutMs = COMMAND_TIMEOUT_MS_BY_LABEL[label];
-
+  for (const [label, timeoutMs] of Object.entries(COMMAND_TIMEOUT_MS_BY_LABEL)) {
     if (timeoutMs === undefined) {
       continue;
     }
@@ -1186,6 +1096,46 @@ function createStorybookBehaviorCommand(
   };
 }
 
+/**
+ * Add the `release-smoke` and/or `managed-updates-e2e` production-artifact
+ * E2E leaves when a focused structural E2E plan selects a
+ * `productionArtifact/` target under their owner. Reuses the exact same leaf commands
+ * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
+ * default/`--only e2e` relevance without requiring `--full`. Never called
+ * from the `fullMode` branch of the e2e command block, so a selected
+ * productionArtifact spec is never duplicated against
+ * `addReleaseOnlyCommands`'s own unconditional `--full` leaves.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.structuralE2EPlan A focused structural E2E plan.
+ */
+function addProductionArtifactE2ECommands(
+  commands: CommandEntry[],
+  { structuralE2EPlan }: { structuralE2EPlan: Extract<StructuralE2EPlan, { mode: 'focused' }> },
+): void {
+  if (structuralE2EPlan.releaseSmokeSelected) {
+    commands.push({
+      kind: 'run',
+      label: 'release-smoke',
+      command: 'pnpm',
+      args: ['e2e:release', '--label', 'release-smoke', RELEASE_SMOKE_SPEC],
+      weight: classifyCommandWeight({ label: 'release-smoke' }),
+      triggerReason: structuralE2EPlan.reasons.join('; '),
+    });
+  }
+
+  if (structuralE2EPlan.managedUpdatesE2ESelected) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-e2e',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'e2e'],
+      weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
+      triggerReason: structuralE2EPlan.reasons.join('; '),
+    });
+  }
+}
+
 function addReleaseOnlyCommands(commands: CommandEntry[]): void {
   commands.push({
     kind: 'run',
@@ -1221,36 +1171,229 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
 
   commands.push({
     kind: 'run',
-    label: 'artifact',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'artifact',
-      'tests/e2e/release/productionArtifactSmoke.spec.ts',
-    ],
-    weight: classifyCommandWeight({ label: 'artifact' }),
+    label: 'artifact-static',
+    command: 'node',
+    args: ['scripts/release/productionArtifactStaticProof.ts'],
+    weight: classifyCommandWeight({ label: 'artifact-static' }),
   });
 
   commands.push({
     kind: 'run',
     label: 'release-smoke',
     command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'release-smoke',
-      'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
-    ],
+    args: ['e2e:release', '--label', 'release-smoke', RELEASE_SMOKE_SPEC],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
   });
 
   commands.push({
     kind: 'run',
-    label: 'managed-updates',
+    label: 'managed-updates-static',
     command: 'node',
-    args: ['scripts/release/managedUpdatesProof.mjs'],
-    weight: classifyCommandWeight({ label: 'managed-updates' }),
+    args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.ts'],
+    weight: classifyCommandWeight({ label: 'managed-updates-static' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates-e2e',
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'e2e'],
+    weight: classifyCommandWeight({ label: 'managed-updates-e2e' }),
+  });
+}
+
+/**
+ * Add the release-sensitive `static` leaves (`release-config`, `build`,
+ * `publisher-node-import`, `artifact-static`, `managed-updates-static`) that
+ * are relevant outside literal `--full`, using
+ * {@link resolveReleaseStaticPlan}'s explicit file capability/configuration
+ * ownership.
+ * `release-version` is deliberately never emitted here: PR release-version
+ * policy is owned independently by the develop-CI `release-version` job and
+ * by literal `pnpm verify --full` (`addReleaseOnlyCommands` below); emitting
+ * it here would let ordinary affected/default runs assert a version outcome
+ * that only CI's dedicated job and `--full` are authorized to check (see
+ * docs/release.md's "What CI verifies automatically"). Reuses the exact same leaf commands
+ * `addReleaseOnlyCommands` uses purely behind `--full`; this only adds
+ * default/`--only static` relevance without requiring `--full`. Never called
+ * from the `fullMode` branch, so a leaf is never duplicated against
+ * `addReleaseOnlyCommands`'s own unconditional `--full` leaves.
+ * @param commands Command list to push into.
+ * @param plan Resolved release-sensitive static plan.
+ */
+function addReleaseStaticCommands(commands: CommandEntry[], plan: ReleaseStaticPlan): void {
+  const triggerReason = plan.reasons.join('; ');
+
+  if (plan.releaseConfig) {
+    commands.push({
+      kind: 'run',
+      label: 'release-config',
+      command: 'node',
+      args: ['scripts/release/validateReleaseConfig.mjs'],
+      weight: classifyCommandWeight({ label: 'release-config' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.build) {
+    commands.push({
+      kind: 'run',
+      label: 'build',
+      command: 'node',
+      args: ['scripts/release/buildArtifact.mjs'],
+      weight: classifyCommandWeight({ label: 'build' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.publisherNodeImport) {
+    commands.push({
+      kind: 'run',
+      label: 'publisher-node-import',
+      command: 'node',
+      args: ['scripts/release/publisherWireContractImportProof.mjs'],
+      weight: classifyCommandWeight({ label: 'publisher-node-import' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.artifactStatic) {
+    commands.push({
+      kind: 'run',
+      label: 'artifact-static',
+      command: 'node',
+      args: ['scripts/release/productionArtifactStaticProof.ts'],
+      weight: classifyCommandWeight({ label: 'artifact-static' }),
+      triggerReason,
+    });
+  }
+
+  if (plan.managedUpdatesStatic) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-static',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesControllerArtifactIdentityProof.ts'],
+      weight: classifyCommandWeight({ label: 'managed-updates-static' }),
+      triggerReason,
+    });
+  }
+}
+
+/**
+ * Add the two browser-integration managed-update leaves (`artifact`,
+ * `managed-updates-browser-integration`) when they are relevant, using
+ * {@link resolveBrowserIntegrationPlan}'s owner-local path-based planning.
+ * Literal `--full` also goes through the same resolver (via its `fullMode`
+ * option) instead of constructing a literal plan directly, so exceptional
+ * managed-update membership has exactly one owner and its validation runs
+ * before every execution boundary, including literal `--full`. A second,
+ * independently constructed literal plan would risk drifting from the
+ * resolver's membership and skipping that validation.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.fullMode Full-project release mode.
+ * @param options.changedFiles Sorted unique list of repository-relative changed file paths.
+ */
+function addBrowserIntegrationCommands(
+  commands: CommandEntry[],
+  {
+    fullMode,
+    changedFiles,
+    packageJsonOldRef,
+  }: { fullMode: boolean; changedFiles: readonly string[]; packageJsonOldRef: string | null },
+): void {
+  const plan: BrowserIntegrationPlan = resolveBrowserIntegrationPlan(changedFiles, {
+    packageJsonOldRef,
+    fullMode,
+  });
+
+  if (plan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'artifact',
+      command: 'pnpm e2e:release',
+      reason: `invalid appUpdate browser-integration exceptional inventory state: ${plan.reasons.join('; ')}`,
+    });
+    commands.push({
+      kind: 'failed',
+      label: 'managed-updates-browser-integration',
+      command: 'node scripts/release/managedUpdatesProof.ts --kind browser-integration',
+      reason: `invalid appUpdate browser-integration exceptional inventory state: ${plan.reasons.join('; ')}`,
+    });
+    return;
+  }
+
+  if (plan.artifact) {
+    commands.push({
+      kind: 'run',
+      label: 'artifact',
+      command: 'pnpm',
+      args: ['e2e:release', '--label', 'artifact', PRODUCTION_ARTIFACT_SMOKE_SPEC],
+      weight: classifyCommandWeight({ label: 'artifact' }),
+      triggerReason: plan.reasons.join('; '),
+    });
+  }
+
+  if (plan.managedUpdates) {
+    commands.push({
+      kind: 'run',
+      label: 'managed-updates-browser-integration',
+      command: 'node',
+      args: ['scripts/release/managedUpdatesProof.ts', '--kind', 'browser-integration'],
+      weight: classifyCommandWeight({ label: 'managed-updates-browser-integration' }),
+      triggerReason: plan.reasons.join('; '),
+    });
+  }
+}
+
+/**
+ * Add the generic owner-local `browser-integration-local` leaf when relevant.
+ * Reuses {@link resolveGenericBrowserIntegrationPlan}'s path-based planning
+ * outside full mode; `--full` runs the complete current generic inventory
+ * unconditionally. Always passes an explicit spec list — never a bare
+ * `pnpm test:browser-integration` invocation — so this generic leaf can
+ * never accidentally sweep in the appUpdate managed-update corpus that also
+ * matches `playwright.browserIntegration.config.ts`'s broad `src/**` testMatch;
+ * that corpus has its own dedicated exceptional leaves
+ * (`managed-updates-browser-integration`) with their own container-session
+ * count and membership validation, and running it again here would duplicate
+ * that proof under the wrong label and weight.
+ * @param commands Command list to push into.
+ * @param options Build options.
+ * @param options.fullMode Full-project release mode.
+ * @param options.changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param options.packageJsonOldRef Git ref to compare the current
+ * `package.json` against, for the same runtime-relevance decision the
+ * exceptional browser-integration path uses.
+ */
+function addGenericBrowserIntegrationCommands(
+  commands: CommandEntry[],
+  {
+    fullMode,
+    changedFiles,
+    packageJsonOldRef,
+  }: { fullMode: boolean; changedFiles: readonly string[]; packageJsonOldRef: string | null },
+): void {
+  const plan: GenericBrowserIntegrationPlan = fullMode
+    ? {
+        mode: 'full',
+        specs: listGenericBrowserIntegrationSpecs(),
+        reasons: ['full-project release verification'],
+      }
+    : resolveGenericBrowserIntegrationPlan(changedFiles, { packageJsonOldRef });
+
+  if (plan.mode === 'skip' || plan.specs.length === 0) {
+    return;
+  }
+
+  commands.push({
+    kind: 'run',
+    label: 'browser-integration-local',
+    command: 'pnpm',
+    args: ['test:browser-integration', ...plan.specs],
+    weight: classifyCommandWeight({ label: 'browser-integration-local' }),
+    triggerReason: plan.reasons.join('; '),
   });
 }
 
@@ -1261,27 +1404,52 @@ export interface BuildCommandsOptions {
   /** Full-project release mode; defaults to the `--full` CLI flag. */
   fullMode?: boolean;
   /**
+   * Resolved `--only` verification type; defaults to the CLI-resolved value.
+   * Gates whether the expensive structural E2E graph/Playwright-ownership
+   * acquisition runs at all: it is only relevant when `null` (default, every
+   * type) or `'e2e'`, since no other `--only <type>` invocation can select an
+   * e2e leaf, and building that graph/inventory unconditionally would pay
+   * its cost on every focused non-e2e invocation for no proof it uses.
+   */
+  onlyType?: VerificationType | null;
+  /**
    * Git ref to compare the current `package.json` against, for the
    * version-only visual impact refinement. Pass `null` when no reliable base
    * ref is known; that fails closed to visual-relevant.
    */
   packageJsonOldRef?: string | null;
   fixMode?: FixMode;
-  appE2EPlan?: AppE2EPlan | null;
+  structuralE2EPlan?: StructuralE2EPlan | null;
+  e2eTargetTreeValidation?: E2ETargetTreeValidation | null;
   projectApplicabilityValidation?: E2EProjectApplicabilityValidation | null;
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
   /**
-   * Dedicated GitHub Actions fallback contract for the `storybook-build` label only (see
-   * `.github/workflows/verify.yml`): storybook-behavior and visual run as separate
-   * self-contained CI jobs that build their own Storybook when selected, so this narrows the
-   * `storybook-build` trigger to the ordinary storybook-build plan alone, skipping whenever a
-   * self-contained browser lane will already supply the equivalent static-build prerequisite.
-   * Has no effect on any other label and does not change `--full` or the ordinary (non-CI)
-   * `--only storybook-build` reuse-aware trigger. Sourced from the resolved
-   * `VerifyInvocation.storybookBuildCiFallback` (the `--storybook-build-ci-fallback` CLI flag);
-   * defaults to `false`.
+   * Resolved changed-path scope input (`git-diff` with per-path add/modify/
+   * delete/rename status, or `explicit-files`) the unit planner classifies.
+   * Defaults to treating `changedFiles` as an `explicit-files` scope when
+   * omitted, matching direct `--files`/test-call usage; `main()` passes the
+   * real status-aware scope input resolved by `resolveVerifyChangedPathContext`.
+   */
+  changedPathsInput?: ChangedPathsScopeInput | null;
+  /** Resolved unit affected plan; defaults to {@link resolveUnitPlan} over `changedPathsInput`. */
+  unitPlan?: UnitPlan | null;
+  /** Resolved mutation affected plan; defaults to {@link resolveMutationPlan} over `changedFiles`. */
+  mutationPlan?: MutationPlan | null;
+  /**
+   * Internal GitHub Actions duplicate-build avoidance for a focused `static`
+   * type invocation only (see `.github/workflows/verify.yml`):
+   * storybook-behavior and visual run as separate self-contained CI jobs
+   * that build their own Storybook when selected, so this narrows the
+   * `storybook-build` trigger to the ordinary storybook-build plan alone,
+   * skipping whenever a self-contained browser lane will already supply the
+   * equivalent static-build prerequisite. Has no effect on any other label
+   * and does not change `--full` or the ordinary (non-GitHub-focused-static)
+   * reuse-aware trigger. There is no public CLI flag or persisted field for
+   * this; `main()` derives it from the resolved invocation as
+   * `profile === 'github-actions' && onlyType === 'static'`.
+   * Defaults to `false`.
    */
   storybookBuildCiFallback?: boolean;
   /**
@@ -1304,15 +1472,20 @@ export function buildCommands(
   changedFiles: readonly string[],
   {
     fullMode = isFullMode,
+    onlyType = cliOnlyType,
     packageJsonOldRef = null,
     fixMode = currentVerifyInvocation?.fixMode ?? 'none',
-    appE2EPlan: appE2EPlanOverride = null,
+    structuralE2EPlan: structuralE2EPlanOverride = null,
+    e2eTargetTreeValidation: e2eTargetTreeValidationOverride = null,
     projectApplicabilityValidation: projectApplicabilityValidationOverride = null,
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
     storybookBuildCiFallback = false,
     repeat = currentVerifyInvocation?.repeat ?? null,
+    changedPathsInput: changedPathsInputOverride = null,
+    unitPlan: unitPlanOverride = null,
+    mutationPlan: mutationPlanOverride = null,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1325,21 +1498,6 @@ export function buildCommands(
   const lintableFiles = formatLintFiles.filter((filePath) =>
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
-  const vitestScope = getVitestScope(changedFiles);
-  const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
-  const projectApplicabilityValidation =
-    projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
-  const storybookBehaviorPlan =
-    storybookBehaviorPlanOverride ??
-    resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
-  const storybookBuildPlan =
-    storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
-  // Skip resolution in full mode: the full-mode branch below always runs the
-  // complete visual lane unconditionally and does not consult the plan.
-  const visualPlan: BuildCommandsVisualPlan | null =
-    visualPlanOverride ??
-    (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
-  const mutationScope = getMutationScope(existingChangedFiles);
   const commands: CommandEntry[] = [];
   const eslintConcurrency = resolveEslintConcurrency();
 
@@ -1433,8 +1591,96 @@ export function buildCommands(
   }
 
   if (fixOnlyMode) {
-    return commands;
+    return commands.map(withVerificationType);
   }
+
+  // No non-static proof planner/validator is resolved before this point:
+  // `--fix-only` constructs and returns its fixer-only command plan above
+  // without invoking any of the planners/validators below, since `--fix-only`
+  // never runs a proof leaf and paying their acquisition cost would be pure
+  // waste.
+  const unitPlan: UnitPlan =
+    unitPlanOverride ??
+    (fullMode
+      ? { mode: 'skip', reasons: ['full mode runs the complete unit type unconditionally'] }
+      : resolveUnitPlan(
+          changedPathsInputOverride ?? { kind: 'explicit-files', files: [...changedFiles] },
+          {
+            packageJsonOldRef,
+          },
+        ));
+  // Expensive structural E2E graph/Playwright-ownership acquisition only
+  // runs when e2e is actually relevant to this invocation (default, or
+  // `--only e2e`): a `--only <non-e2e-type>` invocation can never select an
+  // e2e leaf (selectOnlyCommands filters every `e2e`-typed entry out for any
+  // other type), so acquiring the graph/inventory for it would pay real cost
+  // for proof it never uses. The placeholder plan below is never observed in
+  // a final `--only <non-e2e-type>` result for the same reason.
+  //
+  // A second, cheap gate applies even when e2e IS the relevant type for this
+  // invocation (default or `--only e2e`): `--fix-only` never needs E2E
+  // acquisition at all (already returned above), and a changed-path set that
+  // {@link canChangedPathsAffectE2E} can cheaply prove E2E-irrelevant skips
+  // acquisition too, since running the acquisition anyway would pay its cost
+  // for a scope that cannot select any e2e leaf. The classifier is
+  // conservative (false positives acquire; false negatives never happen),
+  // and literal `--full` always acquires unconditionally regardless of the
+  // classifier, since it must still perform complete structural validation.
+  const needsStructuralE2EPlanning =
+    (onlyType === null || onlyType === 'e2e') &&
+    (fullMode || canChangedPathsAffectE2E(changedFiles, { packageJsonOldRef }));
+  const structuralE2EPlan: StructuralE2EPlan =
+    structuralE2EPlanOverride ??
+    (needsStructuralE2EPlanning
+      ? resolveStructuralE2EPlan(changedFiles, { packageJsonOldRef })
+      : { mode: 'skip', reasons: ['e2e planning not needed for this invocation'] });
+  // Structural target-tree/project-applicability validation is real
+  // filesystem/registry inspection, not merely expensive
+  // Playwright/dependency-cruiser acquisition, so it is gated behind the same
+  // E2E relevance decision as `structuralE2EPlan` above rather than resolved
+  // unconditionally: an E2E-irrelevant invocation (docs-only default, or
+  // `--only <non-e2e>`) must not fail on unrelated `tests/e2e/**` structural
+  // drift it never selected. Literal `--full` and every E2E-relevant scope
+  // still retain complete validation, matching `needsStructuralE2EPlanning`.
+  const e2eTargetTreeValidation: E2ETargetTreeValidation =
+    e2eTargetTreeValidationOverride ??
+    (needsStructuralE2EPlanning
+      ? validateE2ETargetTree()
+      : { valid: true, errors: [], targetPaths: [] });
+  const projectApplicabilityValidation: E2EProjectApplicabilityValidation =
+    projectApplicabilityValidationOverride ??
+    (needsStructuralE2EPlanning ? validateE2EProjectApplicability() : { valid: true, errors: [] });
+  const storybookBehaviorPlan =
+    storybookBehaviorPlanOverride ??
+    resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
+  const storybookBuildPlan =
+    storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
+  // Skip resolution in full mode: the full-mode branch below always runs the
+  // complete visual lane unconditionally and does not consult the plan.
+  const visualPlan: BuildCommandsVisualPlan | null =
+    visualPlanOverride ??
+    (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
+  // Deleted/renamed-away mutation infrastructure (e.g. `stryker.config.mjs`)
+  // must still be classified: passes the status-preserving `changedFiles`
+  // projection, not the filesystem-existence-filtered
+  // `existingChangedFiles`, so a removed registered path is never erased
+  // before mutation impact classification. Filtering by current filesystem
+  // existence first would make a deleted config file invisible to the
+  // mutation planner, silently dropping the mutation proof its removal
+  // should trigger.
+  const mutationPlan: MutationPlan =
+    mutationPlanOverride ?? resolveMutationPlan(changedFiles, { packageJsonOldRef });
+  const releaseStaticPlan: ReleaseStaticPlan = fullMode
+    ? {
+        mode: 'skip',
+        releaseConfig: false,
+        build: false,
+        publisherNodeImport: false,
+        artifactStatic: false,
+        managedUpdatesStatic: false,
+        reasons: ['full mode runs the complete static type unconditionally'],
+      }
+    : resolveReleaseStaticPlan(changedFiles, { packageJsonOldRef });
 
   if (fullMode || changedFiles.some(isTypeCheckTarget)) {
     commands.push({
@@ -1461,25 +1707,71 @@ export function buildCommands(
       args: ['exec', 'vitest', 'run', '--reporter=verbose'],
       weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
     });
-  } else if (vitestScope.length > 0) {
-    commands.push({
-      kind: 'run',
-      label: 'unit-tests',
-      command: 'pnpm',
-      args: ['exec', 'vitest', 'run', '--reporter=verbose', ...vitestScope],
-      weight: classifyCommandWeight({ label: 'unit-tests', fileCount: vitestScope.length }),
-    });
-  } else {
+  } else if (unitPlan.mode === 'skip') {
     commands.push({
       kind: 'skipped',
       label: 'unit-tests',
       command: 'pnpm exec vitest run',
       reason: 'empty focused unit-test scope',
     });
+  } else if (unitPlan.mode === 'full') {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'run', '--reporter=verbose'],
+      weight: classifyCommandWeight({ label: 'unit-tests', isFullRepo: true }),
+      triggerReason: unitPlan.reasons.join('; '),
+    });
+  } else if (unitPlan.strategy === 'changed') {
+    commands.push({
+      kind: 'run',
+      label: 'unit-tests',
+      command: 'pnpm',
+      args: ['exec', 'vitest', 'run', '--reporter=verbose', '--changed', unitPlan.baseRef],
+      weight: classifyCommandWeight({ label: 'unit-tests' }),
+      triggerReason: unitPlan.reasons.join('; '),
+    });
+  } else {
+    if (unitPlan.directTests.length > 0) {
+      commands.push({
+        kind: 'run',
+        label: 'unit-tests',
+        command: 'pnpm',
+        args: ['exec', 'vitest', 'run', '--reporter=verbose', ...unitPlan.directTests],
+        weight: classifyCommandWeight({
+          label: 'unit-tests',
+          fileCount: unitPlan.directTests.length,
+        }),
+        triggerReason: unitPlan.reasons.join('; '),
+      });
+    }
+
+    if (unitPlan.relatedPaths.length > 0) {
+      commands.push({
+        kind: 'run',
+        label: 'unit-related',
+        command: 'pnpm',
+        args: [
+          'exec',
+          'vitest',
+          'related',
+          '--run',
+          '--reporter=verbose',
+          ...unitPlan.relatedPaths,
+        ],
+        weight: classifyCommandWeight({
+          label: 'unit-related',
+          fileCount: unitPlan.relatedPaths.length,
+        }),
+        triggerReason: unitPlan.reasons.join('; '),
+      });
+    }
   }
 
   const e2eInvalidReasons = [
-    ...(appE2EPlan.mode === 'invalid' ? appE2EPlan.reasons : []),
+    ...(structuralE2EPlan.mode === 'invalid' ? structuralE2EPlan.reasons : []),
+    ...(e2eTargetTreeValidation.valid ? [] : e2eTargetTreeValidation.errors),
     ...(projectApplicabilityValidation.valid ? [] : projectApplicabilityValidation.errors),
   ];
 
@@ -1489,14 +1781,38 @@ export function buildCommands(
       kind: 'failed',
       label: 'e2e',
       command: 'pnpm e2e:container',
-      reason: `invalid app e2e scenario registry state: ${e2eInvalidReasons.join('; ')}`,
+      reason: `invalid target E2E ownership state: ${e2eInvalidReasons.join('; ')}`,
     });
   } else if (fullMode) {
     addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));
-  } else if (appE2EPlan.mode === 'full') {
-    addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
-  } else if (appE2EPlan.mode === 'focused') {
-    addE2ECommands(commands, createE2ECommand(appE2EPlan.specs, appE2EPlan.reasons.join('; ')));
+  } else if (structuralE2EPlan.mode === 'full') {
+    addE2ECommands(commands, createE2ECommand([], structuralE2EPlan.reasons.join('; ')));
+    addProductionArtifactE2ECommands(commands, {
+      structuralE2EPlan: {
+        mode: 'focused',
+        ordinarySpecs: [],
+        releaseSmokeSelected: true,
+        managedUpdatesE2ESelected: true,
+        reasons: structuralE2EPlan.reasons,
+      },
+    });
+  } else if (structuralE2EPlan.mode === 'focused') {
+    if (structuralE2EPlan.ordinarySpecs.length > 0) {
+      addE2ECommands(
+        commands,
+        createE2ECommand(structuralE2EPlan.ordinarySpecs, structuralE2EPlan.reasons.join('; ')),
+      );
+    } else {
+      commands.push(createE2EInstallCommand('no ordinary target E2E specs selected'));
+      commands.push({
+        kind: 'skipped',
+        label: 'e2e',
+        command: 'pnpm e2e:container',
+        reason: 'no ordinary target E2E specs selected',
+      });
+    }
+
+    addProductionArtifactE2ECommands(commands, { structuralE2EPlan });
   } else {
     commands.push(createE2EInstallCommand('empty e2e scope'));
     commands.push({
@@ -1507,18 +1823,21 @@ export function buildCommands(
     });
   }
 
-  // Locally, the shared Storybook static build is a prerequisite for both
-  // storybook-behavior and visual, not an independent proof owner. Schedule
-  // it before either lane so a successful build result is already available
-  // in `results` (see `getExtraEnvForEntry`) when they run, and derive the
-  // requirement from the three existing plans only: no separate impact
-  // registry. `invalid` behavior/visual plans fail closed on their own lane
-  // below and must not, by themselves, force an otherwise-unneeded build.
+  // storybook-build is its own `static` proof leaf (see
+  // VERIFICATION_TYPE_BY_LABEL). Locally, storybook-behavior and visual may
+  // reuse its successful build artifact as an execution optimization instead
+  // of rebuilding, so schedule it before either lane so a successful build
+  // result is already available in `results` (see `getExtraEnvForEntry`)
+  // when they run; this reuse does not change or merge proof ownership.
+  // Derive the requirement from the three existing plans only: no separate
+  // impact registry. `invalid` behavior/visual plans fail closed on their
+  // own lane below and must not, by themselves, force an otherwise-unneeded
+  // build.
   // In GitHub Actions, storybook-behavior and visual are separate
   // self-contained jobs that never reuse this lane's output (see
   // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
-  // only to `--full` and to the ordinary (non-CI-fallback) `--only
-  // storybook-build` invocation (i.e. without `--storybook-build-ci-fallback`).
+  // only to `--full` and to the ordinary (non-GitHub-focused-static) case,
+  // i.e. when `storybookBuildCiFallback` is false.
   const storybookBehaviorNeedsStaticBuild =
     storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
   const visualNeedsStaticBuild =
@@ -1592,14 +1911,7 @@ export function buildCommands(
 
   let storybookBehaviorEntry: CommandEntry;
 
-  if (storybookBehaviorPlan.mode === 'invalid') {
-    storybookBehaviorEntry = {
-      kind: 'failed',
-      label: 'storybook-behavior',
-      command: 'pnpm test:storybook-behavior',
-      reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
-    };
-  } else if (fullMode) {
+  if (fullMode) {
     storybookBehaviorEntry = createStorybookBehaviorCommand(
       [],
       'full-project release verification',
@@ -1624,7 +1936,7 @@ export function buildCommands(
   }
 
   // Narrow repeated-execution stability contract (`--repeat`): only ever
-  // resolved for `--only storybook-behavior --files ...` (see
+  // resolved for `--only behavior --files ...` (see
   // resolveVerifyInvocation's assertModeCombination), so it applies only to
   // this runnable entry and never to another label's command.
   if (repeat !== null && storybookBehaviorEntry.kind === 'run') {
@@ -1686,19 +1998,43 @@ export function buildCommands(
     });
   }
 
-  // Mutation testing is a test-design/PR-quality tool, not a release-publish
-  // blocker: it is expensive/slow and does not validate the production
-  // artifact, so it never runs in full/release mode (pnpm verify:release).
-  if (!fullMode && mutationScope.length > 0) {
+  // Literal full mode runs the complete registered mutation inventory
+  // already registered in stryker.config.mjs, with no affected `-m` override.
+  // Focused/default mode selects only from the explicit registry: a
+  // registered target's exact source or owning test changed, or a mutation
+  // registry/infrastructure change selects the complete registered
+  // inventory. Invalid registry state fails closed before any Stryker
+  // execution.
+  if (mutationPlan.mode === 'invalid') {
+    // Registry structural invalidity must fail before any Stryker child
+    // execution in every mode, including literal --full: check this before
+    // fullMode so an invalid registry can never reach the unconditional full
+    // `pnpm exec stryker run` below.
+    commands.push({
+      kind: 'failed',
+      label: 'mutation',
+      command: 'pnpm exec stryker run',
+      reason: `invalid mutation registry state: ${mutationPlan.reasons.join('; ')}`,
+    });
+  } else if (fullMode) {
     commands.push({
       kind: 'run',
       label: 'mutation',
       command: 'pnpm',
-      args: ['exec', 'stryker', 'run', '-m', mutationScope.join(',')],
+      args: ['exec', 'stryker', 'run'],
       weight: classifyCommandWeight({ label: 'mutation' }),
-      triggerReason: `mutation scope: ${mutationScope.join(', ')}`,
+      triggerReason: 'full-project release verification',
     });
-  } else if (!fullMode) {
+  } else if (mutationPlan.mode === 'focused' || mutationPlan.mode === 'full') {
+    commands.push({
+      kind: 'run',
+      label: 'mutation',
+      command: 'pnpm',
+      args: ['exec', 'stryker', 'run', '-m', mutationPlan.sources.join(',')],
+      weight: classifyCommandWeight({ label: 'mutation' }),
+      triggerReason: mutationPlan.reasons.join('; '),
+    });
+  } else {
     commands.push({
       kind: 'skipped',
       label: 'mutation',
@@ -1709,36 +2045,46 @@ export function buildCommands(
 
   if (fullMode) {
     addReleaseOnlyCommands(commands);
+  } else {
+    addReleaseStaticCommands(commands, releaseStaticPlan);
   }
 
-  return commands;
+  addBrowserIntegrationCommands(commands, { fullMode, changedFiles, packageJsonOldRef });
+  addGenericBrowserIntegrationCommands(commands, { fullMode, changedFiles, packageJsonOldRef });
+
+  return commands.map(withVerificationType);
 }
 
-function selectOnlyCommands(
+/**
+ * Select the planned command entries for a resolved `--only` verification
+ * type. Selects every proof leaf owned by that type, plus the `e2e-install`
+ * pure execution prerequisite when `e2e` is selected; no other type ever
+ * selects a leaf owned by another type. An empty
+ * selection — for example `--only performance`, which currently has no
+ * persistent proof inventory — is a valid, non-failing outcome, not an
+ * error.
+ * @param commands Full planned command list.
+ * @param [onlyType] Resolved `--only` verification type, or `null` for no narrowing.
+ * @returns The selected command entries, in their original planned order.
+ */
+export function selectOnlyCommands(
   commands: readonly CommandEntry[],
-  onlyLabel: string | null = cliOnlyLabel,
+  onlyType: VerificationType | null = cliOnlyType,
 ): CommandEntry[] {
-  if (onlyLabel === null) {
+  if (onlyType === null) {
     return [...commands];
   }
 
-  const selectedCommands = commands.filter((entry) => entry.label === onlyLabel);
-
-  if (selectedCommands.length > 0) {
-    return selectedCommands;
-  }
-
-  if (onlyLabel === 'e2e-install') {
-    return [createE2EInstallCommand('empty e2e scope')];
-  }
-
-  throw new Error(`Verify command list is missing required label: ${onlyLabel}`);
+  return commands.filter(
+    (entry) =>
+      entry.verificationType === onlyType || (onlyType === 'e2e' && entry.label === 'e2e-install'),
+  );
 }
 
 /**
  * Build a supported read-only verify command from the resolved invocation.
  * @param invocation Resolved verify invocation.
- * @param [overrides] Optional profile and label overrides.
+ * @param [overrides] Optional profile and type overrides.
  * @returns Canonical shell-safe pnpm verify command.
  */
 export function getVerifyRerunCommand(
@@ -1776,6 +2122,7 @@ export function getActionRequired(
   }
 
   const actions: string[] = [];
+  const fullMode = invocation.scope.kind === 'full';
   const failedResults = results.filter(
     (result): result is ExecutedCommandResult | InvalidCommandResult => result.status === 'failed',
   );
@@ -1783,9 +2130,21 @@ export function getActionRequired(
     (result) => result.status !== 'failed' && result.hasWarnings,
   );
 
+  // `--full` and `--only` are mutually exclusive CLI flags (resolveVerifyInvocation
+  // rejects `--full --only <type>`), so a failure/warning during full mode
+  // retains the valid full-scope rerun instead of narrowing by verification
+  // type.
+  const getRerunCommand = (label: string, profileOverride?: 'github-actions') =>
+    fullMode
+      ? getVerifyRerunCommand(invocation, { profile: profileOverride })
+      : getVerifyRerunCommand(invocation, {
+          onlyType: resolveVerificationType(label),
+          profile: profileOverride,
+        });
+
   for (const result of failedResults) {
     actions.push(
-      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+      `Fix failed ${result.label} errors. Rerun through verify: ${getRerunCommand(result.label)}`,
     );
 
     if (result.blockingLogIssue) {
@@ -1806,20 +2165,17 @@ export function getActionRequired(
 
   for (const result of warningResults) {
     actions.push(
-      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+      `Fix ${result.label} warnings. Rerun through verify: ${getRerunCommand(result.label)}`,
     );
     actions.push(`Reason: ${result.warningSummary}`);
   }
 
   if (ciProfileRisk !== null) {
-    const rerunChecks = ciProfileRisk.affectedChecks
-      .map((label) =>
-        getVerifyRerunCommand(invocation, {
-          onlyLabel: label,
-          profile: 'github-actions',
-        }),
-      )
-      .join(' ; ');
+    const rerunChecks = fullMode
+      ? getVerifyRerunCommand(invocation, { profile: 'github-actions' })
+      : ciProfileRisk.affectedChecks
+          .map((label) => getRerunCommand(label, 'github-actions'))
+          .join(' ; ');
     actions.push(
       `CI-profile risk remains for ${ciProfileRisk.affectedChecks.join(', ')} because local Playwright used profile ${ciProfileRisk.activeProfile.name}.`,
     );
@@ -1909,7 +2265,7 @@ export function printSummary(
   console.log(`profile: ${profile.name} (source: ${profile.source})`);
   console.log(`release: ${fullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
   console.log(`verbose: ${invocation.verbose ? 'on' : 'off'}`);
-  console.log(`only: ${invocation.onlyLabel ?? 'all'}`);
+  console.log(`only: ${invocation.onlyType ?? 'all'}`);
   console.log(`scope: ${fullMode ? 'full-project (changed-file scope ignored)' : scope}`);
   console.log(`base ref: ${baseRef ?? 'n/a'}`);
   console.log(`changed files: ${changedFiles.length}`);
@@ -1974,9 +2330,16 @@ export function printSummary(
 }
 
 // Release Playwright checks whose webServer builds the production artifact
-// itself (see playwright.release.config.ts). Reused only when the `build`
-// check already produced a fresh artifact earlier in this same run.
-const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
+// itself (see playwright.release.config.ts). Reused only when a fresh
+// artifact was already produced earlier in this same run, by any label in
+// ARTIFACT_BUILD_SOURCE_LABELS.
+const ARTIFACT_REUSE_LABELS = new Set(['artifact-static', 'artifact', 'release-smoke']);
+
+// Labels whose successful completion proves a fresh production artifact
+// already exists on disk: the dedicated `build` check, and `artifact-static`
+// (see scripts/release/productionArtifactStaticProof.ts), which also builds
+// the artifact itself before validating it.
+const ARTIFACT_BUILD_SOURCE_LABELS = new Set(['build', 'artifact-static']);
 
 // Storybook browser lanes whose webServer builds the Storybook static
 // artifact itself (see playwright.storybook.config.ts / playwright.visual.config.ts).
@@ -1986,10 +2349,11 @@ const STORYBOOK_STATIC_REUSE_LABELS = new Set(['storybook-behavior', 'visual']);
 
 /**
  * Resolve extra env for a command entry, based on prior results in this run.
- * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
- * release-only checks once the `build` check has already produced a fresh
- * production artifact in this same `pnpm verify` invocation, so a single
- * release gate does not rebuild the artifact once per check that needs it.
+ * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact-static`/`artifact`/
+ * `release-smoke` release-only checks once an earlier check in
+ * ARTIFACT_BUILD_SOURCE_LABELS has already produced a fresh production
+ * artifact in this same `pnpm verify` invocation, so a single release gate
+ * does not rebuild the artifact once per check that needs it.
  * Sets `STORYBOOK_STATIC_SKIP_BUILD=1` for the `storybook-behavior`/`visual`
  * checks once the `storybook-build` check has already produced a fresh
  * Storybook static build in this same invocation, for the same reason.
@@ -2004,9 +2368,11 @@ export function getExtraEnvForEntry(
   const extraEnv: NodeJS.ProcessEnv = {};
 
   if (ARTIFACT_REUSE_LABELS.has(entry.label)) {
-    const buildResult = priorResults.find((result) => result.label === 'build');
+    const hasFreshArtifact = priorResults.some(
+      (result) => ARTIFACT_BUILD_SOURCE_LABELS.has(result.label) && result.status === 'passed',
+    );
 
-    if (buildResult?.status === 'passed') {
+    if (hasFreshArtifact) {
       extraEnv.RELEASE_ARTIFACT_SKIP_BUILD = '1';
     }
   }
@@ -2067,6 +2433,12 @@ export interface VerifyChangedPathContext {
   scope: string;
   baseRef: string | null;
   packageJsonOldRef: string | null;
+  /**
+   * Resolved changed-path scope input (`git-diff` with per-path status, or
+   * `explicit-files`), preserved for the unit planner's status-aware
+   * classification. `null` for full mode, which needs no scope input.
+   */
+  input: ChangedPathsScopeInput | null;
 }
 
 /** Test seams for changed-path execution. */
@@ -2092,6 +2464,7 @@ export function resolveVerifyChangedPathContext(
       scope: 'full-project',
       baseRef: null,
       packageJsonOldRef: null,
+      input: null,
     };
   }
 
@@ -2106,6 +2479,7 @@ export function resolveVerifyChangedPathContext(
     scope,
     baseRef,
     packageJsonOldRef,
+    input,
   };
 }
 
@@ -2124,30 +2498,32 @@ async function main(
   }
 
   const totalStartedAt = performance.now();
-  const onlyLabel = invocation.onlyLabel;
+  const onlyType = invocation.onlyType;
   const verifyProcessEnv = getVerifyProcessEnv(process.env, invocation.profile);
-  const { changedFiles, scope, baseRef, packageJsonOldRef } =
+  const { changedFiles, scope, baseRef, packageJsonOldRef, input } =
     resolveVerifyChangedPathContext(invocation);
   const commands = selectOnlyCommands(
     buildCommands(changedFiles, {
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
+      changedPathsInput: input,
       fixMode: invocation.fixMode,
-      // `--storybook-build-ci-fallback` is only ever resolved to true alongside
-      // `--only storybook-build` outside `--full` (enforced by
-      // `resolveVerifyInvocation`), so this passes straight through (see
-      // `storybookBuildCiFallback` on BuildCommandsOptions).
-      storybookBuildCiFallback: invocation.storybookBuildCiFallback,
+      // Internal GitHub-focused-static Storybook build fallback (see
+      // `storybookBuildCiFallback` on BuildCommandsOptions): derived from the
+      // resolved invocation, not a public flag. `onlyType` is already null
+      // whenever `scope.kind === 'full'` (full mode rejects `--only`), so
+      // this is naturally false in full mode without a separate check.
+      storybookBuildCiFallback: invocation.profile === 'github-actions' && onlyType === 'static',
       repeat: invocation.repeat,
     }),
-    onlyLabel,
+    onlyType,
   );
   const results: CommandResult[] = [];
   let hasFailed = false;
   const runnableCommands = commands.filter((entry) => entry.kind === 'run');
   const totalRunnableChecks = runnableCommands.length;
   let completedRunnableChecks = 0;
-  ensureLogsDirectory(onlyLabel === null ? null : commands.map((entry) => entry.label));
+  ensureLogsDirectory(onlyType === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
@@ -2166,7 +2542,7 @@ async function main(
       continue;
     }
 
-    if (onlyLabel === null) {
+    if (onlyType === null) {
       console.log(
         `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
       );
