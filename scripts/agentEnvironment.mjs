@@ -2,7 +2,8 @@
  * Agent environment compatibility check/fix script.
  *
  * Ensures Claude Code can load project rules and skills that are canonically
- * defined in AGENTS.md files and .agents/skills.
+ * defined in AGENTS.md files and .agents/skills, and keeps selected active
+ * guidance contracts aligned with their canonical workflow owners.
  *
  * Usage:
  *   node scripts/agentEnvironment.mjs --check
@@ -70,6 +71,11 @@ const IGNORED_DIRS = new Set([
   '.claude',
 ]);
 
+const MATERIAL_LEGACY_GUIDANCE_OWNERS = new Set([
+  '.agents/skills/material-component/SKILL.md',
+  '.agents/skills/material-component-migration/SKILL.md',
+]);
+
 /**
  * Find matching files below a root while excluding generated and local state.
  * @param root Absolute search root.
@@ -106,6 +112,57 @@ function findNamedFiles(root, fileName) {
 
   visit(root);
   return results.sort((left, right) => left.localeCompare(right));
+}
+
+function findAgentsMd(root) {
+  return findNamedFiles(root, 'AGENTS.md');
+}
+
+function findClaudeMd(root) {
+  return findNamedFiles(root, 'CLAUDE.md');
+}
+
+/**
+ * Validate the narrow cross-file contract between active agent guidance and
+ * the canonical Material workflow. Legacy staged ready-artifact guidance is
+ * allowed only in the Material workflow owners that route or remove legacy
+ * artifacts; other active rules must not restore that superseded contract.
+ * @param root Repository root.
+ * @returns Material workflow guidance validation result.
+ */
+export function checkMaterialWorkflowGuidance(root) {
+  const errors = [];
+  const skillsRoot = path.join(root, '.agents', 'skills');
+  const skillPaths = fs.existsSync(skillsRoot)
+    ? findNamedFiles(skillsRoot, 'SKILL.md').map((skillRelPath) =>
+        path.posix.join('.agents/skills', skillRelPath),
+      )
+    : [];
+  const activeGuidancePaths = [...new Set([...findAgentsMd(root), ...skillPaths])].sort(
+    (left, right) => left.localeCompare(right),
+  );
+
+  for (const guidancePath of activeGuidancePaths) {
+    if (MATERIAL_LEGACY_GUIDANCE_OWNERS.has(guidancePath)) {
+      continue;
+    }
+
+    const content = fs.readFileSync(path.join(root, guidancePath), 'utf8');
+    const namesLegacyMaterialReadyPair =
+      /\bMaterial\b/i.test(content) &&
+      content.includes('`DESIGN.md`') &&
+      content.includes('`ARCHITECTURE.md`');
+
+    if (namesLegacyMaterialReadyPair) {
+      errors.push(
+        `${guidancePath} references the superseded Material ready-artifact pair \`DESIGN.md\` + \`ARCHITECTURE.md\`. ` +
+          `Legacy staged artifact guidance is owned only by ${[...MATERIAL_LEGACY_GUIDANCE_OWNERS].join(', ')}; ` +
+          `other active guidance must use the current Material workflow.`,
+      );
+    }
+  }
+
+  return { errors, fixes: [] };
 }
 
 /**
@@ -167,14 +224,6 @@ export function checkSkillFrontmatter(root) {
   }
 
   return { errors, fixes: [] };
-}
-
-function findAgentsMd(root) {
-  return findNamedFiles(root, 'AGENTS.md');
-}
-
-function findClaudeMd(root) {
-  return findNamedFiles(root, 'CLAUDE.md');
 }
 
 function expectedClaudeContent(agentsRelPath) {
@@ -392,6 +441,11 @@ export function checkSkillsSymlink(root, fix) {
   return { errors, fixes };
 }
 
+/**
+ * Resolve the platform-specific directory symlink type for managed skill links.
+ * @param platform Node platform identifier.
+ * @returns `junction` on Windows; `undefined` elsewhere.
+ */
 export function getDirectorySymlinkType(platform) {
   return platform === 'win32' ? 'junction' : undefined;
 }
@@ -451,6 +505,7 @@ export function checkAgentEnvironment(root, fix) {
   const claudeResult = checkClaudeMdAdapters(root, fix);
   const skillsResult = checkSkillsSymlink(root, fix);
   const skillFrontmatterResult = checkSkillFrontmatter(root);
+  const materialWorkflowGuidanceResult = checkMaterialWorkflowGuidance(root);
   const gitignoreResult = checkGitignoreCompatibility(root);
 
   return {
@@ -458,12 +513,14 @@ export function checkAgentEnvironment(root, fix) {
       ...claudeResult.errors,
       ...skillsResult.errors,
       ...skillFrontmatterResult.errors,
+      ...materialWorkflowGuidanceResult.errors,
       ...gitignoreResult.errors,
     ],
     fixes: [
       ...claudeResult.fixes,
       ...skillsResult.fixes,
       ...skillFrontmatterResult.fixes,
+      ...materialWorkflowGuidanceResult.fixes,
       ...gitignoreResult.fixes,
     ],
   };

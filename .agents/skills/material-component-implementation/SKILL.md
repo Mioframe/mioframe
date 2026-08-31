@@ -146,7 +146,18 @@ GOOD: override the public token or trigger the real state in a browser and asser
 
 ## Proof
 
-Add only proof required by contracts and materially distinct renderer/cascade paths.
+Determine only proof required by the fixed contracts and materially distinct renderer/cascade paths. Repository proof remains component/family-owned under this implementation owner, but **acceptance-oracle authorship is separate from production implementation when the root testing architecture requires `test-authoring`**.
+
+Before production edits, record a scoped `TEST IMPACT` item for each materially changed standalone contract using the canonical fields from `docs/testing/architecture.md`: independent `Oracle source`, `Must reject`, primary/additional proof, existing/new proof, `Test author`, `Red phase`, risk/platform matrix, and durable ownership updates. This is the Material implementation owner's narrow equivalent proof-planning record; it does not invoke generic `implementation-preflight`, create persisted workflow state, or change proof ownership.
+
+Then handle required proof from those fixed decisions:
+
+- if an existing proof already owns the contract with unchanged oracle/assertions, preserve it and use it normally;
+- if `Test author` is required for a new assertion-bearing test/spec or materially changed oracle/expectation/assertion/failure semantic, delegate that exact `TEST IMPACT` item to a fresh `test-authoring` context using the truthful proof-type skill; consume its accepted proof and RED evidence before production edits;
+- if an intentional visual baseline must change and target pixels cannot exist yet, delegate the pre-implementation visible contract/spec intent through `test-authoring`, implement rendering without creating/approving the baseline, then delegate post-implementation baseline creation/inspection/acceptance to a fresh test-author context under `visual-regression-testing`;
+- do not create a Material workflow owner/stage or `.material-correction.json` entry merely for delegated proof authorship.
+
+The production implementation context must not edit test-author-accepted non-visual proof before its first GREEN result and must not create, regenerate, or approve an intentional changed visual baseline. A genuine proof/contract conflict returns to the test-author or architect rather than being resolved by weakening proof here.
 
 Unit/component tests may prove public prop/slot/event/default mapping, host allow-lists, and deterministic adapter-owned state/event forwarding.
 
@@ -163,11 +174,11 @@ Use focused `pnpm verify --only ...` commands only when useful as implementation
 Implementation may return `complete` only when all four are true:
 
 1. runtime satisfies all three fixed contracts and the root-default token cascade model;
-2. every required observable contract/cascade path has faithful proof in the repository;
+2. every required observable contract/cascade path has faithful proof in the repository, including any required independent test-author or visual-baseline acceptance subcontext;
 3. any narrow implementation-specific verification needed to establish a concrete risk has been completed or its exact blocker is reported;
 4. no known in-scope coding blocker remains.
 
-Missing or failing required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI is architect-owned and is the final automatic repository verification gate.
+Missing, failing, or not-yet-independently-accepted required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI is architect-owned and is the final automatic repository verification gate.
 
 ## Return
 
@@ -209,6 +220,9 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Using specificity escalation, `!important`, inline token wiring, or bundle/source order as token-cascade fixes.
 - Adding alias styling classes solely to attach public tokens.
 - Treating source CSS wiring or selector state as rendered proof.
+- Authoring or weakening a required acceptance oracle in the production implementation context when `test-authoring` is required.
+- Creating/regenerating/approving an intentional changed visual baseline in the production implementation context.
+- Treating delegated `test-authoring` as another Material owner/stage rather than a subcontext of implementation-owned proof work.
 - Asking the operator to run verifier commands.
 - Claiming `complete` with required task-specific proof unrun or failing.
 - Rewriting already-correct work on resume without an exact defect.

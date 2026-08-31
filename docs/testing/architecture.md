@@ -27,6 +27,22 @@ Tests protect observable behavior, public contracts, persisted state, data safet
 
 Do not test private methods, incidental classes, framework lifecycle, render counts, internal branches, or third-party behavior unless Mioframe owns the observable adaptation.
 
+### Independent oracle and proof authorship
+
+Expected results for assertion-bearing tests/specs and accepted visual baselines come from an independent contract, not from the production implementation being changed.
+
+Valid oracle sources include an accepted architecture/product/public contract, a reproducible defect with required corrected behavior, persisted/protocol compatibility rules, an authoritative platform/dependency contract, or independently accepted visible output.
+
+For every materially changed contract, proof planning names at least one plausible incorrect observable result the primary proof must reject.
+
+When a new assertion-bearing automated test/spec is required, or an existing test/spec materially changes its oracle, expectations, assertions, or failure semantics, author that proof in a separate test-author context before production implementation. This is an authoring-context boundary only: it does not create a verification type, proof owner, placement rule, registry, or affected-selection relation.
+
+Intentional visual-baseline changes follow the same independence rule but different timing. Before production implementation, the test-author context establishes the accepted visible contract and visual-spec intent. When the new pixels cannot exist until after implementation, baseline creation and acceptance happen in a fresh test-author/visual pass after production rendering is available. The production implementation context must not regenerate or approve the baseline it is expected to satisfy.
+
+Test-authoring does not apply merely because verification work changes. Static verifier/check implementation, mutation-target registration, ownership/applicability metadata, proof-only moves/renames, formatting, comments, or other mechanical proof maintenance with an unchanged assertion oracle stay in their existing owner/workflow. Assertion-bearing tests/specs added for such mechanisms still follow their truthful proof type.
+
+When a meaningful pre-fix failure exists, the test-author context owns the RED evidence for new/materially changed proof. Production implementation consumes accepted non-visual proof and existing accepted baselines read-only until the first GREEN result. RED is valid only when the failure is caused by the missing/incorrect contract under test; a deterministic failure caused exactly by an absent required public seam may therefore be valid, while unrelated compilation/setup errors, wrong environment, unrelated exceptions, timeouts, missing fixtures, or infrastructure failures are not. If implementation exposes a genuine defect in the accepted proof or contract, return to the test-author/architect. Do not rewrite an accepted oracle in the production implementation context merely to make changed code pass.
+
 ### One contract has one primary proof owner
 
 One observable contract has one primary proof owner. Higher-level proof may protect an integration seam or complete product outcome, but must not duplicate the complete lower-level contract.
@@ -391,13 +407,19 @@ Before non-trivial implementation, record only task-relevant proof decisions:
 ```text
 TEST IMPACT
 - Contract/scenario:
+  - Oracle source:
+  - Must reject:
   - Primary proof owner:
   - Additional proof:
   - Existing proof:
   - New/updated proof:
+  - Test author: required | not required — <reason>
+  - Red phase: required | not applicable — <reason>
   - Risk or platform matrix:
   - Durable ownership/impact updates:
 ```
+
+`Oracle source` is independent from the changed production implementation. `Must reject` is one plausible incorrect observable result the primary proof must catch. `Test author` records whether a separate assertion-authoring context is required; it does not change proof ownership. `Red phase` is required only when the pre-fix implementation can fail the focused proof for the contract-relevant reason. For intentional visual changes whose new baseline cannot exist before implementation, record the pre-implementation visible contract/spec intent and route baseline creation/acceptance to a post-implementation test-author visual pass.
 
 `verify` never consumes agent prose or this preflight artifact.
 
@@ -426,6 +448,7 @@ This architecture does not require:
 - a custom graph framework;
 - a large source-to-test mapping registry;
 - routine owner tags on every E2E;
+- a separate test-author verification type or proof-ownership layer;
 - perfect zero-fallback analysis.
 
 ## Review rejection criteria
@@ -443,4 +466,5 @@ Reject or revise verification changes when:
 9. a structural violation is converted into broad fallback instead of failing validation;
 10. uncertainty silently reduces coverage;
 11. a custom graph/manager/DSL is introduced without a demonstrated current requirement;
-12. migration state is ignored and code is placed where the current runner cannot execute it.
+12. migration state is ignored and code is placed where the current runner cannot execute it;
+13. assertion-bearing proof derives its oracle from the implementation under test or production implementation rewrites accepted proof merely to make changed code pass.

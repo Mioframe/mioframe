@@ -5,46 +5,77 @@ description: 'Use when observable behavior, a reproducible defect, migration, pe
 
 # Test-first workflow
 
-Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
+Follow `docs/testing/architecture.md`. This skill coordinates one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
 For Storybook-owned UI proof, use `docs/testing/storybook.md` for current ownership and `docs/testing/migration-plan.md` for executable verification state.
 
+When a new assertion-bearing automated test/spec is required, or an existing test/spec materially changes its oracle, expectations, assertions, or failure semantics, author and validate that proof first in a separate test-author context using `test-authoring`. Intentional visual-baseline changes also use `test-authoring`, but baseline creation/acceptance may happen after production rendering exists as defined by `docs/testing/architecture.md` and `visual-regression-testing`.
+
+A separate test-author pass is not required for static verifier/check implementation, mutation-target registration, ownership/applicability metadata, proof-only renames/moves, formatting, comments, mechanical ownership migration with unchanged assertions, or other edits that do not add or alter an assertion oracle or accepted visual result.
+
 ## Activation
 
-Use only when all conditions are true:
+Use the red/green cycle only when all conditions are true:
 
 1. observable behavior, a public contract, persistence/migration semantics, a transformation, or a reproducible defect changes;
 2. `docs/testing/architecture.md` defines a faithful proof type for the expected result;
-3. an existing focused test target can be updated, or a new focused target can be created without broad infrastructure;
-4. the check can fail against the current implementation for the expected behavioral reason before production edits.
+3. an existing focused assertion-bearing proof exists, or a required new/materially changed proof has been accepted through the applicable pre-implementation `test-authoring` handoff;
+4. the focused proof can fail against the current implementation for the expected contract reason before production edits.
 
-Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
+Skip the red phase for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, intentional visual changes whose new baseline cannot exist before implementation, or another case where a faithful pre-fix failure cannot exist.
 
-Skipping test-first does not skip required proof from `TEST IMPACT`, durable ownership maintenance, or required exact-head PR CI when applicable.
+Skipping a red phase does not skip required proof from `TEST IMPACT`, `test-authoring` when an assertion oracle or accepted visual result is new/materially changed, durable ownership maintenance, or required exact-head PR CI when applicable.
+
+## Independent oracle
+
+Before changing production code, establish the expected observable result from the `TEST IMPACT` oracle source:
+
+- accepted architecture/product/public contract;
+- reproducible defect and its required corrected behavior;
+- persisted/protocol compatibility contract;
+- authoritative platform/dependency contract;
+- independently accepted visual appearance;
+- another explicit source that does not derive the expected result from the production implementation under test.
+
+Name at least one plausible incorrect observable result the proof must reject (`Must reject`).
+
+Do not calculate expected values with the production helper/algorithm being tested, copy the implementation algorithm into the test, promote current implementation output to an expectation without independent justification, or program mocks so the assertion merely confirms the value injected by the test.
+
+When an existing expectation changes, the accepted contract must have changed or the old proof must be independently shown invalid. A failing new implementation is not sufficient reason to edit an assertion or regenerate a baseline.
 
 ## Workflow
 
-1. Name the changed contract and proof type.
-2. Select the highest-risk applicable acceptance case.
-3. Add or update one focused test before production edits.
-4. Maintain the current durable ownership contract for any new/moved Playwright spec: owner-local behavior/visual/browser-integration or structural page/widget E2E ownership as defined by `docs/testing/architecture.md`.
-5. Run the owning verifier-managed verification type and confirm the expected failure.
-6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
-7. Implement the minimum production change.
-8. Rerun the same target and confirm it passes.
-9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
-10. Return to the top-level task after focused proof. This skill does not run a separate final gate.
+1. Name the changed contract and proof type from `TEST IMPACT`.
+2. Confirm the independent oracle and `Must reject` outcome.
+3. If non-visual assertion-bearing proof is new/materially changed, consume the completed pre-implementation `test-authoring` handoff. Required RED evidence must already have been produced by that context before production implementation begins.
+4. If the proof oracle is unchanged and a red phase is required, run the existing focused owning proof before production edits and confirm the expected contract-relevant failure.
+5. Accept RED only when the failure is caused by the missing/incorrect contract under test. A deterministic compile/import failure caused exactly by an absent required public seam may be valid. Unrelated compilation/setup errors, wrong-environment failures, unrelated exceptions, timeouts, missing fixtures, or infrastructure failures are invalid RED evidence. If a faithful red phase cannot exist, record `Red phase: not applicable — <reason>` instead of manufacturing one.
+6. Implement the minimum production change. Test-author-accepted non-visual test/spec files and existing accepted baselines remain read-only to the implementation context until the relevant proof can be checked.
+7. For non-visual proof or an unchanged existing visual baseline, rerun the same focused proof and confirm GREEN.
+8. For an intentional visual-baseline change, return to a fresh `test-authoring`/`visual-regression-testing` pass after rendering exists; that context creates/inspects/accepts the baseline and produces GREEN visual proof. The production implementation context must not approve the baseline itself.
+9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red/green proof does not cap final proof.
+10. If remaining acceptance requires a new or materially changed assertion-bearing test/spec/baseline, route that proof through `test-authoring` before authoring or accepting it.
+11. Return to the top-level task after focused proof. This skill does not run a separate final gate.
+
+If implementation reveals a genuine problem in the accepted proof or contract, stop and route the conflict back to the test-author/architect. Do not resolve the conflict by letting the implementation context rewrite its own acceptance criteria.
 
 ## Proof routing
 
 - Deterministic domain/service/storage/CRDT/validation/migration/transformation behavior: `unit-testing`.
 - Vue public API and non-browser wiring: `component-contract-testing`.
-- Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook.
+- Reusable UI focus/keyboard/pointer/touch/layout/scroll/overlay/responsive/browser behavior: `ui-browser-behavior` with Storybook as `behavior`.
 - Isolated browser/service/worker/runtime contracts: `ui-browser-behavior` as `browser-integration`.
-- Complete cross-boundary product scenario: `ui-browser-behavior` with app E2E.
-- Appearance: `visual-regression-testing`; normally not a red/green target.
+- Complete cross-boundary product scenario: `ui-browser-behavior` with structural app `e2e`.
+- Appearance: `visual-regression-testing`; intentional new/changed baselines normally do not have a meaningful pre-implementation red phase.
+- Persistent performance invariants: the existing performance proof owner selected by `docs/testing/architecture.md`; only when a pre-fix failure is meaningful.
+
+Release-sensitive behavior uses the current public verification type that faithfully owns the contract. There is no separate public `release` type or `verify:release` test-first path.
+
+Static checks and mutation target registration are verification mechanisms, not dedicated assertion-bearing test/spec types. They do not enter `test-authoring` merely because they are verification work; any assertion-bearing unit/browser/etc. proof for their implementation follows its own truthful proof type.
 
 ## Commands
+
+Use the narrow verifier-managed public type selected by `TEST IMPACT`, for example:
 
 ```bash
 pnpm verify --only unit --files <paths...>
@@ -59,6 +90,11 @@ Raw Vitest or Playwright commands are diagnostic exceptions, not completion gate
 
 - Do not add a test merely because a production file changed.
 - Do not force a ceremonial red phase.
+- Do not let the production implementation context invent or weaken its own acceptance oracle.
+- Do not edit test-author-accepted non-visual proof before its first GREEN result.
+- Do not let the production implementation context create or approve an intentional visual baseline change.
+- Do not change an existing assertion/baseline solely because the new implementation otherwise fails.
+- Do not derive expected values from the implementation being tested.
 - Do not use a less faithful proof type because it is easier.
 - Do not broaden coverage beyond the changed contract and confirmed risk.
 - Do not duplicate an existing owner at another proof type.

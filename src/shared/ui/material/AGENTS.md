@@ -60,6 +60,10 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 
 Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, token-driven appearance/geometry, non-tokenized layout relationships, RTL, states, token effects, composition/cascade, and motion.
 
+When standalone implementation requires a new assertion-bearing automated test/spec or materially changes an existing oracle/expectation/assertion/failure semantic, author that proof first in a separate test-author context following root `test-authoring` and the selected proof-type skill. Required RED evidence is produced there before standalone production implementation, and accepted non-visual proof remains read-only to the implementation context until GREEN.
+
+Intentional Material visual-baseline changes use the same independent test-author boundary with `visual-regression-testing`, but new baseline pixels may be created only after the new rendering exists. The implementation context may render the intended change but must not create, regenerate, or approve the expected baseline; a fresh test-author/visual pass owns baseline inspection/acceptance and GREEN visual proof. These rules change test authorship only; they do not alter Material owner order, contract sequencing, proof ownership, or workflow state.
+
 When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
 Follow the repository `verification` skill. Focused verifier commands are optional feedback during implementation/correction or narrow task-specific proof. Do not add a Material-specific mandatory final local verification gate and do not ask the operator to run verifier commands. GitHub exact-head CI is the architect-owned automatic repository gate.
